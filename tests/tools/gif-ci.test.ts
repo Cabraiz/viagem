@@ -151,3 +151,20 @@ test('gravar: tremorOf counts the drawn hero stepping back against its walk, and
   // Standing still is not a walk: no frames counted.
   assert.equal(gravar.tremorOf(Array.from({length:30},()=>[1,1,0])).quadros,0);
 });
+
+test('torres (torres-animacao-idle-tiro): the B/C kinds by default, --tipos and --lento; dispatched only with torres',()=>{
+  const o=gravar.parseOpts(['out','--roteiro','torres']);
+  assert.deepEqual(o.tipos,[...gravar.TORRES_TIPOS]);assert.equal(o.lento,3);
+  assert.ok(!gravar.TODOS.includes('torres'),'not in todos');
+  const t=gravar.parseOpts(['out','--roteiro','torres','--tipos','morteiro,holofote','--lento','5']);
+  assert.deepEqual(t.tipos,['morteiro','holofote']);assert.equal(t.lento,5);
+  assert.throws(()=>gravar.parseOpts(['out','--tipos','morteiro;rm']),/--tipos/);
+  assert.throws(()=>gravar.parseOpts(['out','--lento','50']),/--lento/);
+  assert.equal(gravar.ROTEIROS.torres(12).reduce((n,s)=>n+s.ms,0),12000);
+  const sha='b'.repeat(40);
+  assert.deepEqual(gif.dispatchBody({sha,roteiro:'torres',pedido:'p',tipos:'morteiro',lento:4}).inputs,
+    {ref:sha,roteiro:'torres',tela:'celular',segundos:'20',modo:'normal',pedido:'p',tipos:'morteiro',lento:'4'});
+  assert.equal('tipos' in gif.dispatchBody({sha,roteiro:'parado',pedido:'p'}).inputs,false,'a gif.yml without the inputs still takes the others');
+  const yml=readFileSync('.github/workflows/gif.yml','utf8');
+  assert.match(yml,/options: \[[^\]]*\btorres\b/);assert.match(yml,/--lento "\$LENTO"/);
+});

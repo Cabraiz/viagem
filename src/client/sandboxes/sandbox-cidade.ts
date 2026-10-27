@@ -46,6 +46,8 @@
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
  *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
+ *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
+ *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -148,6 +150,8 @@ const kitParam=towersParam===1?kitPiece(`kit:${params.get('kit')??''}`):undefine
 const KIT_OBRA={dx:-1.4,dy:1.4},KIT_GHOST={dx:1.6,dy:1.4};
 const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
+/** torres=lista: `tiro=1` the listed defenses fire; `lento=K` (1..20) the defenses' clock K× slower (see the header). */
+const listFires=params.get('tiro')==='1',slowMo=Math.max(1,Math.min(20,Number(params.get('lento'))||1));
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
 const acao=params.get('acao')==='1';
 /** dano=<ms> (animacao-receber-dano): the hero loses 1 hp every <ms> (default 1500), so its flinch plays at rest. */
@@ -344,7 +348,7 @@ class CitySandbox extends Phaser.Scene {
     if(kitParam)this.sprites.queueOwnWalk(classId);
     if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
-    if(towersParam)queueTowerArt(this);
+    if(towersParam)queueTowerArt(this,true);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
@@ -743,7 +747,7 @@ class CitySandbox extends Phaser.Scene {
       return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:foot.r,...(foot.half?{half:foot.half}:{}),hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
     };
     if(towersParam===2){
-      towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,{fireTick:1e9}));});
+      towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,listFires?{}:{fireTick:1e9}));});
     }else if(kitParam){
       // kit=: only the kit's tower, in obra (the showcase would hide it).
       if(isTowerKit(kitParam))this.defenses.push(make(kitParam,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
@@ -784,6 +788,7 @@ class CitySandbox extends Phaser.Scene {
   private stepTowers(time:number,dt:number){
     if(!this.defenses.length)return;
     if(this.simStart<0)this.simStart=time;
+    if(slowMo>1){time=this.simStart+(time-this.simStart)/slowMo;dt/=slowMo;}
     const tick=Math.floor((time-this.simStart)*SIM_HZ/1000),n=this.horde.length;this.towerTick=tick;
     for(let i=0;i<n;i++){const w=this.horde[i];this.ex[i]=w.x;this.ey[i]=w.y;}
     for(const d of this.defenses){

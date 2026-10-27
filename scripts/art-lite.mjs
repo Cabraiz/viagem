@@ -92,13 +92,13 @@ const CITY_GROUPS=['predios','base','props','cenario'];
 const KINDS=['trees','sprites','enemies','enemies-pc','menu','towers','city'];
 const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 /**
- * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base and the
- * weapon's idle), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
+ * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base, the
+ * weapon's idle and its fire, torres-animacao-idle-tiro), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
  * order, `views` or `frames` columns), every cell scaled by TOWER_LITE_SCALE; `liteCell` goes to the file in
  * public/art/towers/manifest.json and the index. The delivered art is drawn at the city scenery's scale
  * (tower-rules towerArtScale), ~0.57 CSS px per art px on a phone at the closest zoom (see TOWER_LITE_SCALE).
  */
-const TOWER_LITE_FILES=['base','idle'];
+const TOWER_LITE_FILES=['base','idle','fire'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 /**

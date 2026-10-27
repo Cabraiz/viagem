@@ -32,7 +32,7 @@ import {lightEnabled} from '../light.ts';
 import {getAudio} from '../../audio/engine.ts';
 import {UsableGlow} from '../usable-glow.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
-  towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
+  clipOf,towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,weaponPose,weaponSeed,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
 /** Where the defenses sit: the city's projection and depth (the sandbox and, after torres-fio, the scene). */
 export interface TowerWorld {
@@ -91,6 +91,11 @@ interface Tower {
   /** The delivered base sheet is in use (else the baked procedural texture). */
   art:boolean;
   dir:Dir8;want:Dir8;turnMs:number;recoilUntil:number;drawnDir:number;drawnRecoil:boolean;drawnPhase:TowerPhase|'';drawnView:number;
+  /**
+   * The delivered weapon's animation (card torres-animacao-idle-tiro): when the last volley started its fire sheet (ms),
+   * its idle offset (weaponSeed) and the pose last set (fire × 1000 + frame; -1 none).
+   */
+  fireAt:number;seedMs:number;drawnPose:number;
   rect:Rect;prop:{x:number;y:number;rect:Rect};mount:Pt;height:number;seen:number;target:number;
   /** Draw depth (its footprint's front corner) and the server aim the cached `want` was turned from. */
   depth:number;aimFor:number;
@@ -377,13 +382,15 @@ export class TowerRenderer {
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
       base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,artWait:false,hideUntil:0,scanAt:0,alpha:1,covers:false,
-      dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,
+      dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,fireAt:-1e9,seedMs:weaponSeed(view.id),drawnPose:-1,
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1,depth:0,aimFor:NaN};
     t.prop.rect=t.rect;
     const art=towerArt(view.kind);
     t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
     t.artWait=!!art?.base&&!t.art;
     if(t.artWait){t.hideUntil=this.now+TOWER_ART_WAIT_MS;this.o.needArt?.(view.kind);}
+    // The fire sheet streams only for the kinds standing in the match (towerLoads: not in the opening's queue).
+    else if(art?.fire&&!this.scene.textures.exists(towerFireKey(view.kind)))this.o.needArt?.(view.kind);
     return t;
   }
   private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();t.shadow?.destroy();}
@@ -437,7 +444,7 @@ export class TowerRenderer {
     // Each calibre's shot (audio/sfx.ts torre-*), throttled per calibre so a battery does not stack up.
     const audio=getAudio();if(audio.unlocked)audio.play(`torre-${t.look.calibre}`);
     const cal=t.cal,e=this.enemies,v=t.view;
-    t.recoilUntil=nowMs+RECOIL_MS;
+    t.recoilUntil=nowMs+RECOIL_MS;t.fireAt=nowMs;
     let tx=NaN,ty=NaN;
     if(v.aim!==undefined){
       const i=aimedIndex(t.look,v.x,v.y,v.aim,e.n,e.xs,e.ys,e.air),turn=v.aim*Math.PI*2,reach=t.look.range*AIM_FALLBACK;
@@ -670,8 +677,8 @@ export class TowerRenderer {
       this.placeRail(t,view);
       this.placeShadow(t,view);
     }
-    const recoil=this.now<t.recoilUntil;
-    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil){t.drawnDir=t.dir;t.drawnRecoil=recoil;this.placeWeapon(t,recoil);}
+    const recoil=this.now<t.recoilUntil,pose=this.artPose(t),key=pose?(pose.fire?1000:0)+pose.frame:-1;
+    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil||t.drawnPose!==key){t.drawnDir=t.dir;t.drawnRecoil=recoil;t.drawnPose=key;this.placeWeapon(t,recoil,pose);}
   }
   /**
    * Draw depth at the footprint's front corner (the one nearest the viewer), like a city block: a figure behind any
@@ -827,15 +834,28 @@ export class TowerRenderer {
       g.lineStyle(Math.max(1,3*s),this.breu,1).lineBetween(a.x,a.y,b.x,b.y).lineStyle(Math.max(1,1.5*s),MATERIALS.madeira.luz,1).lineBetween(a.x,a.y,b.x,b.y);
     }
   }
-  /** The weapon: the delivered idle sheet's frame, or a baked procedural texture per kind × direction × recoil. */
-  private placeWeapon(t:Tower,recoil:boolean){
-    const show=(canFire(t.phase)||t.phase==='obra-3')&&t.look.calibre!=='arame';
+  /**
+   * The delivered weapon's pose now (weaponPose: the fire sheet after a volley, else the idle loop); undefined when the
+   * weapon is procedural (no idle sheet loaded). The fire sheet counts once it is loaded (it streams after the idle).
+   */
+  private artPose(t:Tower){
+    if(!t.art)return undefined;
+    const art=towerArt(t.view.kind),idle=clipOf(art?.idle,4);
+    if(!idle||!this.scene.textures.exists(towerGunKey(t.view.kind)))return undefined;
+    const fire=art?.fire&&this.scene.textures.exists(towerFireKey(t.view.kind))?clipOf(art.fire,12):undefined;
+    return weaponPose(this.now,t.fireAt,t.seedMs,idle,fire,this.o.reduced);
+  }
+  /** The weapon: the delivered idle or fire sheet's frame (artPose), or a baked procedural texture per kind × direction × recoil. */
+  private placeWeapon(t:Tower,recoil:boolean,pose=this.artPose(t)){
+    // The wire's procedural weapon is the wire itself (drawWire); its delivered sheet is the siren's crew.
+    const show=(canFire(t.phase)||t.phase==='obra-3')&&(t.look.calibre!=='arame'||!!pose);
     t.weapon.setVisible(show);
     if(!show)return;
-    const art=t.art?towerArt(t.view.kind):undefined;
-    if(art?.idle&&this.scene.textures.exists(towerGunKey(t.view.kind))){
-      const frames=Math.max(1,art.idle.frames??1),anchor=art.idle.anchor??[.5,.5];
-      t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(this.artScale/textureRatio(art.idle)).setFrame(weaponFrame(t.dir,0,frames));
+    const art=pose?towerArt(t.view.kind):undefined,file=pose?.fire?art?.fire:art?.idle;
+    if(pose&&file){
+      const frames=Math.max(1,file.frames??1),anchor=file.anchor??[.5,.5];
+      t.weapon.setTexture(pose.fire?towerFireKey(t.view.kind):towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y)
+        .setScale(this.artScale/textureRatio(file)).setFrame(weaponFrame(t.dir,pose.frame,frames));
       return;
     }
     const name=(d:number,r:boolean)=>`arma:${t.view.kind}:${d}:${r?1:0}:${Math.round(this.unitPx)}`;
@@ -908,6 +928,7 @@ export const TOWER_ART_WAIT_MS=5000;
 /** Texture keys of a defense's imported sheets. */
 export const towerBaseKey=(kind:string)=>`art:torres:${kind}:base`;
 export const towerGunKey=(kind:string)=>`art:torres:${kind}:idle`;
+export const towerFireKey=(kind:string)=>`art:torres:${kind}:fire`;
 /**
  * Public URL of the lite copy of a defense's sheet (scripts/art-lite.mjs, family towers): one sheet per file, its
  * pages joined, frames in order at `liteCell`.
@@ -917,22 +938,23 @@ export const towerLiteUrl=(kind:string,name:string)=>`/art/lite/towers/${kind}/$
 export interface TowerLoad {key:string;url:string;frameWidth:number;frameHeight:number}
 /**
  * The delivered sheets of `kind` (every kind without it): the lite copy when the manifest has one (`liteCell`, a single
- * page even when the delivered sheet is paged), else a single-page delivered file; the rest stays procedural.
+ * page even when the delivered sheet is paged), else a single-page delivered file; the rest stays procedural. The fire
+ * sheet (torres-animacao-idle-tiro) only with `fire`: a phone holds it only for the kinds standing in the match.
  */
-export function towerLoads(kind?:TowerKind):TowerLoad[]{
+export function towerLoads(kind?:TowerKind,fire=!!kind):TowerLoad[]{
   const group=artIndex().groups.torres;if(!group)return [];
   const out:TowerLoad[]=[];
   for(const k of kind?[kind]:TOWER_KINDS as readonly TowerKind[]){
     const art=towerArt(k);if(!art)continue;
-    for(const [key,name,file] of [[towerBaseKey(k),'base',art.base],[towerGunKey(k),'idle',art.idle]] as const){
-      if(!file)continue;
+    for(const [key,name,file] of [[towerBaseKey(k),'base',art.base],[towerGunKey(k),'idle',art.idle],[towerFireKey(k),'fire',art.fire]] as const){
+      if(!file||name==='fire'&&!fire)continue;
       if(file.liteCell)out.push({key,url:towerLiteUrl(k,name),frameWidth:file.liteCell[0],frameHeight:file.liteCell[1]});
       else if(file.file&&(file.pages?.length??1)<=1)out.push({key,url:groupFileUrl(group,file.file),frameWidth:file.cell[0],frameHeight:file.cell[1]});
     }
   }
   return out;
 }
-/** Queues the delivered tower sheets not loaded yet (towerLoads) on the scene's loader. */
-export function queueTowerArt(scene:Phaser.Scene){
-  for(const l of towerLoads())if(!scene.textures.exists(l.key))scene.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
+/** Queues the delivered tower sheets not loaded yet (towerLoads; the fire sheets too with `fire`) on the scene's loader. */
+export function queueTowerArt(scene:Phaser.Scene,fire=false){
+  for(const l of towerLoads(undefined,fire))if(!scene.textures.exists(l.key))scene.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
 }

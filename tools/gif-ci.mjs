@@ -3,8 +3,10 @@
  * GIF and prints of a solo match on GitHub Actions, from the PC with no vite, Worker or browser here
  * (NEW-20261025-ORQ-cicd-gif-prints). The recording is scripts/gravar-partida.mjs, run by .github/workflows/gif.yml.
  *
- *   node tools/gif-ci.mjs <branch|sha> [parado|andando|uno|matches|nomes|empurra|todos] [--tela celular|pc|ambas] [--segundos 20]
- *        [--modo normal|chaveiro] [--saida <dir>] [--timeout 40] [--workflow-ref main]
+ *   node tools/gif-ci.mjs <branch|sha> [parado|andando|uno|matches|nomes|empurra|torres|todos] [--tela celular|pc|ambas] [--segundos 20]
+ *        [--modo normal|chaveiro] [--tipos morteiro,holofote] [--lento 3] [--saida <dir>] [--timeout 40] [--workflow-ref main]
+ *       torres (card torres-animacao-idle-tiro): one GIF per tower kind firing in the city sandbox, --lento× slower;
+ *       the gif.yml that knows it must be the branch's until it is on main (--workflow-ref <branch>).
  *       records what is ON GITHUB for that branch (push it first): dispatches gif.yml, waits, downloads the artifact to
  *       evidence/ci-gif/<branch>/<sha7>-<roteiro>-<stamp>/ (default) and prints the summary and the paths to Read
  *       (quadros.png: 8 frames of the GIF; Read shows a GIF's first frame only). Exit 0 ok, 1 the recording failed, 2 infra.
@@ -23,7 +25,7 @@ import {pathToFileURL} from 'node:url';
 
 export const REPO=process.env.CI_REPO??'Cabraiz/viagem';
 const API='https://api.github.com',WORKFLOW='gif.yml';
-export const ROTEIROS=['parado','andando','uno','matches','nomes','empurra','todos'],TELAS=['celular','pc','ambas'],MODOS=['normal','chaveiro'];
+export const ROTEIROS=['parado','andando','uno','matches','nomes','empurra','torres','todos'],TELAS=['celular','pc','ambas'],MODOS=['normal','chaveiro'];
 export class InfraError extends Error {}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const say=m=>console.error(m);
@@ -32,7 +34,7 @@ const say=m=>console.error(m);
 // Pure helpers (tests/tools/gif-ci.test.ts)
 // ---------------------------------------------------------------------------------------------------------------
 
-const VALUE_FLAGS=new Set(['tela','segundos','modo','saida','timeout','workflow-ref','sha','quadro']);
+const VALUE_FLAGS=new Set(['tela','segundos','modo','saida','timeout','workflow-ref','sha','quadro','tipos','lento']);
 /** argv → {cmd: 'gif'|'site', target, roteiro, flags}; throws on a bad value. */
 export function parseArgs(argv){
   const flags={},pos=[];
@@ -57,8 +59,9 @@ export function parseArgs(argv){
 /** A request id that is unique on the PC and fits a run name: <yyyymmddhhmmss>-<4 hex>. */
 export const pedidoId=(now=new Date(),rand=Math.random)=>`${now.toISOString().replace(/\D/g,'').slice(0,14)}-${Math.floor(rand()*0x10000).toString(16).padStart(4,'0')}`;
 /** The workflow_dispatch body: gif.yml at `workflowRef` records the commit `sha`. Inputs are strings. */
-export function dispatchBody({workflowRef='main',sha,roteiro,tela='celular',segundos=20,modo='normal',pedido}){
-  return {ref:workflowRef,inputs:{ref:sha,roteiro,tela,segundos:String(segundos),modo,pedido}};
+export function dispatchBody({workflowRef='main',sha,roteiro,tela='celular',segundos=20,modo='normal',pedido,tipos,lento}){
+  // tipos/lento only for torres: a gif.yml from before them (main, until this lands) refuses unknown inputs.
+  return {ref:workflowRef,inputs:{ref:sha,roteiro,tela,segundos:String(segundos),modo,pedido,...roteiro==='torres'?{tipos:tipos??'',lento:String(lento??3)}:{}}};
 }
 /** The run of a request: gif.yml's run-name carries the id ("GIF <pedido> …"). */
 export const runOfPedido=(runs,pedido)=>runs.find(r=>String(r.display_title??'').split(/\s+/).includes(pedido));
@@ -118,7 +121,8 @@ function remoteSha(target){
 
 async function cmdGif(o,gh){
   const sha=remoteSha(o.target),pedido=pedidoId(),f=o.flags;
-  const body=dispatchBody({workflowRef:f['workflow-ref']??'main',sha,roteiro:o.roteiro,tela:f.tela??'celular',segundos:Number(f.segundos??20),modo:f.modo??'normal',pedido});
+  const body=dispatchBody({workflowRef:f['workflow-ref']??'main',sha,roteiro:o.roteiro,tela:f.tela??'celular',segundos:Number(f.segundos??20),modo:f.modo??'normal',pedido,
+    tipos:f.tipos,lento:f.lento===undefined?undefined:Number(f.lento)});
   await gh.post(`/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,body);
   say(`pedido ${pedido}: ${o.roteiro} ${body.inputs.tela} ${body.inputs.segundos} s de ${o.target}@${sha.slice(0,7)} (gif.yml em ${body.ref})`);
   const start=Date.now(),timeoutMs=Number(f.timeout??40)*60000;let run,status='';

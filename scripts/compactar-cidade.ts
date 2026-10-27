@@ -466,15 +466,26 @@ export const nearViaduct=(a:CityAsset,x:number,y:number,margin=0)=>a.viaducts.so
   return false;
 });
 
-/** The compacted asset text without decor (version SOURCE + 1), its viaduct added and its loot spread anew. */
-export async function compactText():Promise<{text:string;log:Record<string,number|string>}>{
+/** The compacted city without decor (version SOURCE + 1), its viaduct added and its loot spread anew. */
+export async function compactBase():Promise<{data:CityAssetData;log:Record<string,number|string>}>{
   const out=compactCity(await sourceAsset());
   addViaduct(out.data);
   const first=decodeCityAsset(encodeCityAsset(out.data));
   if(!first.ok)throw new Error(first.error);
   out.data.loot=spreadLoot(first.asset);
   out.log.loot=out.data.loot.length;
-  return {text:encodeCityAsset(out.data),log:out.log};
+  return out;
+}
+
+/** The compacted asset text without decor (version SOURCE + 2): compactBase with its dead ends opened. */
+export async function compactText():Promise<{text:string;log:Record<string,number|string>}>{
+  const out=await compactBase();
+  // mapa-conexoes-sem-beco (version + 1): the rubble the Uno hits goes, holes through thin walls, a crate in every
+  // dead end left (scripts/becos-cidade.ts).
+  const {abrirBecos}=await import('./becos-cidade.ts');
+  const opened=abrirBecos(out.data);
+  Object.assign(out.log,{passagens:opened.passagens.length,entulho:opened.rubble.length,ruinas:opened.ruins,caixasBeco:opened.lootAdded});
+  return {text:encodeCityAsset(opened.data),log:out.log};
 }
 
 /** Whether this checkout has SOURCE_COMMIT (the CI checkout is shallow: it has not). */

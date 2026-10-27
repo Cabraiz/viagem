@@ -108,11 +108,14 @@ type Img=Phaser.GameObjects.Image|undefined;
  */
 interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:number;y1:number;born:number;ms:number;mx:number;my:number;ox:number;oy:number;
   cell:number;d0:number;dz:number;trail:Img;head:Img;puff:Img}
-interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img}
+/** A muzzle flash, or (`smoke`) the grey puff the heavy calibres leave at the muzzle (torres-animacao-idle-tiro). */
+interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img;smoke:boolean}
 interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img}
 interface Crater {on:boolean;x:number;y:number;r:number;born:number;ms:number}
 
 export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
+/** The muzzle smoke of the heavy calibres: its radius and life against the flash's, its grey. */
+const SMOKE_R=1.1,SMOKE_MS=6,SMOKE_TINT=0x9aa0a6;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
@@ -153,7 +156,7 @@ export class TowerRenderer {
   /** Shots, explosions and flashes: pooled Images in the scene's display list, each at its own point's actor depth. */
   private readonly fxImages:Phaser.GameObjects.Image[]=[];
   private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,dz:0,trail:undefined,head:undefined,puff:undefined}));
-  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined}));
+  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined,smoke:false}));
   private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined}));
   private readonly craters=pool<Crater>(CRATER_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
   private cursor={shot:0,flash:0,blast:0,crater:0};
@@ -466,6 +469,8 @@ export class TowerRenderer {
     this.muzzle(t);
     const mx=this.v.x,my=this.v.y;
     if(cal.flash>0)this.addFlash(mx,my,cal.flash*this.f,cal.flashMs,nowMs,t.depth+FX_DEPTH.flash);
+    // The heavy calibres (an explosive shot, the rockets) leave a puff of smoke at the muzzle that rises and thins out.
+    if(cal.flash>0&&(cal.blast>0||cal.shot==='rocket'))this.addFlash(mx,my,cal.flash*this.f*SMOKE_R,cal.flashMs*SMOKE_MS,nowMs,t.depth+FX_DEPTH.flash,true);
     if(cal.shot==='aura'){this.addBlast(v.x,v.y,t.look.range,cal.blastMs,nowMs,true);return;}
     if(!has||cal.shot==='none')return;
     if(cal.shot==='beam'){this.addBeam(t,tx,ty,nowMs,mx,my);return;}
@@ -506,8 +511,8 @@ export class TowerRenderer {
     const s=this.slot();
     s.on=true;s.cal=t.cal;s.x0=t.view.x;s.y0=t.view.y;s.z0=t.height;s.x1=x1;s.y1=y1;s.born=born;s.ms=t.cal.blastMs;s.mx=mx;s.my=my;s.ox=0;s.oy=0;s.d0=t.depth;
   }
-  private addFlash(x:number,y:number,r:number,ms:number,born:number,depth:number){
-    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;
+  private addFlash(x:number,y:number,r:number,ms:number,born:number,depth:number,smoke=false){
+    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;f.smoke=smoke;
     if(f.img)f.img.setDepth(depth);
   }
   private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false){
@@ -595,7 +600,12 @@ export class TowerRenderer {
     for(const f of this.flashes){
       if(!f.on)continue;
       const k=(now-f.born)/f.ms;if(k>=1){f.on=false;f.img?.setVisible(false);continue;}
+      if(f.smoke){ // under the flash, growing as it rises one radius and a half, grey
+        f.img=this.fxImage(f.img,FX.puff,f.depth-FX_DEPTH.flash/2,false).setPosition(f.x,f.y-f.r*1.5*k).setScale(f.r*(1+1.4*k)*2/HEAD_TEX).setAlpha(.55*(1-k)).setTint(SMOKE_TINT);
+        continue;
+      }
       f.img=this.fxImage(f.img,FX.flash,f.depth,false).setPosition(f.x,f.y).setScale(f.r*(1-.4*k)*2.5/FLASH_TEX).setAlpha(1-k);
+      if(f.img.isTinted)f.img.clearTint();
     }
   }
   /** An effect's depth at its ground point (the world's effectDepth, else the actor depth). */

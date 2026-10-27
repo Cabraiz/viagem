@@ -84,6 +84,15 @@ test('the flight: 0 at the catch, eases in, gone at CATCH_FLY_MS; reduced motion
   assert.ok(CATCH_FLY_MS<=200,'a short flight');
 });
 
+test('the hero still on a caught note: never given back (the room pays it the next view), so the R$ never blink',()=>{
+  const c=new CedulaCatch();
+  c.near(0,'a',5,0,0,{x:0,y:0},[]);
+  assert.deepEqual(c.push(CATCH_GIVE_UP_MS*2,[note('a',5)],{x:.5,y:0}),[],'standing within its magnet');
+  assert.equal(c.pending(),5);
+  assert.deepEqual(c.push(CATCH_GIVE_UP_MS*2+50,[note('a',5)],{x:CATCH_RADIUS+.5,y:0}),['a'],'walked away: back to the ground');
+  assert.equal(c.pending(),0);
+});
+
 test('reset forgets everything (a new run)',()=>{
   const c=new CedulaCatch();
   c.near(0,'a',5,0,0,{x:0,y:0},[]);

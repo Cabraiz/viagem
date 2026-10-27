@@ -22,7 +22,7 @@ const HEARD_MS=5000;
 
 interface Pt {x:number;y:number}
 export interface Caught {id:string;value:number;at:number;x:number;y:number}
-type Note={id:string;kind:string;value:number};
+type Note={id:string;kind:string;value:number;x:number;y:number};
 type PickupEvent={type:string;player?:string;pickup?:string;kind?:string};
 
 export class CedulaCatch{
@@ -56,9 +56,10 @@ export class CedulaCatch{
   /**
    * Each authoritative view's pickups. A caught note gone from the view is settled (its R$ are in the wallet of this
    * same view, or someone else took it); one still there follows the room's value (a cédula that joined it) and comes
-   * back after CATCH_GIVE_UP_MS. Returns the ids that came back.
+   * back after CATCH_GIVE_UP_MS unless the hero stands within its magnet still (the room is about to pay it: giving it
+   * back would blink the R$ down and up). Returns the ids that came back.
    */
-  push(now:number,pickups:readonly Note[]):string[]{
+  push(now:number,pickups:readonly Note[],hero?:Pt):string[]{
     if(!this.caught.size){this.forget(now);return [];}
     const back:string[]=[];
     const there=new Map<string,Note>();for(const p of pickups)if(p.kind==='grana'&&this.caught.has(p.id))there.set(p.id,p);
@@ -66,7 +67,8 @@ export class CedulaCatch{
       const p=there.get(id);
       if(!p){this.caught.delete(id);continue;}
       c.value=p.value;
-      if(now-c.at>=CATCH_GIVE_UP_MS){this.caught.delete(id);this.heard.delete(id);this.refused.set(id,now);back.push(id);}
+      const near=!!hero&&(hero.x-p.x)**2+(hero.y-p.y)**2<=CATCH_RADIUS*CATCH_RADIUS;
+      if(now-c.at>=CATCH_GIVE_UP_MS&&!near){this.caught.delete(id);this.heard.delete(id);this.refused.set(id,now);back.push(id);}
     }
     this.recount();this.forget(now);
     return back;

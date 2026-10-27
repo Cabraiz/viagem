@@ -460,7 +460,7 @@ export class HordeRenderer{
     this.pickups.begin();
     for(let i=0;i<view.pickups.length;i++)this.syncPickup(view.pickups[i]);
     this.pickups.end();
-    this.catcher.push(this.now,view.pickups);
+    this.catcher.push(this.now,view.pickups,this.selfAt);
     this.projectiles.begin();
     for(let i=0;i<view.projectiles.length;i++)this.syncProjectile(view.projectiles[i]);
     this.projectiles.end();

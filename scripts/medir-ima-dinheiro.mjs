@@ -9,6 +9,7 @@
 // --atraso N: N ms em cada sentido no WebSocket da página (a rede de um celular: 60 → ~120 ms de ida e volta).
 //   npx vite build --mode development --outDir <dist>
 //   node scripts/medir-ima-dinheiro.mjs --dist <dist> [--atraso 60] [--json out.json] [--port 8806] [--web-port 4216]
+// --fotos <dir>: na 1ª cédula, uma rajada de prints (o herói ao centro e a barra de cima) para ver o voo e o R$.
 // Precisa da vaga pesada (board tools/pesado.mjs) e de uma vaga de navegador (locks/browser-1|2), pegas por quem chama.
 import {spawn} from 'node:child_process';
 import {writeFileSync} from 'node:fs';
@@ -18,7 +19,7 @@ import {pathToFileURL} from 'node:url';
 
 const arg=(n,f)=>{const i=process.argv.indexOf(`--${n}`);return i>0?process.argv[i+1]:f;};
 const DIST=arg('dist'),JSON_OUT=arg('json'),ATRASO=Number(arg('atraso','0')),PORT=Number(arg('port','8806')),WEB_PORT=Number(arg('web-port','4216'));
-const NOTAS=Number(arg('notas','6'));
+const NOTAS=Number(arg('notas','6')),FOTOS=arg('fotos');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const {startLocalWorker}=await import(pathToFileURL(join(process.cwd(),'scripts/local-worker.mjs')).href);
 
@@ -102,7 +103,7 @@ try{
     const me=net.predicted;let near=0;for(const e of view.enemies)if(e.hp>0&&Math.hypot(e.x-me.x,e.y-me.y)<12)near++;
     const notes=view.pickups.filter(x=>x.kind==='grana').map(x=>({id:x.id,x:x.x,y:x.y,value:x.value}));
     return {me:{x:me.x,y:me.y},near,notes};});
-  const medidas=[];
+  const medidas=[];let fotografou=false;
   // Rodadas: junta a horda, limpa, anda até cada cédula (antes que ela voe sozinha ao dono, CEDULA_WAIT_SECONDS = 10 s).
   for(let rodada=0;rodada<4&&medidas.filter(m=>m.contar!==undefined).length<NOTAS;rodada++){
     for(let i=0;i<120;i++){await takeOffer();const s=await state();if(s.near>=6)break;await sleep(500);}
@@ -113,7 +114,10 @@ try{
       await takeOffer();
       // Ao lado (fora do ímã), a previsão assenta; então anda até a cédula como um toque no chão.
       await send({t:'lab',to:{x:n.x+3,y:n.y}});await sleep(700);
-      await p.evaluate(n=>window.__island.scene.goTo({x:n.x,y:n.y}),n);await sleep(1300);
+      await p.evaluate(n=>window.__island.scene.goTo({x:n.x,y:n.y}),n);
+      if(FOTOS&&!fotografou){fotografou=true;const t0=Date.now();
+        for(let i=0;i<14;i++){await p.screenshot({path:join(FOTOS,`f${String(i).padStart(2,'0')}-${Date.now()-t0}.png`),clip:{x:340,y:0,width:600,height:460}});}}
+      else await sleep(1300);
     }
     await sleep(800);
     const linhas=await p.evaluate(()=>Object.values(window.__ima.linhas));

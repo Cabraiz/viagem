@@ -10,7 +10,7 @@
 //      gets: ms to send, ms until the first frame where the hero's attackTick moved (the swing starts on the next
 //      animation frame, sprite-motion.ts), the first 'fire' event of the hero (shot FX and sound) and its first damage.
 // node scripts/medir-tiro.mjs <outDir> [--url https://viagem.cyou] [--tela celular|pc] [--toques 12] [--intervalo 1500]
-//      [--atraso 0] [--extra "combate=manual"] [--worker http://127.0.0.1:8808] (a local build and Worker)
+//      [--atraso 0] [--video 1] [--extra "combate=manual"] [--worker http://127.0.0.1:8808] (a local build and Worker)
 // Writes <outDir>/medida.json (every tap) and resumo.md (medians and maxima). Exit 0 ok, 1 no entry / no attack seen.
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
@@ -103,17 +103,27 @@ class Live {
 }
 const label=p=>p.evaluate(()=>document.querySelector('#coop-attack')?.textContent.trim()??'').catch(()=>'');
 /**
- * The run starts with no weapon (D-051: "Sem arma"): walk to the nearest crate with the stick and stand by it until the
- * button names a weapon. The stick's screen direction → world is calibrated first (two short walks), so the camera's
- * rotation does not matter. Phone only (CDP touch); true when armed.
+ * The run starts with no weapon (D-051: "Sem arma"): walk to the nearest crate and stand by it until the button names
+ * a weapon. The phone walks with the stick (CDP touch), the PC with WASD (a diagonal is two keys). The screen direction
+ * → world is calibrated first (two short walks), so the camera's rotation does not matter. True when armed.
  */
 async function armar(p,cdp){
-  if(!cdp)return false;
   const live=new Live(p);
-  const stick=await p.evaluate(()=>{const r=document.querySelector('.explore-stick')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width/2}:null;});
-  if(!stick)return false;
-  const touch=async(type,d)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:stick.x+d.x*stick.r*.9,y:stick.y+d.y*stick.r*.9,id:1}]});
-  const walk=async(d,ms)=>{await touch('touchStart',{x:0,y:0});await touch('touchMove',{x:d.x*.5,y:d.y*.5});await touch('touchMove',d);await sleep(ms);await touch('touchEnd');await sleep(400);};
+  let walk;
+  if(cdp){
+    const stick=await p.evaluate(()=>{const r=document.querySelector('.explore-stick')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width/2}:null;});
+    if(!stick)return false;
+    const touch=async(type,d)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:stick.x+d.x*stick.r*.9,y:stick.y+d.y*stick.r*.9,id:1}]});
+    walk=async(d,ms)=>{await touch('touchStart',{x:0,y:0});await touch('touchMove',{x:d.x*.5,y:d.y*.5});await touch('touchMove',d);await sleep(ms);await touch('touchEnd');await sleep(400);};
+  }else{
+    walk=async(d,ms)=>{
+      const keys=[d.x>.38&&'KeyD',d.x<-.38&&'KeyA',d.y>.38&&'KeyS',d.y<-.38&&'KeyW'].filter(Boolean);
+      for(const k of keys)await p.keyboard.down(k);
+      await sleep(ms);
+      for(const k of keys)await p.keyboard.up(k);
+      await sleep(400);
+    };
+  }
   const at=async()=>{await sleep(150);return (await live.pull()).self;};
   let a=await at();if(!a)return false;
   await walk({x:1,y:0},500);let b=await at();const ex={x:b.x-a.x,y:b.y-a.y};
@@ -184,7 +194,8 @@ async function main(argv){
   const release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:`medir-tiro ${o.tela}`});
   const browser=await chromium.launch({args:process.platform==='win32'?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:[]});
   try{
-    const tela=TELAS[o.tela],ctx=await browser.newContext(tela);
+    // --video 1: the whole session recorded (<outDir>/*.webm), the taps' start noted in video.json for cutting a GIF.
+    const tela=TELAS[o.tela],ctx=await browser.newContext(o.video?{...tela,recordVideo:{dir:out,size:tela.viewport}}:tela),t0=Date.now();
     await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:tela-cheia:v1','off');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
     await ctx.addInitScript(hook,o.atraso);
     const p=await ctx.newPage(),cdp=tela.hasTouch?await ctx.newCDPSession(p):undefined;
@@ -198,6 +209,7 @@ async function main(argv){
     const box=await p.evaluate(()=>{const r=document.querySelector('#coop-attack')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,label:document.querySelector('#coop-attack').textContent.trim()}:null;});
     if(!box)throw new Error('sem #coop-attack na tela');
     console.log(`botão: "${box.label}"`);
+    if(o.video)writeFileSync(join(out,'video.json'),JSON.stringify({toquesDesdeOInicio:(Date.now()-t0)/1000,intervalo:o.intervalo}));
     for(let i=0;i<o.toques;i++){
       if(cdp){
         await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x,y:box.y,id:7}]});

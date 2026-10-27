@@ -6,7 +6,7 @@ export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
 export const MOVEMENT128_DURATION={walk:600,attack:1000} as const;
 export interface Movement128Plan {
-  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt'|'dance';direction?:HeroDirection;
+  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt'|'build'|'dance';direction?:HeroDirection;
   columns:number;rows:number;frameCount:number;
   durationMs:number;loop:boolean;anchor:[number,number];height:number;figure:FigureBox;
   /** M16: the sheet is the drawn direction's mirror (E/NE/SE show W/NW/SW with flipX; `key` is the drawn sheet's). */
@@ -52,8 +52,8 @@ export function phaseContacts(p:RunPhase):readonly [number,number]{
   return c;
 }
 let version=-1;
-const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),pull16=new Map<string,boolean>(),hurt16=new Map<string,boolean>(),idle16=new Map<string,boolean>();
-function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();pull16.clear();hurt16.clear();idle16.clear();}}
+const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),pull16=new Map<string,boolean>(),hurt16=new Map<string,boolean>(),build16=new Map<string,boolean>(),idle16=new Map<string,boolean>();
+function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();pull16.clear();hurt16.clear();build16.clear();idle16.clear();}}
 const box=(v:unknown):v is FigureBox=>{
   if(!v||typeof v!=='object')return false;
   const b=v as FigureBox;
@@ -116,16 +116,19 @@ export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.index
  * read from the manifest: the side whose three sheets (walk, attack, idle) are there. A class uses M16 only when all 8
  * directions resolve to valid sheets, else R06 (or legacy).
  */
-export type Movement16Motion=DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt';
+export type Movement16Motion=DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt'|'build';
 /** The default drawn directions (the importer's and the doc's; a class may draw E, NE or SE instead). */
 export const MOVEMENT16_DIRECTIONS=['S','SW','W','NW','N'] as const;
 export type Movement16Direction=HeroDirection;
 /** Mirror pairs, the default drawn side first. */
 export const MOVEMENT16_PAIRS=[['W','E'],['NW','NE'],['SW','SE']] as const satisfies readonly (readonly [HeroDirection,HeroDirection])[];
 const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]])) as Partial<Record<HeroDirection,HeroDirection>>;
-export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,pull:1000,hurt:300} as const;
-/** hurt (card animacao-receber-dano): 6 poses, the first and the last the rest pose, a flinch between. */
-export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],pull:[4,4],hurt:[3,2]} as const;
+export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,pull:1000,hurt:300,build:2000} as const;
+/**
+ * hurt (card animacao-receber-dano): 6 poses, the first and the last the rest pose, a flinch between. build (card
+ * animacao-construir-6): 16 poses of a loop standing in place, both feet planted, working on the obra in front.
+ */
+export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],pull:[4,4],hurt:[3,2],build:[4,4]} as const;
 /** A breathing rest (card parado-respiracao-herois): 16 poses in 4×4 over 3.2 s, taken when the manifest says 16 frames. */
 export const MOVEMENT16_IDLE_BREATH={grid:[4,4],durationMs:3200} as const;
 const M16_MOTIONS=['walk','attack','idle'] as const;
@@ -211,6 +214,17 @@ export function hasHurt16(id:string){
 }
 /** The flinch of a class facing `direction`, undefined for a class without one (it just keeps its rest). */
 export const hurtPlan=(id:string,direction:HeroDirection)=>hasHurt16(id)?movement16Plan(id,'hurt',direction):undefined;
+/**
+ * True when a class has a valid build (build16, card animacao-construir-6) in every direction: its loop while it stands
+ * by an obra going up, facing it. An M16 class or an R06 one (the CLT's rest is R06's anchor).
+ */
+export function hasBuild16(id:string){
+  current();let complete=build16.get(id);
+  if(complete===undefined)build16.set(id,complete=(hasMovement16(id)||!!movementIdle8Plan(id))&&HERO_DIRECTIONS.every(d=>movement16Plan(id,'build',d)));
+  return complete;
+}
+/** The build loop of a class facing `direction` (the obra in front), undefined for a class without one (it rests). */
+export const buildPlan=(id:string,direction:HeroDirection)=>hasBuild16(id)?movement16Plan(id,'build',direction):undefined;
 /**
  * True when an R06 class rests on an M16 breathing rest (card parado-respiracao-herois: the CLT's idle16, 16 poses in
  * every direction) instead of its idle8; its walk128/attack128 stay.

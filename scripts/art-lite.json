@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3165,
-  "bytes": 2235690364,
-  "liteBytes": 781630828,
+  "files": 3195,
+  "bytes": 2237756408,
+  "liteBytes": 782766900,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28553,6 +28553,46 @@
    "psnr": 38.4,
    "shownPsnr": 41.6
   },
+  "sprites/aposentado.build16-n.7fa3ec9f0495.webp": {
+   "source": "7fa3ec9f0495b9c8c6a193df3ae5d71a5ab812fa49e56264d2f3bd9a73925039",
+   "lite": "6a1c814790058e6105d45f40674957ed0fb026d0d83da3bccc089e565ae14bc7",
+   "bytes": 75620,
+   "liteBytes": 40408,
+   "psnr": 39.4,
+   "shownPsnr": 42.2
+  },
+  "sprites/aposentado.build16-nw.e8284ba65be6.webp": {
+   "source": "e8284ba65be68c7f90780a8760f39b97feeaec5440c7280fd47065b06d3086ba",
+   "lite": "a0b699d2bb23493f1647ddc3f7562fb767ea3e9c7792eef8911652cb9b709b3c",
+   "bytes": 75526,
+   "liteBytes": 40620,
+   "psnr": 38.3,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-s.db781f0a4e5f.webp": {
+   "source": "db781f0a4e5f293187011ef70d88b63b63bb9b958bd34738b83722ebcc0b6634",
+   "lite": "74550d1c35ebd866c0ca4664590a3e8532e94c51adfe4e8907e355956f4d49ce",
+   "bytes": 77490,
+   "liteBytes": 40962,
+   "psnr": 37.5,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-se.32139291ea1b.webp": {
+   "source": "32139291ea1bca3f53baaa4c8a2443f70d6d6639907766d26c62ade7e06986d9",
+   "lite": "7b085f94f5dbcfdab6ca12ca8b9c858e5bed1073aa1817389f3fa211ccd58886",
+   "bytes": 76706,
+   "liteBytes": 40646,
+   "psnr": 37.6,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-w.bf3f185c69c2.webp": {
+   "source": "bf3f185c69c24e0d021b0bc1b3cb295455399a209ce630950bfbd32a64a5852f",
+   "lite": "e75ca531c2792558f3e208cf054874794c0431df5a476d730de5655da54ca8d1",
+   "bytes": 64630,
+   "liteBytes": 35030,
+   "psnr": 39.3,
+   "shownPsnr": 42.9
+  },
   "sprites/aposentado.dance128.b2d18b849abb.webp": {
    "source": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
    "lite": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
@@ -28952,6 +28992,46 @@
    "liteBytes": 226840,
    "psnr": 42.3,
    "shownPsnr": 46
+  },
+  "sprites/clt-cansado.build16-n.e3c1caf4e82e.webp": {
+   "source": "e3c1caf4e82e255c65cac85ce4e68b89c1364fe0c09b6d6d76415598d19e855f",
+   "lite": "7f36e58350f8ba33f83ba81fb48e11eb17f776e4773a5de55e20cf7704a1588d",
+   "bytes": 48844,
+   "liteBytes": 28462,
+   "psnr": 43.1,
+   "shownPsnr": 43.8
+  },
+  "sprites/clt-cansado.build16-nw.15165c6a57cf.webp": {
+   "source": "15165c6a57cf9f341b98da212985eba880546f816cfda01ddeac9db72f291a4e",
+   "lite": "0309dff90645c3e2bf6717394c948cc6576576ffb1faaf3fb0662480b0fd2554",
+   "bytes": 50036,
+   "liteBytes": 28688,
+   "psnr": 41.3,
+   "shownPsnr": 43.2
+  },
+  "sprites/clt-cansado.build16-s.342fec64e6dd.webp": {
+   "source": "342fec64e6ddf657abfd8ab9417ba63ab0420a9d49a684abad20969b69e52e3b",
+   "lite": "61645d4ddf1ce36d02bdf307ba7086128a2225371c2013934f4e754b635948c1",
+   "bytes": 54814,
+   "liteBytes": 30288,
+   "psnr": 39.6,
+   "shownPsnr": 44.5
+  },
+  "sprites/clt-cansado.build16-se.c0a1f8317662.webp": {
+   "source": "c0a1f83176620b2cb013b31db7033ec26204ed5b59d79063b3c5886138334136",
+   "lite": "4a1e41b13f44070ca03550d6a6794018a0a514dcf040d73f224d5f63d2b09b36",
+   "bytes": 50776,
+   "liteBytes": 27730,
+   "psnr": 39.9,
+   "shownPsnr": 44.1
+  },
+  "sprites/clt-cansado.build16-w.e5c08a051749.webp": {
+   "source": "e5c08a05174965017efbb8fdc8da7a8bc7e5fbae5a158401cef9bfea8ba0244c",
+   "lite": "57304ffde6051895b557d6b808171751df4526e8592aa61d6982858700c96af5",
+   "bytes": 43974,
+   "liteBytes": 26058,
+   "psnr": 41.5,
+   "shownPsnr": 43.7
   },
   "sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
    "source": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308",
@@ -30033,6 +30113,46 @@
    "psnr": 39.6,
    "shownPsnr": 40.7
   },
+  "sprites/gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp": {
+   "source": "e9552d5a0b9b650759a53bda63f172618d926708cff572d8655b1bb44417f27d",
+   "lite": "e12d5a62f1e9ca3bc8a96ecbf5ad837fd884ffb20303170e41a6179fa87080ae",
+   "bytes": 72266,
+   "liteBytes": 36682,
+   "psnr": 40.6,
+   "shownPsnr": 40.9
+  },
+  "sprites/gato-nada-pra-comer.build16-nw.45272cef3a9a.webp": {
+   "source": "45272cef3a9a86672f97ae5febe20ec48fdc8c4bf8633fec56ed4592c985cbc5",
+   "lite": "08f4b8a59814f78aaff5b2ce2be60df0968fe955de7bcd8bf6c413227e0aeeea",
+   "bytes": 69386,
+   "liteBytes": 36318,
+   "psnr": 40.8,
+   "shownPsnr": 41.1
+  },
+  "sprites/gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp": {
+   "source": "a1f4cffd53bbd7a39532e9a10be294c82be8de7c6eb3233d2cb2de157343d1ed",
+   "lite": "973692d9c1f393e3e9e00316ef87feea7243211c6b8ea85c34d133c2af939feb",
+   "bytes": 80744,
+   "liteBytes": 41300,
+   "psnr": 39.5,
+   "shownPsnr": 40.4
+  },
+  "sprites/gato-nada-pra-comer.build16-se.ecab793d5c0e.webp": {
+   "source": "ecab793d5c0eef5203f19452c2c494cfd80792f4b4a8536000ae6948807fc12b",
+   "lite": "7fe08af9524c2e2e287ee82e2b22d15b67a0f2916b4fb3de97c9b0fffe8556eb",
+   "bytes": 72116,
+   "liteBytes": 37390,
+   "psnr": 40,
+   "shownPsnr": 41.3
+  },
+  "sprites/gato-nada-pra-comer.build16-w.1f8decd29f41.webp": {
+   "source": "1f8decd29f41a1f477c95c7b4617ad45d8ec1b43d2f9dcd090f4d9464029d32e",
+   "lite": "725dc7fb62f5c954596fff001437608b3df16395ac5a9baf296fcae54ea0ebb7",
+   "bytes": 61408,
+   "liteBytes": 33056,
+   "psnr": 40.6,
+   "shownPsnr": 42
+  },
   "sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
    "source": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4",
    "lite": "38cc5feb40da9d8b36ea6f8e09862b1b60e64b07bcf5d744622124b1a8fcb170",
@@ -30416,6 +30536,46 @@
    "liteBytes": 40920,
    "psnr": 38,
    "shownPsnr": 40.7
+  },
+  "sprites/maromba.build16-n.b7f0316704ce.webp": {
+   "source": "b7f0316704ce4b94c23004f6d9a05a7bd4838caf2bce6db38ce69dc998059b15",
+   "lite": "fa2bdc27b7d61034b48406e4d9b71bf9adffcc54b84faba183280ce6900b7124",
+   "bytes": 90582,
+   "liteBytes": 48718,
+   "psnr": 37.8,
+   "shownPsnr": 40.2
+  },
+  "sprites/maromba.build16-nw.bd0e1eea28d1.webp": {
+   "source": "bd0e1eea28d1fa0b63d385f0e9367998db9e23811f5aa1fafaa9b4097e85c0a0",
+   "lite": "f18d8a59be65277f7ddd7d7af73638fb5cf91db48c8e8ca36def4491a6cb94c4",
+   "bytes": 83876,
+   "liteBytes": 47124,
+   "psnr": 37.6,
+   "shownPsnr": 39.4
+  },
+  "sprites/maromba.build16-s.c2796a391240.webp": {
+   "source": "c2796a391240ae7826ce8dadab9e8eed2e73c71224b184350ab2f0e4ae953f73",
+   "lite": "d949a2debb245ce90caa0e8865eeaf1eaded07cf15dc77547fed5ace31fe7f65",
+   "bytes": 88556,
+   "liteBytes": 47680,
+   "psnr": 36.5,
+   "shownPsnr": 39.7
+  },
+  "sprites/maromba.build16-se.8fd2fbb05152.webp": {
+   "source": "8fd2fbb051521343af6822d4dfc3c294a90da6861fae0af1ca12ea729422fa2d",
+   "lite": "dfe0b2bee280789c0b1e4772b74704e7dc4100dea6c06b9033e1572ca6ebc0c2",
+   "bytes": 81548,
+   "liteBytes": 44976,
+   "psnr": 37.3,
+   "shownPsnr": 40.9
+  },
+  "sprites/maromba.build16-w.a267a14232ca.webp": {
+   "source": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6",
+   "lite": "c076697ff1752401eb3ab84c79e0830436ea408b6c886a43d09d24b5df14c5cf",
+   "bytes": 75022,
+   "liteBytes": 41506,
+   "psnr": 38.5,
+   "shownPsnr": 41.2
   },
   "sprites/maromba.dance128.576e79362713.webp": {
    "source": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f",
@@ -31873,6 +32033,46 @@
    "psnr": 35.5,
    "shownPsnr": 38.8
   },
+  "sprites/vendedor-praia.build16-n.313e1cacf530.webp": {
+   "source": "313e1cacf530d7381660be79024f5c5e331db7aeb7a928e30e097029e1c58791",
+   "lite": "10c420fa90dbaaaa5e8ef48c3e48d4ab718a565bdaa41a5a82f64c02e93dc5bf",
+   "bytes": 84680,
+   "liteBytes": 47474,
+   "psnr": 36.1,
+   "shownPsnr": 39.1
+  },
+  "sprites/vendedor-praia.build16-nw.9d436e295267.webp": {
+   "source": "9d436e295267ab8cadfee1e8b9a788e0b1466c1a3c7ae14f5364edd186c205c8",
+   "lite": "5d3e43cf9ff094d19f43f683aafc61ae0dcbfde149730af034ae83c9e85a9b86",
+   "bytes": 86638,
+   "liteBytes": 48732,
+   "psnr": 35.3,
+   "shownPsnr": 38.9
+  },
+  "sprites/vendedor-praia.build16-s.6acdee5e5c4c.webp": {
+   "source": "6acdee5e5c4ca7d3ae667d7f63d9cac59883cd8c1e6a14b53139a1058ec01712",
+   "lite": "e6aec51435a95d483bf9c666f724cc8cea6b7ec8c2526a3ccdeca5917bf4e432",
+   "bytes": 81240,
+   "liteBytes": 45582,
+   "psnr": 35,
+   "shownPsnr": 39.3
+  },
+  "sprites/vendedor-praia.build16-se.adb84091ab7f.webp": {
+   "source": "adb84091ab7f8399b9312773e4af9133993689952db509287a46ab99146567c7",
+   "lite": "d275faa1edff6a7c7c5fe6af62db475192c09b2bb77aa3ab6835ecad4974b251",
+   "bytes": 74978,
+   "liteBytes": 42776,
+   "psnr": 34.8,
+   "shownPsnr": 39.3
+  },
+  "sprites/vendedor-praia.build16-w.e75d2361973b.webp": {
+   "source": "e75d2361973bdd493c18e7e38f182fd564d870b724b0c40997ae7cbc32c8ca9a",
+   "lite": "818d9d07e980cd2c2d173e453ede8a1c3ff55a9d523b1b6b2cbf6018c00960fe",
+   "bytes": 62242,
+   "liteBytes": 37470,
+   "psnr": 36.1,
+   "shownPsnr": 40
+  },
   "sprites/vendedor-praia.dance128.932b5398d729.webp": {
    "source": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",
    "lite": "704c8541ed7162b3f0c057dc40b2c2b2182a13e8e2b53298ee65241632c35a0e",
@@ -32248,6 +32448,46 @@
    "liteBytes": 32112,
    "psnr": 40.3,
    "shownPsnr": 43.6
+  },
+  "sprites/viciado-em-bet.build16-n.c83b4b82c317.webp": {
+   "source": "c83b4b82c3178beb3f18fd860bc52ebe4c6d11393aeb25830a415857ee8c12e8",
+   "lite": "55212c5f4149f329377decaa0b6db03a6da787dabcb6ace5d407209ae3e597e6",
+   "bytes": 56318,
+   "liteBytes": 32822,
+   "psnr": 39.2,
+   "shownPsnr": 40.3
+  },
+  "sprites/viciado-em-bet.build16-nw.35d8773292c2.webp": {
+   "source": "35d8773292c2e34af4b7ca9db78333026c013b59419217336561d97998c00a05",
+   "lite": "88e3d029f0934ee9a3f4b32287939d533e9360d48dba9583ec841bf93b0f888d",
+   "bytes": 56606,
+   "liteBytes": 32406,
+   "psnr": 39.6,
+   "shownPsnr": 41.6
+  },
+  "sprites/viciado-em-bet.build16-s.45f7916d6dae.webp": {
+   "source": "45f7916d6dae1595ab2fe48f53a823648155dbba8e4378358f41d0211c5c2967",
+   "lite": "06afde3f4aa4fc400b9da6d0c4535d6b3d2f501b112adb2c10196f902559d8b3",
+   "bytes": 59572,
+   "liteBytes": 32692,
+   "psnr": 37.5,
+   "shownPsnr": 41
+  },
+  "sprites/viciado-em-bet.build16-se.a84e8a9222c7.webp": {
+   "source": "a84e8a9222c7745a485ed4a210c8c22807e4db8ce7df4bf8056e433a1b1d7a7b",
+   "lite": "016f114eba182fa1daea9dc07c3e46cce0b63f22363233007dc2236ead251676",
+   "bytes": 59184,
+   "liteBytes": 33068,
+   "psnr": 38.3,
+   "shownPsnr": 41.4
+  },
+  "sprites/viciado-em-bet.build16-w.c71b1a158063.webp": {
+   "source": "c71b1a1580635b10247eb942561e26d8a8e33aaad2aecee874899ea1a92bafb3",
+   "lite": "397fc6366ec6225fdaffc403ed13dae39841f3db939790fd9c266e9f8c06791a",
+   "bytes": 50666,
+   "liteBytes": 29408,
+   "psnr": 39.3,
+   "shownPsnr": 42.4
   },
   "sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
    "source": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d",

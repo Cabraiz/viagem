@@ -45,6 +45,7 @@ import {SHOT_BANDS} from './usable-glow-rules.ts';
 import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 import {MapLabel} from './map-labels.ts';
 import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
+import {enemyLook} from './enemy-variety.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -153,6 +154,8 @@ interface EnemyActor{
   tex:string;
   /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
   tint:number|undefined;
+  /** Card inimigos-variedade (enemy-variety.ts): this critter's tone over its art (undefined: none) and size (× the kind's). */
+  tone:number|undefined;vary:number;lookOf?:string;lookSpecial?:boolean;
   /** The viaduct (EnemyView.andar): 1 on a deck, drawn lifted onto it (Projector.projectOn); absent on the ground. */
   floor?:1;
 }
@@ -408,7 +411,7 @@ export class HordeRenderer{
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,name:undefined,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,tone:undefined,vary:1,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
     // The kill's cédula (render/cedula.ts): its front/back sheet, loaded in the background (the procedural note until then).
@@ -603,6 +606,11 @@ export class HordeRenderer{
     a.moving=ENEMY_WALK.leash?leashMoving(a,view.x,view.y):Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
     a.name=enemyNameTag(view.kind,!!view.elite,a.boss);
+    // Card inimigos-variedade: its tone and size from its id (the elite and the boss keep theirs).
+    if(used.fresh||a.lookOf!==view.id||a.lookSpecial!==(a.elite||a.boss)){
+      const look=enemyLook(view.id,a.elite||a.boss);
+      a.lookOf=view.id;a.lookSpecial=a.elite||a.boss;a.vary=look.size;a.tone=look.tone===0xffffff?undefined:look.tone;
+    }
   }
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view);
@@ -863,7 +871,7 @@ export class HordeRenderer{
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
     const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines,this.nearestPlayer(a.x,a.y));
-    const tint=shown?undefined:a.accent;
+    const tint=shown?a.tone:a.accent;
     if(tint!==a.tint){a.tint=tint;if(!flashing){a.litFlip=a.flip;sunlit(a.image,tint);}}
     if(!shown&&outlines){
       // City mode (contorno-breu): the procedural texture's Breu-ring copy at screen scale; the base outside the city.

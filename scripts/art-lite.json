@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3210,
-  "bytes": 2262570356,
-  "liteBytes": 786462334,
+  "bytes": 2257550310,
+  "liteBytes": 786459578,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -33242,28 +33242,28 @@
    "shownPsnr": 44
   },
   "towers/lanca-foguetes/fire.webp": {
-   "source": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40",
-   "lite": "d309fbcb2d1b6c34524e8ac2abe9be638352a579ae111155fadcefb0d53ad3a5",
-   "bytes": 3502742,
-   "liteBytes": 483578,
+   "source": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af",
+   "lite": "cf46f42465244a4b6b77efc908e7a6e8a72926f62f4c64b25f0e8011275471e4",
+   "bytes": 1480578,
+   "liteBytes": 482374,
    "liteCell": [
     160,
     160
    ],
-   "psnr": 45.2,
-   "shownPsnr": 45.2
+   "psnr": 45.9,
+   "shownPsnr": 45.9
   },
   "towers/lanca-foguetes/idle.webp": {
-   "source": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
-   "lite": "62e1f3f336274d6f92d7574dd17950f78da4bb36387d65babebd6ef667820a32",
-   "bytes": 1131558,
-   "liteBytes": 175598,
+   "source": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6",
+   "lite": "42fa030ab29c2f3341fd3bb968224276d123cafc8cc9d358f6c88f498465b32f",
+   "bytes": 534204,
+   "liteBytes": 175810,
    "liteCell": [
     160,
     160
    ],
-   "psnr": 47.1,
-   "shownPsnr": 47.1
+   "psnr": 47.6,
+   "shownPsnr": 47.6
   },
   "towers/linha-ferrea-curva/base.webp": {
    "source": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f",
@@ -33302,16 +33302,16 @@
    "shownPsnr": 47.5
   },
   "towers/morteiro/fire.webp": {
-   "source": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d",
-   "lite": "9290fd60c89d417e57debb8abeb287d4c1c947bd0fa65828128dda0c72c3ae68",
-   "bytes": 1097626,
-   "liteBytes": 197362,
+   "source": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857",
+   "lite": "ade9e2b56b3e81d384b349d4087a9fbd91935c87e42816e1fdca7e44065b4f15",
+   "bytes": 555572,
+   "liteBytes": 194256,
    "liteCell": [
     80,
     80
    ],
-   "psnr": 43.6,
-   "shownPsnr": 43.6
+   "psnr": 44.2,
+   "shownPsnr": 44.2
   },
   "towers/morteiro/idle.webp": {
    "source": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc",
@@ -33482,28 +33482,28 @@
    "shownPsnr": 48.8
   },
   "towers/posto-de-radar/fire.webp": {
-   "source": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab",
-   "lite": "2806a57b5934a4bc60bcb681c9e73d0bde5168da082f4c2069b30b4643d988f6",
-   "bytes": 2808984,
-   "liteBytes": 474668,
+   "source": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2",
+   "lite": "dc26359452ef2cbdd67d328464f86d8781d01ad1be940e8241ad8cc8b890cc54",
+   "bytes": 1408292,
+   "liteBytes": 474864,
    "liteCell": [
     96,
     96
    ],
-   "psnr": 42,
-   "shownPsnr": 42
+   "psnr": 43.1,
+   "shownPsnr": 43.1
   },
   "towers/posto-de-radar/idle.webp": {
-   "source": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
-   "lite": "23547643dbf385ed33cf1e908f8012ae2dbd7db210d3335dff6a1456a828ee86",
-   "bytes": 914608,
-   "liteBytes": 157108,
+   "source": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2",
+   "lite": "39fd4d7039457d7f171e154f722b0e2ff9798f386d38828baa0f881dabbfa075",
+   "bytes": 456826,
+   "liteBytes": 158254,
    "liteCell": [
     96,
     96
    ],
-   "psnr": 42,
-   "shownPsnr": 42
+   "psnr": 43.3,
+   "shownPsnr": 43.3
   },
   "towers/rojao-de-festa/base.webp": {
    "source": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff",

@@ -890,10 +890,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 80,
-              "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40"
+              "sha256": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af"
             }
           ],
-          "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40",
+          "sha256": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af",
           "liteCell": [
             160,
             160
@@ -919,10 +919,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df"
+              "sha256": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6"
             }
           ],
-          "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
+          "sha256": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6",
           "liteCell": [
             160,
             160
@@ -1112,10 +1112,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 64,
-              "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d"
+              "sha256": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857"
             }
           ],
-          "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d",
+          "sha256": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857",
           "liteCell": [
             80,
             80
@@ -1806,10 +1806,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 96,
-              "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab"
+              "sha256": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2"
             }
           ],
-          "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab",
+          "sha256": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2",
           "liteCell": [
             96,
             96
@@ -1835,10 +1835,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1"
+              "sha256": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2"
             }
           ],
-          "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
+          "sha256": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2",
           "liteCell": [
             96,
             96

@@ -41,21 +41,30 @@ function atrasarSocket(d){
 
 /** O laço de medida na página (requestAnimationFrame): uma linha por cédula vista. */
 function sonda(raio){
-  const w=window;w.__ima={linhas:{}};
+  const w=window;w.__ima={linhas:{},textos:[],quadros:[]};let ultimo=0,txtAntes='';
   const passo=()=>{
     const s=w.__island?.scene,net=s?.hooks?.net,h=s?.horde;
     if(net&&h){
       const agora=performance.now(),eu=net.predicted,txt=document.querySelector('.rh-camp-grana-valor')?.textContent??'';
       const vistas=new Set(),linhas=w.__ima.linhas;
+      if(ultimo)w.__ima.quadros.push(agora-ultimo);ultimo=agora;
+      // O HUD pode mudar o R$ no mesmo quadro em que o herói entra no ímã: o texto "de antes" é o do quadro anterior.
+      const txt0=txtAntes;
+      if(txt!==txtAntes){w.__ima.textos.push([Math.round(agora),txt]);txtAntes=txt;}
       h.pickups.forEach((a,id)=>{
         if(a.kind!=='grana')return;
         let l=linhas[id];if(!l)l=linhas[id]={id,valor:a.value,nasceu:agora};
         const desenhada=a.image.visible&&a.image.alpha>0;
         if(desenhada)vistas.add(id);
-        if(l.entrar===undefined&&desenhada&&Math.hypot(a.x-eu.x,a.y-eu.y)<=raio){l.entrar=agora;l.txt0=txt;}
+        if(l.entrar===undefined&&desenhada&&Math.hypot(a.x-eu.x,a.y-eu.y)<=raio){l.entrar=agora;l.txt0=txt0;l.depe=!!h.selfAt;}
+        // Só a build com a correção: o quadro em que o cliente pegou a cédula (render/cedula-catch.ts).
+        if(l.pegou===undefined&&h.catcher?.get?.(id))l.pegou=agora;
+        // Pega e ainda na sala, mas o cliente desistiu (CATCH_GIVE_UP_MS): volta ao chão.
+        else if(l.pegou!==undefined&&l.voltou===undefined&&!h.catcher.get(id))l.voltou=agora;
       });
       for(const l of Object.values(linhas)){
         if(l.entrar===undefined)continue;
+        if(l.sumir===undefined)l.quadros=(l.quadros??0)+1;
         if(l.sumir===undefined&&!vistas.has(l.id))l.sumir=agora;
         if(l.contar===undefined&&txt!==l.txt0){l.contar=agora;l.txt1=txt;}
       }
@@ -70,7 +79,7 @@ try{
   worker=await startLocalWorker({port:PORT,persist:join(tmpdir(),`viagem-ima-${PORT}`),logPath:join(tmpdir(),`viagem-ima-worker-${PORT}.log`),
     vars:{LAB_HORDE:'14',LAB_SEED:'4242'}});
   web=spawn('python',['-m','http.server',String(WEB_PORT),'--bind','127.0.0.1','--directory',DIST],{stdio:'ignore',windowsHide:true});
-  await sleep(1500);
+  for(let i=0;i<60;i++){try{if((await fetch(`http://127.0.0.1:${WEB_PORT}/`)).ok)break;}catch{}await sleep(500);}
   const {chromium}=await import(pathToFileURL('D:/Gits/viagem-tools/node_modules/playwright/index.mjs').href);
   browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1});
@@ -111,12 +120,13 @@ try{
     for(const l of linhas)if(l.entrar!==undefined&&!medidas.some(m=>m.id===l.id))medidas.push({...l,rodada});
   }
   const ms=v=>v===undefined?undefined:Math.round(v);
-  const linhas=medidas.map(m=>({id:m.id,valor:m.valor,esperou:ms(m.entrar-m.nasceu),sumir:ms(m.sumir-m.entrar),contar:ms(m.contar-m.entrar),txt:`${m.txt0} → ${m.txt1??'?'}`}));
+  const linhas=medidas.map(m=>({id:m.id,valor:m.valor,esperou:ms(m.entrar-m.nasceu),pegou:m.pegou===undefined?undefined:ms(m.pegou-m.entrar),depe:m.depe,quadros:m.quadros,voltou:m.voltou===undefined?undefined:ms(m.voltou-m.pegou),sumir:ms(m.sumir-m.entrar),contar:ms(m.contar-m.entrar),txt:`${m.txt0} → ${m.txt1??'?'}`}));
+  const extra=await p.evaluate(()=>{const q=[...window.__ima.quadros].sort((a,b)=>a-b);return {quadroMediano:q[q.length>>1],quadroP95:q[Math.floor(q.length*.95)],textos:window.__ima.textos};});
   const med=k=>{const v=linhas.map(l=>l[k]).filter(x=>x!==undefined).sort((a,b)=>a-b);return v.length?{n:v.length,mediana:v[v.length>>1],min:v[0],max:v[v.length-1]}:null;};
-  const resumo={atraso:ATRASO,sumir:med('sumir'),contar:med('contar')};
+  const resumo={atraso:ATRASO,pegou:med('pegou'),sumir:med('sumir'),contar:med('contar'),quadro:{mediano:ms(extra.quadroMediano),p95:ms(extra.quadroP95)}};
   console.table(linhas);console.log(JSON.stringify(resumo));
   if(errors.length)console.log('erros',errors.slice(0,3));
-  if(JSON_OUT)writeFileSync(JSON_OUT,JSON.stringify({resumo,linhas,errors},null,1));
+  if(JSON_OUT)writeFileSync(JSON_OUT,JSON.stringify({resumo,linhas,medidas,textos:extra.textos,errors},null,1));
 }finally{
   try{await browser?.close();}catch{}
   try{web?.kill();}catch{}

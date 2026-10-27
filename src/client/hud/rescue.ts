@@ -113,6 +113,8 @@ export class RescueBoard {
   private stepper?:{steps:Footsteps;figures:StepFigure[]};
   /** The scene's cédulas caught on screen at the last frame (BUG-20261025-ORQ-ima-dinheiro-demora): one more clinks now. */
   private caught=0;
+  /** Those cédulas' R$ at the last frame: a change repaints the top bar's R$ now (its full render waits for the hero's spot). */
+  private pending=0;
   constructor(options:RescueOptions){
     this.net=options.net;this.hud=options.hud;
     // A scene already torn down (a defeat closing the island, a stop) is no scene: its cameras are gone (BUG resgate-hud-apos-derrota).
@@ -240,6 +242,8 @@ export class RescueBoard {
     const caught=scene?.cedulasCaught()??0;
     if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema');}
     this.caught=caught;
+    const pending=scene?.pendingGrana()??0;
+    if(pending!==this.pending){this.pending=pending;hud.granaMoved();}
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){

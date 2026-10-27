@@ -24,14 +24,14 @@ async function rig(){
   const button={hidden:true,type:'',innerHTML:'',setAttribute(){},addEventListener(){},remove(){},style:{setProperty(){}}};
   g.document={createElement:()=>button};
   const calls:string[]=[];
-  const scene={live:true,cameraView:0,heroGait:()=>undefined,say:()=>{},
+  const scene={live:true,cameraView:0,heroGait:()=>undefined,say:()=>{},cedulasCaught:()=>0,pendingGrana:()=>0,
     // A torn-down Phaser scene has no cameras: what screenSide read.
     screenSide(){if(!this.live)throw new TypeError("Cannot read properties of undefined (reading 'main')");calls.push('screenSide');return 0;}};
   const player=(id:string)=>({id,classId:'gari',name:id,x:0,y:0,hp:10,online:true});
   const net={id:'me',terrain:{world:'ilha'},run:{phase:'result'},predicted:{x:0,y:0},onSos:undefined as unknown,
     players:new Map([['me',player('me')],['p2',player('p2')]]),feed:{players:new Map(),enemies:new Map()}};
   const hud={el:{hidden:false,classList:{contains:()=>false}},tally:{causes:{last:new Map()}},
-    setCityRoute:()=>calls.push('cityRoute'),prewarmCity:()=>{},edges:{clear:()=>calls.push('edges.clear')}};
+    setCityRoute:()=>calls.push('cityRoute'),prewarmCity:()=>{},setGranaPending:()=>{},granaMoved:()=>{},edges:{clear:()=>calls.push('edges.clear')}};
   const board=new RescueBoard({net,hud,actions:{append(){}},scene:()=>scene} as never);
   const run=()=>{const queued=[...frames.values()];frames.clear();for(const f of queued)f();};
   return {board,scene,calls,frames,run};

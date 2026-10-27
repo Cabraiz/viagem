@@ -444,6 +444,8 @@ export class TowerRenderer {
    */
   /** Sandbox `contorno=0` (torres-animacao-idle-tiro): no gold outline, the art itself in the recordings. */
   outline=true;
+  /** Sandbox `anim=0` (the FPS check of torres-animacao-idle-tiro): the weapons stand on the idle's frame 0, as before. */
+  animate=true;
   /** Where a defense's weapon stands on screen (world px; its mount), once drawn: the sandbox's `foco=torre` camera. */
   mountOf(id:string):Pt|undefined{const t=this.towers.get(id);return t&&t.drawnPhase?{x:t.mount.x,y:t.mount.y}:undefined;}
   /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
@@ -866,6 +868,7 @@ export class TowerRenderer {
     if(!t.art)return undefined;
     const art=towerArt(t.view.kind),idle=clipOf(art?.idle,4);
     if(!idle||!this.scene.textures.exists(towerGunKey(t.view.kind)))return undefined;
+    if(!this.animate)return {fire:false,frame:0};
     const fire=art?.fire&&this.scene.textures.exists(towerFireKey(t.view.kind))?clipOf(art.fire,12):undefined;
     return weaponPose(this.now,t.fireAt,t.seedMs,idle,fire,this.o.reduced);
   }

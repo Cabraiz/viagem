@@ -49,6 +49,8 @@
  *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
  *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
  *     `&foco=torre` the camera on the first one's weapon (its mount), not the hero, and no fade; `&contorno=0` without the gold outline;
+ *   `anim=0` (with any torres=): the weapons stand on their idle's frame 0 and no fire sheet loads (main before
+ *     torres-animacao-idle-tiro), for the FPS check against the animated ones;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -153,7 +155,7 @@ const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** torres=lista: `tiro=1` the listed defenses fire; `lento=K` (1..20) the defenses' clock K× slower (see the header). */
 const listFires=params.get('tiro')==='1',slowMo=Math.max(1,Math.min(20,Number(params.get('lento'))||1));
-const towerFocus=params.get('foco')==='torre',towerOutline=params.get('contorno')!=='0';
+const towerFocus=params.get('foco')==='torre',towerOutline=params.get('contorno')!=='0',towerAnim=params.get('anim')!=='0';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
 const acao=params.get('acao')==='1';
 /** dano=<ms> (animacao-receber-dano): the hero loses 1 hp every <ms> (default 1500), so its flinch plays at rest. */
@@ -350,7 +352,7 @@ class CitySandbox extends Phaser.Scene {
     if(kitParam)this.sprites.queueOwnWalk(classId);
     if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
-    if(towersParam)queueTowerArt(this,true);
+    if(towersParam)queueTowerArt(this,towerAnim);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
@@ -785,7 +787,7 @@ class CitySandbox extends Phaser.Scene {
         depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,
         effectDepth:(px,py)=>this.layer?this.layer.effectDepth(px,py,groundZ(asset,px,py)):0}});
     this.towers.setEnemies(n,this.ex,this.ey,this.air);
-    this.towers.outline=towerOutline;
+    this.towers.outline=towerOutline;this.towers.animate=towerAnim;
   }
   /** Stand-in for the sim's defensesStep (ready, cooldown, nearest reachable enemy), then the renderer's frame. */
   private stepTowers(time:number,dt:number){

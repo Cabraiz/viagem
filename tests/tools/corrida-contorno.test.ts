@@ -48,13 +48,15 @@ function contour(sheet:{data:Buffer;width:number},frame:number,cols:number,box:{
 }
 
 const runs=Object.entries(manifest.pieces as Record<string,{files:Record<string,{file:string;frames:number;figure:{left:number;top:number;right:number;bottom:number};pages:{columns:number}[]}>}>)
-  .flatMap(([id,p])=>Object.entries(p.files).filter(([k])=>k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')).map(([k,f])=>({id,key:k,f})));
+  .flatMap(([id,p])=>Object.entries(p.files).filter(([k])=>k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('work16-')).map(([k,f])=>({id,key:k,f})));
 
 test('the run, push and hurt sheets the game shows include the viciado\'s, the CLT\'s and the gato\'s',()=>{
   for(const id of ['viciado-em-bet','clt-cansado','gato-nada-pra-comer'])for(const m of ['run16-','push16-','hurt16-'])
     assert.equal(runs.filter(r=>r.id===id&&r.key.startsWith(m)).length,5,`${id}: 5 drawn ${m} directions`);
   // puxar-uno-corda: the rope pull of the viciado and the CLT (the gato and the maromba next)
   for(const id of ['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba'])assert.equal(runs.filter(r=>r.id===id&&r.key.startsWith('pull16-')).length,5,`${id}: 5 drawn pull16 directions`);
+  // animacao-trabalhar-6: the work loop of the 6 menu heroes
+  for(const id of ['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','aposentado','vendedor-praia'])assert.equal(runs.filter(r=>r.id===id&&r.key.startsWith('work16-')).length,5,`${id}: 5 drawn work16 directions`);
 });
 
 for(const {id,key,f} of runs)test(`${id} ${key}: Breu outside Papel on ≥ ${CONTOUR_MIN*100} % of every pose's contour, full and lite`,async()=>{

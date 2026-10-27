@@ -46,7 +46,8 @@ test('passives: the automatic game keeps exactly its 7 fixed ids (D-054: no ím�
     assert.ok(texts.every(t=>typeof t==='string'&&t.trim().length>0),id);
     assert.equal(new Set(texts).size,5,id);
     const keys=Object.keys(p.perLevel);
-    assert.ok(keys.length>0);
+    // ofertas-sem-xp-e-icones: the Cartão Fidelidade moves no stat (its cashback is the crates', CARTAO_CASHBACK).
+    assert.ok(keys.length>0||id==='cartao',id);
     for(const k of keys){assert.ok((STAT_KEYS as string[]).includes(k),`${id}.${k}`);assert.ok(Number.isFinite(p.perLevel[k as StatKey]));}
     assert.equal(passiveDef(id),p);
   }

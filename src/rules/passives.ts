@@ -47,6 +47,14 @@ const make=(
 export const PENTE_MAX_LEVEL=4;
 /** Estilingue: projectile speed per level (×1.4 … ×3, STAT_LIMITS.speed): buys back the heroes' slower shots (HERO_SHOT_SLOWDOWN). */
 export const ESTILINGUE_SPEED=.4;
+/**
+ * Cartão Fidelidade (card ofertas-sem-xp-e-icones, the user 25/10: "troque o ganho de XP por outra coisa, já que o XP não
+ * é mostrado"): the cashback, Grana into the opener's wallet per crate opened, per level (sim/crates.ts open). It was
+ * +8% XP a level (the growth stat), which no screen shows.
+ */
+export const CARTAO_CASHBACK=3;
+/** Grana a crate pays its opener holding the Cartão Fidelidade at `level` (0 without it). */
+export const cartaoCashback=(level:number)=>CARTAO_CASHBACK*Math.max(0,Math.floor(level)||0);
 /** Arruda: hp regenerated per second per level (sim/systems/players.ts). */
 export const ARRUDA_REGEN=.5;
 /**
@@ -78,9 +86,9 @@ export const PASSIVES:Readonly<Record<PassiveId,PassiveDef>>=Object.freeze({
   oculos:make('oculos','Óculos Juliet','oculos',{might:0.1},
     level=>`${percent(0.1*level)} de dano`,
     ['Lente espelhada, dano refletido.','Ninguém vê seus olhos. Nem o medo.','Comprado no farol, funciona igual.','Dá +10 de respeito na quebrada.','Chave de cadeia. E de horda.']),
-  cartao:make('cartao','Cartão Fidelidade','cartao',{growth:0.08},
-    level=>`${percent(0.08*level)} de XP ganho`,
-    ['Mais um carimbo e ganha um pastel.','Pontos que nunca expiram (expiram).','Cliente VIP da padaria.','O caixa já sabe seu nome.','Cartão preto da padoca.']),
+  cartao:make('cartao','Cartão Fidelidade','cartao',{},
+    level=>`Cada caixa aberta: +R$ ${cartaoCashback(level)}`,
+    ['Mais um carimbo e ganha um pastel.','O caixa já sabe seu nome.','Cliente VIP da padaria.','Cashback de verdade, sem letra miúda.','Cartão preto da padoca.']),
   pente:make('pente','Bombinha de São João','traque',{amount:1},
     level=>`+${level} ${level===1?'projétil':'projéteis'} em cada ataque`,
     ['Uma vira duas.','Duas viram três.','O vizinho ligou pra polícia.','Parece réveillon em Copacabana.'],PENTE_MAX_LEVEL),

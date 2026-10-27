@@ -174,10 +174,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]||files[`build16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]||files[`build16-${d}`]||files[`work16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('build16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('build16-')||k.startsWith('work16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -193,7 +193,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
     const band=Math.round(restH*.25),restTorso=torsoWidth(low,band);
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run','push','pull','hurt','build']){
+    for(const motion of ['idle','walk','run','push','pull','hurt','build','work']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -250,7 +250,16 @@ export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'v
   'vendedor-praia build16-SE':[3,4,7],
   // the aposentado's hammer raised above the hat (7) and its back locked, bent forward (W 10-11, NW 11, SE 8-12)
   'aposentado build16-S':[7],'aposentado build16-N':[7],'aposentado build16-W':[10,11],'aposentado build16-NW':[11],
-  'aposentado build16-SE':[7,8,9,10,12]});
+  'aposentado build16-SE':[7,8,9,10,12],
+  // work16 (card animacao-trabalhar-6): the viciado's arms up with both phones beside the cap (the green, 5-6); the gato
+  // staring at the camera over its mug (its gag: N 1-10, W 2-9, NW 2-10, SE 2-12, a frontal face on a side/back template)
+  'viciado-em-bet work16-W':[5,6],'viciado-em-bet work16-NW':[5],'viciado-em-bet work16-SE':[5,6],
+  'gato-nada-pra-comer work16-N':[1,2,3,4,5,6,7,8,9,10],'gato-nada-pra-comer work16-W':[2,3,4,5,6,7,8,9],
+  'gato-nada-pra-comer work16-NW':[2,3,4,5,6,7,8,9,10],'gato-nada-pra-comer work16-SE':[2,3,4,5,6,7,8,9,10,11,12],
+  // the aposentado dozing off chin on chest, then jolting awake (W 3, 10; SE 3-5, 8-10)
+  'aposentado work16-W':[3,10],'aposentado work16-SE':[3,4,5,8,9,10],
+  // the vendedor waving its flyer above the hat (8-9) and wiping its forehead (W 4)
+  'vendedor-praia work16-W':[4,8,9],'vendedor-praia work16-NW':[9],'vendedor-praia work16-SE':[8,9],'vendedor-praia work16-N':[9]});
 /**
  * A class that builds SITTING (card animacao-construir-6: the vendedor on its cooler box, the joke the user approved):
  * its build16 height may drop to this share of the rest's (0.86-0.95 measured), never above 1 + TOL.height; the head

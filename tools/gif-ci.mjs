@@ -4,7 +4,7 @@
  * (NEW-20261025-ORQ-cicd-gif-prints). The recording is scripts/gravar-partida.mjs, run by .github/workflows/gif.yml.
  *
  *   node tools/gif-ci.mjs <branch|sha> [parado|andando|uno|matches|nomes|empurra|torres|todos] [--tela celular|pc|ambas] [--segundos 20]
- *        [--modo normal|chaveiro] [--tipos morteiro,holofote] [--lento 3] [--saida <dir>] [--timeout 40] [--workflow-ref main]
+ *        [--modo normal|chaveiro] [--tipos morteiro,holofote] [--lento 12] [--saida <dir>] [--timeout 40] [--workflow-ref main]
  *       torres (card torres-animacao-idle-tiro): one GIF per tower kind firing in the city sandbox, --lento× slower;
  *       the gif.yml that knows it must be the branch's until it is on main (--workflow-ref <branch>).
  *       records what is ON GITHUB for that branch (push it first): dispatches gif.yml, waits, downloads the artifact to
@@ -61,7 +61,7 @@ export const pedidoId=(now=new Date(),rand=Math.random)=>`${now.toISOString().re
 /** The workflow_dispatch body: gif.yml at `workflowRef` records the commit `sha`. Inputs are strings. */
 export function dispatchBody({workflowRef='main',sha,roteiro,tela='celular',segundos=20,modo='normal',pedido,tipos,lento}){
   // tipos/lento only for torres: a gif.yml from before them (main, until this lands) refuses unknown inputs.
-  return {ref:workflowRef,inputs:{ref:sha,roteiro,tela,segundos:String(segundos),modo,pedido,...roteiro==='torres'?{tipos:tipos??'',lento:String(lento??3)}:{}}};
+  return {ref:workflowRef,inputs:{ref:sha,roteiro,tela,segundos:String(segundos),modo,pedido,...roteiro==='torres'?{tipos:tipos??'',lento:String(lento??12)}:{}}};
 }
 /** The run of a request: gif.yml's run-name carries the id ("GIF <pedido> …"). */
 export const runOfPedido=(runs,pedido)=>runs.find(r=>String(r.display_title??'').split(/\s+/).includes(pedido));

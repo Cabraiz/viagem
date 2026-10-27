@@ -154,7 +154,7 @@ test('gravar: tremorOf counts the drawn hero stepping back against its walk, and
 
 test('torres (torres-animacao-idle-tiro): the B/C kinds by default, --tipos and --lento; dispatched only with torres',()=>{
   const o=gravar.parseOpts(['out','--roteiro','torres']);
-  assert.deepEqual(o.tipos,[...gravar.TORRES_TIPOS]);assert.equal(o.lento,3);
+  assert.deepEqual(o.tipos,[...gravar.TORRES_TIPOS]);assert.equal(o.lento,12,'1 fps on CI: each fire frame lasts 1 s');
   assert.ok(!gravar.TODOS.includes('torres'),'not in todos');
   const t=gravar.parseOpts(['out','--roteiro','torres','--tipos','morteiro,holofote','--lento','5']);
   assert.deepEqual(t.tipos,['morteiro','holofote']);assert.equal(t.lento,5);

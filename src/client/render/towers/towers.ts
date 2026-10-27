@@ -305,7 +305,7 @@ export class TowerRenderer {
       const a=alpha.get(t.view.id)??1;
       if(a!==t.alpha){t.alpha=a;t.base.setAlpha(a);t.weapon.setAlpha(a);}
       // contorno-usavel-wc3: a defense (and its obra) can be built on and upgraded: the Warcraft 3 gold outline.
-      glow.mark(t.view.id,t.base,k);
+      if(this.outline)glow.mark(t.view.id,t.base,k);
     }
     glow.end();
     this.drawEffects(nowMs);
@@ -437,6 +437,8 @@ export class TowerRenderer {
    * A volley: muzzle flash, recoil, and the shots toward its aim: with the server's `aim`, the reachable enemy along it
    * (or a point along it at AIM_FALLBACK of the range); without, the nearest reachable enemy.
    */
+  /** Sandbox `contorno=0` (torres-animacao-idle-tiro): no gold outline, the art itself in the recordings. */
+  outline=true;
   /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
   volleysDrawn=0;
   private fire(t:Tower,nowMs:number){

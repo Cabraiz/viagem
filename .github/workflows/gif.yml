@@ -37,8 +37,8 @@ on:
         description: 'torres: tower ids, comma separated (empty: the B and C branches)'
         default: ''
       lento:
-        description: 'torres: the defenses K times slower (1-20), so a 5 fps GIF shows every frame'
-        default: '3'
+        description: 'torres: the defenses K times slower (1-20): CI records ~1 frame/s, 12 shows every fire frame'
+        default: '12'
       modo:
         type: choice
         options: [normal, chaveiro]
@@ -110,7 +110,7 @@ jobs:
           SEGUNDOS: ${{ inputs.segundos || '20' }}
           MODO: ${{ inputs.modo || 'normal' }}
           TIPOS: ${{ inputs.tipos || '' }}
-          LENTO: ${{ inputs.lento || '3' }}
+          LENTO: ${{ inputs.lento || '12' }}
         run: |
           set +e
           args=(--roteiro "$ROTEIRO" --tela "$TELA" --segundos "$SEGUNDOS" --modo "$MODO" --lento "$LENTO")

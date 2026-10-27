@@ -10,7 +10,7 @@
 //      The snow changes the whole frame, so the GIF runs ~0.5 MB/s even lossy (interFrameMaxError).
 // node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|torres|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
-//      [--tipos rojao-de-festa,morteiro,…] [--lento 3]
+//      [--tipos rojao-de-festa,morteiro,…] [--lento 12]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
 // Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
 // (≤ 10 lines). The coach's hints and the economy question start as already seen (as the ORQ's prod prints did), so
@@ -68,6 +68,8 @@ export const ROTEIROS=Object.freeze({
   empurra:s=>{const out=[];for(let left=s*1000;left>0;left-=1000)out.push({dir:D.l,ms:Math.min(1000,left)});return out;},
   torres:s=>[{ms:s*1000}],
 });
+/** torres: the middle of the screen cut out for the GIF (width fraction, height ÷ width). */
+export const TORRES_CORTE=Object.freeze([.8,1.1]);
 /** torres: the kinds recorded by default (the B and C branches with delivered art). */
 export const TORRES_TIPOS=Object.freeze(['rojao-de-festa','morteiro','lanca-foguetes','obuseiro','holofote','arame-e-sirene','antiaerea-quadrupla','posto-de-radar']);
 /** empurra: how long to wait for the 1st wave's bodies (the minuto de Minerva 120 s + the first wave's 30–60 s). */
@@ -107,7 +109,7 @@ export function parseOpts(argv){
     segundos:num(flags.segundos,20,3,120,'segundos'),fps:num(flags.fps,5,1,15,'fps'),modo:flags.modo??'normal',dist:resolve(flags.dist??'dist'),
     url:flags.url?.replace(/\/+$/,''),build:flags.build,esperarBuild:num(flags['esperar-build'],12,0,30,'esperar-build'),
     gif:!flags['sem-gif'],zeroErros:!!flags['zero-erros'],dicas:!!flags['com-dicas'],escolher:!flags['sem-escolha'],
-    tipos,lento:num(flags.lento,3,1,20,'lento')};
+    tipos,lento:num(flags.lento,flags.roteiro==='torres'?12:3,1,20,'lento')};
 }
 
 /** The screencast's frames (it sends one per change, as fast as the page paints) kept at least 1000/fps ms apart. */
@@ -396,19 +398,23 @@ async function gravarTorres(p,cdp,base,o,t,dir,r){
   for(const tipo of o.tipos){
     const sub=join(dir,tipo);mkdirSync(sub,{recursive:true});
     try{
-      await p.goto(`${base}/?sandbox=cidade&mapa=real&torres=lista&tipos=${tipo}&tiro=1&lento=${o.lento}`,{waitUntil:'load',timeout:90000});
+      await p.goto(`${base}/?sandbox=cidade&mapa=real&torres=lista&tipos=${tipo}&tiro=1&lento=${o.lento}&foco=torre&contorno=0&zoom=1`,{waitUntil:'load',timeout:90000});
       await p.waitForFunction(()=>!!window.__cidade,null,{timeout:90000});
     }catch(e){r.erros.push(`${tipo}: ${String(e.message??e).split(/\r?\n/)[0]}`);continue;}
     await sleep(3000);
     await p.screenshot({path:join(sub,'inicio.png'),timeout:30000}).catch(()=>{});
     const all=[];
     const onFrame=f=>{all.push({t:f.metadata.timestamp*1000,buf:Buffer.from(f.data,'base64')});cdp.send('Page.screencastFrameAck',{sessionId:f.sessionId}).catch(()=>{});};
-    if(o.gif&&cdp){cdp.on('Page.screencastFrame',onFrame);await cdp.send('Page.startScreencast',{format:'jpeg',quality:80,maxWidth:t.gifWidth,maxHeight:Math.ceil(t.viewport.height*t.gifWidth/t.viewport.width),everyNthFrame:1}).catch(()=>{});}
+    // The whole screen at its CSS size, then the middle (the defense, foco=torre) cut out: a big GIF of one tower.
+    if(o.gif&&cdp){cdp.on('Page.screencastFrame',onFrame);await cdp.send('Page.startScreencast',{format:'jpeg',quality:85,maxWidth:t.viewport.width,maxHeight:t.viewport.height,everyNthFrame:1}).catch(()=>{});}
     await sleep(o.segundos*1000);
     if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
     const v=await p.evaluate(()=>window.__cidade?.volleys?.()??null).catch(()=>null);
     const frames=pickFrames(all,o.fps);r.quadros+=frames.length;
-    const kb=o.gif&&frames.length?await escreverGif(frames,t,sub,24):0;r.gifKB+=kb;
+    const sharp=createRequire(join(process.cwd(),'package.json'))('sharp'),cut=TORRES_CORTE[0],tall=TORRES_CORTE[1];
+    for(const f of frames){const m=await sharp(f.buf).metadata(),w=Math.round(m.width*cut),h=Math.min(m.height,Math.round(w*tall));
+      f.buf=await sharp(f.buf).extract({left:Math.round((m.width-w)/2),top:Math.round((m.height-h)/2),width:w,height:h}).png().toBuffer();}
+    const kb=o.gif&&frames.length?await escreverGif(frames,{...t,gifWidth:360,viewport:{width:360,height:Math.round(360*tall)}},sub,24):0;r.gifKB+=kb;
     r.torres.push({tipo,quadros:frames.length,disparos:v?.fired??0,desenhados:v?.drawn??0,gifKB:kb});
   }
   r.entrouMs=0;r.duracaoMs=Date.now()-t0;

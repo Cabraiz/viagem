@@ -48,6 +48,7 @@
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
  *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
  *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
+ *     `&foco=torre` the camera on the first one (its mid height), not the hero; `&contorno=0` without the gold outline;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -152,6 +153,7 @@ const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** torres=lista: `tiro=1` the listed defenses fire; `lento=K` (1..20) the defenses' clock K× slower (see the header). */
 const listFires=params.get('tiro')==='1',slowMo=Math.max(1,Math.min(20,Number(params.get('lento'))||1));
+const towerFocus=params.get('foco')==='torre',towerOutline=params.get('contorno')!=='0';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
 const acao=params.get('acao')==='1';
 /** dano=<ms> (animacao-receber-dano): the hero loses 1 hp every <ms> (default 1500), so its flinch plays at rest. */
@@ -783,6 +785,7 @@ class CitySandbox extends Phaser.Scene {
         depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,
         effectDepth:(px,py)=>this.layer?this.layer.effectDepth(px,py,groundZ(asset,px,py)):0}});
     this.towers.setEnemies(n,this.ex,this.ey,this.air);
+    this.towers.outline=towerOutline;
   }
   /** Stand-in for the sim's defensesStep (ready, cooldown, nearest reachable enemy), then the renderer's frame. */
   private stepTowers(time:number,dt:number){
@@ -904,7 +907,8 @@ class CitySandbox extends Phaser.Scene {
     const s=this.pushShift,drawn=s.x||s.y?project(this.at.x+s.x,this.at.y+s.y,groundZ(this.asset,this.at.x,this.at.y),this.view):feet;
     this.hero.setPosition(drawn.x,drawn.y);
     const viewport={width:this.scale.width,height:this.scale.height};
-    const c=this.camera.snap(feet,viewport,zoom);
+    const d0=towerFocus?this.defenses[0]:undefined;
+    const c=d0?project(d0.x,d0.y,groundZ(this.asset,d0.x,d0.y)+TOWER_LOOK[d0.kind].height*.5,this.view):this.camera.snap(feet,viewport,zoom);
     if(!cameraFixed)cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);

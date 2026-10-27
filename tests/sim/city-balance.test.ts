@@ -219,7 +219,7 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'357a021d788969e4','tutorial seed 8 r4':'49c06dd69afaead0','plain seed 21 r10':'23fed4ffd8a6df3d',
+  'tutorial seed 3 r4':'acefb9daa78c73c1','tutorial seed 8 r4':'efa78507dd062e90','plain seed 21 r10':'132d395115bbbcd7',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -332,7 +332,7 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // one kind, so its shuffle draws one roll less).
 // All three again for the solid bodies (heroi-empurra-inimigos: a hero pushes the critters it walks into, in every world).
 // cidade again for vida-inimigos-estilo-clash merged with all of the above (role hp, ×0.7 bodies from round 2, ×1.4 XP).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'634f6b66dc6e82e8',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'29d73c67d2b49075',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

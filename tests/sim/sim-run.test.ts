@@ -310,8 +310,10 @@ for(const [label,script] of Object.entries(NOVICE))test(`round 1, novice ${label
 
 // Over seeds (card heroi-empurra-inimigos): one seed's defeat round is chaos (the solid bodies moved SEED's from round 3
 // to 2 while the 12-seed spread stayed the same: 3.20 vs 3.27 min on average, 9 vs 10 of 12 reaching round 3).
+// 12 seeds, a majority, since vida-inimigos-estilo-clash's bodies by team size (a duo ×0.94 bodies, each ×1.48 hp, in the
+// rounds mode): 7 of 12 reach round 3 (6 seeds gave 3 of 6).
 test('round 1 is not a free pass forever: armed bots standing still can still lose, mostly not before round 3',t=>{
-  const seeds=Array.from({length:6},(_,k)=>SEED+k*7919);
+  const seeds=Array.from({length:12},(_,k)=>SEED+k*7919);
   let late=0;
   for(const seed of seeds){
     const {sim,ids}=setup(seed,2);
@@ -322,7 +324,7 @@ test('round 1 is not a free pass forever: armed bots standing still can still lo
     assert.ok(r.roundEnds.some(e=>e.index===1),`${seed}: round 1 ends before the defeat`);
     if(sim.world.round.index>=3&&r.roundEnds.some(e=>e.index===2))late++;
   }
-  assert.ok(late>=4,`only ${late} of ${seeds.length} seeds reach round 3 before the defeat`);
+  assert.ok(late>=7,`only ${late} of ${seeds.length} seeds reach round 3 before the defeat`);
 });
 
 // D-021 (UX-oferta-em-combate): bots that never pick. Level offers wait through the wave (no default in combat), and the

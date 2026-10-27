@@ -151,9 +151,12 @@ export const STARTER_HIT=24;
 export const HIT_MARGIN=.35;
 /**
  * Fewer, sturdier bodies: the average body's hp grew ×1.48 with the table, so the waves and the nests' groups bring
- * ×0.7 bodies (horde hp ≈ +4 %) and every regular body pays ×1.4 XP (and its drop chance) to keep the level pace.
+ * ×0.7 bodies at 6 players (horde hp ≈ +4 %) and every regular body pays ×1.4 XP (and its drop chance).
+ * By team size (ORQ decision B, bench 27/10: ×0.7 flat won 1p 15/16, 3p 16/16): CLASH_BODIES[0] at 1 player (all the
+ * bodies, each sturdier) to CLASH_BODIES[1] at 6, linear; clashBodies(n) is the factor of a room of n.
  */
-export const CLASH_BODIES=.7,CLASH_XP=1.4;
+export const CLASH_BODIES=[1,.7] as const,CLASH_XP=1.4;
+export const clashBodies=(players:number)=>{const n=Math.max(1,Math.min(6,Math.round(players)||1));return CLASH_BODIES[0]+(CLASH_BODIES[1]-CLASH_BODIES[0])*(n-1)/5;};
 /** Base hp of a role (before the round row `startRow`, the ninhos row 1 hp): (hits − margin) × STARTER_HIT / startRow. */
 export const roleBaseHp=(role:Exclude<EnemyRole,'chefe'>,startRow:number)=>Math.max(1,Math.round((ROLE_HITS[role]-HIT_MARGIN)*STARTER_HIT/startRow));
 

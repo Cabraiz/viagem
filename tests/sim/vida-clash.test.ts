@@ -53,5 +53,5 @@ test('no common enemy dies to one faca verde or pistola verde hit, 1-6 players, 
 });
 
 test('fewer, sturdier bodies pay more XP', ()=>{
-  assert.ok(CLASH_BODIES<1&&CLASH_XP>1);
+  assert.ok(CLASH_BODIES[0]===1&&CLASH_BODIES[1]<1&&CLASH_XP>1);
 });

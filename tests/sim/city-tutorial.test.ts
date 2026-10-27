@@ -468,10 +468,10 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
 }
 /** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies). */
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'3d8c79ce06b9fb94','ilha kill=40 seed 1':'e112e573ffefcd5a',
-  'ilha kill=Infinity seed 0':'70e3a4c893abef74',
-  'infinito kill=40 seed 0':'6ac3743ea81f9417','infinito kill=40 seed 1':'f97d40fac8ede2aa',
-  'infinito kill=Infinity seed 0':'3916fab966dd9728',
+  'ilha kill=40 seed 0':'1fc43b6300de0c62','ilha kill=40 seed 1':'1343f2642f75f06a',
+  'ilha kill=Infinity seed 0':'42923a6cc4f0c0b8',
+  'infinito kill=40 seed 0':'6c4dd60bb3eac2b1','infinito kill=40 seed 1':'0e0418654d31c95c',
+  'infinito kill=Infinity seed 0':'cc46f17cd95df8aa',
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

@@ -90,8 +90,8 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 const CROWD={march:[1,1,1,1.083,1.167,1.25] as number[],hp:[1,1,1,1.333,1.667,2] as number[],damage:[1,1,1,1.1,1.2,1.3] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,
-  // × CLASH_BODIES (rules/enemy-roles.ts): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
-  size:[CLASH_BODIES,1.85*CLASH_BODIES] as [number,number],mapShare:[.1*CLASH_BODIES,.1*CLASH_BODIES] as [number,number],
+  // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
+  size:[CLASH_BODIES[0],1.85*CLASH_BODIES[1]] as [number,number],mapShare:[.1*CLASH_BODIES[0],.1*CLASH_BODIES[1]] as [number,number],
   trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
   explore:120,waveMin:20,waveCap:150,crowd:CROWD};
 /** NEST_PACE.crowd's factor `k` for a room of `players` (1..6). */

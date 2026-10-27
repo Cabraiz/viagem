@@ -69,6 +69,10 @@ export const packPlayerExtra=(p:ServerPlayer,stats?:RunStats):PlayerExtraWire=>{
 /** Server player: protocol 3 wire fields plus the contract's combat state (build, stats, facing, weaponReady). */
 export type ServerPlayer = Player & RunPlayer & { spectator:boolean };
 export type SimOutcome=RunOutcomeKind;
+/** An offer command from the wire, queued for the next tick (Simulation.queueOffer); index only for a pick. */
+export interface OfferCommand {t:'choose'|'skip'|'reroll';id:string;offer:string;index?:number}
+/** An offer command as applied: the tick it landed on and whether the run took it. */
+export interface AppliedOffer extends OfferCommand {tick:number;ok:boolean}
 const runSeed=(seed:number,run:number)=>(seed^Math.imul(run+1,0x9e3779b9))>>>0;
 /** Ticks a dead enemy keeps being sent as a tombstone, and the event window of RunExtras. */
 const TOMBSTONE_TICKS=10;
@@ -476,6 +480,7 @@ export class Simulation {
     // A state this build cannot run (a system throws on it): a fresh run instead, and the room falls back to the lobby.
     try{this.systems=this.assemble(cp.systems);}catch{this.resetRun();return false;}
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.shame.reset();this.botInputs.clear();this.effectEnd.clear();this.walkStat.clear();
+    this.offerQueue=[];this.offerLog=[];
     this.counters.clear();for(const [id,stats] of cp.stats)if(this.players.has(id))this.counters.set(id,{...emptyStats(),...stats});
     coastalSpawnPoints(this.terrain);
     let slot=0;
@@ -505,6 +510,7 @@ export class Simulation {
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();this.botInputs.clear();
+    this.offerQueue=[];this.offerLog=[];
     // D-036: the new run's clock starts over; an old effect end would hold the owner's frames live.
     this.effectEnd.clear();this.walkStat.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
@@ -718,6 +724,33 @@ export class Simulation {
     return {skips,rerolls};
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
+  /**
+   * N1-choose-no-tick: offer commands (pick, "Pular", "Rolar de novo") from the wire wait here for the room's next tick
+   * and are applied together, in arrival order, by applyOffers: what a pick does depends on the tick it lands on, never
+   * on where between two ticks its message came in. Skip and reroll share the queue so they never cut in on a pick.
+   */
+  private offerQueue:OfferCommand[]=[];
+  /**
+   * The accepted offer commands of this run (since its start or its checkpoint), with the tick they landed on: with
+   * the seed, the inputs and the seat ids, what a replay needs to play the same picks on the same ticks. Refused ones
+   * change nothing and are not kept (a forged-id flood cannot grow it).
+   */
+  offerLog:AppliedOffer[]=[];
+  queueOffer(command:OfferCommand){this.offerQueue.push(command);}
+  /** Commands queued but not applied yet (the room drops them outside combat). */
+  get queuedOffers():readonly OfferCommand[]{return this.offerQueue;}
+  clearOffers(){this.offerQueue=[];}
+  /** Applies the queued offer commands on this tick, before it steps; returns each with its result (the room answers them). */
+  applyOffers():AppliedOffer[]{
+    const queue=this.offerQueue,out:AppliedOffer[]=[];this.offerQueue=[];
+    for(const c of queue){
+      const ok=(c.t==='choose'?this.choose(c.id,c.offer,c.index??0):c.t==='skip'?this.skipOffer(c.id,c.offer):this.rerollOffer(c.id,c.offer)).ok;
+      const applied:AppliedOffer={...c,tick:this.tick,ok};
+      out.push(applied);
+      if(ok)this.offerLog.push(applied);
+    }
+    return out;
+  }
   /**
    * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
    * balance). `requestId` makes a resent tap apply once. `targetId` (cidade-06): what 'reparo' repairs, the wall when

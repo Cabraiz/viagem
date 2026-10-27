@@ -9,7 +9,8 @@
 // --atraso N: N ms em cada sentido no WebSocket da página (a rede de um celular: 60 → ~120 ms de ida e volta).
 //   npx vite build --mode development --outDir <dist>
 //   node scripts/medir-ima-dinheiro.mjs --dist <dist> [--atraso 60] [--json out.json] [--port 8806] [--web-port 4216]
-// --fotos <dir>: na 1ª cédula, uma rajada de prints (o herói ao centro e a barra de cima) para ver o voo e o R$.
+// --fotos <dir>: quadro a quadro do canvas (renderer.snapshotArea, em volta do herói) desde que ele chega a 2,6 u de uma
+//   cédula até 450 ms depois de pegá-la, com o R$ da barra de cima de cada quadro (fotos.json); as 2 primeiras cédulas.
 // Precisa da vaga pesada (board tools/pesado.mjs) e de uma vaga de navegador (locks/browser-1|2), pegas por quem chama.
 import {spawn} from 'node:child_process';
 import {writeFileSync} from 'node:fs';
@@ -41,8 +42,8 @@ function atrasarSocket(d){
 }
 
 /** O laço de medida na página (requestAnimationFrame): uma linha por cédula vista. */
-function sonda(raio){
-  const w=window;w.__ima={linhas:{},textos:[],quadros:[]};let ultimo=0,txtAntes='';
+function sonda([raio,fotos]){
+  const w=window;w.__ima={linhas:{},textos:[],quadros:[],fotos:[]};let ultimo=0,txtAntes='',filme;
   const passo=()=>{
     const s=w.__island?.scene,net=s?.hooks?.net,h=s?.horde;
     if(net&&h){
@@ -63,6 +64,14 @@ function sonda(raio){
         // Pega e ainda na sala, mas o cliente desistiu (CATCH_GIVE_UP_MS): volta ao chão.
         else if(l.pegou!==undefined&&l.voltou===undefined&&!h.catcher.get(id))l.voltou=agora;
       });
+      if(fotos){
+        h.pickups.forEach((a,id)=>{if(!filme&&a.kind==='grana'&&w.__ima.fotos.length<60&&!linhas[id]?.pegou&&a.image.visible&&Math.hypot(a.x-eu.x,a.y-eu.y)<=2.6)filme={id,ate:Infinity};});
+        if(filme){
+          const l=linhas[filme.id];if(l?.pegou!==undefined&&filme.ate===Infinity)filme.ate=l.pegou+450;
+          if(agora>filme.ate||w.__ima.fotos.length>=60)filme=undefined;
+          else{const f={id:filme.id,t:agora,txt};w.__ima.fotos.push(f);w.__island.game.renderer.snapshotArea(340,140,600,440,img=>{f.src=img.src;});}
+        }
+      }
       for(const l of Object.values(linhas)){
         if(l.entrar===undefined)continue;
         if(l.sumir===undefined)l.quadros=(l.quadros??0)+1;
@@ -96,14 +105,14 @@ try{
   await p.evaluate(()=>document.getElementById('enter-island').click());
   await p.waitForFunction(()=>window.__partidaPronta===true,null,{timeout:300000,polling:1000});
   await sleep(6000);
-  await p.evaluate(sonda,1.6);
+  await p.evaluate(sonda,[1.6,!!FOTOS]);
   const takeOffer=()=>p.evaluate(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/Levar os indicados/.test(x.textContent??''));b?.click();return !!b;});
   const send=m=>p.evaluate(m=>{const s=window.__island.scene.hooks.net.socket;if(s?.readyState===1)s.send(JSON.stringify(m));},m);
   const state=()=>p.evaluate(()=>{const net=window.__island.scene.hooks.net,view=net.feed.peek();
     const me=net.predicted;let near=0;for(const e of view.enemies)if(e.hp>0&&Math.hypot(e.x-me.x,e.y-me.y)<12)near++;
     const notes=view.pickups.filter(x=>x.kind==='grana').map(x=>({id:x.id,x:x.x,y:x.y,value:x.value}));
     return {me:{x:me.x,y:me.y},near,notes};});
-  const medidas=[];let fotografou=false;
+  const medidas=[];
   // Rodadas: junta a horda, limpa, anda até cada cédula (antes que ela voe sozinha ao dono, CEDULA_WAIT_SECONDS = 10 s).
   for(let rodada=0;rodada<4&&medidas.filter(m=>m.contar!==undefined).length<NOTAS;rodada++){
     for(let i=0;i<120;i++){await takeOffer();const s=await state();if(s.near>=6)break;await sleep(500);}
@@ -114,10 +123,7 @@ try{
       await takeOffer();
       // Ao lado (fora do ímã), a previsão assenta; então anda até a cédula como um toque no chão.
       await send({t:'lab',to:{x:n.x+3,y:n.y}});await sleep(700);
-      await p.evaluate(n=>window.__island.scene.goTo({x:n.x,y:n.y}),n);
-      if(FOTOS&&!fotografou){fotografou=true;const t0=Date.now();
-        for(let i=0;i<14;i++){await p.screenshot({path:join(FOTOS,`f${String(i).padStart(2,'0')}-${Date.now()-t0}.png`),clip:{x:340,y:0,width:600,height:460}});}}
-      else await sleep(1300);
+      await p.evaluate(n=>window.__island.scene.goTo({x:n.x,y:n.y}),n);await sleep(1300);
     }
     await sleep(800);
     const linhas=await p.evaluate(()=>Object.values(window.__ima.linhas));
@@ -130,6 +136,7 @@ try{
   const resumo={atraso:ATRASO,pegou:med('pegou'),sumir:med('sumir'),contar:med('contar'),quadro:{mediano:ms(extra.quadroMediano),p95:ms(extra.quadroP95)}};
   console.table(linhas);console.log(JSON.stringify(resumo));
   if(errors.length)console.log('erros',errors.slice(0,3));
+  if(FOTOS){const f=await p.evaluate(()=>window.__ima.fotos.filter(x=>x.src).map(x=>({...x,pegou:window.__ima.linhas[x.id]?.pegou})));writeFileSync(join(FOTOS,'fotos.json'),JSON.stringify(f));console.log('fotos',f.length);}
   if(JSON_OUT)writeFileSync(JSON_OUT,JSON.stringify({resumo,linhas,medidas,textos:extra.textos,errors},null,1));
 }finally{
   try{await browser?.close();}catch{}

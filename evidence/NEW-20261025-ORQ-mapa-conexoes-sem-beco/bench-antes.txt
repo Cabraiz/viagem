@@ -2,3 +2,39 @@ pushed bench/origin/main-20261027205725 (16 runs, hash 0f526deca7c8, base 51c211
 bench.yml run https://github.com/Cabraiz/viagem/actions/runs/40582613660: in_progress
 bench.yml run https://github.com/Cabraiz/viagem/actions/runs/40582613660: queued
 GitHub rate limit used up: sleeping until 18:55:05 (no request until then)
+bench.yml run https://github.com/Cabraiz/viagem/actions/runs/40582613660: completed
+written: D:\Gits\viagem-wt\mapa-conexoes-sem-beco\evidence\NEW-20261025-ORQ-mapa-conexoes-sem-beco\bench-antes.json
+merge: 16 run(s) from 16 file(s) in runs
+seed 1 1p: defeat/team round 10 | 17.23 min sim | arrival 13.25s min | loot/int 11.33u | forge 2 | boss +20s kill -s | towers 15 orders 88u 4 roots 4 fichas end 3 ruined 1 | grana +336 evo 164 rep 5 forge 95 end 72 | banks R$ 50 (14.9 %) bicho 0× R$ 0 prime 0 dry 1 | 0.128 ms/tick 2.66s | digest a229a51ee3ea
+seed 2 1p: defeat/team round 7 | 11.83 min sim | arrival 8s min | loot/int 11u | forge 1 | boss - | towers 11 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +185 evo 138 rep 0 forge 10 end 37 | banks R$ 50 (27 %) bicho 0× R$ 0 prime 0 dry 1 | 0.138 ms/tick 1.96s | digest 0c2130edf701
+seed 3 1p: defeat/team round 5 | 7.43 min sim | arrival 12.25s min | loot/int 16.5u | forge 1 | boss - | towers 6 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +122 evo 51 rep 0 forge 10 end 61 | banks R$ 45 (36.9 %) bicho 0× R$ 0 prime 0 dry 1 | 0.129 ms/tick 1.15s | digest 344531d3498d
+seed 4 1p: defeat/team round 10 | 17.16 min sim | arrival 10.85s min | loot/int 7.33u | forge 2 | boss +20s kill -s | towers 12 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +338 evo 138 rep 5 forge 95 end 100 | banks R$ 40 (11.8 %) bicho 0× R$ 0 prime 0 dry 0 | 0.112 ms/tick 2.3s | digest 3ca3c00450dd
+seed 5 1p: victory/boss round 10 | 14.52 min sim | arrival 10.6s min | loot/int 9.33u | forge 2 | boss +3.5s kill 77.85s | towers 15 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +375 evo 138 rep 20 forge 95 end 122 | banks R$ 30 (8 %) bicho 0× R$ 0 prime 0 dry 0 | 0.068 ms/tick 1.19s | digest 95ebf8663a67
+seed 6 1p: defeat/team round 8 | 13.62 min sim | arrival 11.15s min | loot/int 12u | forge 2 | boss - | towers 13 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +254 evo 198 rep 0 forge 20 end 36 | banks R$ 55 (21.7 %) bicho 0× R$ 0 prime 0 dry 1 | 0.133 ms/tick 2.18s | digest 7f88006638da
+seed 7 1p: defeat/team round 10 | 16.34 min sim | arrival 11s min | loot/int 7.33u | forge 2 | boss +15.5s kill -s | towers 11 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +310 evo 138 rep 0 forge 95 end 77 | banks R$ 25 (8.1 %) bicho 0× R$ 0 prime 0 dry 0 | 0.139 ms/tick 2.72s | digest da88da493c23
+seed 8 1p: defeat/team round 10 | 15.64 min sim | arrival 12.25s min | loot/int 10.67u | forge 2 | boss +6.5s kill -s | towers 16 orders 88u 4 roots 4 fichas end 4 ruined 0 | grana +313 evo 164 rep 10 forge 95 end 44 | banks R$ 30 (9.6 %) bicho 0× R$ 0 prime 0 dry 0 | 0.126 ms/tick 2.37s | digest cfc155e15372
+seed 9 1p: defeat/team round 7 | 12 min sim | arrival 9.4s min | loot/int 13u | forge 2 | boss - | towers 10 orders 66u 3 roots 3 fichas end 2 ruined 1 | grana +180 evo 112 rep 5 forge 20 end 43 | banks R$ 40 (22.2 %) bicho 1× R$ 2 prime 0 dry 0 | 0.08 ms/tick 1.15s | digest 4c8bb1467e7d
+seed 10 1p: victory/boss round 10 | 15.24 min sim | arrival 11.7s min | loot/int 8u | forge 3 | boss +9.5s kill 73.5s | towers 18 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +385 evo 138 rep 35 forge 105 end 107 | banks R$ 60 (15.6 %) bicho 2× R$ 4 prime 0 dry 0 | 0.136 ms/tick 2.49s | digest 101dd2df8ebd
+seed 11 1p: defeat/team round 10 | 17.3 min sim | arrival 10.85s min | loot/int 8.67u | forge 5 | boss +24.5s kill -s | towers 11 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +308 evo 138 rep 0 forge 125 end 45 | banks R$ 44 (14.3 %) bicho 5× R$ 10 prime 0 dry 1 | 0.13 ms/tick 2.7s | digest 8a3cc4fddb55
+seed 12 1p: defeat/team round 6 | 9.5 min sim | arrival 12.65s min | loot/int 18u | forge 1 | boss - | towers 11 orders 88u 4 roots 4 fichas end 4 ruined 0 | grana +135 evo 122 rep 0 forge 10 end 3 | banks R$ 45 (33.3 %) bicho 7× R$ 14 prime 0 dry 1 | 0.147 ms/tick 1.67s | digest 7a32ef3c315b
+seed 13 1p: defeat/team round 10 | 18.51 min sim | arrival 10.25s min | loot/int 8u | forge 3 | boss +3.5s kill -s | towers 14 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +354 evo 138 rep 15 forge 105 end 96 | banks R$ 69 (19.5 %) bicho 15× R$ 30 prime 0 dry 1 | 0.135 ms/tick 2.99s | digest 77fc7615ad5d
+seed 14 1p: defeat/team round 10 | 17.22 min sim | arrival 8.4s min | loot/int 10u | forge 4 | boss +39.5s kill -s | towers 15 orders 88u 4 roots 4 fichas end 4 ruined 0 | grana +367 evo 189 rep 0 forge 115 end 63 | banks R$ 46 (12.5 %) bicho 4× R$ 8 prime 0 dry 1 | 0.133 ms/tick 2.76s | digest db91ef80b43f
+seed 15 1p: defeat/team round 7 | 11.88 min sim | arrival 8.75s min | loot/int 15u | forge 2 | boss - | towers 11 orders 66u 3 roots 3 fichas end 3 ruined 0 | grana +201 evo 138 rep 0 forge 20 end 43 | banks R$ 55 (27.4 %) bicho 14× R$ 27 prime 0 dry 1 | 0.106 ms/tick 1.52s | digest 3a382a22db5f
+seed 16 1p: victory/boss round 10 | 15.73 min sim | arrival 10.8s min | loot/int 10u | forge 1 | boss +8s kill 74.5s | towers 20 orders 88u 4 roots 4 fichas end 4 ruined 0 | grana +356 evo 189 rep 25 forge 50 end 92 | banks R$ 55 (15.4 %) bicho 1× R$ 2 prime 0 dry 0 | 0.088 ms/tick 1.66s | digest 0d65f0910251
+
+== summary ==
+1p: 3/16 wins (ok 2–6) causes {"boss":3,"team":13,"wall":0,"timeout":0,"opened":0,"car":0} deaths by round {"5":1,"6":1,"7":3,"8":1,"10":7}
+   sim minutes mean 14.45 | ms/tick mean 0.12
+   D-050 pauses/run 9.38 | wave min/run 9.31 | worst-case human share 0.17 (max 0.21)
+   first arrival s {"n":113,"mean":16.52,"min":8,"median":15.05,"max":65.4} | loot/intermission {"n":124,"mean":10.4,"min":0,"median":6,"max":30} ≈ 0.3 recipes (mean 35 u) | forge/run 2.19
+   round 1: downed 0 eliminated 0 defeats 0 (ok) tutorial arrival {"n":16,"mean":20.7,"min":20.7,"median":20.7,"max":20.7} | boss reached 10 killed 3
+towers 1p: orders/run 13.06 units/run 72.88 standing at end 3.19 ruined 0.13 gustavão 0/16 | roots/run 3.31 fichas/run 3.31
+grana 1p: earned/run 282.44 spent/run 217.38 (evolutions 143.31 repairs 7.5 forge 66.56) final 65.06
+banks 1p: R$/run 46.19 share of Grana 16.4 % pooled (per run {"n":16,"mean":0.19,"min":0.08,"median":0.16,"max":0.37}; target 25–35 %: low) | bicho withdraws/run 3.06 (R$ 6.06) | primes/run 0 | dry ATMs/run 0.56
+vehicles 1p: rides/run 2.31 per bot 2.31 (target ≥ 1) | runs where every bot rode 14/16 | by kind {"patinete":13,"crossfiteiro":14,"carrinho":10} | ended: ran out 2.31 dropped 0
+verdict: 1p: banks 16.4 % of the Grana, target 25–35 % (low)
+written: /home/runner/work/viagem/viagem/merged/bench-result.json
+target: none
+
+https://github.com/Cabraiz/viagem/actions/runs/40582613660
+deleted bench/origin/main-20261027205725

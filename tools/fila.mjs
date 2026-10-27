@@ -7,7 +7,8 @@
 //   node tools/fila.mjs lista
 //   node tools/fila.mjs lote [--suite local|ci|"<command>"] [--smoke ci|off|"<command>"]   (the Orquestrador)
 //   node tools/fila.mjs publicar <lote> [--manter-remotas]       (after `npm run deploy:rooms` when the lote needs it:
-//                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
+//                                                                 a --worker entry, a map/protocol change, CONTRACT_PATHS,
+//                                                                 or any file the Worker bundles, scripts/worker-files.mjs)
 //   node tools/fila.mjs cancelar <lote>
 // lote and publicar refuse to run when tools/fila.mjs (or wt-rm/wt-guarda) differs from <remote>/<base>: run the queue from
 // an up-to-date worktree of the main (--repo stays the main checkout); --qualquer-versao to try a new queue on purpose.
@@ -34,6 +35,7 @@ import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {JUNCTIONS,removeWorktreeSafe} from './wt-rm.mjs';
 import {avalia,avisaUso,exigeEspaco,protecoes,salvaEvidencias,worktrees} from './wt-guarda.mjs';
+import {workerChanges,workerFiles} from '../scripts/worker-files.mjs';
 
 const SELF_ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const PRIO={P0:0,P1:1,P2:2,P3:3};
@@ -153,6 +155,13 @@ export function failedFilesFromTap(tap){
  */
 export const CONTRACT_PATHS=[/^public\/maps\/[^/]+\.json$/,/^src\/protocol\//,/^public\/multiplayer\.json$/];
 export const contractFiles=(changed)=>changed.filter(f=>CONTRACT_PATHS.some(re=>re.test(f)));
+/**
+ * A lote that changes what the Worker bundles (NEW-20261025-ORQ-health-gate-build-sha; lote 23 changed the sim with the
+ * same protocol, the Worker stayed on lote 22) needs deploy:rooms too: pages.yml's gate compares /health's build with
+ * the site and holds the site until the Worker is this lote's.
+ */
+const staleWorker=(files,sha)=>`o lote muda o que o Worker empacota (${files.slice(0,4).join(', ')}${files.length>4?`, … ${files.length} arquivos`:''}): `
+  +`rode deploy:rooms deste lote antes (o /health tem de dizer build ${sha.slice(0,12)}); sem isso o pages.yml não publica o site`;
 const outOfStep=(contrato)=>`ATENÇÃO: o lote muda o que o Worker casa com o cliente (${contrato.slice(0,4).join(', ')}${contrato.length>4?', …':''}): `
   +'depois do deploy:rooms, o site no ar fica fora de passo por ~20 min, até o pages.yml publicar (o health-gate dele segura o site até o Worker casar)';
 
@@ -565,9 +574,10 @@ function lote(opt){
       return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};
     }
     const sha=git(result.dir,'rev-parse','HEAD');
-    const contrato=contractFiles(git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean));
-    const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0;
-    const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,suites,
+    const changed=git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean);
+    const contrato=contractFiles(changed),empacota=workerChanges(changed,workerFiles(result.dir));
+    const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0||empacota.length>0;
+    const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,empacota,suites,
       integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',smokeOnde:smoke.onde??'pc',
       ...(smoke.onde==='ci'?{smokeUrl:smoke.url??null}:{}),pushed:pushesBatch(opt),estado:needsWorker?'aguardando-worker':'pronto-para-push'};
     writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
@@ -577,6 +587,7 @@ function lote(opt){
     // Executors never deploy the Worker (D-029): the queue stops before the push and calls the Orquestrador.
     log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). Orquestrador: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
     log(`depois, com FILA_ORQ=1: node tools/fila.mjs publicar ${id}`);
+    if(empacota.length)log(staleWorker(empacota,sha));
     if(contrato.length)log(outOfStep(contrato));
     return state;
   }finally{
@@ -601,6 +612,7 @@ function publicar(opt){
   if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}) depois do lote: `
     +(state.needsWorker?`o Worker publicado é o DESTE lote e o site ainda é o anterior — rode já "cancelar ${id}", depois "lote", e publique o Worker a partir do lote novo`
       :`rode "cancelar ${id}" e depois "lote" de novo`));
+  if(state.empacota?.length)log(`ATENÇÃO: ${staleWorker(state.empacota,state.sha)}`);
   git(opt.repo,'push',opt.remote,`${state.sha}:refs/heads/${opt.base}`);
   // The main checkout follows by fast-forward only, when it is on the base branch and clean.
   const cur=tryGit(opt.repo,'rev-parse','--abbrev-ref','HEAD').out,clean=tryGit(opt.repo,'status','--porcelain').out==='';

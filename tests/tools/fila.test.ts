@@ -547,6 +547,34 @@ test('deploy:rooms first, then publicar, always; a map or protocol change also w
   }
 });
 
+// NEW-20261025-ORQ-health-gate-build-sha: lote 23 changed the sim with the same protocol; the Worker stayed on lote 22.
+// A lote that changes any file the Worker bundles (scripts/worker-files.mjs) waits for the Worker without --worker, and
+// the queue says to run deploy:rooms before and again at publicar; a lote outside the Worker still publishes by itself.
+test('a lote that changes what the Worker bundles needs deploy:rooms without --worker; one outside it publishes alone',(t)=>{
+  const said:string[]=[];
+  t.mock.method(console,'log',(...a:unknown[])=>{said.push(a.join(' '));});
+  const w=world();
+  try{
+    mkdirSync(join(w.repo,'multiplayer'));mkdirSync(join(w.repo,'src/sim'));
+    writeFileSync(join(w.repo,'multiplayer/worker.ts'),"import {core} from '../src/sim/core.ts';\nexport default core;\n");
+    writeFileSync(join(w.repo,'src/sim/core.ts'),'export const core=1;\n');
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','worker');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/sim','src/sim/core.ts','export const core=2;\n');
+    main(['pronto','NEW-sim','--branch','vgm/sim',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'aguardando-worker','a sim change waits for the Worker even without --worker');
+    assert.deepEqual(state.empacota,['src/sim/core.ts']);assert.deepEqual(state.contrato,[]);
+    assert.match(said.join('\n'),/o lote muda o que o Worker empacota \(src\/sim\/core\.ts\): rode deploy:rooms deste lote/);
+    said.length=0;
+    orq(()=>main(['publicar',state.lote,...w.opts]));
+    assert.match(said.join('\n'),/ATENÇÃO: o lote muda o que o Worker empacota.*build [0-9a-f]{12}/,'the reminder at publicar');
+    w.branch('vgm/fora','src/fora.ts','export const fora=1;\n');
+    main(['pronto','NEW-fora','--branch','vgm/fora',...w.opts]);
+    const fora=main(['lote',...w.opts]);
+    assert.equal(fora.estado,'publicado','nothing the Worker bundles: no deploy:rooms');assert.deepEqual(fora.empacota,[]);
+  }finally{w.cleanup();}
+});
+
 test('contractFiles: the maps\' manifests and bytes, the protocol and multiplayer.json; nothing else',()=>{
   assert.deepEqual(contractFiles(['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts',
     'src/protocol/room.ts','public/multiplayer.json','public/maps/thumbs/a.webp','src/sim/core.ts','public/art/manifest.json','tests/protocol/x.test.ts']),
@@ -626,7 +654,7 @@ test('this file passes when the run inherits FILA_ORQ=1 (an ORQ lote falling bac
     fileURLToPath(import.meta.url)],{encoding:'utf8',env,maxBuffer:64<<20});
   const out=`${r.stdout}${r.stderr}`;
   assert.equal(r.status,0,out.split('\n').filter(l=>/^not ok|Error/.test(l.trim())).join('\n').slice(0,1500));
-  assert.match(r.stdout,/# fail 0\b/);assert.match(r.stdout,/# pass 3\b/,'ACCEPTANCE, the newer pronto and deploy:rooms');
+  assert.match(r.stdout,/# fail 0\b/);assert.match(r.stdout,/# pass 4\b/,'ACCEPTANCE, the newer pronto, deploy:rooms and what the Worker bundles');
 });
 
 // ---------- NEW-20261025-ORQ-cicd-smokes-bench: the smokes on GitHub Actions (--smoke ci) and the remote branches ----------

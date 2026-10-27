@@ -50,7 +50,20 @@ export type BankState='aberto'|'sacando'|'bicho'|'sem-cedulas';
 /** The banks' names (their text and numbers: rules/bancos.ts); never a real brand. */
 export const BANK_IDS=['pao-duro','juros','posto'] as const;
 export type BankName=typeof BANK_IDS[number];
-export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string}
+/**
+ * Bicos (card NEW-20261024-ORQ-bancos-viram-bicos; their names, lines and numbers: rules/bicos.ts BICOS): each bank's
+ * place is a shop with a gig, drawn by the seed and drawn again (another one) every time the shop opens. With it the
+ * states read: 'aberto' (open, nobody in), 'sacando' (heroes in the shift), 'bicho' (a critter takes the money),
+ * 'sem-cedulas' (closed until `until`: the shift's money is gone).
+ */
+export const BICO_IDS=['telemarketing','aura-67','entregador','compro-ouro','colchao','coach','fiscal','curso','influencer','pesquisa'] as const;
+export type BicoId=typeof BICO_IDS[number];
+/**
+ * bico: the gig the shop has now. workers: the players in the shift (PlayerInput.work; they are inside: no hits, no
+ * shots), absent when nobody. fila: the critters in its queue (each cuts the pay; rules/bicos.ts), absent when none.
+ */
+export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string;
+  bico:BicoId;workers?:string[];fila?:number}
 
 /** The objective as the HUD and the bots see it (ObjectiveView; seconds rounded up, ticks absolute). */
 export interface ObjectiveView {
@@ -108,6 +121,41 @@ const unitHeading=(heading=0)=>({x:Math.cos(heading),y:Math.sin(heading)});
 export const carNose=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading);return {x:car.x+h.x*CAR_NOSE,y:car.y+h.y*CAR_NOSE};};
 /** The free end of the rope lying on the ground ahead of the bumper. */
 export const ropeTip=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading),d=CAR_NOSE+CAR_ROPE_REST;return {x:car.x+h.x*d,y:car.y+h.y*d};};
+/**
+ * Card BUG-20261024-ORQ-uno-bloqueio-corpo-em-cima (user, 24/10: "uma pessoa meio que flutua no Uno, tem que ter melhor
+ * block nele"): the car's body is the Uno's footprint, a box CAR_HALF_LENGTH along the heading and CAR_HALF_WIDTH across
+ * it (the renderer's CAR_HALF), not the CAR_RADIUS disc (which left 0.3 u of bumper outside it at each end). Heroes and
+ * critters stand clear of the box (carPushOut), pushers lean on it and critters hit it from its edge (carGap). The
+ * disc stays where the car itself meets the world (walls, structures, nests, the build rules).
+ */
+export const CAR_HALF_LENGTH=1.32,CAR_HALF_WIDTH=.58;
+type CarPlace={x:number;y:number;heading?:number};
+/** `p` in the car's frame: along the heading (l) and across it (w). */
+function carLocal(car:CarPlace,p:{x:number;y:number}){
+  const c=Math.cos(car.heading??0),s=Math.sin(car.heading??0),rx=p.x-car.x,ry=p.y-car.y;
+  return {l:rx*c+ry*s,w:-rx*s+ry*c,c,s};
+}
+/** How far `p` is from the car's body (u, 0 on or inside it). */
+export function carGap(car:CarPlace,p:{x:number;y:number}):number{
+  const q=carLocal(car,p);
+  return Math.hypot(Math.max(0,Math.abs(q.l)-CAR_HALF_LENGTH),Math.max(0,Math.abs(q.w)-CAR_HALF_WIDTH));
+}
+/**
+ * Where a body of `radius` at `p` stands clear of the car: `p` itself when it already is, else the nearest point
+ * `radius` off the box (out through the shallower side from inside it).
+ */
+export function carPushOut(car:CarPlace,p:{x:number;y:number},radius:number):{x:number;y:number}{
+  const q=carLocal(car,p),ol=Math.abs(q.l)-CAR_HALF_LENGTH,ow=Math.abs(q.w)-CAR_HALF_WIDTH;
+  let l=q.l,w=q.w;
+  if(ol>0||ow>0){
+    // Outside the box: off its nearest point, radius away.
+    const dl=Math.max(0,ol)*Math.sign(q.l),dw=Math.max(0,ow)*Math.sign(q.w),d=Math.hypot(dl,dw);
+    if(d>=radius)return p;
+    l=q.l-dl+dl/d*radius;w=q.w-dw+dw/d*radius;
+  }else if(ol>ow)l=(q.l<0?-1:1)*(CAR_HALF_LENGTH+radius);
+  else w=(q.w<0?-1:1)*(CAR_HALF_WIDTH+radius);
+  return {x:car.x+l*q.c-w*q.s,y:car.y+l*q.s+w*q.c};
+}
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;
 /**

@@ -69,7 +69,8 @@ test('the real city run, manual combat: a person fallen 18 u from the plaza in r
   for(let t=0;t<ticks(400)&&!result;t++){
     const a=sim.players.get('ana')!;
     // She waits at the spot, unhurt, until round 2's wave; then she is down there (the default 30 s bleed-out).
-    if(down<0){a.x=FALLEN.x;a.y=FALLEN.y;a.hp=a.stats.maxHp;}
+    // On the street (the run starts on the viaduct's deck since mapa-175-com-viaduto: she is put down there, floor 0).
+    if(down<0){a.x=FALLEN.x;a.y=FALLEN.y;delete a.andar;a.hp=a.stats.maxHp;}
     bots.think(sim);const events=sim.step();
     if(down<0&&sim.world.round.index>=2&&sim.world.round.phase==='wave'){a.hp=0;a.downed={sinceTick:sim.tick,bleedOutTick:sim.tick+ticks(30),progress:0};down=sim.tick;}
     for(const e of events)if((e.type==='revived'||e.type==='eliminated')&&e.player==='ana')result=`${e.type} after ${((sim.tick-down)/SIM_HZ).toFixed(1)} s`;

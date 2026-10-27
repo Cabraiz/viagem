@@ -7,7 +7,7 @@ import {SPEED,clearSegment,heroSpeed,moveDirection,walkable,type Point} from '..
 import {STAT_KEYS,STAT_LIMITS,computeStats} from '../../src/rules/stats.ts';
 import {WEAPON_IDS} from '../../src/sim/evolutions.ts';
 import {DEFAULT_KIT,KITS,classBonusOf,kitFor,startingBuild} from '../../src/rules/kits.ts';
-import {ANNUL_IMMUNITY_SECONDS,FOUND_PICKUP_SECONDS,REFUNDERS,REFUND_FLOOR_SHARE,SKILL_PICKUP_CAP,castSkill,hasSkill,resetSkill,skillReadyTick,type DiceOutcome,type SkillCast,type SkillPlayer,type TauntedEnemy} from '../../src/sim/skills.ts';
+import {ANNUL_IMMUNITY_SECONDS,REFUNDERS,REFUND_FLOOR_SHARE,castSkill,hasSkill,resetSkill,skillReadyTick,type DiceOutcome,type SkillCast,type SkillPlayer,type TauntedEnemy} from '../../src/sim/skills.ts';
 import {classes,getClass,roles} from '../../src/rules/classes.ts';
 import {BLEED_OUT_TICKS} from '../../src/sim/revive.ts';
 
@@ -251,37 +251,10 @@ test('mendigo: heals 20 and shields 1 s standing allies within 3.5, never downed
   assert.deepEqual(res.helped,['p1','p2','p3']);
   assert.deepEqual(res.hits,[]);
 });
-test('mendigo: during a wave finds one heal(30) pickup that expires, never xp nor a magnet (D-054); none at the cap',()=>{
-  const kinds=new Set<string>();
-  for(let seed=1;seed<=80;seed++){
-    const {fake,ctx,events}=makeCtx(seed,100);
-    const p=addPlayer(fake,'p1','mendigo',7,9);
-    const res=cast(ctx,p);
-    assert.ok(res&&res.pickup);
-    assert.equal(fake.pickups.size,1);
-    const pick=fake.pickups.get(res.pickup)!;
-    assert.ok(pick);assert.equal(pick.id,res.pickup);
-    assert.equal(pick.kind,'heal');
-    assert.equal(pick.value,30);
-    kinds.add(pick.kind);
-    assert.ok(dist(pick,p)<=1,`pickup near player: ${dist(pick,p)}`);
-    assert.equal(pick.spawnTick,100);
-    assert.equal(pick.expiresTick,100+ticks(FOUND_PICKUP_SECONDS));
-    assert.equal(events.filter(e=>e.type==='fire').length,1);
-  }
-  assert.deepEqual([...kinds],['heal']);
-  const {fake,ctx}=makeCtx(4,100);
-  for(let i=0;i<SKILL_PICKUP_CAP;i++)fake.pickups.set(`x${i}`,{id:`x${i}`,kind:'xp',value:1,x:0,y:0,spawnTick:0});
-  const p=addPlayer(fake,'p1','mendigo');p.hp=10;
-  const res=cast(ctx,p);
-  assert.ok(res);assert.equal(res.pickup,undefined);
-  assert.equal(fake.pickups.size,SKILL_PICKUP_CAP);
-  assert.equal(p.hp,30);
-});
-test('mendigo: no pickup during the prepare phase (cannot be farmed between rounds)',()=>{
-  for(let seed=1;seed<=20;seed++){
+test('mendigo: heals and shields around it, and never drops a coxinha, in a wave or between rounds (sem-coxinha-no-chao)',()=>{
+  for(const phase of ['wave','prepare'] as const)for(let seed=1;seed<=20;seed++){
     const {fake,ctx}=makeCtx(seed,100);
-    fake.round.phase='prepare';
+    fake.round.phase=phase;
     const p=addPlayer(fake,'p1','mendigo');p.hp=10;
     const res=cast(ctx,p);
     assert.ok(res);assert.equal(res.pickup,undefined);
@@ -813,14 +786,13 @@ test('volley: the Streamer starts on the tapped enemy and readies weapons',()=>{
   assert.equal(streamer.weaponReady.chinelo,100);
 });
 
-test('fetch (Mãe de Pet): coxinha next to the most hurt ally during a wave only',()=>{
+test('fetch (Mãe de Pet): heals the most hurt ally on the spot during a wave only, no coxinha on the ground',()=>{
   const {fake,ctx}=makeCtx(11,100);
   const p=addPlayer(fake,'p1','mae-pet',10,10);
   const hurt=addPlayer(fake,'p2','mendigo',14,10,{hp:20});
   const res=cast(ctx,p)!;
-  const coxinha=fake.pickups.get(res.pickup!)!;
-  assert.equal(coxinha.kind,'heal');assert.equal(coxinha.value,30);
-  assert.ok(dist(coxinha,hurt)<=0.5+1e-9);assert.equal(coxinha.expiresTick,100+ticks(FOUND_PICKUP_SECONDS));
+  assert.equal(res.pickup,undefined);assert.deepEqual(res.helped,['p2']);
+  assert.equal(fake.pickups.size,0);assert.equal(hurt.hp,50);
   const prep=makeCtx(11,100);prep.fake.round.phase='prepare';
   addPlayer(prep.fake,'p2','mendigo',14,10,{hp:20});
   const pet=addPlayer(prep.fake,'p1','mae-pet',10,10);

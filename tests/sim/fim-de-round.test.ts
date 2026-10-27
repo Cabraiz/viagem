@@ -35,8 +35,8 @@ function standStill(seed:number,rounds:number){
 // (Before: every round timed out, 13-49 bichos of rounds 1-2 fled. A siege group chewing the wall 6 u from the heroes
 // may still outlast round 2's clock, which is the game: the HUD counts it and the wall notice shows where it is.)
 // Since vida-inimigos-estilo-clash (24/10, ORQ option A) round 2 may end by the clock with up to ROUND2_FLED_MAX left: its
-// pombos take 2 hits now (role hp) and this rounds-mode horde has +27 % hp (seed 1: 10 fled, 0 before); round 1 still none.
-const ROUND2_FLED_MAX=12;
+// pombos take 2 hits now (role hp) and this rounds-mode horde has +27 % hp (seed 1: 10 fled, 0 before; 13 since the heroes push the critters, heroi-empurra-inimigos); round 1 still none.
+const ROUND2_FLED_MAX=15;
 test('endless world, team waiting by the base: round 1 ends at the last kill with nobody fled, round 2 at most ROUND2_FLED_MAX',()=>{
   for(const seed of [1,2]){
     const {ends}=standStill(seed,2);

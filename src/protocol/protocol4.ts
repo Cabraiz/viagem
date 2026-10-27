@@ -20,8 +20,8 @@
  * Positions are at 1/512 unit everywhere in the endless world: i16 relative to the frame origin (an integer point by
  * the client's player, so ±64 units around it cost 2 bytes), or the escape i16 -32768 followed by an absolute svar
  * (allies far away, a far base, up to ±4 194 304 units). Velocities are i16 at 1/256 unit/s, radii u16 at 1/256 unit.
- * Ticks inside a frame are signed offsets from the frame tick. Known strings travel as one-byte
- * dictionary indexes; unknown ones inline as UTF-8.
+ * Ticks inside a frame are signed offsets from the frame tick. Known strings travel as dictionary indexes (one byte
+ * up to 253, the escape 254 + uvar past it: DICT_EXTENDED); unknown ones inline as UTF-8 (255 + uvar length + bytes).
  * Wire ids are monotonic per entity type and never reused, so a client baseline can never confuse two entities.
  * Events are resent (after resendTicks, or right after a resync) until the client acks a frame that carried them;
  * the decoder drops ids it has seen. Entity references inside events are wire ids, not strings.
@@ -39,7 +39,7 @@ import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,Proj
 import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CAR_INTEREST_RADIUS,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
-import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
+import {BANK_IDS,BICO_IDS,type BankName,type BankState,type BankView,type BicoId} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
 import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
@@ -104,9 +104,30 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
  * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
+ * 34 given by the integration queue (tools/fila.mjs, lote 20261024-134734) to: NEW-20261023-ORQ-inicio-no-uno-caixas-120.
+ * Next (the queue numbers it) since the cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the 'grana' pickup
+ * kind (a kill's Grana on the ground) and its string at the end of the DICT; an older client would draw a parcel.
+ * 35 given by the integration queue (tools/fila.mjs, lote 20261024-164948) to: NEW-20261024-ORQ-tirar-drops-cedula-girando.
+ * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
+ * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
+ * would refuse the masks.
+ * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
+ * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
+ * the players (the client's vignette); an older decoder would refuse the player mask.
+ * 37 given by the integration queue (tools/fila.mjs, lote 20261024-225935) to: NEW-20261023-ORQ-fear-escuridao-sozinho.
+ * 38 given by the integration queue (tools/fila.mjs, lote 20261025-001535) to: NEW-20261023-ORQ-boss-fim-onda-1.
+ * Next (the queue numbers it) since the bicos (card NEW-20261024-ORQ-bancos-viram-bicos): each bank row carries its gig
+ * (`bico`), the players in the shift (`workers`) and its queue (`fila`); the `bico` event; the input segments' bit 8
+ * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
+ * banks block, an older room refuses the segments.
+ * 39 given by the integration queue (tools/fila.mjs, lote 20261025-042005) to: NEW-20261024-ORQ-bancos-viram-bicos.
+ * 40 given by the integration queue (tools/fila.mjs, lote 20261025-074625) to: NEW-20261025-ORQ-dict-protocolo-cheio.
+ * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
+ * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
+ * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=33;
+export const PROTOCOL_VERSION=41;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -193,9 +214,21 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
+  // Cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the kill's Grana as a pickup kind.
+  'grana',
+  // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS; telemarketing, coach and influencer are
+  // already here as critters, fiscal too) and the `bico` event's `what`. That is 253 entries (0..252): index 253 is
+  // the last one-byte index, whatever comes after it travels through DICT_EXTENDED, two bytes up to index 381.
+  'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
+  'entrou','saiu','expulso',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
-const INLINE_STRING=255;
+/**
+ * A string's first byte (NEW-20261025-ORQ-dict-protocolo-cheio): 0..253 is the DICT index itself, as it always was;
+ * DICT_EXTENDED is followed by a uvar of index-254 (2 bytes up to index 381, 3 up to 16 637); INLINE_STRING by the
+ * UTF-8 length and bytes. Every index below 254 keeps the byte it had before the escape, so no frame of today grows.
+ */
+const DICT_EXTENDED=254,INLINE_STRING=255;
 
 // ---------- Byte writer / reader ----------
 const encoder=new TextEncoder(),decoder=new TextDecoder('utf-8',{fatal:true});
@@ -223,9 +256,10 @@ class Writer {
   svar(v:number){v=Number.isFinite(v)?Math.max(-MAX_SVAR,Math.min(MAX_SVAR,Math.round(v))):0;this.uvar(v<0?-2*v-1:2*v);}
   i16(v:number){this.grow(2);const n=Math.max(-32768,Math.min(32767,Math.round(finite(v))));this.buf[this.len++]=n&255;this.buf[this.len++]=(n>>8)&255;}
   u16(v:number){this.grow(2);const n=Math.max(0,Math.min(65535,Math.round(finite(v))));this.buf[this.len++]=n&255;this.buf[this.len++]=n>>8;}
+  dictIndex(i:number){if(i<DICT_EXTENDED)this.u8(i);else{this.u8(DICT_EXTENDED);this.uvar(i-DICT_EXTENDED);}}
   str(s:string){
     const i=DICT_INDEX.get(s);
-    if(i!==undefined){this.u8(i);return;}
+    if(i!==undefined){this.dictIndex(i);return;}
     const bytes=encoder.encode(clip(s));
     this.u8(INLINE_STRING);this.uvar(bytes.length);this.raw(bytes);
   }
@@ -251,9 +285,11 @@ class Reader {
   svar(){const u=this.uvar();return u%2?-(u+1)/2:u/2;}
   i16(){this.need(2);const v=this.buf[this.pos]|(this.buf[this.pos+1]<<8);this.pos+=2;return v>=32768?v-65536:v;}
   u16(){this.need(2);const v=this.buf[this.pos]|(this.buf[this.pos+1]<<8);this.pos+=2;return v;}
+  /** A dictionary index, or -1 for INLINE_STRING (the caller reads the string: extended index 255 is not inline). */
+  dictIndex(){const b=this.u8();return b===INLINE_STRING?-1:b===DICT_EXTENDED?DICT_EXTENDED+this.uvar():b;}
   str(){
-    const i=this.u8();
-    if(i!==INLINE_STRING){if(i>=DICT.length)throw new FrameError('unknown dictionary string');return DICT[i];}
+    const i=this.dictIndex();
+    if(i>=0){if(i>=DICT.length)throw new FrameError('unknown dictionary string');return DICT[i];}
     const n=this.uvar();if(n>MAX_STRING_BYTES)throw new FrameError('string too long');
     this.need(n);
     try{return decoder.decode(this.buf.subarray(this.pos,this.pos+=n));}catch{throw new FrameError('bad utf-8');}
@@ -261,6 +297,11 @@ class Reader {
   take(n:number){this.need(n);return this.buf.subarray(this.pos,this.pos+=n);}
   count(max:number){const n=this.uvar();if(n>max)throw new FrameError('count over limit');return n;}
 }
+/** The dictionary index alone on the wire, for the limit tests: indexes past the DICT's end round-trip here. */
+export const dictIndexWire={
+  encode(i:number){const w=new Writer();w.dictIndex(i);return w.bytes();},
+  decode(bytes:Uint8Array){const r=new Reader(bytes),index=r.dictIndex();return {index,length:r.pos};},
+};
 
 // ---------- Field codecs ----------
 /** What a field needs from its frame: the tick (relative ticks) and the integer origin (relative positions). */
@@ -323,6 +364,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 /** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
 const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
+/** The viaduct's floor (andar): only ever 1 or absent, like trueFlag (optional(deckFlag) is its presence byte). */
+const deckFlag:Codec<1>={write:()=>{},read:()=>1,norm:()=>1,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -404,7 +447,11 @@ const SCHEMAS:Record<SectionKey,Schema>={
   // Fields that change every frame come first, so the usual mask (nudge + ack + hp + stats) fits one byte.
   players:{prefix:'',fields:{
     ack:c(optional(count)),hp:c(count),stats:c(contribution),downed:c(downed),attackTick:c(optional(tickRel)),
-    x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
+    x:c(optional(posX)),y:c(optional(posY)),
+    // Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): the dark 0..1 in 1/255 steps, one change every ~0.24 s alone. Next
+    // to x/y, so a hero walking alone keeps the two-byte mask they already had.
+    fear:c(optional(unit)),
+    skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
     online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
     name:c(str),classId:c(str),
     // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
@@ -419,6 +466,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
     // oferta-velocidade: stats.moveSpeed when not 1, in thousandths (it drives the phone's prediction too).
     moveSpeed:c(optional(milli)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
+    andar:c(optional(deckFlag)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -428,9 +477,15 @@ const SCHEMAS:Record<SectionKey,Schema>={
     asleep:c(optional(trueFlag)),
     // Bancos: it robbed an ATM into a Cliente Prime (the crown).
     prime:c(optional(trueFlag)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
+    andar:c(optional(deckFlag)),
+    // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
+    radius:c(optional(milli)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),
+    // The viaduct (mapa-175-com-viaduto): flying on a deck, floor 1.
+    andar:c(optional(deckFlag))},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
@@ -554,8 +609,13 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bank-prime',[['bank','str'],['enemy','ref',false,'enemies']]],
   ['bank-empty',[['bank','str'],['until','tick']]],
   ['bank-refill',[['bank','str']]],
+  // Bicos: a player clocked in at a shop, out, or was thrown out by the manager.
+  ['bico',[['bank','str'],['player','ref'],['what','str']]],
   // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
   ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
+  // boss-fim-onda-1: a chefão's pancada threw a hero, down until untilTick (the phone stops predicting its steps; the
+  // player section has no field bit left for it).
+  ['knock',[['player','ref'],['untilTick','tick']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -621,6 +681,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   if(type==='moto'&&e.alone===false)delete e.alone;
   if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
   if(type==='bank-cash'&&e.by!=='hero'&&e.by!=='enemy')throw new FrameError('bad bank withdrawer');
+  if(type==='bico'&&e.what!=='entrou'&&e.what!=='saiu'&&e.what!=='expulso')throw new FrameError('bad bico event');
   if(type==='vehicle'&&(!isVehicleKind(e.kind)||e.what!=='pegou'&&e.what!=='acabou'&&e.what!=='largou'))throw new FrameError('bad vehicle event');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
@@ -737,32 +798,40 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
 /**
  * Flag bit 5 of the frame: u8 bits (1 dynamic part, 2 static part, 4 cleared) | dynamic? | static?. Sent only when it
  * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
- *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer) | [svar until-tick] | [uvar drawer's enemy wire id])*
+ *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer, 4 workers, 8 fila) | [svar until-tick] |
+ *     [uvar drawer's enemy wire id] | str bico | [uvar n, str player id*] | [uvar fila])*
  *   static:  uvar n, (str id | svar x*16 | svar y*16 | str name)*
  * The two lists are in the same order (the sim's). The drawer is the critter's client id (`e<wire id>`), like a ref.
  */
-const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2;
-const MAX_BANKS=16;
+const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2,BANK_WORKERS=4,BANK_FILA=8;
+const MAX_BANKS=16,MAX_WORKERS=8;
+const BICO_SET=new Set<string>(BICO_IDS);
 const BANK_STATES=new Set<string>(['aberto','sacando','bicho','sem-cedulas']);
 const BANK_NAMES=new Set<string>(BANK_IDS);
 const ENEMY_LABEL=/^e(\d{1,9})$/;
 /** The banks as the client ends up with them (quantized, the drawer as its client id). */
 function normBanks(list:readonly BankView[],drawer:(serverId:string)=>string):BankView[]{
   return list.slice(0,MAX_BANKS).map(b=>({id:clip(b.id),...pt16(b),name:b.name,saldo:uint(b.saldo),state:b.state,
-    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{})}));
+    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{}),
+    bico:b.bico,...(b.workers?.length?{workers:b.workers.slice(0,MAX_WORKERS).map(clip)}:{}),...(b.fila?{fila:uint(b.fila)}:{})}));
 }
 const sameBankStatic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&a.every((x,i)=>x.id===b[i].id&&x.x===b[i].x&&x.y===b[i].y&&x.name===b[i].name);
 const sameBankDynamic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&
-  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer);
+  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer&&x.bico===b[i].bico&&x.fila===b[i].fila&&
+    (x.workers?.length??0)===(b[i].workers?.length??0)&&(x.workers??[]).every((id,k)=>id===b[i].workers?.[k]));
 function writeBanks(w:Writer,list:readonly BankView[],bits:number,tick:number){
   w.u8(bits);
   if(bits&BANK_DYN){
     w.uvar(list.length);
     for(const b of list){
       const drawer=b.drawer!==undefined?ENEMY_LABEL.exec(b.drawer):null;
-      w.uvar(b.saldo);w.str(b.state);w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0));
+      w.uvar(b.saldo);w.str(b.state);
+      w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0)|(b.workers?.length?BANK_WORKERS:0)|(b.fila?BANK_FILA:0));
       if(b.until!==undefined)w.svar(b.until-tick);
       if(drawer)w.uvar(Number(drawer[1]));
+      w.str(b.bico);
+      if(b.workers?.length){w.uvar(b.workers.length);for(const id of b.workers)w.str(id);}
+      if(b.fila)w.uvar(b.fila);
     }
   }
   if(bits&BANK_STATIC){
@@ -779,9 +848,15 @@ function readBanks(r:Reader,tick:number,base:readonly BankView[]|undefined):Bank
     const rows=Array.from({length:r.count(MAX_BANKS)},()=>{
       const saldo=r.uvar(),state=r.str();
       if(!BANK_STATES.has(state))throw new FrameError('bad bank state');
-      const has=r.u8();if(has>3)throw new FrameError('bad bank flags');
+      const has=r.u8();if(has>15)throw new FrameError('bad bank flags');
       const until=has&BANK_UNTIL?tick+r.svar():undefined,drawer=has&BANK_DRAWER?`e${r.uvar()}`:undefined;
-      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{})};
+      const bico=r.str();if(!BICO_SET.has(bico))throw new FrameError('bad bico');
+      const workers=has&BANK_WORKERS?Array.from({length:r.count(MAX_WORKERS)},()=>r.str()):undefined;
+      if(workers&&!workers.length)throw new FrameError('empty bico shift');
+      const fila=has&BANK_FILA?r.uvar():undefined;
+      if(fila===0)throw new FrameError('empty bico queue');
+      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{}),bico:bico as BicoId,
+        ...(workers?{workers}:{}),...(fila!==undefined?{fila}:{})};
     });
     const old=next;
     next=rows.map((d,i)=>({id:old?.[i]?.id??'',x:old?.[i]?.x??0,y:old?.[i]?.y??0,name:old?.[i]?.name??BANK_IDS[0],...d}));
@@ -876,7 +951,7 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn','knock',
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
@@ -1185,9 +1260,13 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
-const bit=(field:number)=>1<<(field+FIELD_BIT);
-const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
+/**
+ * Field bits by arithmetic, not `1<<` / `>>>` (31-bit): the players passed 29 fields with the viaduct's `andar` after
+ * `moveSpeed` (mapa-175-com-viaduto), and 1<<31 is negative. Masks are varints, exact up to 2^53 (~50 fields); the bytes
+ * of a mask under 2^31 are the same as before. NUDGE and NEW stay in the low bits (`mask&NEW` keeps them exact).
+ */
+const bit=(field:number)=>2**(field+FIELD_BIT);
+const has=(mask:number,field:number)=>Math.floor(mask/2**(field+FIELD_BIT))%2===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).
@@ -1261,7 +1340,8 @@ function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[
   for(let i=0;i<n;i++){
     const gap=r.uvar();if(!gap)throw new FrameError('ids out of order');
     const id=last+=gap,mask=r.uvar();
-    if(mask>=bit(keys.length))throw new FrameError('bad field mask');
+    // 2** and not bit(): with 29 fields 1<<31 is negative and every mask would be refused.
+    if(mask>=2**(keys.length+FIELD_BIT))throw new FrameError('bad field mask');
     const prev=client.get(id);
     if(!(mask&NEW)&&!prev)throw new FrameError('delta for unknown entity');
     // `client` is this frame's copy (advance): update in place. A bad frame is dropped whole, so nothing leaks.

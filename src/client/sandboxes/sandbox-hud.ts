@@ -104,9 +104,9 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser):not(.hs-hero){display
 .hs-mock{position:absolute;border:2px solid #fff8e9aa;background:#55466677;color:#fff9ed;font:700 12px system-ui;display:grid;place-items:center;text-shadow:0 1px 3px #302536}
 .hs-cam{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));width:136px;height:44px;border-radius:15px}
 .hs-gear{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));width:48px;height:48px;border-radius:50%}
-.hs-stick{bottom:max(14px,env(safe-area-inset-bottom));left:max(14px,env(safe-area-inset-left));width:112px;height:112px;border-radius:50%}
+.hs-stick{bottom:max(14px,env(safe-area-inset-bottom));left:max(14px,env(safe-area-inset-left));width:var(--joystick,112px);height:var(--joystick,112px);border-radius:50%}
 .hs-attack{bottom:max(22px,env(safe-area-inset-bottom));right:max(18px,env(safe-area-inset-right));width:82px;height:82px;border-radius:50%}
-@media (max-height:500px){.hs-stick{width:96px;height:96px}}
+@media (max-height:500px){.hs-stick{width:var(--joystick-justo,96px);height:var(--joystick-justo,96px)}}
 .hs-bar{position:fixed;z-index:20;left:50%;bottom:2px;transform:translateX(-50%);display:flex;gap:4px;opacity:.85}
 .hs-bar button{font:600 10px system-ui;padding:2px 5px;border-radius:6px;border:1px solid #fff8;background:#302536cc;color:#fff}
 .hs-bar[hidden]{display:none}
@@ -117,8 +117,8 @@ body:has(.rh-result:not([hidden])) .hs-hero{display:none} /* the game's hero is 
 body:has(>.rh[data-coach-stick]) .hs-stick{border-color:var(--c-amarelo,#FFD23F);color:var(--c-amarelo,#FFD23F)}
 .hs-heroi .hs-cam,.hs-heroi .hs-world::after{display:none}
 .hs-heroi .hs-stick{left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom))}
-.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));width:var(--botao-habilidade);height:var(--botao-habilidade)}
-@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:96px;height:96px;left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}}
+.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(0px,var(--joystick,112px) - var(--botao-habilidade)) / 2);width:var(--botao-habilidade);height:var(--botao-habilidade)}
+@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:var(--joystick-justo,96px);height:var(--joystick-justo,96px);left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + max(0px,var(--joystick-justo,96px) - var(--botao-habilidade)) / 2)}}
 .hs-hero{position:fixed;z-index:6;width:56px;height:56px;box-sizing:border-box;border-radius:50% 50% 40% 40%;background:#f4c9a8;border:3px solid #6e5198;pointer-events:none}
 `;
 document.head.append(style);
@@ -161,8 +161,20 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 }
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
+/**
+ * The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts): `perfis=1..12` gives that many matches (the flame
+ * and its counter; `perfil=<id>,<id>` picks the kinds), `perfis-abre=1` opens the last one (the compact card; frozen: it
+ * stays), and the result scene shows them as stickers. Off in every other scene.
+ */
+const PERFIS_KINDS=['tio-pave','pombos','boleto-vivo','bebado','sogra-tita','coach','agiota','influencer','motoboy','chefe-pizza','cunhado-sabe-tudo','pombo-rei'];
+const perfis=Math.max(0,Math.min(12,Number(params.get('perfis'))||0));
+const PERFIS_SANDBOX=(params.get('perfil')?.split(',')??PERFIS_KINDS).slice(0,perfis);
+/** Fixed distances and leans: the prints never change between loads. */
+const PERFIS_DIST=[12,7,1240,31,4,88,15,260,9,43,3,560],PERFIS_TILT=[-3,2.5,-1.5,3.5,-2.5,1,-4,2,-1,3,-3.5,1.5];
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas||cidade||!!pausa,
+  profiles:perfis>0,
+  ...(perfis&&frozen?{profileClock:()=>0}:{}),
   // The pause's frozen scenes (modo foto): its clock stands still, so the seconds and the bar print the same every time.
   ...(pausa&&frozen?{pauseClock:()=>0}:{}),
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
@@ -280,7 +292,7 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -319,6 +331,8 @@ function load(next:HudScenario){
     if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'chinelo-lendario'}];
   }
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
+  PERFIS_SANDBOX.forEach((kind,i)=>hud.profiles.add({kind,distance:PERFIS_DIST[i]??10,tilt:PERFIS_TILT[i]??0}));
+  if(perfis&&params.has('perfis-abre')){(hud.profiles.el.querySelector('.rh-matches') as HTMLButtonElement|null)?.click();hud.update(view);}
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).
@@ -352,6 +366,9 @@ function load(next:HudScenario){
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
+  // `explora=<s>` (inicio-no-uno-caixas-120): a 120 s time to explore with s seconds left (the clock and the mission line).
+  const explora=Number(params.get('explora'));
+  hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
 load(scenario);
@@ -421,7 +438,8 @@ async function heroFeet(){
 /**
  * `heroi=1` (BUG-20261014-ORQ-forja-cobre-heroi-retrato): the hero's 56 px box where the round's camera puts it
  * (heroFeet; the city scenes always draw it), and the mock joystick and skill button where the phone's shell draws them
- * (explore.css: 112 px stick 24 px in; 96 px at 16/18 px when ≤ 370 px wide; the skill --botao-habilidade; no camera
+ * (explore.css: --joystick, 134 px on the phone, 24 px in; --joystick-justo, 115 px, at 16/18 px when ≤ 370 px wide or lying
+ * down; the skill --botao-habilidade centred on the stick's axis; no camera
  * buttons), so a print shows whether a window covers the hero. `body[data-hero]` holds the box.
  */
 const heroi=params.get('heroi')==='1';
@@ -558,9 +576,9 @@ if(cidade)void (async()=>{
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
   // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
   const P=terrain.asset.points;
-  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_MAP_SCALE they are the same places on the 1.7×
+  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) they are the same places on the 1.7×
   // map (NEW-20261013-ORQ-cidade-escala-1-7). The asset's points (P) are already in its units.
-  const {CITY_MAP_SCALE:S}=await import('../../rules/index.ts');
+  const {CITY_DISTANCE_SCALE:S}=await import('../../rules/index.ts');
   const at=(x:number,y:number)=>({x:x*S,y:y*S});
   const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
@@ -600,9 +618,9 @@ if(cidade)void (async()=>{
   // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
   const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
   const banks:BankView[]|undefined=params.get('bancos')==='1'?[
-    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
-    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
-    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ},
+    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0',bico:'compro-ouro'},
+    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto',bico:'telemarketing'},
+    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ,bico:'entregador'},
   ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
     grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;

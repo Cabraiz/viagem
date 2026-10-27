@@ -33,6 +33,10 @@ export interface BossTuning {
   coneDamage:number; coneRange:number; coneAngle:number; coneDelay:number; coneCount:number; coneEvery:number; coneTurn:number;
   recovery:number; recovery2:number; summonEvery:number; summonCount:number; minionCap:number;
   phase2Speed:number; enragedSpeed:number; enragedDamage:number; enragedCooldown:number; barkEvery:number;
+  /** × every hit when the boss came to a single player (absent: 1). The 1st wave's chefão only (boss-fim-onda-1). */
+  soloDamage?:number;
+  /** The Tank's punch (boss-fim-onda-1): his slam and his charge throw whoever they hit this far (u). Absent: no throw. */
+  slamPush?:number; chargePush?:number;
 }
 /** Durations in ticks. Numbers are first-pass values; VGM-051 tunes them with bot runs. */
 export const BOSS_TUNING:Readonly<BossTuning>=Object.freeze({
@@ -81,6 +85,12 @@ const ACT_IDLE=0,ACT_WINDUP=1,ACT_DASH=2,ACT_SWEEP=3;
 const ATTACK_SLAM=1,ATTACK_CHARGE=2,ATTACK_SWEEP=3;
 
 export interface BossOptions {
+  /**
+   * The enemy kind (its art) and its lines: BOSS_KIND and BOSS_LINES by default (the Síndico). Card boss-fim-onda-1: the
+   * chefão of the 1st wave is a roster chefe (sim/ninhos/chefao.ts), with this same fight.
+   */
+  kind?:string;
+  lines?:Readonly<Record<BossLineKey,readonly string[]>>;
   /** Creates one minion, adds it to ctx.enemies and returns it; undefined when refused (e.g. entity cap). Default: summonFromCatalog. */
   summon?:(ctx:SimContext,kind:string,at:Point)=>EnemyState|undefined;
   /** Who the summons are (art only: the run's enemies with art, director bossMinionKinds); MINION_KINDS when it gives none. */
@@ -136,7 +146,9 @@ export const BOSS_SIEGE_REACH=2.6,BOSS_SIEGE_EVERY=ticks(3);
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
 /** A key line (spawn, phase, enrage, defeat) the global limiter refused; retried each tick until `until`. */
 export interface QueuedLine {key:BossLineKey;until:number}
-export interface BossState {bossId?:string;defeated:boolean;lastX:number;lastY:number;minions:string[];pending:PendingSummon[];queued?:QueuedLine;rng?:number}
+export interface BossState {bossId?:string;defeated:boolean;lastX:number;lastY:number;minions:string[];pending:PendingSummon[];queued?:QueuedLine;rng?:number;
+  /** He came to a single player (tuning.soloDamage applies). */
+  solo?:boolean}
 export interface BossController extends SimSystem {
   readonly state:BossState;
   readonly tuning:Readonly<BossTuning>;
@@ -180,6 +192,7 @@ const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math
 
 export function createBoss(options:BossOptions={}):BossController {
   const siegeOf=options.siege,hitSiege=options.hitSiege;
+  const kind=options.kind??BOSS_KIND,lines=options.lines??BOSS_LINES;
   const tuning:Readonly<BossTuning>=Object.freeze({...BOSS_TUNING,...options.tuning});
   /** Ticks of a dash: tuning.dashTicks, or with speedMap the time the full charge takes at its mapped speed. */
   const dashTicks=(()=>{
@@ -202,19 +215,19 @@ export function createBoss(options:BossOptions={}):BossController {
   const say=(ctx:SimContext,boss:EnemyState,key:BossLineKey,force=false)=>{
     const m=boss.memory;
     if(!options.say||(!force&&m&&ctx.tick<m.barkAt))return;
-    if(options.say(ctx,boss,BOSS_LINES[key],`${BOSS_KIND}:${key}`)){
+    if(options.say(ctx,boss,lines[key],`${kind}:${key}`)){
       if(m)m.barkAt=ctx.tick+tuning.barkEvery;
       if(state.queued?.key===key)delete state.queued;
     }else if(force)state.queued={key,until:ctx.tick+KEY_LINE_RETRY_TICKS};
   };
   /** The bark only needs an id and a position, so a gone corpse is stood in for by a stub. */
-  const speaker=(ctx:SimContext):EnemyState=>current(ctx)??{id:state.bossId!,kind:BOSS_KIND,x:state.lastX,y:state.lastY,
+  const speaker=(ctx:SimContext):EnemyState=>current(ctx)??{id:state.bossId!,kind,x:state.lastX,y:state.lastY,
     hp:0,maxHp:1,speed:0,damage:0,radius:tuning.radius,xp:0,spawnTick:0,readyTick:0};
   function retryLine(ctx:SimContext){
     const queued=state.queued;
     if(!queued||!options.say)return;
     if(ctx.tick>queued.until){delete state.queued;return;}
-    if(options.say(ctx,speaker(ctx),BOSS_LINES[queued.key],`${BOSS_KIND}:${queued.key}`))delete state.queued;
+    if(options.say(ctx,speaker(ctx),lines[queued.key],`${kind}:${queued.key}`))delete state.queued;
   }
   const current=(ctx:SimContext)=>state.bossId?ctx.enemies.get(state.bossId):undefined;
   const alive=(ctx:SimContext)=>{const b=current(ctx);return b&&b.hp>0?b:undefined;};
@@ -240,13 +253,14 @@ export function createBoss(options:BossOptions={}):BossController {
     const players=[...ctx.players.values()].filter(inRun);
     const hpScale=options.hpScale?.(ctx)??1;
     const hpTuning=hpScale!==1&&hpScale>0&&Number.isFinite(hpScale)?{...tuning,baseHp:tuning.baseHp*hpScale}:tuning;
-    const maxHp=bossMaxHp(Math.max(players.length,options.scalePlayers?.(ctx)??0),hpTuning);
+    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=bossMaxHp(count,hpTuning);
+    if(count<=1&&tuning.soloDamage!==undefined&&tuning.soloDamage!==1)state.solo=true;
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.
     // Spots for enemy bodies use the enemy view (cidade-06): never inside a barricade disc.
     const spot=at&&walkable(at,enemyTerrain(ctx.terrain))?{x:at.x,y:at.y}:spawnPoint(ctx,bodies);
     const boss:EnemyState={
-      id:ctx.nextId('boss'),kind:BOSS_KIND,x:spot.x,y:spot.y,hp:maxHp,maxHp,
+      id:ctx.nextId('boss'),kind,x:spot.x,y:spot.y,hp:maxHp,maxHp,
       speed:tuning.speed,damage:0,radius:tuning.radius,xp:tuning.xp,boss:true,
       spawnTick:ctx.tick,readyTick:ctx.tick+tuning.entranceTicks,phase:PHASE_NORMAL,
       memory:{act:ACT_IDLE,actUntil:0,next:ctx.tick+tuning.entranceTicks,last:0,barkAt:0,summonAt:0,
@@ -347,7 +361,7 @@ export function createBoss(options:BossOptions={}):BossController {
     }
   }
 
-  const scale=(boss:EnemyState,damage:number)=>Math.round(damage*(enraged(boss)?tuning.enragedDamage:1));
+  const scale=(boss:EnemyState,damage:number)=>Math.round(damage*(enraged(boss)?tuning.enragedDamage:1)*(state.solo?tuning.soloDamage??1:1));
   const recovery=(boss:EnemyState)=>Math.round(((boss.phase??1)>=PHASE_ASSEMBLY?tuning.recovery2:tuning.recovery)*(enraged(boss)?tuning.enragedCooldown:1));
 
   function act(ctx:SimContext,boss:EnemyState,targets:readonly SimPlayer[]){
@@ -414,7 +428,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const r=stream(ctx);
     if((boss.phase??1)<PHASE_ASSEMBLY){
       const t=r.pick(targets);
-      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada'},tuning.slamDelay);
+      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada',...(tuning.slamPush?{push:tuning.slamPush}:{})},tuning.slamDelay);
       say(ctx,boss,'slam');windup(ctx,boss,tg.fireTick);return;
     }
     const pool=[...targets];let fireTick=ctx.tick;
@@ -444,7 +458,7 @@ export function createBoss(options:BossOptions={}):BossController {
     while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;
     if(reach<2)return false;
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
-    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida'},delay);
+    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida',...(tuning.chargePush?{push:tuning.chargePush}:{})},delay);
     const m=boss.memory!;
     Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+dashTicks+recovery(boss)});
     say(ctx,boss,'charge');

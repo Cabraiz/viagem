@@ -1,27 +1,27 @@
 /**
  * Zueira events in the middle of a round (VGM-053B), decided by the server and deterministic for the run seed:
- * - boletos: a 4 s rain of boletos around every standing hero, each one an XP pickup (the whole rain ≈ 45% of the
- *   level the team is on, split among the heroes);
- * - promo ("Promoção relâmpago"): 3 coxinhas next to every standing hero, gone after 8 s;
+ * - boletos: retired (NEW-20261024-ORQ-tirar-drops-cedula-girando, the user: "remova esses bichos que caem do chão"):
+ *   the rain of XP boletos is never planned any more; the kind stays in the contract (wire, old replays) and does nothing;
+ * - promo ("Promoção relâmpago"): retired too (NEW-20261025-ORQ-sem-coxinha-no-chao, the user: "Faltou a remoção das
+ *   coxinhas ou outros drops parecidos"): never planned, no coxinha falls; the kind stays in the contract and does nothing;
  * - apagao: 3 s of blackout on the clients (eyes in the dark); nothing changes in the simulation.
  * Plus the kill-cam of a round's last critter: the run wires noteKill (onKill) and roundEnded (director onRoundEnd),
  * and this system emits `last-bicho` with where and by whom.
  *
  * Frequency (so it never gets tiresome, measured in done/VGM-053B.md): a run draws its plan once, from the seed:
  * the first event in round 2 or 3, then one every 2 or 3 rounds (never two rounds in a row), at most 4 per run, none in
- * round 1 (the tutorial) nor in the boss round. Each of the three kinds once, in a random order, and the 4th (if the
- * rounds leave room) a rain or a sale, never a second blackout. Inside its round the event comes 8–16 s after the
+ * round 1 (the tutorial) nor in the boss round. With the rain and the sale retired, a run plans one blackout. Inside its round the event comes 8–16 s after the
  * wave starts; a round that ends before that passes it on to the next eligible round.
  * State is JSON-safe (stateHash, checkpoints) with its own Rng, so a replay draws the same plan and the same drops.
  */
-import {CALMA,MAX_PICKUPS,hasRoom} from '../rules/index.ts';
-import {HEAL_AMOUNT} from '../rules/index.ts';
+import {CALMA} from '../rules/index.ts';
 import {Rng} from '../contract/index.ts';
-import {clearSegment,walkable} from '../maps/index.ts';
-import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimPlayer} from '../contract/index.ts';
+import {ticks,type EnemyState,type HappeningKind,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 
 export const HAPPENING_KINDS:readonly HappeningKind[]=['boletos','promo','apagao'];
+/** The kinds a run plans (and LAB_ZUEIRA accepts): the boleto rain and the flash sale are retired. */
+export const PLANNED_KINDS:readonly HappeningKind[]=['apagao'];
 /** How long each event lasts on screen, in seconds (the sale: how long its coxinhas stay on the ground). */
 export const HAPPENING_SECONDS:Readonly<Record<HappeningKind,number>>={boletos:4,promo:8,apagao:3};
 /** No event in round 1 (it teaches the fight) nor in the boss round. */
@@ -31,19 +31,10 @@ export const MAX_EVENTS_PER_RUN=4;
 export const EVENT_GAP:readonly [number,number]=[2,3];
 /** Seconds after the wave starts. */
 export const EVENT_DELAY:readonly [number,number]=[8,16];
-/**
- * Rain: RAIN_FIRST boletos per standing hero fall with the banner, then one per hero every RAIN_EVERY ticks until each
- * got RAIN_PER_HERO. The whole rain is worth RAIN_SHARE of the level the team is on (round(0.45 × nextXp)), fixed when it
- * starts and split among the boletos planned for the heroes standing then: more heroes = more boletos worth less each,
- * and a hero rescued in the middle only gets what is left (the drops stop when the total is out).
- */
-export const RAIN_EVERY=5,RAIN_SHARE=.45,RAIN_FIRST=3,RAIN_PER_HERO=16,RAIN_RADIUS:readonly [number,number]=[1.4,5.5],BOLETO_LIFETIME_SECONDS=12;
 /** The blackout waits (inside its 8–16 s window) for critters to look at: at least this many within this distance of half the standing heroes. */
 export const APAGAO_CROWD=3,APAGAO_REACH=9;
 /** Kill-cam: never two rounds in a row, at most this many per run (VGM-053B design review D5). */
 export const KILLCAM_MAX_PER_RUN=4;
-/** Sale: coxinhas per standing hero, how far from them. */
-export const PROMO_COXINHAS=3,PROMO_RADIUS:readonly [number,number]=[1.4,3];
 /**
  * Where a prize may fall around its hero (VGM-053B review M3, pacote-bugs-ux): never where a thumb sits, and never where
  * the hero cannot walk straight to it. The server knows neither the phone's orientation nor its view (D-019), so the rule
@@ -85,13 +76,11 @@ export function underThumb(dx:number,dy:number){
 export interface PrizeBlock {x:number;y:number;radius:number}
 /** Tries for a prize spot around its hero (then that prize is skipped, as before). */
 export const PRIZE_TRIES=12;
-/** Marks an XP pickup as a boleto of the rain (PickupState.resource; the client draws a boleto, D-002). */
-export const BOLETO='boleto';
-/** Marks a coxinha of the flash sale (the client draws it bigger, with its short life). */
+/** Marked a coxinha of the retired flash sale (the client still draws one bigger, for old replays). */
 export const PROMO='promo';
 
 export interface PlannedHappening {round:number;kind:HappeningKind}
-/** value: XP per boleto; left: XP of the rain not dropped yet (the rain never gives more than its total). */
+/** value/left: the retired boleto rain's XP (kept optional so an old checkpoint still loads). */
 export interface ActiveHappening {kind:HappeningKind;round:number;startTick:number;endsTick:number;value?:number;left?:number}
 export interface ZueiraState {
   rng:number;
@@ -112,11 +101,10 @@ export interface ZueiraState {
 
 /** The run's plan, from its seed: rounds and kinds (pure, tested). `total` is the round count (the last one is the boss). */
 export function planHappenings(rng:Rng,total=10):PlannedHappening[]{
-  const kinds:HappeningKind[]=[...HAPPENING_KINDS];
+  const kinds:HappeningKind[]=[...PLANNED_KINDS];
   for(let i=kinds.length-1;i>0;i--){const j=rng.int(0,i);[kinds[i],kinds[j]]=[kinds[j],kinds[i]];}
-  kinds.push(rng.chance(.5)?'boletos':'promo');
   const plan:PlannedHappening[]=[];
-  for(let round=FIRST_EVENT_ROUND+rng.int(0,1);round<total&&plan.length<MAX_EVENTS_PER_RUN;round+=rng.int(EVENT_GAP[0],EVENT_GAP[1]))
+  for(let round=FIRST_EVENT_ROUND+rng.int(0,1);round<total&&plan.length<Math.min(MAX_EVENTS_PER_RUN,kinds.length);round+=rng.int(EVENT_GAP[0],EVENT_GAP[1]))
     plan.push({round,kind:kinds[plan.length]});
   return plan;
 }
@@ -141,9 +129,9 @@ export interface ZueiraSystem extends SimSystem {
 
 /** Lab override (LAB_ZUEIRA): a fixed plan and the smallest gap in rounds between two events (1 = back to back). */
 export interface ZueiraLab {plan:PlannedHappening[];minGap?:number}
-/** LAB_ZUEIRA "apagao,boletos,promo": those kinds from round 2 on, one per round, in that order (lab prints and proofs). */
+/** LAB_ZUEIRA "apagao,promo": those kinds from round 2 on, one per round, in that order (lab prints and proofs; 'boletos' is ignored). */
 export function parseZueiraLab(value?:string):ZueiraLab|undefined{
-  const kinds=(value??'').split(',').map(k=>k.trim()).filter((k):k is HappeningKind=>(HAPPENING_KINDS as readonly string[]).includes(k));
+  const kinds=(value??'').split(',').map(k=>k.trim()).filter((k):k is HappeningKind=>(PLANNED_KINDS as readonly string[]).includes(k));
   return kinds.length?{plan:kinds.slice(0,8).map((kind,i)=>({round:FIRST_EVENT_ROUND+i,kind})),minGap:1}:undefined;
 }
 
@@ -153,7 +141,7 @@ export function parseZueiraLab(value?:string):ZueiraLab|undefined{
  * zueiraEveryS[0]..[1] seconds, at most zueiraMax, never while `bossUp` (it waits); the blackout still waits for
  * critters around, and past EVENT_DELAY[1] goes behind the next kind.
  */
-export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:SimContext)=>readonly PrizeBlock[];clock?:{bossUp:(ctx:SimContext)=>boolean}}={}):ZueiraSystem{
+export function createZueira(seed:number,options:{lab?:ZueiraLab;clock?:{bossUp:(ctx:SimContext)=>boolean}}={}):ZueiraSystem{
   const minGap=options.lab?.minGap??EVENT_GAP[0];
   const state=createZueiraState(seed);
   if(options.lab)state.plan=options.lab.plan.map(p=>({...p}));
@@ -161,30 +149,6 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
   const rngOf=()=>rng??=new Rng(state.rng);
   const save=()=>{if(rng)state.rng=rng.state;};
 
-  /**
-   * A spot around `p` that its hero can walk straight to, never under that hero's thumbs (prizeSpotSafe) and off the
-   * structures (a few tries, then none). Teammates' thumbs are not checked: the server knows neither their orientation
-   * nor their view, and over all of them a landscape phone's thumbs (beside its hero, 5.4–17 u along the screen) cover
-   * almost every spot around a team spread over a few steps (332 of 337 prizes in tests/premio-polegar); a prize next
-   * to a teammate is never under that teammate's thumbs (they start 5.4 u to the side in landscape, 16 u below in
-   * portrait). Card NEW-ORQ-camera-hint-no-servidor would make it exact.
-   */
-  function around(ctx:SimContext,p:SimPlayer,[min,max]:readonly [number,number]){
-    const r=rngOf(),blocks=options.blocked?.(ctx)??[];
-    for(let i=0;i<PRIZE_TRIES;i++){
-      const a=r.range(0,Math.PI*2),d=r.range(min,max),dx=Math.cos(a)*d,dy=Math.sin(a)*d,at={x:p.x+dx,y:p.y+dy};
-      if(!prizeSpotSafe(dx,dy)||blocks.some(b=>Math.hypot(at.x-b.x,at.y-b.y)<b.radius))continue;
-      if(walkable(at,ctx.terrain)&&clearSegment(p,at,ctx.terrain))return at;
-    }
-    return undefined;
-  }
-  function drop(ctx:SimContext,kind:'xp'|'heal',value:number,at:{x:number;y:number},lifetime:number,resource?:string){
-    // D-054: no gems to merge into any more; a boleto over the pickup cap is caught at once (its XP never lost).
-    if(!hasRoom(ctx.pickups,MAX_PICKUPS)){if(kind==='xp')ctx.team.xp+=value;return;}
-    const pickup:PickupState={id:ctx.nextId(kind),kind,value,x:at.x,y:at.y,spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(lifetime)};
-    if(resource)pickup.resource=resource;
-    ctx.pickups.set(pickup.id,pickup);
-  }
   const heroes=(ctx:SimContext)=>[...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
 
   /** Mode 'ninhos': the next event on the clock (state.triggerTick; waveTick: when it fell due, for the blackout). */
@@ -200,31 +164,15 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
   }
   function fire(ctx:SimContext,index:number){
     const next=state.plan.shift()!;
+    // The retired boleto rain and flash sale (a checkpoint planned before they were retired): skipped, nothing falls.
+    if(next.kind==='boletos'||next.kind==='promo'){state.triggerTick=undefined;return;}
     const endsTick=ctx.tick+ticks(HAPPENING_SECONDS[next.kind]);
     const active:ActiveHappening={kind:next.kind,round:index,startTick:ctx.tick,endsTick};
-    const team=heroes(ctx);
-    if(next.kind==='boletos'){
-      const total=Math.round(RAIN_SHARE*ctx.team.nextXp),drops=RAIN_PER_HERO*Math.max(1,team.length);
-      active.value=total/drops;active.left=total;
-      // The first boletos fall with the banner (RAIN_FIRST per hero), then one per hero every RAIN_EVERY ticks.
-      for(let i=0;i<RAIN_FIRST;i++)rain(ctx,active,team);
-    }
-    if(next.kind==='promo')for(const p of team)for(let i=0;i<PROMO_COXINHAS;i++){const at=around(ctx,p,PROMO_RADIUS);if(at)drop(ctx,'heal',HEAL_AMOUNT,at,HAPPENING_SECONDS.promo,PROMO);}
     state.active=active;state.fired.push({round:index,kind:next.kind,tick:ctx.tick});
     state.triggerTick=undefined;
     ctx.emit({type:'happening',kind:next.kind,endsTick});
   }
 
-  /** One boleto per hero, never past the rain's total (a rescued hero joins with what is left). */
-  function rain(ctx:SimContext,active:ActiveHappening,team:readonly SimPlayer[]){
-    for(const p of team){
-      if(!((active.left??0)>1e-9))return;
-      const value=Math.min(active.value??0,active.left!),at=around(ctx,p,RAIN_RADIUS);
-      if(!at)continue;
-      active.left=active.left!-value;
-      drop(ctx,'xp',value,at,BOLETO_LIFETIME_SECONDS,BOLETO);
-    }
-  }
   /** Half the standing heroes have APAGAO_CROWD critters within APAGAO_REACH: there are eyes to see in the dark. */
   function crowded(ctx:SimContext){
     const team=heroes(ctx);if(!team.length)return false;
@@ -251,7 +199,6 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
       const round=ctx.round,active=state.active;
       if(active){
         if(ctx.tick>=active.endsTick||round.phase!=='wave'){state.active=undefined;}
-        else if(active.kind==='boletos'&&(ctx.tick-active.startTick)%RAIN_EVERY===0)rain(ctx,active,heroes(ctx));
       }
       if(options.clock){clockStep(ctx,options.clock.bossUp);save();return;}
       if(round.phase!=='wave'){state.wave=undefined;state.triggerTick=undefined;save();return;}

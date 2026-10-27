@@ -13,7 +13,7 @@
  * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,floorOf,floorPortal,maskSurface,obstaclesNear,onFloor,settleFloor,walkable,type CityViaduct,type Floor,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
@@ -47,7 +47,14 @@ export interface StructureTarget extends Point {
    * closer than every player; absent: any distance, as before.
    */
   reach?:number;
+  /**
+   * Card uno-bloqueio-corpo (the car): how far `p` is from the body's edge (u), for a body that is not a disc; absent:
+   * the distance to the centre less `radius`.
+   */
+  gap?:(p:Point)=>number;
 }
+/** How far `p` is from structure `s`'s edge (its own gap, else its disc). */
+const structureGap=(s:StructureTarget,p:Point)=>s.gap?s.gap(p):Math.hypot(s.x-p.x,s.y-p.y)-s.radius;
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
   rng?:Rng;
@@ -251,6 +258,24 @@ function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:numbe
   return true;
 }
 
+/**
+ * The viaducts (maps city/viaduct.ts) of the run's city and its cell size, or undefined off the city or without any.
+ * A body chasing a hero on the other floor heads for the nearest viaduct's portal (its ramp: up past the switch line,
+ * or down at its foot) and only hunts that hero from there, on the same floor.
+ */
+function decksOf(terrain:TerrainField):{viaducts:readonly CityViaduct[];unitsPerCell:number}|undefined{
+  const a=(terrain as {asset?:{viaducts?:readonly CityViaduct[];unitsPerCell:number}}).asset;
+  return a?.viaducts?.length?{viaducts:a.viaducts,unitsPerCell:a.unitsPerCell}:undefined;
+}
+/** The portal from `from` to floor `to` that makes the shortest straight detour to `p`, and that length (u). */
+function crossing(decks:{viaducts:readonly CityViaduct[];unitsPerCell:number},from:Point,p:Point,to:Floor):{x:number;y:number;length:number}{
+  let best={x:p.x,y:p.y,length:Infinity};
+  for(const v of decks.viaducts){
+    const q=floorPortal(v,decks.unitsPerCell,to),length=Math.hypot(q.x-from.x,q.y-from.y)+Math.hypot(p.x-q.x,p.y-q.y);
+    if(length<best.length)best={x:q.x,y:q.y,length};
+  }
+  return best;
+}
 const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower'||def.behavior==='coach'||def.behavior==='summoner';
 /** No melee against players: the coach and the invocador (a siege invocador still hits the wall). */
 const noMelee=(def:EnemyDef)=>def.behavior==='coach'||def.behavior==='summoner';
@@ -326,7 +351,8 @@ export class EnemyAi implements SimSystem {
         // him (any other displacement still calls the charge off, see chargeWarned).
         if(memory.state===STATE.joke)delete e.knock;
         else{
-          moveSafely(e,e.knock.x,e.knock.y,enemyTerrain(ctx.terrain),e.radius);
+          moveSafely(e,e.knock.x,e.knock.y,onFloor(enemyTerrain(ctx.terrain),e.andar),e.radius);
+          settleFloor(ctx.terrain,e);
           e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
           if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
         }
@@ -344,14 +370,23 @@ export class EnemyAi implements SimSystem {
       if(!taunter&&memory[AGGRO]===1)delete memory[AGGRO];
       // FOCO_UNO walks past the players to the car; FOCO_CACADOR leaves the car alone while a player stands.
       const huntPlayers=!(foco===FOCO_UNO&&openStructure),huntStructures=!(foco===FOCO_CACADOR&&targets.length>0);
-      const goal=taunter?undefined:this.options.goal?.(ctx,e);
-      if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
+      let goal=taunter?undefined:this.options.goal?.(ctx,e);
+      // The viaduct: a hero on the other floor is as far as the walk through the ramp (crossing); bait and structures
+      // are on the ground.
+      const floor=floorOf(e),decks=decksOf(ctx.terrain);
+      const reach=(p:SimPlayer)=>decks&&floorOf(p)!==floor?crossing(decks,e,p,floorOf(p)).length:Math.hypot(p.x-e.x,p.y-e.y);
+      if(taunter){player=taunter;best=reach(taunter);}
       else if(!goal){
-        if(huntPlayers)for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
+        if(huntPlayers)for(const p of targets){const d=reach(p);if(d<best){best=d;player=p;}}
         // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
-        bait=baitOf(memory,ctx.tick);
+        bait=floor===0?baitOf(memory,ctx.tick):undefined;
         if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
-        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        else if(memory[SIEGE]===1&&huntStructures&&floor===0)for(const s of structures){if(s.blocking)continue;const d=structureGap(s,e);if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+      }
+      // Its hero is on the other floor: it walks to the ramp (a goal, hitting nobody on the way) and hunts from there.
+      if(player&&decks&&floorOf(player)!==floor){
+        const q=crossing(decks,e,player,floorOf(player));
+        goal={x:q.x,y:q.y,pace:1};player=undefined;best=Infinity;
       }
       const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
@@ -370,7 +405,8 @@ export class EnemyAi implements SimSystem {
         const ax=tx/d,ay=ty/d;
         let ux=ax,uy=ay;
         this.steerOut.fit=0;
-        if(this.options.steer?.(ctx,e,target,this.steerOut)){
+        // On a deck (a straight corridor with one ramp) there is no flow field: the straight line, sliding on its edges.
+        if(floor===0&&this.options.steer?.(ctx,e,target,this.steerOut)){
           ux=this.steerOut.x;uy=this.steerOut.y;
           const f=this.steerOut.fit;if(f>0&&f<fit)fit=f;
         }
@@ -510,7 +546,7 @@ export class EnemyAi implements SimSystem {
                 const id=ctx.nextId('p');
                 // `marks` (D-002): projectiles.ts marks the player this boleto hurts as devendo. Only the agiota's boleto
                 // marks (EnemyDef.marks); the other atiradores fire the generic shot.
-                ctx.projectiles.set(id,{id,owner:e.id,source:def.shotSource??GENERIC_SHOT_SOURCE,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage*coachMult(e,ctx.tick),pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],...(def.marks?{marks:def.marks}:{})} as ProjectileState);
+                ctx.projectiles.set(id,{id,owner:e.id,source:def.shotSource??GENERIC_SHOT_SOURCE,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage*coachMult(e,ctx.tick),pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],...(def.marks?{marks:def.marks}:{}),...(e.andar===1?{andar:1}:{})} as ProjectileState);
               }
             }else if(player&&best<=AGIOTA_SHOT.fireRange&&ctx.tick>=memory.actReady){
               memory.state=STATE.aim;memory.until=ctx.tick+AGIOTA_SHOT.aim;
@@ -563,10 +599,10 @@ export class EnemyAi implements SimSystem {
           if(player){
             ctx.damagePlayer(player.id,amount,e.id);
             if(def.behavior==='joker'){
-              if(live(player))moveSafely(player,ax*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ay*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ctx.terrain);
+              if(live(player)){moveSafely(player,ax*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ay*(charging?TIO_JOKE.shove:TIO_JOKE.bump),onFloor(ctx.terrain,player.andar));settleFloor(ctx.terrain,player);}
               if(charging)this.endCharge(ctx,memory);
             }else if(def.behavior==='kamikaze'){if(charging){boom=true;this.react(ctx,rng,e,def,1);}}
-            else if(def.behavior==='brute'||def.behavior==='minichefe'){if(live(player))moveSafely(player,ax*BRUTE.shove,ay*BRUTE.shove,ctx.terrain);}
+            else if(def.behavior==='brute'||def.behavior==='minichefe'){if(live(player)){moveSafely(player,ax*BRUTE.shove,ay*BRUTE.shove,onFloor(ctx.terrain,player.andar));settleFloor(ctx.terrain,player);}}
             else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
           }else if(structure)this.options.hitStructure?.(ctx,structure.id,amount,e);
         }
@@ -589,11 +625,12 @@ export class EnemyAi implements SimSystem {
         else{pushX+=ox/d*overlap;pushY+=oy/d*overlap;}
       };
       ctx.enemyIndex.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
-      for(const o of near){if(o!==e&&o.hp>0)apart(o,o.radius);}
+      // Only bodies on its own floor (the viaduct: the deck's crowd and the street's under it never touch).
+      for(const o of near){if(o!==e&&o.hp>0&&floorOf(o)===floor)apart(o,o.radius);}
       if(spaced){
         // The sleepers (they never move: the awake one steps off them) and the standing heroes (no gap there: it still
         // hits at contact range, CONTACT_MARGIN; it only never stands inside one).
-        for(const p of ctx.players.values())if(!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0&&Math.abs(p.x-e.x)<2&&Math.abs(p.y-e.y)<2)apart(p,PLAYER_RADIUS-gap);
+        for(const p of ctx.players.values())if(!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0&&floorOf(p)===floor&&Math.abs(p.x-e.x)<2&&Math.abs(p.y-e.y)<2)apart(p,PLAYER_RADIUS-gap);
       }
       pushX*=SEPARATION;pushY*=SEPARATION;
       const push=Math.hypot(pushX,pushY);
@@ -601,7 +638,7 @@ export class EnemyAi implements SimSystem {
       if(spaced){
         // Off the sleepers, on a cap of its own under the walk (SLEEPER_PUSH_MAX).
         const bx=pushX,by=pushY;pushX=0;pushY=0;
-        near.length=0;ctx.sleepers!.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
+        near.length=0;if(floor===0)ctx.sleepers!.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
         for(const o of near)if(!ctx.sleepers!.isTarget(o.id))apart(o,o.radius);
         pushX*=SEPARATION;pushY*=SEPARATION;
         const off=Math.hypot(pushX,pushY);
@@ -625,7 +662,8 @@ export class EnemyAi implements SimSystem {
       if(this.options.hold?.(ctx,e)){moveX=0;moveY=0;}
       const fromX=e.x,fromY=e.y;
       // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
-      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),fit);
+      moveSafely(e,moveX,moveY,onFloor(enemyTerrain(ctx.terrain),e.andar),fit);
+      settleFloor(ctx.terrain,e);
       // The motoboy crashes at the end of his run, on a player, off the line, or when a wall eats half of his step.
       if(memory.state===STATE.charge&&enemyDef(e.kind).behavior==='kamikaze'){
         const want=Math.hypot(moveX,moveY);
@@ -876,11 +914,11 @@ export class EnemyAi implements SimSystem {
       if((t.pulses??0)>0&&t.owner.startsWith(HAZARD_OWNERS.molotov)&&ctx.telegraphs.size<=(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP)){
         const mult=t.mult??1;
         addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage*mult,owner:t.owner,pulses:t.pulses!-1,
-          ...(mult!==1?{mult}:{}),kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
+          ...(mult!==1?{mult}:{}),kind:'fogo',andar:t.andar} as HazardSpec,MOLOTOV.pulseEvery);
       }
       if((t.enemyDamage??0)>0){
         const victims:string[]=[];
-        for(const e of ctx.enemies.values())if(e.hp>0&&!e.boss&&telegraphHits(t,e,e.radius))victims.push(e.id);
+        for(const e of ctx.enemies.values())if(e.hp>0&&!e.boss&&floorOf(e)===floorOf(t)&&telegraphHits(t,e,e.radius))victims.push(e.id);
         for(const id of victims)ctx.damageEnemy(id,t.enemyDamage!,undefined,'env:explosion');
       }
     }

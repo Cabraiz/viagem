@@ -17,13 +17,13 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
-import {putAttr,putData,putHidden,putText} from './dom-put.ts';
+import {putAttr,putData,putHidden,putIconNumber,putText,putTextData} from './dom-put.ts';
 import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
-import {fallLine,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {exploraLeft,fallLine,type ExploraWindows,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
@@ -123,12 +123,22 @@ export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.
  * the intermission's countdown before the next wave ("12 s", urgent at 5 s and under, like the round chip); none in a
  * wave. `aria`: the same in words, for the screen reader (the bar's picture is aria-hidden).
  */
-export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean;
+export interface BarClock {
+  /** The sticker before the number: none on the chaveiro's clock nor the time to explore (the user 25/10: no moto there). */
+  icon?:'relogio'|'cadeado';text:string;aria:string;urgent:boolean;
+  /** The chaveiro's clock stopped by the chefão (hud/chaveiro.ts ChaveiroClock.held): the padlock, the number grey. */
+  held?:boolean;
   /** D-051 nests mode: the nests still standing ("6/8") after the clock. */
   nests?:string}
-export function barClock(view:RunView):BarClock|undefined{
+export function barClock(view:RunView,windows?:ExploraWindows):BarClock|undefined{
   const round=roundInfo(view),nests=nestCount(view);
-  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:nests?`${round.chaveiro.aria}. ${nests.aria}`:round.chaveiro.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  // The time to explore (card topo-sem-icone-contagem-exploracao): the seconds left as a bare number, "120", "119"…
+  const left=exploraLeft(view.tick,windows);
+  if(left!==undefined)return {text:String(left),aria:`Exploração: faltam ${left} s`,urgent:false};
+  if(round?.chaveiro){
+    const c=round.chaveiro;
+    return {...(c.held?{icon:'cadeado' as const,held:true}:{}),text:c.clock,aria:nests?`${c.aria}. ${nests.aria}`:c.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  }
   // The nests mode has no intermission: no countdown to show.
   if(nests)return undefined;
   if(round?.phase==='prepare'&&round.countdown!==undefined)return {icon:'relogio',text:`${round.countdown} s`,aria:round.detail,urgent:round.countdown<=5};
@@ -215,12 +225,13 @@ export function createCamp(options:CampOptions):CampPart{
   const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
   let lastClock:string|undefined;
-  const paintClock=(view:RunView)=>{
-    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.nests??''}`:'';
+  const paintClock=(view:RunView,w:ExploraWindows)=>{
+    const bar=barClock(view,w),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
     if(key===lastClock)return;
-    lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
-    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
+    lastClock=key;putHidden(clock,!bar);readout.classList.toggle('rh-camp-com-relogio',!!bar);
+    if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+      if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
+    else{putTextData(clockWords,'');putText(clockPicture,'');delete clock.dataset.urgente;delete clock.dataset.parado;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{
@@ -287,7 +298,7 @@ export function createCamp(options:CampOptions):CampPart{
   const fall=el('p','rh-window-fall rh-forge-fall',head);fall.hidden=true;fall.setAttribute('role','status');
   const overflow=watchOverflow(list);
 
-  let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined,bocas:CityBocas|undefined;
+  let last:RunView|undefined,ctxId='',windows:ExploraWindows={},hero:HeroSpot|undefined,bocas:CityBocas|undefined;
   let dismissed=false,stint=-1,lastPlace='',yielded=false;
   /** Where the hero stands now (render): in the camp, and the barricade he can repair (city only). */
   let home=false,spot:BarricadeSpot<StructureView>|undefined;
@@ -341,7 +352,7 @@ export function createCamp(options:CampOptions):CampPart{
     putHidden(readout,!camp);
     if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view);
+    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,windows);
     const money=granaReadout(camp.grana);
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
@@ -414,7 +425,7 @@ export function createCamp(options:CampOptions):CampPart{
 
   return {
     el:forge,readout,notice,forge,
-    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;render();},
+    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;windows={minervaAteTick:ctx.minervaAteTick,explora:ctx.explora};render();},
     setHero(at){hero=at;if(last)render();},
     setBocas(next){bocas=next;},
     yieldTo(obra){if(yielded===obra)return;yielded=obra;if(last)render();},

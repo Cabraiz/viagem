@@ -10,7 +10,8 @@
  * The expression follows the player's state (faceExpression); with no imported art every expression shows the same crop
  * (the downed/eliminated greys of the team strip stay in CSS).
  *
- * Minimap marks (6-12 px) and emote balloons (drawn over the hero itself) get no face on purpose.
+ * Emote balloons (drawn over the hero itself) get no face on purpose; the minimap has its own small faces
+ * (hud/wc-minimap/art.ts).
  *
  * Pure (no DOM globals: the DOM helpers take the document), so it runs in node tests.
  * Superseded in part by src/client/art/faces.ts (E7, importar-arte-d) once merged: its `faceUrl` is the same lookup as

@@ -12,21 +12,23 @@ import {BARRICADA_CELLS} from '../../rules/index.ts';
 import {artPiece} from '../art/manifest.ts';
 import {BASE_ART,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import type {Pt} from './projector.ts';
-import {MURALHA_GROSSURA,cellKey,hashCell,muralhaColumn,muralhaEstado,muralhaGroups,muralhaHalf,muralhaPlan,muralhaScale,type MuralhaAxis,type MuralhaCounts} from './muralha-rules.ts';
+import {MURALHA_GROSSURA,cellKey,hashCell,retoOf,muralhaColumn,muralhaEstado,muralhaGroups,muralhaHalf,muralhaPlan,muralhaScale,type MuralhaAxis,type MuralhaCounts} from './muralha-rules.ts';
 
 /**
  * The two sheets a wall draws from: straight pieces and pillars (base ids); `size`: the cells a square's side spans
  * (absent: 1), its neighbours that many cells away and its pieces drawn that many times wider and taller; `thick`: each
  * straight piece is drawn twice, once this share of the square's side behind the wall's line and once in front of it
- * (absent: once, on the line): a thicker wall, just as long.
+ * (absent: once, on the line): a thicker wall, just as long. `oriented` (the barricadas since barricada-tocar-no-mapa):
+ * a piece is `size` cells long and 1 thick along its rot and always draws one whole straight piece along it (no halves,
+ * no pillars: its ends are its footprint's, end to end with the next one).
  */
-export interface MuralhaSheets {reto:string;pilar:string;size?:number;thick?:number}
+export interface MuralhaSheets {reto:string;pilar:string;size?:number;thick?:number;oriented?:boolean}
 /**
- * The junk wall of the free barricade squares (the default): BARRICADA_CELLS × BARRICADA_CELLS squares (barricada-2x),
- * thicker across its line (barricada-grossura-e-contorno, user 24/10: "mais gordinha" without growing longer; the
- * square's footprint, which the sim blocks whole, already spans it).
+ * The junk wall of the free barricadas (the default): pieces BARRICADA_CELLS long and 1 thick along their rot
+ * (barricada-tocar-no-mapa; the sim's blocker follows the same line), thicker across it (barricada-grossura-e-contorno,
+ * user 24/10: "mais gordinha" without growing longer).
  */
-export const TRALHA_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muralha,pilar:BASE_ART.pilar,size:BARRICADA_CELLS,thick:MURALHA_GROSSURA});
+export const TRALHA_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muralha,pilar:BASE_ART.pilar,size:BARRICADA_CELLS,thick:MURALHA_GROSSURA,oriented:true});
 /** The built muro (fortify.ts, card trocar-procedurais-por-arte): cinder blocks, same template and rules, 1-cell squares. */
 export const MURO_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muro,pilar:BASE_ART.muroPilar});
 /** Rows of a straight piece: across the wall's line, in share of `thick` (behind first, so the front one covers it). */
@@ -93,13 +95,15 @@ export class MuralhaLayer {
     const list=this.images.get(s.id)??[];
     if(s.c===undefined||s.r===undefined||!this.ready()){for(const i of list)i.setVisible(false);return undefined;}
     this.images.set(s.id,list);
-    const size=this.sheets.size??1,thick=this.sheets.thick??0,estado=muralhaEstado(s.hp,s.maxHp),plan=estado?muralhaPlan({c:s.c,r:s.r,rot:s.rot},this.cells,this.counts(),size):[];
+    const size=this.sheets.size??1,thick=this.sheets.thick??0,estado=muralhaEstado(s.hp,s.maxHp),oriented=!!this.sheets.oriented,along:MuralhaAxis=s.rot===1?'r':'c';
+    const plan=!estado?[]:oriented?[{kind:'reto' as const,piece:retoOf(s.c,s.r,along,this.counts().retos,size),axis:along}]:muralhaPlan({c:s.c,r:s.r,rot:s.rot},this.cells,this.counts(),size);
     const rowsOf=(kind:'reto'|'pilar')=>kind==='reto'&&thick>0?ROWS_THICK:ROWS_ONE;
     let count=0;for(const d of plan)count+=rowsOf(d.kind).length;
     while(list.length<count)list.push(this.scene.add.image(0,0,'__DEFAULT').setName(`base-${this.sheets.reto}`));
     for(let i=count;i<list.length;i++)list[i].setVisible(false);
     // The square's side (u) and ground centre: its pieces span the side (barricada-2x: 2 cells for the junk wall).
-    const pr=this.projection,side=this.cell*size,cx=s.c*this.cell+side/2,cy=s.r*this.cell+side/2,base=pr.depth(cx,cy)-depth;
+    // An oriented piece is 1 cell thick across its line: its ground centre is its footprint's.
+    const pr=this.projection,side=this.cell*size,cx=s.c*this.cell+(oriented&&along==='r'?this.cell:side)/2,cy=s.r*this.cell+(oriented&&along==='c'?this.cell:side)/2,base=pr.depth(cx,cy)-depth;
     // How much deeper the front row sits than the line (either axis): the pillar stays over it.
     const lift=thick>0?Math.abs(pr.depth(cx+thick*side,cy)-pr.depth(cx,cy))+Math.abs(pr.depth(cx,cy+thick*side)-pr.depth(cx,cy)):0;
     this.top=pr.project(cx,cy,this.a).y;

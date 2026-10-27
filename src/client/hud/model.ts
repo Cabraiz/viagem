@@ -5,6 +5,7 @@
 import type {EmoteId} from '../fun/emotes.ts';
 import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
+import {waveBossById} from '../../rules/index.ts';
 import type {OfferView,PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {isAsleep} from '../render/wake-rules.ts';
@@ -45,6 +46,8 @@ export interface HudContext {
    * {t:'run'}, combat only), set by Hud.setMinerva; undefined: no minute this run.
    */
   minervaAteTick?:number;
+  /** The time to explore after a wave (inicio-no-uno-caixas-120: RunState.exploraDesdeTick/exploraAteTick), set by Hud.setExplora. */
+  explora?:{from:number;until:number};
 }
 
 /** Common shape of every DOM part of the HUD. */
@@ -56,6 +59,18 @@ export interface HudPart {
 
 export const clamp01=(value:number)=>Number.isFinite(value)?Math.min(1,Math.max(0,value)):0;
 export const secondsLeft=(untilTick:number,tick:number)=>Math.max(0,Math.ceil((untilTick-tick)/SIM_HZ));
+/**
+ * The time to explore at `tick` (card topo-sem-icone-contagem-exploracao): the whole seconds left (120, 119…), or
+ * undefined outside it. Both windows count, as the big clock does (minerva.ts): the Minuto de Minerva at the start (its
+ * mission is the boxes too, the user's print) and each time to explore after a wave. The top's clock shows this number
+ * in place of the chaveiro's m:ss.
+ */
+export type ExploraWindows=Pick<HudContext,'minervaAteTick'|'explora'>;
+export function exploraLeft(tick:number,w:ExploraWindows|undefined):number|undefined{
+  if(w?.minervaAteTick!==undefined&&tick<w.minervaAteTick)return secondsLeft(w.minervaAteTick,tick);
+  const e=w?.explora;
+  return e&&tick>=e.from&&tick<e.until?secondsLeft(e.until,tick):undefined;
+}
 /** One clock format for a caído everywhere (team strip, edge arrow, map ficha): "27 s" (design onda 6 M2, UX aresta 1). */
 export const secondsText=(seconds:number)=>`${seconds} s`;
 /**
@@ -112,7 +127,7 @@ export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:numbe
  * objective running (D-047) the rounds have no end ("Onda N": waves go on past 10) and the chip carries his clock.
  */
 export function roundInfo(view:RunView):RoundInfo|undefined{
-  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective)}:{}),...(nestsMode(view)?{nests:true as const}:{})};
+  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective,waveBossUp(view))}:{}),...(nestsMode(view)?{nests:true as const}:{})};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
     const label=objective?`Onda ${round.index}`:`Rodada ${round.index} de ${total}`;
@@ -134,6 +149,9 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
 /** Enemies the round still has to beat: a nest's sleepers (D-051, asleep) are not in the count until they wake. */
 export function awakeCount(enemies:readonly object[]){let n=0;for(const e of enemies)if(!isAsleep(e))n++;return n;}
 
+/** The 1st wave's chefão stands (card boss-fim-onda-1): the chaveiro's clock is stopped until he falls. */
+export const waveBossUp=(view:Pick<RunView,'enemies'>)=>view.enemies.some(e=>e.boss&&e.hp>0&&!!waveBossById(e.kind));
+
 export interface BossInfo {id:string;name:string;fraction:number;phase:number;enraged:boolean}
 export const BOSS_NAME='Síndico Supremo';
 
@@ -141,7 +159,8 @@ export function bossInfo(view:RunView):BossInfo|undefined{
   const boss=view.enemies.find(enemy=>enemy.boss&&enemy.hp>0);
   if(!boss)return undefined;
   const phase=boss.phase??1;
-  return {id:boss.id,name:BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
+  // The chefão of the 1st wave (boss-fim-onda-1) has his own name; the final boss is the Síndico.
+  return {id:boss.id,name:waveBossById(boss.kind)?.bar??BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
 }
 
 export const isActive=(player:PlayerRunView)=>!player.spectator&&!player.eliminated;

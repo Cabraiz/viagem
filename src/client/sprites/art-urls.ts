@@ -11,5 +11,6 @@ export const thumbUrl=(classId:string)=>`/art/portraits/${classId}-thumb.webp`;
 export const STAND_IN_KEY='class:__stand-in';
 /** The class icon's texture key when it is in, else the silhouette. */
 export const iconKey=(classId:string,has:(key:string)=>boolean)=>has(`class:${classId}`)?`class:${classId}`:STAND_IN_KEY;
-/** A copy that failed to load (missing in a deploy, a bad cache) falls back to the approved file; undefined otherwise. */
-export const originalUrl=(url:string)=>url.startsWith('/art/lite/')?'/art/'+url.slice('/art/lite/'.length):undefined;
+/** A copy that failed to load (missing in a deploy, a bad cache) falls back to the approved file (the computer's enemy copies sit beside the phone's); undefined otherwise. */
+export const originalUrl=(url:string)=>url.startsWith('/art/lite/enemies-pc/')?'/art/enemies/'+url.slice('/art/lite/enemies-pc/'.length):
+  url.startsWith('/art/lite/')?'/art/'+url.slice('/art/lite/'.length):undefined;

@@ -39,6 +39,8 @@ export interface ArtFile {
    * as the cell; horde-art liteEnemyUrl then asks for that copy.
    */
   pcCell?:[number,number];
+  /** The chefão's AI-upscaled copy (hdFile): its pages live under public/art/hd/enemies/ (horde-art enemyFileUrl). */
+  hd?:boolean;
 }
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.
@@ -59,7 +61,7 @@ let index:ArtIndex=EMPTY;
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
 /** R06 (8 drawn directions) and M16 (5 drawn: S, SW, W, NW, N; E/NE/SE are mirrored, movement128.ts movement16Plan; push: empurrar-uno; pull: puxar-uno-corda). */
-const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt)16-(S|SW|W|NW|N|NE|E|SE))$/;
+const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build)16-(S|SW|W|NW|N|NE|E|SE))$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -92,10 +94,40 @@ function liteFile(file:ArtFile,pc:boolean):ArtFile{
   const {liteCell,pcCell,...rest}=file;
   return pc&&pcCell?{...rest,cell:[pcCell[0],pcCell[1]],liteCell,pcCell}:{...rest,cell:[liteCell[0],liteCell[1]],liteCell};
 }
-function parsePiece(value:unknown,lite=false,pc=false):ArtPiece|undefined{
+/**
+ * Enemies drawn from their approved files, not the lite copies: the 1st wave's chefão (rules WAVE_BOSS_IDS; the user,
+ * 24/10: "pixelagem para ficar hd" at 3×). ~30 MB to download but ~390 MB of GPU memory once decoded on a phone, so
+ * none loads at the opening: art/chefao-art.ts loads the run's one before he comes and frees him once he falls. Kept here as plain
+ * ids (this module imports nothing); tests/client/chefao-cena.test.ts checks it against the rules.
+ */
+export const HD_ENEMIES:ReadonlySet<string>=new Set(['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha']);
+/**
+ * The chefão's files he spends the fight in, AI-upscaled (scripts/art-hd-chefao.mjs, the user 24/10: "Hd no PC, mas semi
+ * hd no celular"): the computer's ×2 cell in pages ≤ 8192 px, the phone's semi-HD cell in pages ≤ 4096 px. The other
+ * files keep the approved 384 sheet; the client scales each file by its own cell (horde-art pieceScale).
+ */
+export const HD_ANIMS:ReadonlySet<string>=new Set(['idle','walk','slam']);
+export const HD_SCREENS={pc:{cell:768,maxSide:8192},celular:{cell:512,maxSide:4096}} as const;
+/** Pages of the HD copy, as scripts/art-hd-chefao.mjs hdLayout writes them (tests/tools/art-hd-chefao.test.ts keeps both equal). */
+export function hdLayout(id:string,anim:string,screen:keyof typeof HD_SCREENS,total:number):ArtPage[]{
+  const {cell,maxSide}=HD_SCREENS[screen],fit=Math.floor(maxSide/cell),columns=Math.min(total,fit),perPage=columns*fit;
+  const count=Math.ceil(total/perPage),pages:ArtPage[]=[];
+  for(let i=0;i<count;i++){
+    const firstFrame=i*perPage,frameCount=Math.min(perPage,total-firstFrame);
+    pages.push({file:`${id}/${screen}/${anim}${count>1?`-p${i+1}`:''}.webp`,columns,rows:Math.ceil(frameCount/columns),firstFrame,frameCount});
+  }
+  return pages;
+}
+/** File `anim` of chefão `id` as the screen draws it: its HD copy for HD_ANIMS, else the approved file. */
+function hdFile(id:string,anim:string,file:ArtFile,pc:boolean):ArtFile{
+  if(!HD_ENEMIES.has(id)||!HD_ANIMS.has(anim)||!file.frames||!file.directions)return file;
+  const screen=pc?'pc':'celular',cell=HD_SCREENS[screen].cell,{file:_,liteCell:__,pcCell:___,...rest}=file;
+  return {...rest,cell:[cell,cell],pages:hdLayout(id,anim,screen,file.frames*file.directions),hd:true};
+}
+function parsePiece(value:unknown,lite=false,pc=false,id=''):ArtPiece|undefined{
   if(!isObject(value)||typeof value.kind!=='string'||!isObject(value.files))return undefined;
   const files:Record<string,ArtFile>=Object.create(null);
-  for(const [key,f] of safeEntries(value.files,true)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file,pc):file;}
+  for(const [key,f] of safeEntries(value.files,true)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file,pc):hdFile(id,key,file,pc);}
   if(!Object.keys(files).length)return undefined;
   return {kind:value.kind,files,...(isObject(value.meta)?{meta:value.meta}:{})};
 }
@@ -112,7 +144,7 @@ export function parseArtIndex(value:unknown,pc=false):ArtIndex{
   for(const [id,g] of safeEntries(value.groups)){
     if(!isObject(g)||typeof g.output!=='string'||!/^public\/art\/[a-z0-9/_-]+$/.test(g.output)||g.output.includes('..')||!isObject(g.pieces))continue;
     const pieces:Record<string,ArtPiece>=Object.create(null);
-    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos',pc);if(piece)pieces[pid]=piece;}
+    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos'&&!HD_ENEMIES.has(pid),pc,id==='inimigos'?pid:'');if(piece)pieces[pid]=piece;}
     groups[id]={output:g.output,pieces};
   }
   return {version:2,groups};

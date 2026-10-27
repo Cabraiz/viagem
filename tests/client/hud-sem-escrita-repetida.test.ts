@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import {putAttr,putData,putHidden,putText,turnMoved} from '../../src/client/hud/dom-put.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
-import type {RunView} from '../../src/contract/index.ts';
+import {SIM_HZ,type RunView} from '../../src/contract/index.ts';
 
 /** Every write a MutationObserver would see, as `<class> <what>`. */
 const writes:string[]=[];
@@ -88,6 +88,7 @@ class FakeEl {
   querySelector(selector:string){return this.querySelectorAll(selector)[0]??null;}
   get firstElementChild(){return this.children[0]??null;}
   get lastElementChild(){return this.children.at(-1)??null;}
+  get childElementCount(){return this.children.length;}
 }
 function compound(sel:string):(el:FakeEl)=>boolean{
   const visible=sel.includes(':not([hidden])');sel=sel.replace(':not([hidden])','');
@@ -149,6 +150,13 @@ test('the HUD parts the study measured, frames of the same view: once settled, a
     frame(hurt);
     assert.ok(writes.some(w=>w.startsWith('rh-camp-hp ')),`${scenario}: the wall's number follows its life (${writes.join(', ')})`);
   }
+  // The time to explore (topo-sem-icone-contagem-exploracao): each second rewrites the numbers' text only, no markup.
+  const view=fakeView('wave',4),window={from:view.tick,until:view.tick+120*SIM_HZ};
+  const exploring={...ctx,explora:window} as HudContext,top=[camp,parts[3]];
+  const second=(n:number)=>{const v=structuredClone(view);v.tick+=n*SIM_HZ;for(const p of top)p.update(v,exploring);};
+  second(0);second(0);
+  writes.length=0;second(1);
+  assert.ok(writes.length>0&&writes.every(w=>/ text$/.test(w)),`a second of the countdown: ${writes.join(', ')}`);
   // The objective's arrow: a sub-2° drift is no write, a real turn is one transform write.
   writes.length=0;objective.render({meters:120,bearing:41});
   assert.deepEqual(writes,[]);

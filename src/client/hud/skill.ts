@@ -12,10 +12,11 @@
  */
 import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
-import type {CombatMode,PlayerRunView} from '../../contract/index.ts';
+import type {BicoId,CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
 import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
 import {itemDisplay} from './items.ts';
+import {WORKING_WORD,WORK_WORD,workLabel,workingLabel} from './bicos.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -81,6 +82,16 @@ export const SKILL_WORD='Habilidade',NOTE_COOLING='ainda não',NOTE_NO_TARGET='s
 export const ATTACK_WORD='Atacar',ATTACK_LABEL='Atacar: toque para um ataque, segure para atacar sem parar, arraste para mirar';
 /** construir-no-botao: the word and the accessible name while a kit de torre is selected. */
 export const BUILD_WORD='Construir';
+/**
+ * torre-limite-rebocar-sem-arma: at the Uno's rope end the action button tows ("Rebocar": {t:'puxar',on:true}); on the
+ * rope it lets go ("Soltar"). The face comes from hud/fortify/model.ts towFace.
+ */
+/**
+ * torre-limite-rebocar-sem-arma: empty hands (the heroes start with no weapon) say so on the attack button, with the
+ * crate icon (the first crate gives a weapon), dimmed: the generic `ui/atacar` sticker is a hand with a bread knife.
+ */
+export const UNARMED_WORD='Sem arma',UNARMED_LABEL='Sem arma: abra uma caixa para pegar uma';
+export const TOW_WORD='Rebocar',TOW_OFF_WORD='Soltar',TOW_LABEL='Rebocar o Uno: toque para pegar a corda',TOW_OFF_LABEL='Soltar a corda';
 export const buildLabel=(kitId:string)=>`Construir ${itemDisplay(kitId).name} à sua frente`;
 /** What the action button shows with a kit selected (or not): its word, its sticker ('' the attack's own) and its name. */
 export function actionFace(combat:CombatMode,classId:string,handIcon:StickerName|'',kitId?:string):{word:string;icon:StickerName|'';label:string}{
@@ -114,6 +125,12 @@ export class SkillButton {
   private handIcon:StickerName|''='';
   /** The selected kit de torre (construir-no-botao), undefined with a weapon. */
   private kit?:string;
+  /** Manual combat with nothing in the hand (setUnarmed): "Sem arma". */
+  private unarmed=false;
+  /** The rope face (setTow): 'rebocar' or 'soltar', undefined for Atacar. */
+  private tow?:'rebocar'|'soltar';
+  /** Bicos: 'oferta|<bico>' or 'dentro|<bico>' while the slot is Trabalhar, undefined otherwise. */
+  private work?:string;
   private readonly classId:string;
   constructor(el:HTMLButtonElement,classId:string){
     this.el=el;this.classId=classId;
@@ -143,6 +160,7 @@ export class SkillButton {
     const look=kitId?(blocked?'bloqueado':'ok'):undefined;
     if(look!==this.el.dataset.build){if(look)this.el.dataset.build=look;else delete this.el.dataset.build;}
     if(kitId===this.kit)return;
+    if(this.unarmed){this.unarmed=false;delete this.el.dataset.unarmed;}
     this.kit=kitId;
     const face=actionFace(this.combat,this.classId,'',kitId);
     this.el.setAttribute('aria-label',face.label);
@@ -157,6 +175,53 @@ export class SkillButton {
     this.paint();
   }
   get building(){return this.kit!==undefined;}
+  /**
+   * Bicos (hud/bicos.ts): standing in an open shop's ring the slot says Trabalhar in the interaction colour
+   * (`data-work=oferta`), inside the shift "No turno" (`data-work=dentro`); undefined goes back to Atacar or Construir.
+   */
+  setWork(work:{bico:BicoId;inside:boolean}|undefined){
+    const look=work?(work.inside?'dentro':'oferta'):undefined,key=work?`${look}|${work.bico}`:undefined;
+    if(key===this.work)return;
+    if(this.unarmed){this.unarmed=false;delete this.el.dataset.unarmed;}
+    const was=this.work;this.work=key;
+    if(look)this.el.dataset.work=look;else delete this.el.dataset.work;
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(work){
+      this.el.setAttribute('aria-label',work.inside?workingLabel(work.bico):workLabel(work.bico));
+      if(old&&!was)old.outerHTML=icon('caixa-eletronico',options);
+    }else{
+      const face=actionFace(this.combat,this.classId,'',this.kit);
+      this.el.setAttribute('aria-label',face.label);
+      if(old)old.outerHTML=face.icon?sticker(face.icon,options):this.combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+      this.handIcon='';
+      if(!this.kit&&this.combat==='manual')this.showHand(attackIconOf(this.player)??'');
+    }
+    this.paint();
+  }
+  get working(){return this.work!==undefined;}
+  /**
+   * The Uno's rope (torre-limite-rebocar-sem-arma): 'rebocar' at its free end, 'soltar' on it (`data-tow`, the rope
+   * sticker); undefined goes back to Atacar. Construir and Trabalhar win over it (the caller passes undefined then).
+   */
+  setTow(face:'rebocar'|'soltar'|undefined){
+    if(face===this.tow)return;
+    if(this.unarmed){this.unarmed=false;delete this.el.dataset.unarmed;}
+    const was=this.tow;this.tow=face;
+    if(face)this.el.dataset.tow=face;else delete this.el.dataset.tow;
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(face){
+      this.el.setAttribute('aria-label',face==='soltar'?TOW_OFF_LABEL:TOW_LABEL);
+      if(old&&!was)old.outerHTML=icon('corda',options);
+    }else{
+      const look=actionFace(this.combat,this.classId,'',this.kit);
+      this.el.setAttribute('aria-label',look.label);
+      if(old)old.outerHTML=look.icon?sticker(look.icon,options):this.combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+      this.handIcon='';
+      if(!this.kit&&this.combat==='manual')this.showHand(attackIconOf(this.player)??'');
+    }
+    this.paint();
+  }
+  get towing(){return this.tow;}
   /** Attack button pressed or let go (manual combat): `data-held` for the CSS. */
   setHeld(held:boolean){if(held)this.el.dataset.held='';else delete this.el.dataset.held;}
   /** A tap on the button: sends through `send` (CoopClient.cast) unless the skill is still cooling. */
@@ -176,11 +241,25 @@ export class SkillButton {
   /** Each authoritative view: the local player's cooldown. */
   update(player:PlayerRunView|undefined,tick:number,now:number){
     this.player=player;this.tick=tick;
-    if(this.combat==='manual'&&!this.kit)this.showHand(attackIconOf(player)??'');
+    const free=this.combat==='manual'&&!this.kit&&!this.work&&!this.tow;
+    this.setUnarmed(free&&!!player&&attackIconOf(player)===undefined);
+    if(free&&!this.unarmed)this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);
   }
   /** Manual combat: the button shows the weapon in the hand; with none, the generic attack sticker. */
+  private setUnarmed(on:boolean){
+    if(on===this.unarmed)return;
+    this.unarmed=on;
+    if(on)this.el.dataset.unarmed='';else delete this.el.dataset.unarmed;
+    // Construir, Trabalhar and Rebocar keep their own face (they set it back through setBuild/setWork/setTow).
+    if(this.kit||this.work||this.tow){this.paint();return;}
+    this.el.setAttribute('aria-label',on?UNARMED_LABEL:actionFace(this.combat,this.classId,'',this.kit).label);
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(old)old.outerHTML=on?icon('bau',options):stickerOrIcon('atacar','chinelo',options);
+    this.handIcon='';
+    this.paint();
+  }
   private showHand(name:StickerName|''){
     if(name===this.handIcon)return;
     const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
@@ -206,6 +285,6 @@ export class SkillButton {
     this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
-    this.word.textContent=note||(this.kit?BUILD_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);
+    this.word.textContent=note||(this.work?(this.work.startsWith('dentro')?WORKING_WORD:WORK_WORD):this.kit?BUILD_WORD:this.tow?(this.tow==='soltar'?TOW_OFF_WORD:TOW_WORD):this.unarmed?UNARMED_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);
   }
 }

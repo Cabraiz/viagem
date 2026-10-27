@@ -5,6 +5,7 @@
  */
 import type {SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
+import {WAVE_BOSS_IDS} from '../../rules/index.ts';
 
 /**
  * Pack 12's weapons (sim/weapons/pack12.ts, which the client may not import) by type: the type's sound. The melee ones
@@ -44,7 +45,8 @@ export function weaponSound(weapon:string):SoundId|undefined{
   return 'pistola';
 }
 const MELEE:ReadonlySet<string>=new Set(['faca','peixeira','facao','colher-de-pau']);
-const isBoss=(kind:string)=>kind==='chefe'||kind.startsWith('chefe-');
+// The chefão of the 1st wave (boss-fim-onda-1) is a roster chefe: his kind is his roster id.
+const isBoss=(kind:string)=>kind==='chefe'||kind.startsWith('chefe-')||WAVE_BOSS_IDS.includes(kind);
 /** A crate's rarity (1 verde .. 5 lendária, contract PickupKind) to its chest's sound. */
 export function chestSound(rarity:number):SoundId{
   return rarity>=5?'bau-lendario':rarity>=4?'bau-epico':rarity>=2?'bau-raro':'bau-comum';
@@ -68,7 +70,7 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
         // Zueira: a vehicle honks like a clown car.
         case 'vehicle':return 'buzina';
         case 'item':return 'ui-carta';
-        // A boleto of the rain (the only XP on the ground, D-054) and the resources clink.
+        // The kill's cédula (NEW-20261024-ORQ-tirar-drops-cedula-girando) and the resources clink like coins.
         default:return 'gema';
       }
     case 'levelup':return 'nivel';

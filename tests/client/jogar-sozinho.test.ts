@@ -111,7 +111,7 @@ test('the island only with ?ilha=1',()=>{
 
 test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island path sits behind ?ilha=1',()=>{
   const main=read('src/main.ts');
-  assert.match(main,/<button id="enter-island" class="secondary-button">Jogar sozinho<\/button>/,'the id the live-play uses stays');
+  assert.match(main,/<button id="enter-island" class="secondary-button"><span class="escolha-rotulo">Jogar sozinho<\/span><\/button>/,'the id the live-play uses stays');
   assert.match(main,/aria-label="Menos um bot"/);assert.match(main,/aria-label="Mais um bot"/);
   assert.match(main,/class="solo-bots-value" aria-live="polite"/);
   assert.match(main,/const island=islandFlag\(location\.search\);/);

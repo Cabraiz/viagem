@@ -80,7 +80,8 @@ jobs:
           key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
       - if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci --include=optional && npm ci --prefix backend
-      - run: npm run build
+      - id: build
+        run: npm run build
       # Production smoke (Executor-8, scripts/smoke-prod.mjs): the built dist/ under vite preview + the local rooms
       # Worker; headless Chromium plays "Jogar sozinho" (normal and ?modo=chaveiro). Catches bundle-only breakage
       # (e.g. chunk cycles leaving top-level constants undefined) that check/test/build cannot see.
@@ -95,16 +96,102 @@ jobs:
       - if: steps.pw.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
       - name: Production smoke (1 = game broken, blocks; 2 = infra, retried once, then blocks)
+        id: smoke
         run: |
           set +e
-          node scripts/smoke-prod.mjs smoke-out; code=$?
-          if [ "$code" -eq 2 ]; then echo "::warning::smoke infra error (exit 2), retrying once"; node scripts/smoke-prod.mjs smoke-out; code=$?; fi
+          mkdir -p smoke-out
+          node scripts/smoke-prod.mjs smoke-out 2>&1 | tee smoke-out/smoke.log; code=${PIPESTATUS[0]}
+          if [ "$code" -eq 2 ]; then echo "::warning::smoke infra error (exit 2), retrying once"; node scripts/smoke-prod.mjs smoke-out 2>&1 | tee -a smoke-out/smoke.log; code=${PIPESTATUS[0]}; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
           exit $code
+      # The verdict for the queue (`fila lote --smoke ci` → `tools/ci.mjs test --smoke`): annotation smoke-prod and
+      # smoke-out/smoke-prod.json, at most 10 lines. Also when the build or the smoke step failed (a red build is the game's).
+      - name: Smoke summary (smoke-prod)
+        if: always()
+        run: node tools/ci.mjs smoke-note prod smoke-out/smoke.log --exit "${{ steps.smoke.outputs.code }}" --build "${{ steps.build.outcome }}"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: smoke-out
           path: smoke-out
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The returning player's smoke (BUG-20261014-ORQ-mapa-cache-velho), on the queue's batch branches only: the base (the
+  # main the batch was made on: merge-base with origin/main) built in ../anterior, then scripts/smoke-prod.mjs
+  # --upgrade-from it (one browser profile plays the old build, then this one). The PC ran it in every lote; with
+  # `fila lote --smoke ci` the queue reads its annotation (smoke-upgrade) instead. continue-on-error: its verdict travels
+  # in that annotation, so a red upgrade never turns the run red for a queue that still smokes on the PC (the default).
+  smoke-upgrade:
+    if: startsWith(github.ref, 'refs/heads/fila/')
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # The whole history without blobs: enough for the merge-base, and the base's blobs come on its checkout.
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            backend/node_modules
+          key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci --include=optional && npm ci --prefix backend
+      - name: The base (merge-base with origin/main) in ../anterior
+        id: base
+        run: |
+          base=$(git merge-base HEAD origin/main || true)
+          if [ -z "$base" ] || [ "$base" = "$(git rev-parse HEAD)" ]; then echo "skip=sem base anterior (merge-base ${base:-nenhum})" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "base $base"; echo "sha=$base" >> "$GITHUB_OUTPUT"
+          git worktree add -q --detach ../anterior "$base"
+          # Same lockfiles: the same node_modules (the PC's queue links them the same way); else its own npm ci.
+          for d in . backend; do
+            if git diff --quiet "$base" HEAD -- "$d/package-lock.json"; then ln -s "$PWD/$d/node_modules" "../anterior/$d/node_modules"
+            else (cd "../anterior/$d" && npm ci --include=optional); fi
+          done
+      - id: build
+        if: steps.base.outputs.sha != ''
+        run: npm run build && (cd ../anterior && npm run build)
+      - id: pw
+        if: steps.base.outputs.sha != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.63.0-${{ runner.os }}
+      - if: steps.base.outputs.sha != ''
+        run: npm install --no-save playwright@1.63.0
+      - if: steps.base.outputs.sha != '' && steps.pw.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.base.outputs.sha != '' && steps.pw.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Upgrade smoke (1 = game broken; 2 = infra, retried once)
+        id: smoke
+        if: steps.base.outputs.sha != ''
+        run: |
+          set +e
+          mkdir -p smoke-upgrade
+          node scripts/smoke-prod.mjs smoke-upgrade --upgrade-from ../anterior 2>&1 | tee smoke-upgrade/smoke.log; code=${PIPESTATUS[0]}
+          if [ "$code" -eq 2 ]; then echo "::warning::upgrade smoke infra error (exit 2), retrying once"; node scripts/smoke-prod.mjs smoke-upgrade --upgrade-from ../anterior 2>&1 | tee -a smoke-upgrade/smoke.log; code=${PIPESTATUS[0]}; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+      - name: Smoke summary (smoke-upgrade)
+        if: always()
+        run: node tools/ci.mjs smoke-note upgrade smoke-upgrade/smoke.log --exit "${{ steps.smoke.outputs.code }}" --build "${{ steps.build.outcome || steps.base.outcome }}" --skipped "${{ steps.base.outputs.skip }}"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-upgrade
+          path: smoke-upgrade
           retention-days: 7
           if-no-files-found: ignore
 

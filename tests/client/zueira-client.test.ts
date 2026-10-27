@@ -7,7 +7,7 @@ import {killcamBoxes,killcamFrame,KILLCAM_MIN_CRITTER_CSS,KILLCAM_SAFE_CSS} from
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
 import {SHAME_SCORE,type ShameKey} from '../../src/sim/shame.ts';
 import {closerName} from '../../src/client/hud/killcam.ts';
-import {pickupLook,pickupTexture,FX} from '../../src/client/render/keys.ts';
+import {PICKUP_KINDS,pickupLook,pickupTexture} from '../../src/client/render/keys.ts';
 import {HAPPENING_KINDS} from '../../src/sim/zueira.ts';
 
 /** Depth constants of the Phaser modules, read from the source (node cannot load Phaser). */
@@ -63,8 +63,12 @@ test('blackout alpha: fades in and out, never a cut; reduced motion is lighter a
 });
 
 test('copy: every event has a banner, the kill-cam names who closed the round, every moment has a sentence', ()=>{
+  // The retired flash sale has no banner any more (sem-coxinha-no-chao); the others keep theirs.
+  assert.equal(HAPPENING_COPY.promo,undefined);
   for(const kind of HAPPENING_KINDS){
     const c=HAPPENING_COPY[kind];
+    if(kind==='promo')continue;
+    assert.ok(c,kind);
     assert.ok(c.title.length<=22&&c.subtitle.length<=36,kind);
     assert.doesNotMatch(c.title+c.subtitle,/·|→|—/);
     assert.notEqual(c.title,c.title.toUpperCase());
@@ -104,9 +108,10 @@ test('kill-cam name: "Você" for the local player, the nickname for the others, 
   assert.equal(closerName(view,undefined,'a'),undefined);
 });
 
-test('a boleto of the rain looks like a boleto, and so does any XP on the ground (D-054: no gems)', ()=>{
-  assert.equal(pickupLook('xp','boleto'),FX.boleto);
-  assert.equal(pickupLook('xp'),FX.boleto);
+test('the boleto rain is retired: an XP pickup (an old room) is the item parcel; the cédula has its own note', ()=>{
+  assert.equal(pickupLook('xp','boleto'),pickupTexture('item'));
+  assert.equal(pickupLook('grana'),pickupTexture('grana'));
+  assert.ok(PICKUP_KINDS.includes('grana'));
   assert.equal(pickupLook('heal','promo'),pickupTexture('heal'));
 });
 

@@ -28,7 +28,7 @@
  * can only become a Rojão or a Holofote). The Gustavão is not built on a site: it moves onto the laid rail (RailSite).
  */
 import {ticks,type FreePiece} from '../contract/index.ts';
-import {CITY_MAP_SCALE} from './scale.ts';
+import {CITY_DISTANCE_SCALE} from './scale.ts';
 import {UNITS_PER_TOKEN} from './stonewards.ts';
 /** Site size a defense needs (structurally the maps port's BuildSize; rules may not import maps). */
 export type DefenseSize=1|2|3;
@@ -123,9 +123,9 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   'obuseiro':def({id:'obuseiro',name:'Obuseiro Pesado',label:'B5',tier:5,branch:'B',from:'lanca-foguetes',footprint:[3,3],hp:1000,
     range:12,minRange:3,cooldown:s(3.5),damage:90,area:2.4,hits:'ground',target:'cluster'}),
   // B6: fires once in a long while, with a huge area, from the rail; reaches most of the map. City only (the rail): its
-  // range is a map length, 60 u × CITY_MAP_SCALE since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
+  // range is a map length, 60 u × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
   'gustavao':def({id:'gustavao',name:'Gustavão',label:'B6',tier:6,branch:'B',from:'obuseiro',footprint:[12,4],hp:3000,rail:true,
-    range:60*CITY_MAP_SCALE,minRange:6,cooldown:s(20),damage:600,area:6,hits:'ground',target:'cluster'}),
+    range:60*CITY_DISTANCE_SCALE,minRange:6,cooldown:s(20),damage:600,area:6,hits:'ground',target:'cluster'}),
   // C: control and support.
   'holofote':def({id:'holofote',name:'Holofote',label:'C2',tier:2,branch:'C',from:'vigia-do-predio',footprint:[1,1],hp:400,
     range:6,cooldown:s(.5),damage:0,area:2,slow:s(1.5),dazzle:{ticks:s(.6),chance:.3}}),
@@ -169,7 +169,9 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
   // enemies (they walk around it and bash it only when it shuts them off the car). R$ 5 a square: the old 2×1's price per cell.
   // NEW-20261022-ORQ-barricada-2x (user, 22/10): a square is BARRICADA_CELLS × BARRICADA_CELLS cells (2×2, twice as wide,
   // long and tall as before); its life stays 200 (one square, just bigger).
-  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  // NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "o cubo laranja está maior do que a barricada"): the piece is
+  // what the art is, a wall 2 cells long and 1 thick, turned by rot (0 along x, 1 along y).
+  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
 });
 /**
  * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
@@ -187,8 +189,14 @@ export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
 export const TRALHA_GROUPS=6,TRALHA_GROUP_CELLS=5,COLETAR_SECONDS=1.5,DESTRUIR_PIX=2,CARREGA_MAX=1;
 /** How far (u, from the square's edge) a hero reaches a barricada square to collect or destroy it. */
 export const TRALHA_REACH=3;
+/**
+ * NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "não gostei de eu ter que me mexer para pôr a barricada"): a kit
+ * from the inventory (a barricada, a kit de torre) is placed by a tap on the map, this far (u) from the hero to the
+ * footprint's edge, not BUILD_REACH. The nest keep-out (CAR_NEST_KEEP_OUT) still holds, so no nest is shut from afar.
+ */
+export const KIT_PLACE_REACH=8;
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
-/** NEW-20261022-ORQ-barricada-2x: the side of a barricada square in build-grid cells (its footprint is square). */
+/** NEW-20261022-ORQ-barricada-2x: a barricada's length in build-grid cells (barricada-tocar-no-mapa: 1 cell thick). */
 export const BARRICADA_CELLS=FREE_PIECE_DEFS.barricada.footprint[0];
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{

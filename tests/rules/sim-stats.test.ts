@@ -5,7 +5,7 @@ import {BASE_STATS,ticks,type OwnedItem,type PickupState,type PlayerBuild,type P
 import type {SimContext} from '../../src/sim/context.ts';
 import {AUTO_PASSIVE_IDS,MANUAL_PASSIVE_IDS,PASSIVES,PASSIVE_IDS,PASSIVE_MAX_LEVEL,passiveDef} from '../../src/rules/passives.ts';
 import {STAT_KEYS,STAT_LIMITS,computeStats,refreshStats,type ClassBonus,type StatKey} from '../../src/rules/stats.ts';
-import {CHEST_HEAL_LIFETIME_SECONDS,CHEST_HEAL_VALUE,EVOLUTIONS,EVOLUTION_MIN_TICKS,WEAPON_IDS,WEAPON_MAX_LEVEL,eligibleEvolutions,itemMaxLevel,openChest} from '../../src/sim/evolutions.ts';
+import {CHEST_HEAL_VALUE,EVOLUTIONS,EVOLUTION_MIN_TICKS,WEAPON_IDS,WEAPON_MAX_LEVEL,eligibleEvolutions,itemMaxLevel,openChest} from '../../src/sim/evolutions.ts';
 import {WEAPON_CATALOG,WEAPON_IDS as CATALOG_WEAPON_IDS} from '../../src/sim/weapons/catalog.ts';
 import {MAX_PICKUPS} from '../../src/rules/budget.ts';
 
@@ -289,21 +289,17 @@ test('openChest: luck can give 3 upgrades and a passive level recomputes stats',
   assert.equal(p.hp,130);
   assert.deepEqual(events,[{type:'upgrade',player:'p1',item:'marmita',level:5}]);
 });
-test('openChest: fully maxed build drops a heal pickup at the chest position',()=>{
+test('openChest: fully maxed build heals the opener on the spot, no coxinha on the ground (sem-coxinha-no-chao)',()=>{
   const {fake,ctx,events}=makeCtx(4,LATE);
-  const p=makePlayer('p1',maxedBuild());
-  const before=clone(p);
+  const p=makePlayer('p1',maxedBuild(),{hp:100});
+  const before=clone(p.build);
   const id=addChest(fake,'chestX',12.5,3.25);
   const res=openChest(ctx,p,id,OPEN);
-  assert.ok(res&&res.kind==='heal');
+  assert.deepEqual(res,{kind:'heal',pickup:null});
   assert.ok(!fake.pickups.has(id));
-  assert.ok(res.pickup!==null,'budget has room: the coxinha is dropped');
-  const heal=fake.pickups.get(res.pickup);
-  assert.ok(heal);
-  assert.equal(heal.kind,'heal');assert.equal(heal.value,CHEST_HEAL_VALUE);assert.equal(CHEST_HEAL_VALUE,30);
-  assert.equal(heal.x,12.5);assert.equal(heal.y,3.25);assert.equal(heal.spawnTick,LATE);
-  assert.equal(heal.expiresTick,LATE+ticks(CHEST_HEAL_LIFETIME_SECONDS),'the coxinha expires like regular drops');
-  assert.deepEqual(clone(p),before);
+  assert.equal(fake.pickups.size,0,'nothing dropped');
+  assert.equal(CHEST_HEAL_VALUE,30);assert.equal(p.hp,100+CHEST_HEAL_VALUE);
+  assert.deepEqual(p.build,before);
   assert.ok(!events.some(e=>e.type==='upgrade'||e.type==='evolve'));
   // Evolved build with nothing else to level also heals.
   const {fake:f2,ctx:c2}=makeCtx(4,LATE);
@@ -374,7 +370,7 @@ test('catalog cross-check: weapon ids, max levels and recipes come from the VGM-
   for(const id of ['','nope','mystery','chinelo-evo-evo','Chinelo','toString','__proto__','constructor'])assert.equal(itemMaxLevel(id),0,id);
 });
 
-test('openChest: full pickup budget heals directly, returns pickup:null and adds no pickup',()=>{
+test('openChest: a full pickup budget heals directly too, returns pickup:null and adds no pickup',()=>{
   const fill=(fake:FakeCtx,others:number)=>{for(let i=0;i<others;i++)fake.pickups.set(`xp${i}`,{id:`xp${i}`,kind:'xp',value:1,x:0,y:0,spawnTick:0});};
   for(const [hp,expected] of [[100,130],[190,200]] as const){
     const {fake,ctx,events}=makeCtx(4,LATE);
@@ -392,16 +388,6 @@ test('openChest: full pickup budget heals directly, returns pickup:null and adds
     assert.deepEqual(p.build,before);
     assert.equal(events.length,0);
   }
-  // The chest's own slot is freed first: at exactly MAX_PICKUPS (chest included) the coxinha still drops.
-  const {fake,ctx}=makeCtx(4,LATE);
-  const p=makePlayer('p1',maxedBuild(),{hp:100});
-  const id=addChest(fake);
-  fill(fake,MAX_PICKUPS-1);
-  const res=openChest(ctx,p,id,OPEN);
-  assert.ok(res&&res.kind==='heal'&&res.pickup!==null);
-  assert.equal(fake.pickups.get(res.pickup)?.kind,'heal');
-  assert.equal(fake.pickups.size,MAX_PICKUPS);
-  assert.equal(p.hp,100,'heal is deferred to collection');
 });
 
 test('openChest: evolving keeps the same build.weapons array and a cooldown later than the current tick',()=>{

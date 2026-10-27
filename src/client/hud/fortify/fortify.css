@@ -26,7 +26,7 @@
 .rh-ended .rh-fort{display:none}
 
 .rh-fort-bandeja{position:absolute;box-sizing:border-box;right:var(--rh-r,12px);
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 16px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 16px + var(--inv-coluna,0px));
   width:min(340px,calc(100vw - 24px));padding:4px 8px 8px;display:grid;gap:6px;border-radius:var(--r-janela);
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
   pointer-events:auto;touch-action:manipulation;text-align:left}
@@ -56,18 +56,19 @@
   .rh .rh-fort-puxar{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--fort)/2)}
   .rh .rh-fort-construir{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 + var(--fort)/2 + 12px)}
   /* Above the skill button on the right, clear of the hero at the middle. */
-  .rh-fort-bandeja{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 12px);width:min(290px,40vw);gap:4px;padding:2px 6px 6px}
+  .rh-fort-bandeja{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 12px + var(--inv-coluna,0px));width:min(290px,40vw);gap:4px;padding:2px 6px 6px}
   .rh-fort-head .rh-fort-close{height:36px}
   .rh .rh-fort-girar,.rh .rh-fort-ok{min-height:40px}
   .rh-fort-peca{min-height:60px}
   .rh-fort-dica{display:none}
 }
-/* Manual combat (varredura-celular): the inventory's 3×2 slots (inventory.css, 34 px + 4 px, at the bottom left of
-   Atacar) took Puxar's place next to the car. With the slots on screen, Puxar and Construir stack above them. */
-.rh:has(.rh-inv:not([hidden])) .rh-fort-puxar{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px)}
-.rh:has(.rh-inv:not([hidden])) .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + var(--fort) + 12px)}
+/* Manual combat on the desktop (varredura-celular): the inventory's 3×2 slots (inventory.css, 34 px + 4 px, at the
+   bottom left of Atacar) took Puxar's place next to the car, so Puxar and Construir stack above them. On the phone the
+   slots are a column above Atacar (joystick-maior-inventario-direita) and Puxar keeps its place left of it. */
+.rh:not([data-hud=fone]):has(.rh-inv:not([hidden])) .rh-fort-puxar{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px)}
+.rh:not([data-hud=fone]):has(.rh-inv:not([hidden])) .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + var(--fort) + 12px)}
 /* The level-up offer's chip (hud.css .rh-offer-chip) shares that corner too: with the slots it goes on top of the column. */
-.rh:has(.rh-inv:not([hidden])) .rh-offer-chip{right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 22px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + 2 * (64px + 12px))}
+.rh:not([data-hud=fone]):has(.rh-inv:not([hidden])) .rh-offer-chip{right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 22px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + 2 * (64px + 12px))}
 /* The forge window (camp.css .rh-forge, near the base's towers) opens over the same column: the car's buttons wait under
    it (varredura-celular: Construir sat on its third row). Closing the forge brings them back. */
 .rh:has(.rh-forge:not([hidden])) :is(.rh-fort-puxar,.rh-fort-construir){display:none}

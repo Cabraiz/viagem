@@ -138,3 +138,15 @@ O usuário gostou da corrida do viciado (proporção, loop) e pediu a mesma no C
   - O prompt que pedia "pernas CURTAS" fez o modelo encolher o corpo: a cabeça batia e a altura ficava 6–16 % baixa. O que funcionou foi dar as proporções medidas no idle8 (cabeça ~40 % da altura, pernas ~70 % da cabeça, "não mais curtas") e pedir a cabeça "do mesmo tamanho, não maior".
   - No N, a pose 7 da metade A sempre deixava o pé que pousa atrás. Por isso o N usa a metade B, com as cores dos marcadores trocadas, mais o espelho dela.
   - No W, a linha de voo (poses 4–7) se apoiava no pé que vai pousar, que então raspava o chão junto com o corpo, o mesmo defeito do W do viciado. `LIFT_A=6` ergue essa linha 6 px (a 192), e o pé pousa de cima na pose 8.
+
+## Parado com respiração (parado-respiracao-herois, 24/10)
+- **Folha:** `idle/<dir>.png` com 768×768 (4×4) é o parado que respira: 16 poses distintas em 3,2 s, pés plantados, importadas como desenhadas (sem alinhar). A 4×2 continua valendo como parado fixo.
+- **Como sai:** `gerar/respirar.py` (evidência do card) deforma o parado aprovado: abaixo do quadril os bytes do parado, o tronco sobe, os ombros abrem e a cabeça balança. O quadro 0 é o parado byte a byte. Figuras menores (viciado, CLT) pedem mais balanço e mais ombro para os quadros vizinhos passarem no `quadros16.py`, porque a altura já bate +4 %.
+- **Só o parado:** `--motions idle` importa só o parado, na escala da classe. Numa classe M16 (viciado), andar, ataque e corrida ficam como estão.
+- **CLT (R06):** `--motions idle` troca o idle8 pelo idle16 nas **8 direções desenhadas**, sem espelho. O espelho trocaria o relógio e o crachá de lado e tiraria os pés do lugar do attack128. O pivô é o âncora do idle8 (48), o mesmo ponto contra o qual o attack128 e o hurt16 foram desenhados. No cliente, `hasIdle16` faz a classe R06 respirar, e corrida, empurrar, puxar e dano continuam achando o lado desenhado pelas próprias folhas. O idle8 fica no manifest como referência de escala.
+
+## Construir (build16, card animacao-construir-6)
+
+- **Quando toca:** o herói PARADO a ≤ 3 u da borda de uma defesa em obra (`obra-1..3`, `BUILD_REACH` da sim), virado para ela (`src/client/sprites/build-facing.ts`). Construir não trava o herói: andar volta à corrida e a obra segue sozinha. Arma guardada enquanto constrói. Vale para o herói, os aliados e os bots (scene.ts) e para o sandbox da cidade (`?sandbox=cidade&torres=1&kit=<peça>`).
+- **Folha:** `build/<dir>.png` (768×768, 4×4, 16 poses, loop de 2 s, os dois pés plantados). As 5 direções desenhadas ou nenhuma; o resto é espelho. O importador não mexe nas poses e põe o pivô do parado da direção (`idle16-<dir>`, senão o idle8), como no hurt16: o herói pega a ferramenta sem pular de lado.
+- **Arte:** `viagem-board/evidence/NEW-20261025-ORQ-animacao-construir-6/gerar/gerar.mjs` (Codex, a piada de cada herói) → `remontar/um.sh <quem> <dir> <job> [DELTA]` (esticar + montar-build.mjs: escala pela altura mediana, pés no x do parado, emenda 15→0).

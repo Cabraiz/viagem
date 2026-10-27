@@ -4,12 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {BankView} from '../../src/contract/index.ts';
+import {BICOS} from '../../src/rules/index.ts';
 import {BANK_ALERT_REPEAT_MS,BANK_MM_COLORS,BankAlert,bankExtras,robberyText} from '../../src/client/hud/bancos.ts';
 import {bankForArrow,cityEdgeRank} from '../../src/client/hud/city/edges.ts';
 import {EDGE_ICON} from '../../src/client/hud/edges.ts';
 import {ICON_NAMES} from '../../src/client/ui/icon.ts';
 
-const bank=(id:string,extra:Partial<BankView>={}):BankView=>({id,x:0,y:0,name:'juros',saldo:40,state:'aberto',...extra});
+const bank=(id:string,extra:Partial<BankView>={}):BankView=>({id,x:0,y:0,name:'juros',saldo:40,state:'aberto',bico:'telemarketing',...extra});
 
 test('the minimap: a "$" per bank, Cone while robbed, dim when empty',()=>{
   const out=bankExtras([bank('a'),bank('b',{state:'bicho'}),bank('c',{state:'sem-cedulas',saldo:0})]);
@@ -21,7 +22,7 @@ test('the robbery row: when a robbery starts, once; the same bank again only aft
   const a=new BankAlert(),robbed=[bank('b',{state:'bicho'})];
   assert.equal(a.step([bank('b')],0).show,undefined);
   assert.deepEqual(a.step(robbed,1000).show,{text:robberyText(robbed[0]),bank:'b'});
-  assert.equal(robberyText(robbed[0]),'Bicho sacando no Juros & Juros!');
+  assert.equal(robberyText(robbed[0]),`Bicho no caixa do ${BICOS[robbed[0].bico].nome}!`);
   assert.equal(a.step(robbed,2000).show,undefined,'the same robbery');
   a.step([bank('b')],3000);
   assert.equal(a.step(robbed,4000).show,undefined,'a new robbery too soon');

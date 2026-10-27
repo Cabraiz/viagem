@@ -19,6 +19,8 @@ function manualRoom(combat:'manual'|'auto'='manual',lab=false){
   for(;room.run.snapshot().phase!=='combat';t+=50)room.advance(t);
   room.advance(t+=50);
   const id=a.messages.find(m=>m.t==='welcome').id;
+  // The heroes start empty-handed (torre-limite-rebocar-sem-arma) and the ilha has no crates: a Faca de Pão in slot 0.
+  room.sim.players.get(id)!.build.weapons.push({id:'faca',level:1});
   return {room,a,id,t,round:()=>room.run.snapshot().round,me:()=>room.sim.players.get(id)!};
 }
 const answers=(a:ReturnType<typeof peer>)=>a.messages.filter(m=>m.t==='inv');

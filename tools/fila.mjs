@@ -5,10 +5,12 @@
 //
 //   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N]
 //   node tools/fila.mjs lista
-//   node tools/fila.mjs lote [--suite local|ci|"<command>"]      (the Orquestrador, or his cron)
-//   node tools/fila.mjs publicar <lote>                          (after `npm run deploy:rooms` when the lote needs it:
+//   node tools/fila.mjs lote [--suite local|ci|"<command>"] [--smoke ci|off|"<command>"]   (the Orquestrador)
+//   node tools/fila.mjs publicar <lote> [--manter-remotas]       (after `npm run deploy:rooms` when the lote needs it:
 //                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
 //   node tools/fila.mjs cancelar <lote>
+// lote and publicar refuse to run when tools/fila.mjs (or wt-rm/wt-guarda) differs from <remote>/<base>: run the queue from
+// an up-to-date worktree of the main (--repo stays the main checkout); --qualquer-versao to try a new queue on purpose.
 // Options for tests and the simulation: --repo <main checkout> --board <board dir> --wt <worktree root> --remote origin
 // --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules
 // --disco "<free GB>,<total GB>" (a simulated drive; tools/wt-guarda.mjs: no lote below 25 GB free, a warning above 85%).
@@ -20,6 +22,12 @@
 // `ci` pushes the batch branch and runs `node tools/ci.mjs test <branch> --json` (E7: {ok, failedFiles, url});
 // any other string is a shell command run in the batch checkout (exit 0 = green; it may print `FILA-FAILED: [...]`, and
 // gets the files to run in FILA_FILES when the queue looks for the culprit).
+// The production + upgrade smoke (`--smoke`): by default on the PC (runSmoke, a board browser slot); `ci` reads them from
+// the batch branch's ci.yml run instead (NEW-20261025-ORQ-cicd-smokes-bench: jobs build and smoke-upgrade, annotations
+// smoke-prod / smoke-upgrade via `tools/ci.mjs test --smoke`), the same run as `--suite ci` or one pushed for it; red or
+// infra there aborts the lote like a red smoke here, and no answer from the CI falls back to the PC's smoke.
+// publicar deletes, on the remote, each integrated vgm/ branch whose remote head the new main contains (--manter-remotas:
+// keep them); the batch fila/ branch goes whenever the lote pushed it.
 import {execFileSync,spawnSync} from 'node:child_process';
 import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
 import {dirname,join,resolve} from 'node:path';
@@ -37,7 +45,7 @@ function parse(argv){
     const a=argv[i];
     if(!a.startsWith('--')){o._.push(a);continue;}
     const k=a.slice(2);
-    if(['worker','protocol','no-modules','dry'].includes(k))o.flags.add(k);
+    if(['worker','protocol','no-modules','dry','qualquer-versao','manter-remotas'].includes(k))o.flags.add(k);
     else o[k]=argv[++i];
   }
   // The main checkout, also when the tool runs from a worktree (D:/Gits/viagem-wt/x): the parent of git's common dir.
@@ -58,6 +66,29 @@ const writeJson=(p,v)=>{mkdirSync(dirname(p),{recursive:true});const tmp=`${p}.$
 export function mainCheckout(dir){
   const r=spawnSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:dir,encoding:'utf8'});
   return r.status===0?dirname(r.stdout.trim()):dir;
+}
+/**
+ * The queue's own files. A lote or a publish run by another copy is refused (BUG-20261024-ORQ-fila-base-arquivo-novo: the
+ * Orquestrador ran the main checkout's fila.mjs, left at 14/10 while the main moved on 1272 commits; without the filter of
+ * 1a82e778 the base ran tests/maps/mapa-175.test.ts, which it does not have, and lote 20261024-183205 said "a main já falha").
+ */
+export const TOOL_FILES=['tools/fila.mjs','tools/wt-rm.mjs','tools/wt-guarda.mjs'];
+/** The TOOL_FILES under `root` that differ from <remote>/<base> in opt.repo (a file the base does not have is skipped). */
+export function staleTools(opt,root=SELF_ROOT){
+  const lf=(s)=>s.replace(/\r\n/g,'\n').trim();
+  return TOOL_FILES.filter(f=>{
+    const there=spawnSync('git',['show',`${opt.remote}/${opt.base}:${f}`],{cwd:opt.repo,encoding:'utf8',maxBuffer:64<<20});
+    if(there.status!==0)return false;
+    const here=join(root,f);
+    return !existsSync(here)||lf(readFileSync(here,'utf8'))!==lf(there.stdout);
+  });
+}
+/** Fetches, then throws when this copy of the queue is not the base's (--qualquer-versao: trying a new queue on purpose). */
+function exigeFilaAtual(opt){
+  if(opt.flags.has('qualquer-versao'))return;
+  tryGit(opt.repo,'fetch','-q',opt.remote);
+  const old=staleTools(opt);
+  if(old.length)throw new Error(`${old.join(', ')} de ${SELF_ROOT} não é o da ${opt.remote}/${opt.base}: rode a fila de uma worktree atualizada da ${opt.remote}/${opt.base} (node <worktree>/tools/fila.mjs ...; a --repo continua sendo a main checkout), ou --qualquer-versao para testar uma fila nova`);
 }
 const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'').replace('T','-');
 const log=(...a)=>console.log('[fila]',...a);
@@ -191,13 +222,39 @@ function addWorktree(opt,name,branch,at){
   }
   return dir;
 }
-function removeWorktree(opt,dir,branch){
+/** Whether this lote pushes its batch branch (for the CI suite or the CI smoke). */
+const pushesBatch=(opt)=>opt.suite==='ci'||opt.smoke==='ci';
+function removeWorktree(opt,dir,branch,pushed=pushesBatch(opt)){
   if(!existsSync(dir))return;
   // tools/wt-rm.mjs: the junctions dropped and CHECKED gone, nothing else pointing outside, only then the remove (the
   // shared node_modules were emptied four times by a plain `git worktree remove`). It throws instead of removing.
   removeWorktreeSafe(dir,{repo:opt.repo});
-  // The batch branch goes with its worktree, and from the remote when --suite ci pushed it.
-  if(branch){tryGit(opt.repo,'branch','-D',branch);if(opt.suite==='ci'&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
+  // The batch branch goes with its worktree, and from the remote when the lote pushed it (also on a later publicar or
+  // cancelar run without the lote's options: the lote state's `pushed`).
+  if(branch){tryGit(opt.repo,'branch','-D',branch);if(pushed&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
+}
+
+/**
+ * After the push: the remote vgm/ branch of each integrated card, when the new main contains its remote head (it was
+ * integrated as it is there). The delete is leased on that head: a push in the meantime keeps the branch. A local
+ * branch or worktree is not touched (limpaIntegradas decides those); an executor's next push makes the remote one again.
+ * Returns the branches deleted. Never throws (the lote is already published).
+ */
+export function apagaRemotas(opt,state){
+  const out=[];
+  if(opt.flags?.has('manter-remotas'))return out;
+  for(const e of state.integrados??[]){
+    if(!String(e.branch).startsWith('vgm/'))continue;
+    const ls=tryGit(opt.repo,'ls-remote',opt.remote,`refs/heads/${e.branch}`);
+    const head=ls.ok?ls.out.split(/\s+/)[0]:'';
+    if(!head)continue;
+    // A head this checkout does not have (pushed from elsewhere) cannot be in the new main.
+    if(!tryGit(opt.repo,'merge-base','--is-ancestor',head,state.sha).ok){log(`branch remota mantida ${e.branch}: ${head.slice(0,7)} não está na ${opt.base} nova`);continue;}
+    const del=tryGit(opt.repo,'push','-q',`--force-with-lease=refs/heads/${e.branch}:${head}`,opt.remote,`:refs/heads/${e.branch}`);
+    if(del.ok){out.push(e.branch);log(`branch remota apagada ${e.branch} (${head.slice(0,7)}, já na ${opt.base})`);}
+    else log(`branch remota mantida ${e.branch}: ${del.err.split('\n')[0].slice(0,200)}`);
+  }
+  return out;
 }
 
 // ---------- the suite ----------
@@ -229,9 +286,10 @@ function runSuite(opt,dir,branch,files){
     const ci=join(dir,'tools','ci.mjs');
     if(!existsSync(ci)){log('tools/ci.mjs ainda não existe: suíte local');return runSuite({...opt,suite:'local'},dir,branch,files);}
     git(dir,'push','-f',opt.remote,`${branch}:${branch}`);
-    const r=spawnSync(process.execPath,[ci,'test',branch,'--json'],{cwd:dir,encoding:'utf8',env:childEnv()});
+    // --smoke ci: the same run's smokes come back with it (runSmokeCi uses them).
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json',...(opt.smoke==='ci'?['--smoke']:[])],{cwd:dir,encoding:'utf8',env:childEnv()});
     if(r.status===2||r.status===null){log(`tools/ci.mjs sem resposta (exit ${r.status}): suíte local`);return runSuite({...opt,suite:'local'},dir,branch,files);}
-    try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url};}
+    try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url,...(j.smoke?{smoke:j.smoke}:{})};}
     catch{return {ok:false,failedFiles:[],error:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,400)}`};}
   }
   // A shell command (also the culprit runs of --suite ci, which are local and short).
@@ -288,6 +346,38 @@ function runSmoke(opt,dir,prev){
     return {ok:true,out};
   }finally{rmdirSyncSafe(slot);}
 }
+/**
+ * The CI's smokes ({prod, upgrade}: tools/ci.mjs smokeSummary each) as runSmoke's result. No prod summary: {semResposta}
+ * (the queue then smokes on the PC). upgrade null: the run had no upgrade job (not a fila/ branch); skipped: no base.
+ */
+export function smokeFromCi(smoke){
+  const prod=smoke?.prod;
+  if(!prod)return {semResposta:true,motivo:'o CI não deu o resumo do smoke de produção'};
+  const red=(s,label)=>{const linha=(s.linhas??[]).join(' / ').slice(0,600);
+    return {ok:false,infra:!!s.infra,linha,motivo:`${s.infra?`infraestrutura do ${label}`:`${label} falhou`} no CI (exit ${s.exit}): ${linha}`};};
+  if(!prod.ok)return red(prod,'smoke');
+  if(smoke.upgrade&&!smoke.upgrade.ok)return red(smoke.upgrade,'smoke de upgrade');
+  return {ok:true,...(smoke.upgrade?.skipped?{nota:smoke.upgrade.linhas?.[0]??'upgrade pulado'}:{})};
+}
+/**
+ * --smoke ci: the smokes of the batch branch's ci.yml run — the suite's own (--suite ci asked for them), else the branch
+ * pushed now and `tools/ci.mjs test <branch> --json --smoke` waited for (its tests are the local suite's business).
+ */
+function runSmokeCi(opt,dir,branch,suite){
+  let smoke=suite?.smoke,url=suite?.url??null;
+  if(!smoke){
+    const ci=join(dir,'tools','ci.mjs');
+    if(!existsSync(ci))return {semResposta:true,motivo:'tools/ci.mjs não existe no lote'};
+    const push=tryGit(dir,'push','-f',opt.remote,`${branch}:${branch}`);
+    if(!push.ok)return {semResposta:true,motivo:`push de ${branch} falhou (${push.err.split('\n')[0].slice(0,200)})`};
+    log('smoke de produção + upgrade no CI (ci.yml: build e smoke-upgrade)…');
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json','--smoke'],{cwd:dir,encoding:'utf8',env:childEnv()});
+    if(r.status===2||r.status===null)return {semResposta:true,motivo:`tools/ci.mjs sem resposta (exit ${r.status})`};
+    try{const j=JSON.parse((r.stdout??'').trim());smoke=j.smoke;url=j.url??null;}
+    catch{return {semResposta:true,motivo:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,300)}`};}
+  }
+  return {...smokeFromCi(smoke),url,onde:'ci'};
+}
 /** Whether the batch checkout's smoke script has the upgrade mode (--upgrade-from). */
 const hasUpgradeSmoke=(dir)=>{const p=join(dir,'scripts','smoke-prod.mjs');return existsSync(p)&&readFileSync(p,'utf8').includes('upgrade-from');};
 
@@ -341,6 +431,7 @@ function answer(opt,entry,result){
 
 function lote(opt){
   const lockDir=join(opt.board,'fila','.lote');
+  exigeFilaAtual(opt);
   // BUG-20261022-ORQ-disco-cheio-guarda: a lote makes up to four checkouts; below 25 GB free it does not start (the
   // Orquestrador gets a note; above 85% of use, a warning). --disco "<free GB>,<total GB>" simulates the drive.
   exigeEspaco(opt.board,opt.wt,'abrir o lote',{fake:opt.disco});
@@ -350,6 +441,8 @@ function lote(opt){
     throw new Error(`há um lote aberto (${open}): node tools/fila.mjs publicar ${open} ou cancelar ${open}`);
   }
   const id=stamp(),entries=ordered(queued(opt));
+  // The options of a smoke on the PC: --smoke ci's fallback and the default.
+  const pcSmoke={...opt,smoke:opt.smoke==='ci'?undefined:opt.smoke};
   writeFileSync(join(lockDir,'lote.txt'),id);
   const made=[],wt=(name,branch,at)=>{const dir=addWorktree(opt,name,branch,at);made.push({dir,branch});return dir;};
   const drop=(dir,branch)=>{removeWorktree(opt,dir,branch);const k=made.findIndex(m=>m.dir===dir);if(k>=0)made.splice(k,1);};
@@ -426,7 +519,16 @@ function lote(opt){
         // batch one branch at a time. Another job has no rule: nobody is blamed, and the main is not said to fail.
         const other=jobs.filter(j=>j!=='job:build');
         if(other.length)return abort('falha de job sem arquivo',`falha de job sem arquivo (${other.join(', ')})`);
-        const f=firstFailing((dir)=>runSmoke(opt,dir));
+        // --smoke ci: the CI's smoke stands for the PC's, so a red one aborts the lote as a red smoke here does (nobody
+        // blamed, nothing run on the PC; `lote` without --smoke ci looks for the culprit on the PC).
+        if(opt.smoke==='ci'&&s.smoke){
+          const c=smokeFromCi(s.smoke);
+          if(!c.semResposta){
+            if(c.ok)return abort('falha de job sem arquivo','o job build do CI falhou, mas o smoke dele passou');
+            return abort('smoke',`o smoke do CI falhou (${c.motivo})`,{smoke:{...c,url:s.url??null,onde:'ci'}});
+          }
+        }
+        const f=firstFailing((dir)=>runSmoke(pcSmoke,dir));
         if(f.base)return f.base.infra?abort('smoke sem resposta',`o smoke da ${opt.base} não rodou (${f.base.motivo})`,{smoke:f.base})
           :abort(`a ${opt.base} falha`,`o smoke da ${opt.base} já falha (${f.base.linha??f.base.motivo})`,{smoke:f.base});
         if(f.at?.infra)return abort('smoke sem resposta',`o smoke não rodou ao refazer o lote (${f.at.motivo})`,{smoke:f.at});
@@ -446,9 +548,18 @@ function lote(opt){
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
     // The production build, opened in a browser (the 14/10 outage: the source suite never loads the bundle).
     // The base (the main before this lote) checked out for the upgrade smoke, when the script has that mode.
-    const prev=!opt.smoke&&hasUpgradeSmoke(result.dir)?wt(`fila-${id}-anterior`,`fila/${id}-anterior`,base):undefined;
-    const smoke=runSmoke(opt,result.dir,prev);
-    if(prev)drop(prev,`fila/${id}-anterior`);
+    const onPc=()=>{
+      const prev=!pcSmoke.smoke&&hasUpgradeSmoke(result.dir)?wt(`fila-${id}-anterior`,`fila/${id}-anterior`,base):undefined;
+      const r=runSmoke(pcSmoke,result.dir,prev);
+      if(prev)drop(prev,`fila/${id}-anterior`);
+      return r;
+    };
+    let smoke;
+    if(opt.smoke==='ci'){
+      smoke=runSmokeCi(opt,result.dir,result.branch,result.suite);
+      if(smoke.semResposta){log(`smoke do CI sem resposta (${smoke.motivo}): smoke no PC`);smoke=onPc();}
+      else if(smoke.nota)log(`smoke do CI: ${smoke.nota}`);
+    }else smoke=onPc();
     if(!smoke.ok){
       log(`lote ${id} abortado: o smoke de produção falhou (${smoke.motivo}); as entradas continuam na fila`);
       return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};
@@ -457,7 +568,8 @@ function lote(opt){
     const contrato=contractFiles(git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean));
     const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0;
     const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,suites,
-      integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',estado:needsWorker?'aguardando-worker':'pronto-para-push'};
+      integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',smokeOnde:smoke.onde??'pc',
+      ...(smoke.onde==='ci'?{smokeUrl:smoke.url??null}:{}),pushed:pushesBatch(opt),estado:needsWorker?'aguardando-worker':'pronto-para-push'};
     writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
     kept=true;made.length=0;// the batch worktree and the lock now belong to the lote state (publicar/cancelar)
     log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
@@ -478,6 +590,7 @@ function rmdirSyncSafe(dir){try{for(const f of readdirSync(dir))rmSync(join(dir,
 
 function publicar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
+  exigeFilaAtual(opt);
   if(!existsSync(p))throw new Error(`lote ${id} não existe`);
   const state=readJson(p);
   if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);
@@ -497,15 +610,16 @@ function publicar(opt){
     answer(opt,e,{status:'integrado',lote:id,sha:state.sha,protocolo:state.protocol});
     mkdirSync(join(opt.board,'integrated'),{recursive:true});writeFileSync(join(opt.board,'integrated',e.card),'');
   }
-  removeWorktree(opt,state.dir,state.branch);
+  removeWorktree(opt,state.dir,state.branch,state.pushed??pushesBatch(opt));
   const limpas=limpaIntegradas(opt,state);
-  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString(),worktreesRemovidas:limpas});
+  const remotas=apagaRemotas(opt,state);
+  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString(),worktreesRemovidas:limpas,remotasApagadas:remotas});
   rmdirSyncSafe(join(opt.board,'fila','.lote'));
   log(`publicado ${state.sha.slice(0,7)}: ${state.integrados.map(e=>e.card).join(', ')}`);
   try{const aviso=avisaUso(opt.board,opt.wt,{fake:opt.disco});if(aviso)log(aviso);}catch{/* only a warning */}
   if(state.contrato?.length)log(`${outOfStep(state.contrato)}; confira o site em ~25 min`);
   for(const d of state.devolvidos)log(`avise ${d.card}: ${d.motivo}`);
-  return {...state,estado:'publicado'};
+  return {...state,estado:'publicado',remotasApagadas:remotas};
 }
 
 /**
@@ -537,7 +651,7 @@ function limpaIntegradas(opt,state){
 function cancelar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
   if(existsSync(p)){
-    const state=readJson(p);removeWorktree(opt,state.dir,state.branch);
+    const state=readJson(p);removeWorktree(opt,state.dir,state.branch,state.pushed??pushesBatch(opt));
     // The integrated-to-be go back to the queue as they were, unless their owner queued a newer SHA meanwhile.
     for(const e of state.integrados){const q=join(opt.board,'fila',`${e.card}.json`);if(!existsSync(q))writeJson(q,e);}
     writeJson(p,{...state,estado:'cancelado'});

@@ -68,6 +68,9 @@ function pipeline({lat,jit,ticks=1500,seed=7}:{lat:number;jit:number;ticks?:numb
     if(batch){messages++;lastUp=Math.max(lastUp,t+lat+Math.floor(rnd()*(jit+1)));up.push({at:lastUp,batch});}
     for(const m of up.filter(m=>m.at<=t))assert.ok(s.input('p',m.batch));
     up=up.filter(m=>m.at>t);
+    // The input track alone: no critters (heroi-empurra-inimigos made them solid, and this client replays no bodies;
+    // tests/client/predicao-corpos-coop.test.ts covers the prediction with them).
+    s.world.enemies.clear();
     s.step();
     if(t%2===0){lastDown=Math.max(lastDown,t+lat+Math.floor(rnd()*(jit+1)));down.push({at:lastDown,x:p.x,y:p.y,ack:p.ack,...s.confirmed('p')});}
     for(const f of down.filter(f=>f.at<=t)){

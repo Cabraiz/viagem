@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -33,14 +33,18 @@ import {sunlit} from './light-actors.ts';
 import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
 import {contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
-import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
+import {ArsenalFx} from './arsenal-fx.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
+import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
 import {THROW_MS,rosterEntry} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
 import {SHOT_BANDS} from './usable-glow-rules.ts';
+import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
+import {MapLabel} from './map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -48,10 +52,14 @@ type Text=Phaser.GameObjects.Text;
 type TextStyle=Phaser.Types.GameObjects.Text.TextStyle;
 
 export interface HordeRendererOptions{
+  /** Each kill event's kind, after its death is drawn (scene.ts: a fallen chefão's sheets go, art/chefao-art.ts). */
+  onKill?:(kind:string)=>void;
   /** Allocation-free camera projection; the host updates projector.view on rotation, then calls refresh(). */
   projector:Projector;
   /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
   cull?:boolean;
+  /** Card uno-bloqueio-corpo: the chaveiro's car as drawn (car-sort.ts): the critters near it sort against its footprint. */
+  carSort?:()=>CarSort|undefined;
   /** Card inimigos-querem-o-uno: a second camera's world view (the Uno's live window): what stands in it is drawn too. */
   alsoView?:()=>ViewRect|undefined;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
@@ -71,7 +79,7 @@ export interface HordeRendererOptions{
   pushMs?:number;
   /**
    * Whether a tree canopy drawn in front covers a sprite at this screen point and depth (the scene's own test for the
-   * hero). Event prizes (boletos, the sale's coxinhas) covered by one are drawn above the canopies (PRIZE_LIFT_DEPTH).
+   * hero). Event prizes (the sale's coxinhas) covered by one are drawn above the canopies (PRIZE_LIFT_DEPTH).
    */
   canopyCovers?:(screen:Pt,depth:number)=>boolean;
   /** Changes whenever the trees change (a chunk in or out, a tree's art loaded on demand): cached canopy answers expire. */
@@ -84,6 +92,8 @@ export interface HordeRendererOptions{
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
   hand?:(id:string)=>HeldHand|undefined;
+  /** The hero has put the weapon away (dancing, card danca-no-jogo): render/arsenal-fx.ts draws no sticker. */
+  away?:(id:string)=>boolean;
   /** The scene draws the local hero's melee cone after placing him (selfCone); omitted: the renderer draws it at locate(). */
   coneFromScene?:boolean;
   /** The scene draws the heroes' weapons after placing and animating every hero (hands); omitted: update() draws them. */
@@ -111,6 +121,8 @@ interface EnemyActor{
   barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Sprite cell of the roster entry (rules/enemy-roster.ts): the health bar's width. */
   cell:number;
+  /** The profile's name over an elite's or a boss's bar (enemy-name-rules.ts), undefined for the rest. */
+  name:string|undefined;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
   /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
@@ -143,13 +155,17 @@ interface EnemyActor{
   tex:string;
   /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
   tint:number|undefined;
+  /** The viaduct (EnemyView.andar): 1 on a deck, drawn lifted onto it (Projector.projectOn); absent on the ground. */
+  floor?:1;
 }
-/** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
-interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
-  /** D-051 (render/arsenal-fx.ts): the arsenal's texture is on (crate sheet, item sticker), drawn at `k` × its size; else 1. */
+/** look: texture key (a 'grana' pickup: the cédula's art when loaded, render/cedula.ts). */
+interface PickupActor{image:Image;shadow:Image;kind:string;look:string;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
+  /** D-051 (render/arsenal-fx.ts): the arsenal's texture is on (crate's item, item sticker), drawn at `k` × its size; else 1. */
   k:number;arsenal:boolean;id:string;resource?:string;
-  /** caixa-icone-torre-arma: a crate drawn as its item, floating; its coin turn (radians) and when it last turned. */
+  /** caixa-icone-torre-arma: a crate drawn as its item, floating; its coin turn (radians) and when it last turned (the cédula's too). */
   float:boolean;spin:number;spunAt:number;
+  /** bau-antigo-ainda-visivel: a crate the arsenal cannot draw as its item yet (sticker loading, prize not known): not drawn. */
+  hidden:boolean;
   /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number;
@@ -158,7 +174,9 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5); the shadow keeps the hit circle's. */
   draw:number;
   /** A hero's thrown weapon (render/shot-flight.ts): flies on an arc from `born` while it moves, then lands. */
-  thrown:ThrownLook|undefined}
+  thrown:ThrownLook|undefined;
+  /** The viaduct (ProjectileView.andar): 1 flying over a deck. */
+  floor?:1}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -197,8 +215,6 @@ const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 /** Eyes in the dark, CSS px at the follow zoom: 9×12 Papel with a 2 px Breu edge, 4 px pupils looking at the hero. */
 export const EYES_CSS={width:9,height:12,gap:7,edge:2,pupil:2.2,look:1.8} as const;
-/** A boleto of the rain falls from this high (world px) in BOLETO_FALL_MS, swaying (VGM-053B); reduced motion: it is just there. */
-export const BOLETO_FALL_PX=220,BOLETO_FALL_MS=420;
 /** The flash sale's coxinhas are drawn this much bigger: the event reads at a glance (VGM-053B). */
 export const PROMO_SCALE=1.6;
 /**
@@ -206,6 +222,8 @@ export const PROMO_SCALE=1.6;
  * pacote-bugs-ux): a prize of an event is never hidden by the scenery. Under critters' bars, balloons, heroes and danger.
  */
 export const PRIZE_LIFT_DEPTH=93900;
+/** The elite's or boss's name ficha (plate, then text +1): over the hp bars (95000/95001). */
+const NAME_DEPTH=95002;
 
 const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
 const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
@@ -322,6 +340,9 @@ export class HordeRenderer{
   private arsenal:ArsenalFx;
   private now=0;
   private ui=1;
+  /** Name fichas of the elites and bosses drawn (by enemy id), and the ids drawn this frame. */
+  private names=new Map<string,MapLabel>();
+  private namesSeen=new Set<string>();
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
   private body=1;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on what can be picked up (crates, items, vehicles) and on the player's shot. */
@@ -388,11 +409,16 @@ export class HordeRenderer{
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,cell:128,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,cell:128,name:undefined,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
-    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
-      k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
+    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
+      k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
+    // The kill's cédula (render/cedula.ts): its front/back sheet, loaded in the background (the procedural note until then).
+    if(!scene.textures.exists(CEDULA_ART.key)){
+      scene.load.spritesheet(CEDULA_ART.key,CEDULA_ART.url,{frameWidth:CEDULA_ART.cell[0],frameHeight:CEDULA_ART.cell[1]});
+      if(!scene.load.isLoading())scene.load.start();
+    }
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,away:options.away,
       ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
@@ -460,7 +486,9 @@ export class HordeRenderer{
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.alsoView=this.options.alsoView?.();this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
+    this.namesSeen.clear();
     this.enemies.forEach(this.drawEnemy);
+    for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
     this.glow.end();
@@ -534,6 +562,7 @@ export class HordeRenderer{
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
     this.art.destroy();this.arsenal.destroy();this.glow.destroy();
+    for(const label of this.names.values())label.destroy();this.names.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -555,6 +584,7 @@ export class HordeRenderer{
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
     a.prime=view.prime===true;
+    a.floor=view.andar;
     // Every enemy's art (the nine kinds' too) loads per match, the first time one of them shows up (horde-art.ts
     // queueEnemyArt); a fresh actor starts with no art id, so even the default 'bebado' asks.
     const art=enemyArtId(view.kind,kind);
@@ -575,12 +605,14 @@ export class HordeRenderer{
     if(used.fresh||!(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)<=SNAP_UNITS))a.ax=NaN;
     a.moving=ENEMY_WALK.leash?leashMoving(a,view.x,view.y):Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
+    a.name=enemyNameTag(view.kind,!!view.elite,a.boss);
   }
   private syncPickup(view:PickupView){
-    const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view),look=own?own.key:pickupLook(view.kind,view.resource);
-    if(used.fresh||a.look!==look){a.image.setTexture(look,own?.frame).setOrigin(.5,own?.float?.5:own?.88:.92);a.kind=view.kind;a.look=look;}
-    a.arsenal=!!own;a.k=own?own.k:1;a.id=view.id;a.resource=view.resource;a.float=!!own?.float;
-    if(used.fresh){a.born=this.now;a.spunAt=this.now;a.spin=hashPhase(view.id)*TAU;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;a.coverX=undefined;}
+    const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view);
+    const note=view.kind==='grana',look=own?own.key:note&&this.scene.textures.exists(CEDULA_ART.key)?CEDULA_ART.key:pickupLook(view.kind,view.resource);
+    if(used.fresh||a.look!==look){a.image.setTexture(look,own?.frame).setOrigin(.5,own?.float||note?.5:own?.88:.92);a.kind=view.kind;a.look=look;}
+    a.arsenal=!!own;a.k=own?own.k:1;a.id=view.id;a.resource=view.resource;a.float=!!own?.float;a.hidden=view.kind==='chest'&&!own;
+    if(used.fresh){a.born=this.now;a.spunAt=this.now;a.spin=hashPhase(view.id)*TAU;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.coverX=undefined;}
     else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
     a.nx=view.x;a.ny=view.y;a.value=view.value;a.promo=view.kind==='heal'&&view.resource==='promo';
@@ -603,7 +635,7 @@ export class HordeRenderer{
       // Who threw a hostile shot plays its throw (the agiota's boleto): nearest enemy of that kind, art v2 only.
       if(view.hostile&&enemyArtActive()){const cue=projectileAction(view.source,true,view.x,view.y,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     }
-    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);
+    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);a.floor=view.andar;
     this.aim(a);
   }
   /** Screen-space heading, recomputed only on push and camera rotation. */
@@ -625,7 +657,7 @@ export class HordeRenderer{
   // ---------- events ----------
   private handle(event:SimEvent,eventId:number){
     // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
-    if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined,!!c?.float);}
+    if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
@@ -647,7 +679,7 @@ export class HordeRenderer{
         }
         break;
       }
-      case 'kill':this.recentHits.delete(event.enemy);this.spawnDeath(event.kind,event.enemy,event.x,event.y);break;
+      case 'kill':this.recentHits.delete(event.enemy);this.spawnDeath(event.kind,event.enemy,event.x,event.y);this.options.onKill?.(event.kind);break;
       case 'spawn-warning':{
         const w=this.warnings.spawn();
         w.born=this.now;w.x=event.x;w.y=event.y;w.atTick=event.atTick;w.size=1+Math.min(.5,event.count*.04);
@@ -800,7 +832,8 @@ export class HordeRenderer{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
-    const q=this.project(this.at);
+    // On a viaduct's deck (floor 1): lifted onto it and drawn over its strip.
+    const q=this.options.projector.projectOn(a.x,a.y,a.floor,this.q);
     // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, silhouette, bar or cues. The boss, the target and
     // a coach's lecture ring (wider than the body) are always drawn.
     const k=size*a.fit*body;
@@ -811,7 +844,8 @@ export class HordeRenderer{
       a.screenX=NaN;this.culledNow++;return;
     }
     if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
-    const depth=this.depth(this.at);
+    // On a viaduct's deck the critter is above the (ground) car: no car sort there.
+    const own=this.options.projector.depthOn(a.x,a.y,a.floor),depth=a.floor===1?own:carSortDepth(this.at,own,this.options.carSort?.());
     // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
     const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
     let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;
@@ -843,7 +877,7 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true);
+    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art));
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;
@@ -851,6 +885,7 @@ export class HordeRenderer{
     castContact(a.contact,a.image,q.x,q.y,a.contactW,true);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
+    if(a.name)this.drawName(a,q.x,q.y-this.barLift(a));
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
     if(a.look!==LOOK_NONE||a.sugar||a.prime)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
@@ -972,6 +1007,17 @@ export class HordeRenderer{
     const hover=a.kind==='pombos'&&enemyArtFlies(a.art)!==false?ENEMY_ART.pombos.hover*size*body:0;
     return (head+BAR_HEAD_GAP)*body+hover;
   }
+  /**
+   * The profile's name (card nome-inimigo-rede-social, etapa 7) in a map ficha over the bar of an elite or a boss: constant
+   * screen size, its bottom ENEMY_NAME_GAP_CSS over the bar's top. One ficha per named enemy on screen, dropped with it.
+   */
+  private drawName(a:EnemyActor,x:number,barTop:number){
+    let label=this.names.get(a.id);
+    if(!label){label=new MapLabel(this.scene,a.name!);this.names.set(a.id,label);}
+    const css=this.css(),border=3*(a.elite&&!a.boss?Math.sqrt(this.ui/this.enemyBody):1)*this.enemyBody;
+    label.setText(a.name!).anchor(x,barTop-border-(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)*css,NAME_DEPTH).draw(this.scene.cameras.main.zoom,true);
+    this.namesSeen.add(a.id);
+  }
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
     // Bars as wide as the body (Clash: a pombo's short, a mini-chefe's long), × the actor scale in the city; sqrt(ui) has it once.
@@ -1004,34 +1050,37 @@ export class HordeRenderer{
     this.ground.lineStyle(3*b,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
   }
   private drawPickup=(a:PickupActor)=>{
+    // The old chest (FX chest, the crate sheet) is never drawn: a crate shows only as its floating item.
+    if(a.image.visible===a.hidden){a.image.setVisible(!a.hidden);a.shadow.setVisible(!a.hidden);}
+    if(a.hidden)return;
     const f=this.frac,now=this.now,reduced=this.reduced;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
     let y=0,scale=1,rotation=0,turn=1,floatShadow=0;
-    if(a.look===FX.boleto){
-      // The rain: falls from the sky, swaying like paper, then lies on the ground slightly turned.
-      const k=a.fall?Math.min(1,(now-a.born)/BOLETO_FALL_MS):1;
-      y=-BOLETO_FALL_PX*(1-k)*(1-k);rotation=(a.phase-.5)*.5+(1-k)*Math.sin(now*.02+a.phase*TAU)*.6;
-      if(k>=1)a.fall=false;
+    const body=this.body,note=a.kind==='grana';
+    if(note){
+      // The kill's cédula: floats and turns like the crate's item (render/cedula.ts), its back while the turn faces away.
+      a.spin=floatSpin(a.spin,Math.min(100,now-a.spunAt),0);a.spunAt=now;
+      const pose=cedulaPose(now,a.born,a.phase,a.spin,a.value,reduced),k=floatLegible(this.ui,body),art=a.look===CEDULA_ART.key;
+      if(art){const frame=pose.back?1:0;if(a.image.frame.name!==String(frame))a.image.setFrame(frame);}
+      y=-pose.lift*k;turn=art||!pose.back?pose.turn:-pose.turn;scale=pose.scale*k*CEDULA_PX/Math.max(1,a.image.width);floatShadow=pose.shadow*k;
     }
-    if(a.promo)scale*=PROMO_SCALE;
+    else if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
-      if(a.kind==='chest'){if(!a.float){scale=1+.07*Math.sin(now*.007+a.phase*TAU);rotation=Math.sin(now*.013+a.phase)*.04;}}
-      else if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
-      else y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
+      if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
+      else if(a.kind!=='chest')y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
     }
     // Event prizes behind a canopy: lifted above the trees. The test runs again only when the prize moved 4 px on
-    // screen (the magnet, a camera turn) or the trees changed (canopyVersion), not every frame for every boleto.
+    // screen (the magnet, a camera turn) or the trees changed (canopyVersion), not every frame for every prize.
     let lifted=false;
-    if((a.look===FX.boleto||a.promo)&&this.options.canopyCovers){
+    if(a.promo&&this.options.canopyCovers){
       const version=this.options.canopyVersion?.()??0;
       if(a.coverX===undefined||a.coverVersion!==version||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.coverVersion=version;a.covered=this.options.canopyCovers(q,depth);}
       lifted=!!a.covered;
     }
-    const body=this.body;
     if(a.arsenal){
-      // D-051: the crate's frame follows the local opening (closed .. abrindo-6) and sits on its rarity ring; an item its ring.
+      // D-051: the crate's item floats over its ring; an item on the ground sits on its rarity ring.
       if(a.kind==='chest'&&a.float){
         // caixa-icone-torre-arma: the crate's item floats and turns like a coin, faster (and a little bigger) as it opens.
         const progress=this.arsenal.floatingCrate(a.id,a.x,a.y,a.value,q);
@@ -1039,24 +1088,22 @@ export class HordeRenderer{
         const pose=floatPose(now,a.phase,a.spin,reduced);
         const k=floatLegible(this.ui,body);y=-pose.lift*k;turn=pose.turn;scale=(1+.15*progress)*k;floatShadow=pose.shadow*k;
       }
-      else if(a.kind==='chest'){const ref=this.arsenal.crate(a.id,a.x,a.y,a.value,q);if(ref&&a.image.texture.key===ref.key&&a.image.frame.name!==String(ref.frame))a.image.setFrame(ref.frame);}
       else this.arsenal.item(a.resource,a.value,q);
     }
     a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body*a.k*turn,scale*body*a.k).setRotation(rotation);
     // City mode (contorno-breu): the pickup's Breu-ring copy at screen scale, made for the scale it is drawn at (a big
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
-    if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
+    if(outlines&&!a.arsenal&&!note)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
     if(a.kind==='chest'||a.kind==='item'||a.kind==='vehicle')this.glow.mark(a.id,a.image,this.css());
-    // The D-051 crate (its sheet) is 3× the old chest (rules/crate-size.ts), and so is its shadow.
-    const shadow=a.float?FLOAT_PX*.7*floatShadow*body:(a.kind==='chest'?a.arsenal?CRATE_SHADOW_PX:34:18)*scale*(1+y/60)*body;
+    const shadow=note?CEDULA_PX*.8*floatShadow*body:a.float?FLOAT_PX*.7*floatShadow*body:18*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor,id:string)=>{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
-    const q=this.project(this.at),depth=this.depth(this.at),qx=q.x,qy=q.y;
+    const q=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q),depth=this.options.projector.depthOn(this.at.x,this.at.y,a.floor),qx=q.x,qy=q.y;
     // A thrown weapon (render/shot-flight.ts) rises on an arc while it flies (its shadow stays on the ground); landed, the
     // rocket is gone in its burst and the brick and the firecrackers lie under theirs.
     const t=a.thrown,flying=!!t&&(a.vx!==0||a.vy!==0),age=this.now-a.born;
@@ -1066,7 +1113,7 @@ export class HordeRenderer{
       if(t.landed)angle=age*.012;
       else{
         // The rocket points along its arc: the ground heading plus the arc's climb, both per second of flight.
-        this.at.x+=a.vx;this.at.y+=a.vy;const ahead=this.project(this.at);
+        this.at.x+=a.vx;this.at.y+=a.vy;const ahead=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q);
         angle=Math.atan2(ahead.y-qy-throwLiftSlope(age,t.arc)*this.body*1000/THROW_MS,ahead.x-qx)-(t.tilt??0);
       }
     }

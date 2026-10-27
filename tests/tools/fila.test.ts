@@ -11,7 +11,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt,childEnv,ownTestRun} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt,childEnv,ownTestRun,staleTools,TOOL_FILES,smokeFromCi} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -252,6 +252,30 @@ test('a failing test file only the culprit branch adds: the main and the earlier
     assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-teste-novo']);
     const back=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-teste-novo.json'),'utf8'));
     assert.deepEqual(back.falhas,['tests/novo.test.ts']);
+  }finally{w.cleanup();}
+});
+
+test('a lote run by a copy of the queue that is not the main one is refused (BUG-20261024-ORQ-fila-base-arquivo-novo)',()=>{
+  const w=world();
+  try{
+    // The main checkout left at 14/10: its fila.mjs had no filter for a file only the branch adds (lote 20261024-183205).
+    const here=fileURLToPath(new URL('../..',import.meta.url));
+    mkdirSync(join(w.repo,'tools'));
+    for(const f of TOOL_FILES)writeFileSync(join(w.repo,f),readFileSync(join(here,f),'utf8'));
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','tools');git(w.repo,'push','-q','origin','main');
+    const opt={repo:w.repo,remote:'origin',base:'main'};
+    assert.deepEqual(staleTools(opt,here),[],'the same queue as the main (CRLF or LF)');
+    assert.deepEqual(staleTools(opt,w.repo),[]);
+    writeFileSync(join(w.repo,'tools/fila.mjs'),'// a fila de 14/10\n');
+    git(w.repo,'commit','-qam','fila velha');git(w.repo,'push','-q','origin','main');
+    assert.deepEqual(staleTools(opt,here),['tools/fila.mjs']);
+    w.branch('vgm/boa','src/boa.ts','export const boa=1;\n');
+    main(['pronto','NEW-boa','--branch','vgm/boa',...w.opts]);
+    assert.throws(()=>main(['lote',...w.opts]),/tools\/fila\.mjs de .* não é o da origin\/main: rode a fila de uma worktree atualizada/);
+    assert.equal(existsSync(join(w.board,'fila/.lote')),false,'no lote opened');
+    assert.throws(()=>main(['publicar','20261024-183205',...w.opts]),/não é o da origin\/main/);
+    const state=main(['lote',...w.opts,'--qualquer-versao']);
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-boa'],'--qualquer-versao: a new queue tried on purpose');
   }finally{w.cleanup();}
 });
 
@@ -603,4 +627,124 @@ test('this file passes when the run inherits FILA_ORQ=1 (an ORQ lote falling bac
   const out=`${r.stdout}${r.stderr}`;
   assert.equal(r.status,0,out.split('\n').filter(l=>/^not ok|Error/.test(l.trim())).join('\n').slice(0,1500));
   assert.match(r.stdout,/# fail 0\b/);assert.match(r.stdout,/# pass 3\b/,'ACCEPTANCE, the newer pronto and deploy:rooms');
+});
+
+// ---------- NEW-20261025-ORQ-cicd-smokes-bench: the smokes on GitHub Actions (--smoke ci) and the remote branches ----------
+/**
+ * A world whose tools/ci.mjs fakes ci.yml: it records `ci <branch> smoke|sem-smoke` and answers from markers in src/:
+ * SMOKE-CI-VERMELHO (the prod smoke red, job:build red), UPGRADE-CI-VERMELHO (the upgrade smoke red, the run still green:
+ * continue-on-error), CI-SEM-RESPOSTA (exit 2). The PC's smoke (scripts/smoke-prod.mjs after npm run build) records `pc-smoke`.
+ */
+function ciWorld(){
+  const w=world(),nl=String.fromCharCode(10);
+  mkdirSync(join(w.repo,'tools'));mkdirSync(join(w.repo,'tests'));mkdirSync(join(w.repo,'scripts'));
+  writeFileSync(join(w.repo,'tools/ci.mjs'),`import {appendFileSync,readdirSync,readFileSync} from 'node:fs';
+const b=process.argv[3],smoke=process.argv.includes('--smoke');
+appendFileSync(process.env.FILA_RUNS,'ci '+b+' '+(smoke?'smoke':'sem-smoke')+String.fromCharCode(10));
+const src=readdirSync('src').filter(f=>f.endsWith('.ts')).map(f=>readFileSync('src/'+f,'utf8')).join();
+if(src.includes('CI-SEM-RESPOSTA')){console.error('rede');process.exit(2);}
+const prodRed=src.includes('SMOKE-CI-VERMELHO'),upRed=src.includes('UPGRADE-CI-VERMELHO');
+const s=(kind,red)=>({kind,exit:red?1:0,ok:!red,infra:false,skipped:false,linhas:['smoke '+kind+': '+(red?'FALHOU · chunk: x.js':'OK')]});
+const out={ok:!prodRed,failedFiles:prodRed?['job:build']:[],url:'https://ci/run/9',...(smoke?{smoke:{prod:s('normal',prodRed),upgrade:s('upgrade',upRed)}}:{})};
+console.log(JSON.stringify(out));process.exit(prodRed?1:0);`);
+  writeFileSync(join(w.repo,'tests/ok.test.ts'),"import test from 'node:test';test('ok',()=>{});"+nl);
+  writeFileSync(join(w.repo,'build.mjs'),"import {writeFileSync} from 'node:fs';writeFileSync('built.txt','1');");
+  writeFileSync(join(w.repo,'package.json'),JSON.stringify({scripts:{build:'node build.mjs'}}));
+  writeFileSync(join(w.repo,'scripts/smoke-prod.mjs'),"import {appendFileSync} from 'node:fs';appendFileSync(process.env.FILA_RUNS,'pc-smoke'+String.fromCharCode(10));");
+  git(w.repo,'add','-A');git(w.repo,'commit','-qm','ci tool');git(w.repo,'push','-q','origin','main');
+  return {...w,ci:(o:string[])=>o.map(x=>x==='node check.mjs'?'ci':x)};
+}
+const remoteFila=(repo:string)=>{git(repo,'fetch','-q','--prune','origin');return git(repo,'branch','-r','--list','origin/fila/*');};
+const ciRuns=(runs:string[])=>runs.filter(r=>r.startsWith('ci')||r==='pc-smoke').map(r=>r.replace(/fila\/\S+/,'fila/<lote>'));
+
+test('--smoke ci with --suite ci: the same CI run gives the suite and the smokes; nothing smokes on the PC; the batch branch leaves the remote',()=>{
+  const w=ciWorld();
+  try{
+    w.branch('vgm/x','src/x.ts','export const x=1;'+String.fromCharCode(10));
+    main(['pronto','NEW-x','--branch','vgm/x',...w.opts]);
+    const state=main(['lote',...w.ci(w.opts),'--smoke','ci']);
+    assert.equal(state.estado,'publicado');assert.equal(state.smoke,'ok');assert.equal(state.smokeOnde,'ci');assert.equal(state.smokeUrl,'https://ci/run/9');
+    assert.deepEqual(ciRuns(w.runs()),['ci fila/<lote> smoke'],'one CI wait, no PC smoke');
+    assert.equal(remoteFila(w.repo),'');
+  }finally{w.cleanup();}
+});
+
+test('--smoke ci: a red CI smoke aborts the lote like a red smoke on the PC (everyone queued, nobody blamed, nothing run on the PC)',()=>{
+  // With --suite ci (job:build red) and with the local suite (only the smokes asked from the CI; the upgrade red).
+  for(const [suite,marker,why] of [['ci','SMOKE-CI-VERMELHO',/^smoke falhou no CI \(exit 1\): smoke normal: FALHOU/],
+    ['local','UPGRADE-CI-VERMELHO',/^smoke de upgrade falhou no CI \(exit 1\)/]] as const){
+    const w=ciWorld();
+    try{
+      w.branch('vgm/ok','src/ok.ts','export const ok=1;'+String.fromCharCode(10));
+      w.branch('vgm/r','src/r.ts',`export const r="${marker}";`+String.fromCharCode(10));
+      main(['pronto','NEW-ok','--branch','vgm/ok',...w.opts]);main(['pronto','NEW-r','--branch','vgm/r',...w.opts]);
+      const red=main(['lote',...(suite==='ci'?w.ci(w.opts):w.opts),'--smoke','ci']);
+      assert.equal(red.abortado,'smoke',suite);assert.deepEqual(red.devolvidos,[]);
+      assert.match(red.smoke.motivo,why);assert.equal(red.smoke.onde,'ci');
+      assert.ok(existsSync(join(w.board,'fila/NEW-ok.json'))&&existsSync(join(w.board,'fila/NEW-r.json')),'both still queued');
+      assert.deepEqual(ciRuns(w.runs()),['ci fila/<lote> smoke'],'one CI wait, no smoke on the PC');
+      assert.ok(!existsSync(join(w.board,'fila/.lote')));
+      assert.equal(remoteFila(w.repo),'','the pushed batch branch is deleted on the way out');
+      git(w.repo,'fetch','-q','origin');assert.throws(()=>git(w.repo,'show','origin/main:src/ok.ts'),'nothing pushed to main');
+    }finally{w.cleanup();}
+  }
+});
+
+test('--smoke ci: no answer from the CI (exit 2) falls back to the smoke on the PC',()=>{
+  const w=ciWorld();
+  try{
+    w.branch('vgm/n','src/n.ts','export const n="CI-SEM-RESPOSTA";'+String.fromCharCode(10));
+    main(['pronto','NEW-n','--branch','vgm/n',...w.opts]);
+    const state=main(['lote',...w.opts,'--smoke','ci']);
+    assert.equal(state.estado,'publicado');assert.equal(state.smokeOnde,'pc');
+    assert.deepEqual(ciRuns(w.runs()),['ci fila/<lote> smoke','pc-smoke']);
+  }finally{w.cleanup();}
+});
+
+test('the default lote is unchanged: no --smoke, the smoke runs on the PC and nothing is pushed for it',()=>{
+  const w=ciWorld();
+  try{
+    w.branch('vgm/d','src/d.ts','export const d=1;'+String.fromCharCode(10));
+    main(['pronto','NEW-d','--branch','vgm/d',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'publicado');assert.equal(state.smokeOnde,'pc');assert.equal(state.pushed,false);
+    assert.deepEqual(ciRuns(w.runs()),['pc-smoke']);
+  }finally{w.cleanup();}
+});
+
+test('smokeFromCi: prod first, then the upgrade; a skipped upgrade passes with a note; no prod summary is no answer',()=>{
+  const s=(ok:boolean,infra=false,skipped=false)=>({kind:'k',exit:ok?0:infra?2:1,ok,infra,skipped,linhas:[ok?'smoke k: OK':'smoke k: FALHOU · x']});
+  assert.deepEqual(smokeFromCi({prod:s(true),upgrade:s(true)}),{ok:true});
+  assert.deepEqual(smokeFromCi({prod:s(true),upgrade:null}),{ok:true},'not a fila/ branch: no upgrade job');
+  assert.equal(smokeFromCi({prod:s(true),upgrade:s(true,false,true)}).nota,'smoke k: OK');
+  const red=smokeFromCi({prod:s(false),upgrade:s(true)});
+  assert.equal(red.ok,false);assert.equal(red.infra,false);assert.equal(red.linha,'smoke k: FALHOU · x');assert.match(red.motivo,/^smoke falhou no CI \(exit 1\)/);
+  const infra=smokeFromCi({prod:s(true),upgrade:s(false,true)});
+  assert.equal(infra.infra,true);assert.match(infra.motivo,/^infraestrutura do smoke de upgrade no CI \(exit 2\)/);
+  assert.equal(smokeFromCi(undefined).semResposta,true);assert.equal(smokeFromCi({upgrade:s(true)}).semResposta,true);
+});
+
+test('publicar deletes the integrated vgm/ branches on the remote when the new main has their head; a newer remote head, or --manter-remotas, keeps them',()=>{
+  const w=world(),nl=String.fromCharCode(10);
+  try{
+    w.branch('vgm/a','src/a.ts','export const a=1;'+nl);
+    w.branch('vgm/b','src/b.ts','export const b=1;'+nl);
+    git(w.repo,'push','-q','origin','vgm/a','vgm/b');
+    // vgm/b on the remote moved past what was queued (a push from elsewhere): not in the new main.
+    git(w.repo,'checkout','-q','-b','tmp-b','vgm/b');writeFileSync(join(w.repo,'src/b2.ts'),'export const b2=1;'+nl);
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','b2');git(w.repo,'push','-q','-f','origin','tmp-b:refs/heads/vgm/b');git(w.repo,'checkout','-q','main');
+    main(['pronto','NEW-a','--branch','vgm/a',...w.opts]);main(['pronto','NEW-b','--branch','vgm/b',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'publicado');assert.deepEqual(state.integrados.map((e:{card:string})=>e.card).sort(),['NEW-a','NEW-b']);
+    assert.deepEqual(state.remotasApagadas,['vgm/a']);
+    assert.equal(git(w.repo,'ls-remote','origin','refs/heads/vgm/a'),'','vgm/a gone from the remote');
+    assert.notEqual(git(w.repo,'ls-remote','origin','refs/heads/vgm/b'),'','vgm/b kept: its remote head is not in main');
+    assert.ok(git(w.repo,'branch','--list','vgm/a').includes('vgm/a'),'the local branch is left to limpaIntegradas');
+    // --manter-remotas: nothing deleted.
+    w.branch('vgm/c','src/c.ts','export const c=1;'+nl);git(w.repo,'push','-q','origin','vgm/c');
+    main(['pronto','NEW-c','--branch','vgm/c',...w.opts]);
+    const kept=main(['lote',...w.opts,'--manter-remotas']);
+    assert.equal(kept.estado,'publicado');assert.deepEqual(kept.remotasApagadas,[]);
+    assert.notEqual(git(w.repo,'ls-remote','origin','refs/heads/vgm/c'),'');
+  }finally{w.cleanup();}
 });

@@ -7,12 +7,10 @@
  */
 import {ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
-import {baseHeroSpeed,clearSegment,moveDirection,type Point} from '../maps/index.ts';
+import {baseHeroSpeed,clearSegment,floorOf,moveDirection,onFloor,settleFloor,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';
 
-/** Local pickup cap for skill drops (D-003); integration swaps in budget.ts MAX_PICKUPS. */
-export const SKILL_PICKUP_CAP=250;
 
 /** Extra JSON-safe player field (D-002): tick when the class skill is ready again. */
 /** Extra JSON-safe player fields (D-002): skillReady = tick the skill is ready; skillFloor = earliest tick a refund can bring it to. */
@@ -44,9 +42,10 @@ const canAct=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 /** Living enemies within radius, nearest first, ties by id (deterministic, D-004 death filter). */
-function enemiesNear(ctx:SimContext,at:Point,radius:number):EnemyState[]{
+function enemiesNear(ctx:SimContext,at:Point&{andar?:1},radius:number,floor=floorOf(at)):EnemyState[]{
+  // Only on `floor` (a viaduct's deck or the street: maps city/viaduct.ts), the caster's.
   return ctx.enemyIndex.query(at.x,at.y,radius,[])
-    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&dist(e,at)<=radius)
+    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&floorOf(e)===floor&&dist(e,at)<=radius)
     .sort((a,b)=>dist(a,at)-dist(b,at)||(a.id<b.id?-1:a.id>b.id?1:0));
 }
 /** Standing players within radius (the caster included), sorted by id. */
@@ -61,8 +60,6 @@ const shield=(ctx:SimContext,p:SimPlayer,seconds:number)=>{
 /** Skill radii scale with stats.area and debuff durations with stats.duration (D-001). */
 const area=(p:SimPlayer,radius:number)=>radius*p.stats.area;
 const lasting=(p:SimPlayer,seconds:number)=>seconds*p.stats.duration;
-/** Seconds a found coxinha stays on the ground. */
-export const FOUND_PICKUP_SECONDS=10;
 
 interface Effect {hits:string[];helped:string[];outcome?:DiceOutcome;pickup?:string;movedTo?:Point;blocked?:number}
 /** Returns null when the skill has nothing to act on: no cooldown is spent. */
@@ -72,7 +69,7 @@ type SkillFn=(ctx:SimContext,player:SimPlayer,source:string,rng:Rng)=>Effect|nul
 /** Tapped enemy if alive and within range, else the nearest living enemy in range. */
 function targetOf(ctx:SimContext,player:SimPlayer,range:number):EnemyState|undefined{
   const preferred=player.target?ctx.enemies.get(player.target):undefined;
-  return preferred&&preferred.hp>0&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
+  return preferred&&preferred.hp>0&&floorOf(preferred)===floorOf(player)&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
 }
 /** Pushes an enemy away from `from` (or along `fallback` when on top). knock is a per-tick displacement that enemy-ai decays. */
 function knockAway(enemy:EnemyState,from:Point,fallback:Point,strength:number){
@@ -106,10 +103,11 @@ interface AdvanceSpec {steps:number;pushRadius:number;damage:number;knock:number
  * Each step is 0.1 s at the BASE hero walk (maps baseHeroSpeed), so the 2× walk (HERO_SPEED_MULT) leaves the dash length as tuned.
  */
 const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
-  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain);
-  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ctx.terrain,speed);if(next===at)break;at=next;}
+  // On the player's own floor (a viaduct's deck keeps a dash on it), settled after.
+  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain),ground=onFloor(ctx.terrain,player.andar);
+  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ground,speed);if(next===at)break;at=next;}
   const moved=at.x!==player.x||at.y!==player.y;
-  player.x=at.x;player.y=at.y;
+  player.x=at.x;player.y=at.y;settleFloor(ctx.terrain,player);
   const enemies=enemiesNear(ctx,player,area(player,spec.pushRadius)),hits:string[]=[];
   for(const enemy of enemies){
     hits.push(enemy.id);
@@ -122,20 +120,12 @@ const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
   for(const ally of allies)shield(ctx,ally,seconds);
   return {hits,helped:allies.map(a=>a.id),movedTo:moved?{...at}:undefined};
 };
-interface ShelterSpec {radius:number;heal:number;shield:number;findsPickup:boolean}
-/** Heals (and briefly shields) nearby allies; optionally finds a coxinha during a wave (never XP, never between rounds). */
-const shelter=(spec:ShelterSpec):SkillFn=>(ctx,player,_source,rng)=>{
+interface ShelterSpec {radius:number;heal:number;shield:number}
+/** Heals (and briefly shields) nearby allies. It no longer finds a coxinha on the ground (NEW-20261025-ORQ-sem-coxinha-no-chao). */
+const shelter=(spec:ShelterSpec):SkillFn=>(ctx,player)=>{
   const allies=alliesNear(ctx,player,area(player,spec.radius));
   for(const ally of allies){heal(ally,spec.heal);if(spec.shield>0)shield(ctx,ally,spec.shield);}
-  let pickup:string|undefined;
-  if(spec.findsPickup&&ctx.round.phase==='wave'&&ctx.pickups.size<SKILL_PICKUP_CAP){
-    pickup=ctx.nextId('pickup');
-    const angle=rng.range(0,Math.PI*2);
-    ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:30,
-      x:player.x+Math.cos(angle)*0.6,y:player.y+Math.sin(angle)*0.6,
-      spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(FOUND_PICKUP_SECONDS)});
-  }
-  return {hits:[],helped:allies.map(a=>a.id),pickup};
+  return {hits:[],helped:allies.map(a=>a.id)};
 };
 interface TauntSpec {shield:number;radius:number;taunt:number;slow:number}
 /** Invulnerable for a moment; the enemies around chase the caster (and are optionally slowed). */
@@ -211,7 +201,7 @@ const burst=(spec:BurstSpec):SkillFn=>(ctx,player,source)=>{
     if(!target)return null;
     center={x:target.x,y:target.y};
   }
-  let candidates=enemiesNear(ctx,center,area(player,spec.radius));
+  let candidates=enemiesNear(ctx,center,area(player,spec.radius),floorOf(player));
   // Bosses ignore freezes (boss.ts), so freeze traps spend their limited targets on the others first.
   if(spec.freeze&&spec.maxTargets)candidates=[...candidates.filter(e=>!e.boss),...candidates.filter(e=>e.boss)];
   const enemies=candidates.slice(0,spec.maxTargets??Infinity);
@@ -280,24 +270,22 @@ const volley=(spec:VolleySpec):SkillFn=>(ctx,player,source)=>{
   return {hits,helped:spec.refreshWeapons?[player.id]:[]};
 };
 interface FetchSpec {range:number;heal:number}
-/** The pet fetches a coxinha next to the most hurt ally in range (caster included). Only during a wave, so it cannot be farmed. */
+/**
+ * The pet feeds the most hurt ally in range (caster included) on the spot: the same heal its coxinha gave, with no
+ * coxinha on the ground any more (NEW-20261025-ORQ-sem-coxinha-no-chao). Only during a wave, so it cannot be farmed.
+ */
 const fetchFood=(spec:FetchSpec):SkillFn=>(ctx,player)=>{
-  if(ctx.round.phase!=='wave'||ctx.pickups.size>=SKILL_PICKUP_CAP)return null;
+  if(ctx.round.phase!=='wave')return null;
   const ally=alliesNear(ctx,player,spec.range).filter(a=>a.hp<a.stats.maxHp).sort((a,b)=>hpRatio(a)-hpRatio(b)||byId(a,b))[0];
   if(!ally)return null;
-  // Lands half a step from the ally toward the caster when walkable, else on the ally.
-  const d=dist(ally,player);
-  const spot=d>1e-6?{x:ally.x+(player.x-ally.x)/d*0.5,y:ally.y+(player.y-ally.y)/d*0.5}:{x:ally.x,y:ally.y};
-  const at=clearSegment(ally,spot,ctx.terrain)?spot:{x:ally.x,y:ally.y};
-  const pickup=ctx.nextId('pickup');
-  ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:spec.heal,x:at.x,y:at.y,spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(FOUND_PICKUP_SECONDS)});
-  return {hits:[],helped:[ally.id],pickup};
+  heal(ally,spec.heal);
+  return {hits:[],helped:[ally.id]};
 };
 
 const SKILLS:Readonly<Record<string,SkillFn>>={
   // ----- VGM-044A -----
   'cidadao-comum':advance({steps:4,pushRadius:2.5,damage:8,knock:0.8,shield:{radius:3,base:0.8,perEnemy:0.1,max:1.5}}),
-  mendigo:shelter({radius:3.5,heal:20,shield:1,findsPickup:true}),
+  mendigo:shelter({radius:3.5,heal:20,shield:1}),
   // Magic dice on the tapped/nearest enemy: guaranteed base damage plus a rolled bonus. Costs nothing but the cooldown.
   'viciado-em-bet'(ctx,player,source,rng){
     const target=targetOf(ctx,player,area(player,7));
@@ -314,7 +302,7 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   // Range 8 and hit width 0.8 are travel, not area, so they ignore stats.area on purpose.
   motogirl(ctx,player,source){
     const ally=[...ctx.players.values()]
-      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8)
+      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8&&floorOf(p)===floorOf(player))
       .sort((a,b)=>a.hp/a.stats.maxHp-b.hp/b.stats.maxHp||(a.id<b.id?-1:1))[0];
     if(!ally){
       if(player.hp>=player.stats.maxHp)return null;
@@ -325,16 +313,16 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
     // Land just short of the ally (not on top of them) when that spot is clear; the ally's own spot is the fallback.
     const back=Math.min(0.5,length);
     const landing=length>1e-6?{x:to.x-(to.x-from.x)/length*back,y:to.y-(to.y-from.y)/length*back}:to;
-    const end=clearSegment(to,landing,ctx.terrain)?landing:to;
+    const end=clearSegment(to,landing,onFloor(ctx.terrain,ally.andar))?landing:to;
     const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
-    for(const enemy of enemiesNear(ctx,mid,length/2+0.8)){
+    for(const enemy of enemiesNear(ctx,mid,length/2+0.8,floorOf(player))){
       // Distance from the enemy to the dash segment.
       const t=length?Math.max(0,Math.min(1,((enemy.x-from.x)*(to.x-from.x)+(enemy.y-from.y)*(to.y-from.y))/(length*length))):0;
       if(dist(enemy,{x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t})>0.8)continue;
       hits.push(enemy.id);
       ctx.damageEnemy(enemy.id,12,player.id,source);
     }
-    player.x=end.x;player.y=end.y;
+    player.x=end.x;player.y=end.y;settleFloor(ctx.terrain,player);
     if(length>1e-6)player.facing={x:(to.x-from.x)/length,y:(to.y-from.y)/length};
     heal(ally,25);
     return {hits,helped:[ally.id],movedTo:{...end}};
@@ -351,7 +339,7 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   universitario:volley({targets:6,range:6,hits:1,damage:8,refreshWeapons:true}),
   'rei-pastel':burst({at:'target',range:7,radius:2,damage:20,slow:3}),
   // ----- Suporte -----
-  'tio-do-churrasco':shelter({radius:4,heal:25,shield:0,findsPickup:false}),
+  'tio-do-churrasco':shelter({radius:4,heal:25,shield:0}),
   feirante:rally({radius:4,heal:10,refreshWeapons:true}),
   coach:rally({radius:5,heal:5,shield:1.5}),
   'vendedor-praia':rally({radius:5,heal:18}),

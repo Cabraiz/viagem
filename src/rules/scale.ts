@@ -23,6 +23,15 @@ export const WC3_CELL=128;
  * WC3_UNIT keeps sizing the people. The asset carries the scaled geometry (version 2, scripts/escalar-cidade.ts).
  */
 export const CITY_MAP_SCALE=1.7;
+/**
+ * NEW-20261023-ORQ-mapa-175-com-viaduto (O2, the user 23/10): the city's DISTANCES are this many times shorter than the
+ * 1.7× city (streets, rooms, yards, the plaza: 192² → 110² cells), while the cell (1.496 u), the walls' thickness, the
+ * buildings and the people keep their size (asset version 4, scripts/compactar-cidade.ts). A map length that was
+ * X × CITY_MAP_SCALE is now X × CITY_DISTANCE_SCALE; a size (a building's height, a prop, a cell) keeps CITY_MAP_SCALE.
+ */
+export const CITY_COMPACT=1.75;
+/** Map lengths of the Cidade Nevada over the .w3x proportions: CITY_MAP_SCALE ÷ CITY_COMPACT (≈ 0.971). */
+export const CITY_DISTANCE_SCALE=CITY_MAP_SCALE/CITY_COMPACT;
 
 export type MapId='infinito'|'cidade-nevada';
 export type Orientation='portrait'|'landscape';

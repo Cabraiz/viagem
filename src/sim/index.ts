@@ -16,6 +16,7 @@ export * from './enemies/catalog.ts';
 export * from './player-effects.ts';
 export * from './progression.ts';
 export * from './revive.ts';
+export * from './fear.ts';
 export * from './run.ts';
 export * from './shame.ts';
 export * from './skills.ts';
@@ -33,6 +34,7 @@ export {FREE_CELL,MURO_BLOCK_R,freeCity,type FreeOrder,type PieceState} from './
 export {TRALHA_OWNER,type ColetaOutcome} from './towers/tralha.ts';
 export * from './towers/bot-spots.ts';
 export * from './systems/players.ts';
+export * from './bodies.ts';
 export * from './telegraphs.ts';
 export * from './zueira.ts';
 export * from './wallet.ts';
@@ -40,5 +42,6 @@ export * from './wallet.ts';
 export {ITEMS} from './items.ts';
 export type {InventoryResult,InventoryRefusal,KitOrder,PlaceResult} from './inventory.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';
+export {cityUnoStart,startSlots,UNO_START_CLEAR} from './city/uno-start.ts';
 // D-051 mode 'ninhos' without rounds: the calm (rules/calma.ts) as the sim reads it.
 export * from './ninhos/calma.ts';

@@ -8,12 +8,12 @@
  * and imports Phaser as a type, so this module loads without Phaser.
  */
 import type Phaser from 'phaser';
-import {artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
+import {HD_ENEMIES,artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
-import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
+import {CIDADE_MODIFIERS,WAVE_BOSS,WAVE_BOSS_IDS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
@@ -77,10 +77,8 @@ export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mo
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
 export const STATIC_ART:readonly StaticArt[]=[
   pickup('heal',['coxinha']),
-  pickup('chest',['bau','bau-fechado']),
+  // No 'chest' (bau-antigo-ainda-visivel): a crate is drawn only as its floating item (render/arsenal-fx.ts), never the old baú.
   pickup('resource',['recurso']),
-  // Size of render/textures.ts BOLETO_SIZE (that module imports Phaser at runtime).
-  {key:FX.boleto,group:'itens',ids:['boleto-chuva','boleto'],mode:'bake',size:[46,34]},
   {key:FX.projFriendly,group:'projeteis',ids:['tiro-aliado'],mode:'sheet'},
   // Sizes of render/textures.ts drawFx (layers.ts scales the shadow by SHADOW_W/H = 46×16 of the 48×18 texture).
   // Stretched (not contained): the contact shadow keeps today's 48×18 footprint whatever its cell's aspect.
@@ -197,6 +195,17 @@ export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=
  * computer draws from its own copy (manifest.ts pcCell, kept only on a computer) loads public/art/lite/enemies-pc/.
  */
 export const liteEnemyUrl=(url:string,file?:Pick<ArtFile,'pcCell'>)=>url.replace('/art/enemies/',file?.pcCell?'/art/lite/enemies-pc/':'/art/lite/enemies/');
+/**
+ * URL of a file of enemy art `id` the game downloads: the chefão's HD copy (manifest.ts hdFile, public/art/hd/enemies/;
+ * no fallback, its cell is its own); his other files at the approved cell (manifest.ts HD_ENEMIES), from the computer's
+ * lossy copy when it has that cell (~half the bytes; a failed load falls back to the approved file), on both screens;
+ * everyone else's lite copy.
+ */
+export const enemyFileUrl=(id:string,url:string,file?:Pick<ArtFile,'cell'|'pcCell'|'hd'>)=>{
+  if(file?.hd)return url.replace('/art/enemies/','/art/hd/enemies/');
+  if(!HD_ENEMIES.has(id))return liteEnemyUrl(url,file);
+  return file?.pcCell&&file.pcCell[0]===file.cell[0]&&file.pcCell[1]===file.cell[1]?liteEnemyUrl(url,file):url;
+};
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
@@ -234,7 +243,8 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
-      const lite=liteEnemyUrl(url,file);if(file.liteCell)LITE_ONLY.add(lite);
+      // The chefão's HD copy or approved file (enemyFileUrl); everyone else's lite copy.
+      const lite=enemyFileUrl(id,url,file);if(file.hd||file.liteCell&&!HD_ENEMIES.has(id))LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }
@@ -294,6 +304,16 @@ export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
   }
   if(queued&&!scene.load.isLoading())scene.load.start();
   return queued;
+}
+/**
+ * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
+ * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
+ */
+export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  let removed=false;
+  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  return removed;
 }
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
 function bakeFrame(scene:Phaser.Scene,from:string,cell:[number,number],key:string,[w,h]:readonly [number,number],fit:'contain'|'fill'){
@@ -487,8 +507,22 @@ export const HERO_FIGURE_PX=96;
  */
 export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,voador:.6,brutamontes:1.3,'mini-chefe':2,chefe:3};
 export const DEFAULT_HEIGHT=.9;
+/** The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it). */
+let waveBossDraw:number=WAVE_BOSS.drawScale;
+/** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
+export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
+if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
+/** The chefão's extra scale for art `id` (1 for every other art). */
+const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
+/**
+ * The ground shadow's length × this for art `id` (render/silhouette.ts castSilhouette): the chefão's, as long as a
+ * WAVE_BOSS_SHADOW-times-bigger figure's would be, never a streak across the street (the user, 24/10: "corrige a
+ * sombra dele quando ele tiver grande"); 1 for everyone else.
+ */
+export const WAVE_BOSS_SHADOW=1.2;
+export const artShadowLength=(id:string|undefined)=>id&&WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
-export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT);
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
 export const MASS_ALPHA=128;
 /**
@@ -647,7 +681,7 @@ export const enemyArtHead=(image:object)=>{const s=states.get(image);return s&&s
  */
 function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
+  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite)*waveBossK(id);
 }
 /**
  * The figure's height in world px (before the scene's `body` scale) for `file`: the role's target once the drawn height
@@ -655,7 +689,7 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
  */
 function figurePx(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*file.cell[1]*(file.anchor?.[1]??.88);
+  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*waveBossK(id)*file.cell[1]*(file.anchor?.[1]??.88);
 }
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
@@ -765,8 +799,10 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
+  // The chefão's HD sheets (manifest.ts hdFile) keep their baked rim: a Breu copy of each would be another ~120-190 MB
+  // of video memory on a computer (measured, boss-fim-onda-1 etapa 6), and at 3× he reads on any ground.
   let copy:CityVariant|undefined,copyTop:CityVariant|undefined,copyMid:CityVariant|undefined;
-  if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
+  if(city&&city.active()&&!file.hd&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
     copy=city.variant(frame.key,scale);
     const same=(v:CityVariant|undefined)=>!!v&&!!copy&&v.geom.slotW===copy.geom.slotW&&v.geom.slotH===copy.geom.slotH;
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}

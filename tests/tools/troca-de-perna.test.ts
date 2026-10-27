@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
-import {MIRROR_MAX,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
+import {FLIGHT_SPREAD_MAX,LEGS_BY_CLASS,MIRROR_MAX,evenFlights,flightSpread,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 /**
@@ -56,6 +56,14 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
  */
 const KNOWN_SIDE=new Set<string>([]);
 
+/**
+ * A class may measure a lower legs band only when something it wears hangs on ONE hip and so cannot mirror (ORQ, 24/10):
+ * the vendedor's cooler box sits at 55–74 % of the figure; below the shorts' hem (74 %) the legs still must alternate.
+ */
+test('the legs band per class: only the vendedor (cooler on the left hip), below the shorts',()=>{
+  assert.deepEqual(LEGS_BY_CLASS,{'vendedor-praia':.74});
+});
+
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');
 test('every S/N looping gait changes legs (mirror ≤ '+MIRROR_MAX+' × same), but the known ones of the list',async()=>{
@@ -78,4 +86,22 @@ test('every run the heroes show (run16) changes legs: S/N by the mirror test, th
   }
   const shown=new Set(runs.map((c:{file:string})=>c.file));
   assert.deepEqual([...KNOWN_SIDE].filter(f=>!shown.has(f)),[],'KNOWN_SIDE: a sheet no longer in the game leaves the list');
+});
+
+/**
+ * Card BUG-20261025-ORQ-auditoria-troca-perna (the user saw the gato glide running right, no leg change): a run's phase
+ * table gives each pose its share of the stride, so of the time on screen. The poses without a planted foot share the
+ * rest evenly; the gato's first tables gave 0.02 to the ones on the ground and 0.57 to six in the air (28.6×).
+ */
+test('the run phase tables share the stride evenly between the poses without a planted foot',()=>{
+  const glide={d:[.57,.02,.02,.05,.57,.02,.02,.05],v:[[0,0],[0,0],[0,0],[2.5,0],[0,0],[0,0],[0,0],[2.5,0]]};
+  assert.ok(flightSpread(glide)>20);
+  const even=evenFlights(glide),stride=(t:{d:number[]})=>t.d.reduce((a,b)=>a+b,0);
+  assert.equal(flightSpread(even),1);
+  assert.ok(Math.abs(stride(even)-stride(glide))<1e-4,'the stride stays');
+  assert.deepEqual([even.d[3],even.d[7]],[.05,.05],'a planted pose keeps its foot travel');
+  const bad:string[]=[];
+  for(const [id,piece] of Object.entries(manifest.pieces as Record<string,{files:Record<string,{phase?:{d:number[],v:number[][]}}>}>))
+    for(const [key,f] of Object.entries(piece.files))if(key.startsWith('run16-')&&f.phase&&flightSpread(f.phase)>FLIGHT_SPREAD_MAX)bad.push(`${id} ${key} ${flightSpread(f.phase)}`);
+  assert.deepEqual(bad,[],'node scripts/troca-de-perna.mjs --fase');
 });

@@ -817,6 +817,9 @@ class CitySandbox extends Phaser.Scene {
     }else t.push(tick,this.defenses,time);
     // foco=torre: no figure for the fade test (the defense under the camera stays opaque in the recording).
     t.update(time,dt,towerFocus?[]:[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
+    // foco=torre: every frame (place() runs only when the hero moves; the mount exists once the defense is drawn).
+    const m=towerFocus&&!cameraFixed?t.mountOf(this.defenses[0].id):undefined;
+    if(m)this.cameras.main.centerOn(m.x,m.y);
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
   private markDestination(){
@@ -908,8 +911,7 @@ class CitySandbox extends Phaser.Scene {
     const s=this.pushShift,drawn=s.x||s.y?project(this.at.x+s.x,this.at.y+s.y,groundZ(this.asset,this.at.x,this.at.y),this.view):feet;
     this.hero.setPosition(drawn.x,drawn.y);
     const viewport={width:this.scale.width,height:this.scale.height};
-    const d0=towerFocus?this.defenses[0]:undefined,m=d0?this.towers?.mountOf(d0.id):undefined;
-    const c=m??this.camera.snap(feet,viewport,zoom);
+    const c=this.camera.snap(feet,viewport,zoom);
     if(!cameraFixed)cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);

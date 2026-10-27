@@ -104,13 +104,24 @@ interface Tower {
 type Img=Phaser.GameObjects.Image|undefined;
 /**
  * A shot: world path from (x0, y0, z0) to the ground at (x1, y1); (ox, oy) the screen offset from that path's start to
- * the barrel tip, faded out along the flight; `cell` the half-unit cell its depth was taken in; `d0` the defense's depth.
+ * the barrel tip, faded out along the flight; `cell` the half-unit cell its depth was taken in; `d0` the depth of `src`,
+ * the defense that fired it (taken again when the world's depths move).
  */
 interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:number;y1:number;born:number;ms:number;mx:number;my:number;ox:number;oy:number;
-  cell:number;d0:number;dz:number;trail:Img;head:Img;puff:Img}
-/** A muzzle flash, or (`smoke`) the grey puff the heavy calibres leave at the muzzle (torres-animacao-idle-tiro). */
-interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img;smoke:boolean}
-interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img;tint:number}
+  cell:number;d0:number;src:Tower|undefined;dz:number;trail:Img;head:Img;puff:Img}
+/**
+ * A muzzle flash, or (`smoke`) the grey puff the heavy calibres leave at the muzzle (torres-animacao-idle-tiro), of the
+ * defense `src`; `depth` is its image's: `src`'s + `lift`.
+ */
+interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;lift:number;src:Tower|undefined;img:Img;smoke:boolean;
+  /** A straight-shooting calibre's flash is a long star along the barrel, turned `rot` on screen. */
+  long:boolean;rot:number}
+/**
+ * An explosion (`look`: a fireball, a bullet's spark, the big shells' fireball under a smoke cap) and, for `smokeMs`, the
+ * smoke rising where it was; or (`ring`) a ring on the ground: the wire's sparks, the radar's pulse, a big shell's shock.
+ */
+interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img;tint:number;look:BlastLook;smokeMs:number;smoke:Img}
+type BlastLook='fogo'|'faisca'|'fogo-g';
 interface Crater {on:boolean;x:number;y:number;r:number;born:number;ms:number}
 
 export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
@@ -118,6 +129,12 @@ export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 const SMOKE_R=1.1,SMOKE_MS=6,SMOKE_TINT=0x9aa0a6;
 /** The radar's pulse ring (the wire's spark ring, tinted). */
 const PULSE_TINT=0x6ec6ff;
+/**
+ * Explosions by calibre (torres-polimento): from BIG_BLAST u (the obus, the Gustavão) the fireball wears a smoke cap and
+ * a shock ring runs over the snow (SHOCK_R × its radius in SHOCK_MS × its life); from SMOKY_BLAST u the smoke rises
+ * after it for BLAST_SMOKE × its life (× 1.5 the big ones).
+ */
+const BIG_BLAST=2.4,SMOKY_BLAST=1.2,SHOCK_R=1.5,SHOCK_MS=.55,BLAST_SMOKE=2;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
@@ -130,10 +147,11 @@ const FX_DEPTH={shot:2,blast:3,flash:.002,beam:.0015} as const;
 /** A weapon with a target re-scans the horde for a nearer one this often (ms); it re-scans at once when it loses it. */
 export const RESCAN_MS=250;
 /** Baked effect textures: drawn once (bakeEffects), then placed, scaled, turned and faded per frame. */
-const FX={flash:'fx:flash',blast:'fx:blast',ring:'fx:anel',tracer:'fx:tracante',smoke:'fx:fumaca',
+const FX={flash:'fx:flash',flashLong:'fx:clarao-longo',blast:'fx:blast',blastBig:'fx:explosao-g',spark:'fx:faisca',ring:'fx:anel',
+  tracer:'fx:tracante',tracerBranco:'fx:tracante-branco',tracerVermelho:'fx:tracante-vermelho',smoke:'fx:fumaca',
   headPapel:'fx:ponta-papel',headShell:'fx:ponta-granada',headRocket:'fx:ponta-foguete',puff:'fx:baforada',
   cone:'fx:cone',spot:'fx:foco'} as const;
-const FLASH_TEX=64,BLAST_R=48,BLAST_W=104,BLAST_H=60,BLAST_GROUND=44,RING_W=256,RING_H=132,STREAK_W=64,STREAK_H=12,STREAK_LINE=8,HEAD_TEX=32,CONE_W=128,CONE_H=64,SPOT_W=64,SPOT_H=32;
+const FLASH_TEX=64,FLASH_LONG_W=96,FLASH_LONG_H=40,SPARK_TEX=32,BLAST_R=48,BLAST_W=104,BLAST_H=60,BLAST_GROUND=44,RING_W=256,RING_H=132,STREAK_W=64,STREAK_H=12,STREAK_LINE=8,HEAD_TEX=32,CONE_W=128,CONE_H=64,SPOT_W=64,SPOT_H=32;
 /** The weapon's pivot stands this high over the roof (CSS px × actor scale), on a drum. */
 const POST_PX=10;
 
@@ -157,9 +175,9 @@ export class TowerRenderer {
   private economyOn:boolean;
   /** Shots, explosions and flashes: pooled Images in the scene's display list, each at its own point's actor depth. */
   private readonly fxImages:Phaser.GameObjects.Image[]=[];
-  private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,dz:0,trail:undefined,head:undefined,puff:undefined}));
-  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined,smoke:false}));
-  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined,tint:0}));
+  private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,src:undefined,dz:0,trail:undefined,head:undefined,puff:undefined}));
+  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,lift:0,src:undefined,img:undefined,smoke:false,long:false,rot:0}));
+  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined,tint:0,look:'fogo',smokeMs:0,smoke:undefined}));
   private readonly craters=pool<Crater>(CRATER_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
   private cursor={shot:0,flash:0,blast:0,crater:0};
   private readonly fader=new CoverFader();
@@ -190,12 +208,7 @@ export class TowerRenderer {
     this.scene=scene;this.o=options;
     this.bake=scene.make.graphics({x:0,y:0},false);
     this.atlas=new TowerAtlas(scene.textures);
-    const crater=(name:string,w:number)=>this.atlas.frame(name,w,w/2,this.bake,g=>{
-      const h=w/2,k=w/CRATER_TEX;
-      g.fillStyle(this.breu,.42).fillEllipse(w/2,h/2,w-4*k,h-2*k).fillStyle(MATERIALS.pedra.escura,.55).fillEllipse(w/2,h/2+h*.05,(w-4*k)*.7,(h-2*k)*.65)
-        .lineStyle(3*k,this.breu,.7).strokeEllipse(w/2,h/2,w-4*k,h-2*k);
-    });
-    this.craterFrames={small:crater(CRATER_FRAME,CRATER_TEX),big:crater(CRATER_BIG,CRATER_BIG_TEX)};
+    this.craterFrames={small:this.bakeCrater(CRATER_FRAME,CRATER_TEX,false),big:this.bakeCrater(CRATER_BIG,CRATER_BIG_TEX,true)};
     this.ground=scene.add.layer().setDepth(options.groundDepth);
     this.shade=scene.add.layer().setDepth(options.groundDepth);
     this.light=options.light??lightEnabled();this.economyOn=!!options.economy;
@@ -252,7 +265,7 @@ export class TowerRenderer {
     this.towers.clear();this.coverDirty=true;this.fader.reset();
     for(const sh of this.shots){sh.on=false;this.hideShot(sh);}
     for(const f of this.flashes){f.on=false;f.img?.setVisible(false);}
-    for(const b of this.blasts){b.on=false;b.img?.setVisible(false);}
+    for(const b of this.blasts){b.on=false;b.img?.setVisible(false);b.smoke?.setVisible(false);}
     for(let i=0;i<this.craters.length;i++){this.craters[i].on=false;this.craterImages[i].setVisible(false);}
     this.shake.born=-1e9;
   }
@@ -270,9 +283,11 @@ export class TowerRenderer {
   /** The world's depths moved (chunks loaded or dropped, a re-base): every defense and live effect is sorted again. */
   redepth(){
     for(const t of this.towers.values())this.sortTower(t);
-    const w=this.o.world;
-    for(const b of this.blasts)if(b.on&&!b.ring){b.depth=this.fxDepth(b.x,b.y)+FX_DEPTH.blast;b.img?.setDepth(b.depth);}
-    for(const sh of this.shots)if(sh.on)sh.cell=-1;
+    const live=(t:Tower|undefined):t is Tower=>!!t&&this.towers.get(t.view.id)===t;
+    for(const b of this.blasts)if(b.on&&!b.ring){b.depth=this.fxDepth(b.x,b.y)+FX_DEPTH.blast;b.img?.setDepth(b.depth);b.smoke?.setDepth(b.depth-FX_DEPTH.flash);}
+    // A muzzle flash, its smoke and a beam's cone sort with the defense that fired them (a gone one's keep their depth).
+    for(const f of this.flashes)if(f.on&&live(f.src)){f.depth=f.src.depth+f.lift;f.img?.setDepth(f.depth);}
+    for(const sh of this.shots)if(sh.on){sh.cell=-1;if(live(sh.src))sh.d0=sh.src.depth;}
     this.coverDirty=true;
   }
   get count(){return this.towers.size;}
@@ -472,9 +487,14 @@ export class TowerRenderer {
     }
     this.muzzle(t);
     const mx=this.v.x,my=this.v.y;
-    if(cal.flash>0)this.addFlash(mx,my,cal.flash*this.f,cal.flashMs,nowMs,t.depth+FX_DEPTH.flash);
-    // The heavy calibres (an explosive shot, the rockets) leave a puff of smoke at the muzzle that rises and thins out.
-    if(cal.flash>0&&(cal.blast>0||cal.shot==='rocket'))this.addFlash(mx,my,cal.flash*this.f*SMOKE_R,cal.flashMs*SMOKE_MS,nowMs,t.depth+FX_DEPTH.flash,true);
+    if(cal.flash>0){
+      const f=this.addFlash(t,mx,my,cal.flash*this.f,cal.flashMs,nowMs,FX_DEPTH.flash);
+      // A rifle's flash is a long star along its barrel (the round one stays for the heavy mouths and the radar).
+      if(cal.shot==='tracer'){const d=dirVector(t.dir,this.q);f.long=true;f.rot=Math.atan2(d.y*.5,d.x);}
+    }
+    // The heavy calibres (an explosive shot, the rockets) leave a puff of smoke at the muzzle that rises and thins out,
+    // under the flash.
+    if(cal.flash>0&&(cal.blast>0||cal.shot==='rocket'))this.addFlash(t,mx,my,cal.flash*this.f*SMOKE_R,cal.flashMs*SMOKE_MS,nowMs,FX_DEPTH.flash/2,true);
     if(cal.shot==='aura'){this.addBlast(v.x,v.y,t.look.range,cal.blastMs,nowMs,true);return;}
     if(!has||cal.shot==='none')return;
     if(cal.shot==='beam'){this.addBeam(t,tx,ty,nowMs,mx,my);return;}
@@ -486,7 +506,7 @@ export class TowerRenderer {
       // Deterministic spread of a burst around the aim point (golden angle), staggered in time.
       const a=i*2.39996,r=i?.35+.15*i:0;
       const x1=tx+Math.cos(a)*r,y1=ty+Math.sin(a)*r,dist=Math.hypot(x1-v.x,y1-v.y);
-      this.addShot(cal,v.x,v.y,h,x1,y1,nowMs+i*BURST_GAP_MS,flightMs(cal,dist),ox,oy,t.depth);
+      this.addShot(t,v.x,v.y,h,x1,y1,nowMs+i*BURST_GAP_MS,flightMs(cal,dist),ox,oy);
     }
   }
   /** World px of the muzzle tip into this.v (mount + barrel along the weapon's direction). */
@@ -508,23 +528,26 @@ export class TowerRenderer {
   }
   /** A pooled shot slot: whatever the slot drew before (a rocket's smoke, a beam's cone) is hidden first. */
   private slot():Shot{const s=this.next(this.shots,'shot');this.hideShot(s);s.cell=-1;return s;}
-  private addShot(cal:CalibreLook,x0:number,y0:number,z0:number,x1:number,y1:number,born:number,ms:number,ox:number,oy:number,d0:number){
+  private addShot(t:Tower,x0:number,y0:number,z0:number,x1:number,y1:number,born:number,ms:number,ox:number,oy:number){
     const s=this.slot();
-    s.on=true;s.cal=cal;s.x0=x0;s.y0=y0;s.z0=z0;s.x1=x1;s.y1=y1;s.born=born;s.ms=ms;s.ox=ox;s.oy=oy;s.d0=d0;
+    s.on=true;s.cal=t.cal;s.x0=x0;s.y0=y0;s.z0=z0;s.x1=x1;s.y1=y1;s.born=born;s.ms=ms;s.ox=ox;s.oy=oy;s.d0=t.depth;s.src=t;
   }
   private addBeam(t:Tower,x1:number,y1:number,born:number,mx:number,my:number){
     const s=this.slot();
-    s.on=true;s.cal=t.cal;s.x0=t.view.x;s.y0=t.view.y;s.z0=t.height;s.x1=x1;s.y1=y1;s.born=born;s.ms=t.cal.blastMs;s.mx=mx;s.my=my;s.ox=0;s.oy=0;s.d0=t.depth;
+    s.on=true;s.cal=t.cal;s.x0=t.view.x;s.y0=t.view.y;s.z0=t.height;s.x1=x1;s.y1=y1;s.born=born;s.ms=t.cal.blastMs;s.mx=mx;s.my=my;s.ox=0;s.oy=0;s.d0=t.depth;s.src=t;
   }
-  private addFlash(x:number,y:number,r:number,ms:number,born:number,depth:number,smoke=false){
-    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;f.smoke=smoke;
-    if(f.img)f.img.setDepth(depth);
+  /** A flash (or the smoke under it) at world px (x, y), sorted `lift` over the defense `t` that fired. */
+  private addFlash(t:Tower,x:number,y:number,r:number,ms:number,born:number,lift:number,smoke=false){
+    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.src=t;f.lift=lift;f.depth=t.depth+lift;f.smoke=smoke;f.long=false;f.rot=0;
+    if(f.img)f.img.setDepth(f.depth);
+    return f;
   }
-  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false,tint=0){
-    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;b.tint=tint;
+  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false,tint=0,look:BlastLook='fogo',smokeMs=0){
+    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;b.tint=tint;b.look=look;b.smokeMs=smokeMs;
     if(b.img&&b.ring!==ring){b.img.destroy();this.fxImages.splice(this.fxImages.indexOf(b.img),1);b.img=undefined;} // the ring lives on the ground
     b.ring=ring;b.depth=ring?0:this.fxDepth(x,y)+FX_DEPTH.blast;
     if(b.img&&!ring)b.img.setDepth(b.depth);
+    b.smoke?.setVisible(false).setDepth(b.depth-FX_DEPTH.flash);
   }
   private addCrater(x:number,y:number,r:number,ms:number,born:number){
     const c=this.next(this.craters,'crater');c.on=true;c.x=x;c.y=y;c.r=r;c.ms=ms;c.born=born;
@@ -537,8 +560,11 @@ export class TowerRenderer {
   }
   private impact(s:Shot,now:number){
     const c=s.cal;
-    if(c.blast>0)this.addBlast(s.x1,s.y1,c.blast,c.blastMs,now);
-    else this.addBlast(s.x1,s.y1,.18,110,now);
+    if(c.blast>=BIG_BLAST){
+      this.addBlast(s.x1,s.y1,c.blast,c.blastMs,now,false,0,'fogo-g',c.blastMs*BLAST_SMOKE*1.5);
+      this.addBlast(s.x1,s.y1,c.blast*SHOCK_R,c.blastMs*SHOCK_MS,now,true);
+    }else if(c.blast>0)this.addBlast(s.x1,s.y1,c.blast,c.blastMs,now,false,0,'fogo',c.blast>=SMOKY_BLAST?c.blastMs*BLAST_SMOKE:0);
+    else this.addBlast(s.x1,s.y1,.18,110,now,false,0,'faisca');
     if(c.crater){const k=CRATER[c.crater];this.addCrater(s.x1,s.y1,k.radius,k.ms,now);}
     if(c.shake>0&&(now-this.shake.born>=this.shake.cal.shakeMs||c.shake>=this.shake.cal.shake)){this.shake.born=now;this.shake.cal=c;}
   }
@@ -578,7 +604,7 @@ export class TowerRenderer {
       if(moved){sh.cell=cell;sh.dz=Math.max(this.fxDepth(gx,gy),k<.2?sh.d0:-Infinity)+FX_DEPTH.shot;}
       const d=sh.dz;
       if(c.shot==='tracer'){
-        sh.trail=this.fxImage(sh.trail,FX.tracer,d,moved,0,.5).setPosition(tail.x,tail.y).setRotation(rot).setScale(Math.max(1,len)/STREAK_W,thick).setAlpha(1);
+        sh.trail=this.fxImage(sh.trail,c.core==='branco'?FX.tracerBranco:c.core==='vermelho'?FX.tracerVermelho:FX.tracer,d,moved,0,.5).setPosition(tail.x,tail.y).setRotation(rot).setScale(Math.max(1,len)/STREAK_W,thick).setAlpha(1);
         sh.head=this.fxImage(sh.head,FX.headPapel,d,moved).setPosition(head.x,head.y).setScale(3.2*s/HEAD_TEX).setAlpha(1);
         continue;
       }
@@ -591,26 +617,43 @@ export class TowerRenderer {
     }
     for(const b of this.blasts){
       if(!b.on)continue;
-      const k=(now-b.born)/b.ms;if(k>=1){b.on=false;b.img?.setVisible(false);continue;}
-      const p=w.project(b.x,b.y,0,this.p),rw=b.r*u*(.35+.65*Math.sqrt(k));
+      const age=now-b.born,k=age/b.ms;
+      if(k>=1&&age>=b.smokeMs){b.on=false;b.img?.setVisible(false);b.smoke?.setVisible(false);continue;}
+      const p=w.project(b.x,b.y,0,this.p);
+      if(b.smokeMs>0){ // the smoke column: grows and rises from the fireball's top, thins out (under the fireball)
+        const ks=age/b.smokeMs,r=b.r*u*(.45+.55*ks);
+        if(ks<1){
+          const fresh=!b.smoke;
+          b.smoke=this.fxImage(b.smoke,FX.puff,b.depth-FX_DEPTH.flash,fresh).setPosition(p.x,p.y-b.r*u*(.25+.9*ks)).setScale(r*2/HEAD_TEX,r*1.5/HEAD_TEX)
+            .setAlpha(.5*Math.min(1,ks*6)*(1-ks)).setTint(SMOKE_TINT);
+        }else b.smoke?.setVisible(false);
+      }
+      if(k>=1){b.img?.setVisible(false);continue;}
+      const rw=b.r*u*(.35+.65*Math.sqrt(k));
       if(b.ring){ // the wire's spark ring lies on the snow: in the ground layer
         if(!b.img){const fr=this.atlas.get(FX.ring)!;b.img=this.scene.make.image({x:0,y:0,key:fr.key,frame:fr.frame},false);this.ground.add(b.img);}
         b.img.setVisible(true).setPosition(p.x,p.y).setScale(rw*2/(RING_W-8)).setAlpha(1-k);
         if(b.tint)b.img.setTint(b.tint);else if(b.img.isTinted)b.img.clearTint();
         continue;
       }
+      if(b.look==='faisca'){ // a bullet's hit: a small star turned per point, a hair over the snow
+        b.img=this.fxImage(b.img,FX.spark,b.depth,false).setPosition(p.x,p.y-rw*.4).setScale(rw*2.2/SPARK_TEX).setRotation((b.x*7+b.y*13)%Math.PI).setAlpha(1-k);
+        continue;
+      }
       // The fireball rises as it fades (the baked one is drawn at half its rise).
-      b.img=this.fxImage(b.img,FX.blast,b.depth,false,.5,BLAST_GROUND/BLAST_H).setPosition(p.x,p.y-rw*.3*(k-.5))
+      b.img=this.fxImage(b.img,b.look==='fogo-g'?FX.blastBig:FX.blast,b.depth,false,.5,BLAST_GROUND/BLAST_H).setPosition(p.x,p.y-rw*.3*(k-.5))
         .setScale(rw/BLAST_R).setAlpha(1-k);
     }
     for(const f of this.flashes){
       if(!f.on)continue;
       const k=(now-f.born)/f.ms;if(k>=1){f.on=false;f.img?.setVisible(false);continue;}
       if(f.smoke){ // under the flash, growing as it rises one radius and a half, grey
-        f.img=this.fxImage(f.img,FX.puff,f.depth-FX_DEPTH.flash/2,false).setPosition(f.x,f.y-f.r*1.5*k).setScale(f.r*(1+1.4*k)*2/HEAD_TEX).setAlpha(.55*(1-k)).setTint(SMOKE_TINT);
+        f.img=this.fxImage(f.img,FX.puff,f.depth,false).setPosition(f.x,f.y-f.r*1.5*k).setScale(f.r*(1+1.4*k)*2/HEAD_TEX).setAlpha(.55*(1-k)).setTint(SMOKE_TINT);
         continue;
       }
-      f.img=this.fxImage(f.img,FX.flash,f.depth,false).setPosition(f.x,f.y).setScale(f.r*(1-.4*k)*2.5/FLASH_TEX).setAlpha(1-k);
+      if(f.long)f.img=this.fxImage(f.img,FX.flashLong,f.depth,false,.12,.5).setPosition(f.x,f.y).setRotation(f.rot)
+        .setScale(f.r*(1-.3*k)*3.2/FLASH_LONG_W,f.r*(1-.5*k)*1.6/FLASH_LONG_H).setAlpha(1-k);
+      else f.img=this.fxImage(f.img,FX.flash,f.depth,false).setPosition(f.x,f.y).setScale(f.r*(1-.4*k)*2.5/FLASH_TEX).setAlpha(1-k);
       if(f.img.isTinted)f.img.clearTint();
     }
   }
@@ -630,22 +673,76 @@ export class TowerRenderer {
     if(img.rotation!==0&&ox!==0)img.setRotation(0);
     return img.visible?img:img.setVisible(true);
   }
+  /**
+   * A crater decal (torres-polimento), drawn once: soot thrown around it, the bowl dug in the snow with its lit front lip,
+   * clods and snow thrown on the rim (a fixed pseudo-random scatter), the Breu edge; the big one (the large shells, the
+   * Gustavão) is also cracked from the middle out. Its outline keeps to the ellipse its radius gives (w × w/2).
+   */
+  private bakeCrater(name:string,w:number,big:boolean):AtlasFrame{
+    return this.atlas.frame(name,w,w/2,this.bake,g=>{
+      const h=w/2,k=w/CRATER_TEX,cx=w/2,cy=h/2,rx=w/2-2*k,ry=h/2-1*k; // rx, ry: the outer ellipse's half axes
+      let seed=big?7:3;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+      const oval=(color:number,a:number,x:number,y:number,sx:number,sy:number)=>g.fillStyle(color,a).fillEllipse(x,y,2*rx*sx,2*ry*sy);
+      // Soot: the whole ellipse dimmed, smudges thicker toward the middle.
+      oval(this.breu,.2,cx,cy,1,1);
+      for(let i=0;i<14;i++){const a=rnd()*Math.PI*2,d=.15+.45*rnd(),sz=.3+.25*rnd();oval(this.breu,.12,cx+Math.cos(a)*rx*d,cy+Math.sin(a)*ry*d,sz,sz);}
+      // The bowl: the snow lip lit at the front, the dug earth, the dark middle.
+      oval(this.papel,.85,cx,cy+ry*.07,.76,.76);
+      oval(MATERIALS.pedra.escura,.92,cx,cy,.7,.66);
+      oval(this.breu,.5,cx,cy-ry*.05,.46,.4);
+      oval(this.breu,.75,cx,cy-ry*.08,.2,.18);
+      if(big)for(let i=0;i<9;i++){ // cracks from the middle out, across the soot
+        const a=i/9*Math.PI*2+rnd()*.4,l=.6+.3*rnd(),bend=.3*(rnd()-.5);
+        const mx=cx+Math.cos(a+bend)*rx*l*.6,my=cy+Math.sin(a+bend)*ry*l*.6,ex=cx+Math.cos(a)*rx*l,ey=cy+Math.sin(a)*ry*l;
+        g.lineStyle(2.2*k,this.breu,.7).lineBetween(cx+Math.cos(a)*rx*.15,cy+Math.sin(a)*ry*.15,mx,my).lineBetween(mx,my,ex,ey);
+      }
+      // Clods and snow thrown on the rim.
+      for(let i=0;i<(big?26:14);i++){
+        const a=rnd()*Math.PI*2,d=.66+.26*rnd(),r=(2.2+2.6*rnd())*k*(big?.7:1),x=cx+Math.cos(a)*rx*d,y=cy+Math.sin(a)*ry*d;
+        g.fillStyle(this.breu,.8).fillEllipse(x,y+r*.25,r*2.3,r*1.5).fillStyle(rnd()<.6?this.papel:MATERIALS.pedra.clara,1).fillEllipse(x,y,r*1.8,r*1.1);
+      }
+      g.lineStyle(2*k,this.breu,.65).strokeEllipse(cx,cy,2*rx*.71,2*ry*.67);
+    });
+  }
   /** The effect textures, drawn once into the scratch Graphics (kept by the texture manager for every renderer). */
   private bakeEffects(){
     const g=this.bake,make=(name:string,w:number,h:number,draw:()=>void)=>{this.atlas.frame(name,w,h,g,draw);};
     const c=FLASH_TEX/2;
     make(FX.flash,FLASH_TEX,FLASH_TEX,()=>g.fillStyle(this.cone,.7).fillCircle(c,c,c).fillStyle(this.amarelo,1).fillCircle(c,c,c/1.25)
       .fillStyle(this.papel,1).fillCircle(c,c,c/1.25*.45));
+    { // a rifle's flash: a long tongue forward, two short ones aside, from the muzzle at x ≈ 12 %
+      const W=FLASH_LONG_W,H=FLASH_LONG_H,x0=W*.12,m=H/2,star=(color:number,a:number,s:number)=>{
+        g.fillStyle(color,a).fillTriangle(x0,m-H*.2*s,x0,m+H*.2*s,x0+(W-x0-2)*s,m)
+          .fillTriangle(x0-2,m,x0+W*.22*s,m-H*.46*s,x0+W*.14*s,m).fillTriangle(x0-2,m,x0+W*.22*s,m+H*.46*s,x0+W*.14*s,m)
+          .fillTriangle(x0+2,m-H*.12*s,x0+2,m+H*.12*s,2,m).fillCircle(x0+2,m,H*.22*s);
+      };
+      make(FX.flashLong,W,H,()=>{star(this.cone,.75,1);star(this.amarelo,1,.72);star(this.papel,1,.38);});
+    }
+    { // a bullet's hit: a four-point star
+      const C=SPARK_TEX/2,arm=(color:number,a:number,s:number)=>g.fillStyle(color,a)
+        .fillTriangle(C,C-C*s,C-C*.22*s,C,C+C*.22*s,C).fillTriangle(C,C+C*s,C-C*.22*s,C,C+C*.22*s,C)
+        .fillTriangle(C-C*s,C,C,C-C*.22*s,C,C+C*.22*s).fillTriangle(C+C*s,C,C,C-C*.22*s,C,C+C*.22*s);
+      make(FX.spark,SPARK_TEX,SPARK_TEX,()=>{arm(this.breu,.55,1);arm(this.amarelo,1,.8);arm(this.papel,1,.45);});
+    }
     {
       const R=BLAST_R,rh=R*.5,lift=rh*1.2*.5,cx=BLAST_W/2,cy=BLAST_GROUND;
       make(FX.blast,BLAST_W,BLAST_H,()=>g.fillStyle(this.breu,.35).fillEllipse(cx,cy-lift,R*2.1,rh*2.4)
         .fillStyle(this.cone,.85).fillEllipse(cx,cy-lift*.6,R*1.6,rh*1.9).fillStyle(this.amarelo,1).fillEllipse(cx,cy-lift*.4,R*.9,rh*1.1));
+      // The big shells': the same fireball under a dark smoke cap, a white-hot core, snow kicked up at its foot.
+      make(FX.blastBig,BLAST_W,BLAST_H,()=>{
+        g.fillStyle(this.breu,.35).fillEllipse(cx,cy-lift,R*2.1,rh*2.4).fillStyle(this.cone,.9).fillEllipse(cx,cy-lift*.6,R*1.6,rh*1.9)
+          .fillStyle(this.amarelo,1).fillEllipse(cx,cy-lift*.4,R*.95,rh*1.15).fillStyle(this.papel,1).fillEllipse(cx,cy-lift*.3,R*.42,rh*.5);
+        for(const [dx,dy,r] of [[-.5,-1.55,.42],[0,-1.75,.5],[.5,-1.5,.4],[-.25,-1.95,.34],[.28,-2,.32]] as const)
+          g.fillStyle(this.breu,.55).fillCircle(cx+dx*R,cy-lift+dy*rh,r*R*.62).fillStyle(MATERIALS.pedra.escura,.9).fillCircle(cx+dx*R,cy-lift+dy*rh-1,r*R*.5);
+        g.fillStyle(this.papel,.9).fillEllipse(cx-R*.75,cy+rh*.35,R*.5,rh*.4).fillEllipse(cx+R*.78,cy+rh*.3,R*.45,rh*.36);
+      });
     }
     make(FX.ring,RING_W,RING_H,()=>g.lineStyle(6,this.breu,.5).strokeEllipse(RING_W/2,RING_H/2,RING_W-8,RING_H-8)
       .lineStyle(3,this.papel,.9).strokeEllipse(RING_W/2,RING_H/2,RING_W-8,RING_H-8));
     const m=STREAK_H/2;
-    make(FX.tracer,STREAK_W,STREAK_H,()=>g.lineStyle(STREAK_LINE,this.breu,.6).lineBetween(0,m,STREAK_W,m)
-      .lineStyle(STREAK_LINE*.55,this.amarelo,1).lineBetween(0,m,STREAK_W,m));
+    const tracer=(name:string,core:number)=>make(name,STREAK_W,STREAK_H,()=>g.lineStyle(STREAK_LINE,this.breu,.6).lineBetween(0,m,STREAK_W,m)
+      .lineStyle(STREAK_LINE*.55,core,1).lineBetween(0,m,STREAK_W,m));
+    tracer(FX.tracer,this.amarelo);tracer(FX.tracerBranco,this.papel);tracer(FX.tracerVermelho,this.cone);
     make(FX.smoke,STREAK_W,STREAK_H,()=>g.lineStyle(STREAK_LINE,this.papel,1).lineBetween(0,m,STREAK_W,m));
     const h=HEAD_TEX/2,rim=h*.25;
     make(FX.headPapel,HEAD_TEX,HEAD_TEX,()=>g.fillStyle(this.papel,1).fillCircle(h,h,h));

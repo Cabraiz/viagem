@@ -31,7 +31,7 @@ import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
 import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
-import {contactWidth} from './shadow-rules.ts';
+import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
@@ -217,6 +217,8 @@ const BUBBLE_MS=2200;
 const PLAYER_BUBBLE_LIFT=116;
 /** A non-player speaker's balloon tail stands this far over its head (world px at ui scale 1). */
 const SPEAKER_BUBBLE_GAP=14;
+/** A balloon keeps this far (CSS px) inside the screen's edges. */
+const BUBBLE_EDGE_CSS=8;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 /** Eyes in the dark, CSS px at the follow zoom: 9×12 Papel with a 2 px Breu edge, 4 px pupils looking at the hero. */
@@ -411,7 +413,7 @@ export class HordeRenderer{
     };
     const showEnemy=(o:EnemyActor,active:boolean)=>{showImage(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);o.contact.setVisible(false).setActive(false);}};
     // The silhouette: just over the pickups' and shots' contact shadows (-9980), under every body; one flat dark tint, set once.
-    const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979));
+    const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979,ENEMY_SILHOUETTE.color));
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
@@ -902,7 +904,7 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art));
+    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;
@@ -1347,7 +1349,7 @@ export class HordeRenderer{
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
     const alive=drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art,d.costume);
     // The shadow falls and fades with the body (card sombra-silhueta: it never outlives or skips the death).
-    castSilhouette(d.sil,d.image,gx,gy,alive);
+    castSilhouette(d.sil,d.image,gx,gy,alive,undefined,artShadowLength(d.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     castContact(d.contact,d.image,gx,gy,d.contactW,alive);
     return alive;
   };
@@ -1384,20 +1386,26 @@ export class HordeRenderer{
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;
     b.text.setVisible(true).setAlpha(alpha).setScale((this.reduced||age>=160?1:.7+.3*age/160)*this.ui);
-    const t=8*this.ui,e=2*this.css(),o=b.player?this.heroBalloons:this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
+    const t=8*this.ui,e=2*this.css(),o=b.player?this.heroBalloons:this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight;
+    // Card sombras-e-fala-do-uno (auditoria-arte-mundo item 10): the balloon stays inside the screen (the Tio's line ran
+    // off the edge); the tail keeps pointing at its speaker as far as the body allows.
+    const v=this.view,m=BUBBLE_EDGE_CSS*this.css(),half=bw/2+e;
+    const bx=v.right-v.x>2*(half+m)?Math.min(Math.max(q.x,v.x+m+half),v.right-m-half):q.x;
+    const by=Math.max(q.y-b.lift,v.y+m+bh+e),tq=Math.min(Math.max(q.x,bx-bw/2+t+e),bx+bw/2-t-e);
+    tx.setPosition(bx,by);
     // Imported frame (balloon or "DEVENDO" tag) over today's body box, just above the code tail; the text stays on top.
     const frame=this.art.slice(b.text,sliceArt(b.tag?'tag':'balloon'),o.depth+.5,tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,this.ui);
     if(frame){
       frame.setAlpha(alpha);
-      o.fillStyle(PALETTE.breu,alpha).fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
-      o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillTriangle(q.x-t,by-1,q.x+t,by-1,q.x,by+t*1.25);
+      o.fillStyle(PALETTE.breu,alpha).fillTriangle(tq-t-e,by-1,tq+t+e,by-1,tq,by+t*1.25+e*1.6);
+      o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillTriangle(tq-t,by-1,tq+t,by-1,tq,by+t*1.25);
       return true;
     }
     // Balloon: Papel body with a 2 px Breu edge (it vanished on the light sand), then the Papel tail over it.
     o.fillStyle(PALETTE.breu,alpha).fillRoundedRect(tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,10*this.ui)
-      .fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
+      .fillTriangle(tq-t-e,by-1,tq+t+e,by-1,tq,by+t*1.25+e*1.6);
     o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillRoundedRect(tx.x-bw/2,by-bh,bw,bh,8*this.ui)
-      .fillTriangle(q.x-t,by-1,q.x+t,by-1,q.x,by+t*1.25);
+      .fillTriangle(tq-t,by-1,tq+t,by-1,tq,by+t*1.25);
     return true;
   };
 

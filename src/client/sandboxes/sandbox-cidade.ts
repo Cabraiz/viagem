@@ -201,6 +201,27 @@ const arsenal=tele&&params.get('arsenal')==='1';
  * scene.pushNests draws them (asleep with its band sleeping, active with its band waking up, destroyed). The band wakes
  * every NEST_WAKE_MS; in the modo foto once, NEST_WAKE_AGO_MS before the fixed clock, so the print catches it waking.
  */
+/**
+ * `tipos=1` (with tele=1; card efeitos-ataque-chatgpt): one telegraph of every kind (TelegraphKind) around the hero, each
+ * in the shape the sim gives it (the burp a cone, the charge a line, the rest circles), for the attack effects' prints;
+ * `tipos=<kind>` shows only that one, just ahead of the hero.
+ */
+const tipos=tele&&params.has('tipos'),tipoSo=params.get('tipos');
+const kindLab=(x:number,y:number,tick:number):RunView['telegraphs']=>{
+  const all:RunView['telegraphs']=[
+  {id:'k-arroto',kind:'arroto',shape:'cone',x:x-2,y:y-2,radius:2.4,dx:1,dy:.2,width:1.1,fireTick:tick+20},
+  {id:'k-molotov',kind:'molotov',shape:'circle',x:x+1.5,y:y-2,radius:1.1,fireTick:tick+20},
+  {id:'k-fogo',kind:'fogo',shape:'circle',x:x-1.6,y:y+0.15,radius:1,fireTick:tick+20},
+  {id:'k-coco',kind:'coco',shape:'circle',x:x+1.6,y:y+0.075,radius:.6,fireTick:tick+20},
+  {id:'k-explosao',kind:'explosao',shape:'circle',x:x-1.5,y:y+2.1,radius:1.2,fireTick:tick+20},
+  {id:'k-carimbo',kind:'carimbo',shape:'circle',x:x+1.6,y:y+2.2,radius:1.3,fireTick:tick+20},
+  {id:'k-investida',kind:'investida',shape:'line',x:x-0.62,y:y+3.4,radius:4,dx:1,dy:0,width:1,fireTick:tick+20},
+  {id:'k-pancada',kind:'pancada',shape:'circle',x:x,y:y-3.4,radius:1.2,fireTick:tick+20},
+  {id:'k-varredura',kind:'varredura',shape:'cone',x:x+0.12,y:y+4.7,radius:2.4,dx:0,dy:1,width:1.6,fireTick:tick+20},
+];
+  const one=all.find(t=>t.kind===tipoSo);
+  return one?[{...one,x:x+1.2,y:y+1.2}]:all;
+}
 const ninhos=tele&&params.get('ninhos')==='1',NEST_WAKE_MS=3000,NEST_WAKE_AGO_MS=150;
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
@@ -715,7 +736,7 @@ class CitySandbox extends Phaser.Scene {
         aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
-      telegraphs:limpo?[]:[
+      telegraphs:limpo?[]:tipos?kindLab(x,y,tick):[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
         {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},

@@ -57,6 +57,20 @@ export function plateRings(sos:boolean,city:boolean):readonly PlateRing[]{
   if(!city)return sos?SOS_RINGS:NO_RINGS;
   return sos?CITY_SOS_RINGS:CITY_RINGS;
 }
+/** The ficha's Papel edge and its rings, in CSS px (render/map-labels.ts strokes them at this width). */
+export const LABEL_BORDER_CSS=2;
+/** How far a ficha's outermost ring reaches past its body, in CSS px (half its stroke past the ring's centre line). */
+export function ringReachCss(sos:boolean,city:boolean){
+  let reach=0;for(const r of plateRings(sos,city))reach=Math.max(reach,(r.out+.5)*LABEL_BORDER_CSS);
+  return reach;
+}
+/** Clear space between two stacked fichas' rings, in CSS px (auditoria-arte-mundo item 12: they touched). */
+export const LABEL_STACK_GAP_CSS=4;
+/**
+ * From the top of a ficha `h` CSS px tall to the top of the ficha stacked under it (the caído's "Te derrubou: X" under
+ * "Você, 11 s"): both fichas' rings and a fixed gap, so the Breu/Cone rings of the upper one never touch the lower one.
+ */
+export const stackedLabelOffsetCss=(h:number,upperSos:boolean,city:boolean)=>h+ringReachCss(upperSos,city)+ringReachCss(false,city)+LABEL_STACK_GAP_CSS;
 const NO_RINGS:readonly PlateRing[]=Object.freeze([]);
 const SOS_RINGS:readonly PlateRing[]=Object.freeze([{color:'cone',out:.5}]);
 const CITY_RINGS:readonly PlateRing[]=Object.freeze([{color:'breu',out:.5}]);

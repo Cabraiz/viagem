@@ -117,11 +117,14 @@ test('why he stopped: the card\'s words, one short line each, shown once per sto
   assert.ok(REASON_MS>=2000&&REASON_MS<=3000);
   const r=new MotoReason();
   assert.deepEqual(r.step('anda'),{drop:false});
-  const dead=r.step('morta');
-  assert.equal(dead.show?.text,'Moto morta: empurra!');
-  assert.equal(dead.show?.urgent,true);
-  assert.deepEqual(r.step('morta'),{drop:false},'the same stop never queues twice');
-  assert.deepEqual(r.step('anda'),{drop:true});
+  // Card objetivo-com-verbo: the stops that need the team are the mission line's (MOTO_ACTIONS), no second row.
+  assert.deepEqual(r.step('morta'),{drop:false});
+  assert.deepEqual(r.step('tombo'),{drop:false});
+  assert.deepEqual(r.step('anda'),{drop:false});
+  assert.equal(r.step('entrega').show?.text,'Entregando');
+  assert.deepEqual(r.step('entrega'),{drop:false},'the same stop never queues twice');
+  assert.deepEqual(r.step('morta'),{drop:true},'the mission takes over: the waiting row leaves');
+  assert.deepEqual(r.step('anda'),{drop:false});
   assert.equal(r.step('volta').show?.urgent,false);
   // A new stop replaces the old one at once (volta → lombada), and the end takes it off.
   assert.equal(r.step('lombada').show?.text,'Lombada');

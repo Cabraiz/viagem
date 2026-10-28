@@ -50,18 +50,19 @@
  * `pausa=escolhendo|esperando|ultimo` (D-050, card NEW-20261014-E4-levelup-pausa-hud): the team's level-up pause, 4 players
  * unless `players=`, the room's fake pause (contract RunPause) sent like the room's, at each whole second:
  * escolhendo: the pause's offer window open by itself (offer.ts data-mode=pause, no clock of its own), 10 s of 12, Zé
- * already picked, you, Tia and Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha
+ * already picked, you, Tia and Bruninha thinking; esperando: you picked (the default card, clicked once the scene is in), 7 s, Tia and Bruninha
  * missing; ultimo: 3 s (urgent), only you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
-import {shownTargets} from '../hud/arrows.ts';
+import {shownTargets,missionKeys,nestTarget} from '../hud/arrows.ts';
 import type {EdgeKind} from '../hud/edges.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {bankExtras} from '../hud/bancos.ts';
 import {RunHud} from '../hud/hud.ts';
+import {STAMP_HOLD_MS} from '../hud/offer.ts';
 import {SIM_HZ,type BankView,type RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
@@ -81,7 +82,7 @@ const PAUSAS=['escolhendo','esperando','ultimo'] as const;
 const pausa=(PAUSAS as readonly string[]).includes(params.get('pausa')??'')?params.get('pausa') as typeof PAUSAS[number]:undefined;
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||(pausa?4:1)));
 // The pause's base scene: the combat offer open (escolhendo, ultimo), or a wave with nothing to pick (esperando).
-const requested=(params.get('state')??(pausa?(pausa==='esperando'?'wave':'offer-open'):null)) as HudScenario|null;
+const requested=(params.get('state')??(pausa?'offer-open':null)) as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';
 /** Round 1 of the city (card cidade-08): a wave scene with no banner, trimmed to round 1 in the city block below. */
 const tutorial=cidade&&(requested as string|null)==='tutorial';
@@ -202,7 +203,8 @@ const hud=new RunHud(document.body,{
   },
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
-    view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
+    // esperando: that was your last offer (the queue's next would open over the waiting window).
+    view={...view,offers:pausa==='esperando'?[]:view.offers.filter(offer=>offer.id!==offerId)};
     hud.update(view);
   },
   // D-052: "Pular" closes the offer (no prize), "Rolar de novo" deals the cards again, each spending one of the local
@@ -292,7 +294,20 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[],extra?:ReadonlySet<string>):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets,extra);
+/**
+ * Card objetivo-com-verbo: `caixas=N` the team opened N crates in this window (with `minerva=`/`explora=`: the line's
+ * count), `escuro=0..1` the dark on p1 (from DARK_PRESS: "Volte ao Uno!"). The run is shown once without them first, as
+ * the window's opening view.
+ */
+function missionScene(run:RunView):{before:RunView;after:RunView}|undefined{
+  const crates=Number(params.get('caixas')),dark=Number(params.get('escuro'));
+  if(!(crates>0)&&!(dark>0))return undefined;
+  // The opening view carries the stats too (chests 0 when absent): the window's count starts from it.
+  const opened=(add:number,p:RunView['players'][number])=>({...p,stats:{damage:0,kills:0,revives:0,pickups:0,...p.stats,chests:(p.stats?.chests??0)+add}});
+  return {before:{...run,players:run.players.map(p=>opened(0,p))},
+    after:{...run,players:run.players.map(p=>p.id!=='p1'?opened(0,p):{...opened(crates>0?crates:0,p),...(dark>0?{fear:dark}:{})})}};
+}
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -363,6 +378,8 @@ function load(next:HudScenario){
   hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'||scenario==='offer-sem-xp'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
   // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
+  // esperando: drawn only once your card is picked (below), so the print shows the waiting window with it.
+  if(pausa==='esperando'&&!esperaPicked)document.body.dataset.hudReady='0';
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
@@ -371,9 +388,17 @@ function load(next:HudScenario){
   hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
+let esperaPicked=false;
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
-void artReady().then(ok=>{if(ok)load(scenario);});
+// `pausa=esperando`: then you pick the default card (an assistive click, past the offer's tap guard) and wait for the rest.
+void artReady().then(ok=>{
+  if(ok)load(scenario);
+  if(pausa==='esperando')setTimeout(()=>{
+    (hud.el.querySelector('.rh-offer .rh-card-default') as HTMLButtonElement|null)?.click();
+    esperaPicked=true;setTimeout(()=>{document.body.dataset.hudReady='1';},STAMP_HOLD_MS+120); // past the stamp: the waiting window
+  },450);
+});
 
 /**
  * `pix=balao|recebido|enviado` (carteira-e-pix, hud/pix.ts; players ≥ 2): the PIX balloon open on Tia Cleide's portrait
@@ -630,8 +655,10 @@ if(cidade)void (async()=>{
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // D-051 (ninhos-rounds-fora): the same 8 nests, 2 fallen, in the city's run (the chip and the phone bar read them).
   if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
-  // The sandbox's ticker (unless frozen=1) keeps updating this run.
-  view=run;hud.update(run);
+  // The sandbox's ticker (unless frozen=1) keeps updating this run; the mission's scene (caixas, escuro) on top of it.
+  const mission=missionScene(run);
+  hud.update(mission?.before??run);
+  view=mission?.after??run;hud.update(view);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
   const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
   const feet=await heroFeet();
@@ -656,13 +683,17 @@ if(cidade)void (async()=>{
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
       hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{}),
       // Card inimigos-querem-o-uno: `apanha=1` the car takes hits (its edge arrow while it is out of view).
-      ...(chaveiro&&params.get('apanha')==='1'?{car:{x:chaveiro.car.x,y:chaveiro.car.y,hit:true}}:{})});
+      ...(chaveiro&&params.get('apanha')==='1'?{car:{x:chaveiro.car.x,y:chaveiro.car.y,hit:true}}:{}),
+      // The mission line's target, as rescue.ts does (objetivo-com-verbo): the Uno, the moto, the nearest nest.
+      ...(chaveiro&&hud.unoArrow?{uno:{x:chaveiro.car.x,y:chaveiro.car.y,urgent:hud.unoArrow.urgent}}:{})});
+    const aim=hud.missionArrow;
+    if(aim?.kind==='ninho'&&!isOnScreen(aim))targets.push(nestTarget(aim,hero,locate));
     previous=groupKeys;
-    const arrows=city.layoutCityEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
+    const arrows=city.layoutCityEdges(shownHere(targets,missionKeys(aim)),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
-    hud.edges!.need(pointedTargets(shownHere(targets),area,seen),city.cityMustPoint);
+    hud.edges!.need(pointedTargets(shownHere(targets,missionKeys(aim)),area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],

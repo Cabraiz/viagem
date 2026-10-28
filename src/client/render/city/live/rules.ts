@@ -190,6 +190,22 @@ export function matchInsulators(a:readonly Pt[],b:readonly Pt[]):[Pt,Pt][]{
 }
 const mean=(p:readonly Pt[])=>({x:p.reduce((s,q)=>s+q.x,0)/p.length,y:p.reduce((s,q)=>s+q.y,0)/p.length});
 /** A sagging wire from a to b on screen: a parabola (a catenary this shallow is one), lowest in the middle. */
+/** Whether a polyline (a wire's sagLine) crosses or touches a screen rect: each segment clipped to it (Liang–Barsky). */
+export function lineHitsRect(pts:readonly Pt[],r:Rect):boolean{
+  const x0=r.x,x1=r.x+r.w,y0=r.y,y1=r.y+r.h;
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y;
+    let t0=0,t1=1,ok=true;
+    for(const [p,q] of [[-dx,a.x-x0],[dx,x1-a.x],[-dy,a.y-y0],[dy,y1-a.y]] as const){
+      if(p===0){if(q<0){ok=false;break;}continue;}
+      const t=q/p;
+      if(p<0){if(t>t1){ok=false;break;}if(t>t0)t0=t;}else{if(t<t0){ok=false;break;}if(t<t1)t1=t;}
+    }
+    if(ok)return true;
+  }
+  return false;
+}
+
 export function sagLine(a:Pt,b:Pt,look=WIRE_LOOK):Pt[]{
   const sag=Math.max(look.minSag,Math.hypot(b.x-a.x,b.y-a.y)*look.sag),n=look.segments,out:Pt[]=[];
   for(let i=0;i<=n;i++){const t=i/n;out.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t+4*sag*t*(1-t)});}

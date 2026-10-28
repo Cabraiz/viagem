@@ -1,0 +1,95 @@
+seed 1 1p: victory/opened round 1 | 14.8 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 1 ruined 0 | grana +272 evo 0 rep 0 forge 0 end 0 | banks R$ 35 (12.9 %) bicho 2× R$ 4 prime 0 dry 0 | 3.849 ms/tick 68.34s | digest a112619ee49b
+   seed 1 1p: victory/opened at 14.18 min | ETA left 0s | hits 83/120 parts 1111 | Grana 272 budget 412 paid 272 debt 140 | wave 1 (+0 extra) | boss called | moto lombada 3, entrega 3, morta 3, tranco-sozinho 3, tombo 15, volta 8, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+   nests 0/5 down (-) | groups 15 | sleepers 820: 690 asleep, 0 awake, 130 dead | never woke 4 | max enemies 56 | stuck 0 | waves 3: map 3 nests 32 outside 25 (kills 85)
+seed 2 1p: victory/opened round 1 | 14.99 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +367 evo 0 rep 0 forge 0 end 63 | banks R$ 102 (27.8 %) bicho 7× R$ 13 prime 0 dry 2 | 0.665 ms/tick 11.97s | digest 6c38dcdab81a
+   seed 2 1p: victory/opened at 14.31 min | ETA left 0s | hits 3/120 parts 0011 | Grana 367 budget 304 paid 304 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco-sozinho 3, tombo 28, lombada 8, volta 3, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+   nests 0/5 down (-) | groups 15 | sleepers 820: 664 asleep, 0 awake, 156 dead | never woke 3 | max enemies 66 | stuck 0 | waves 3: map 3 nests 35 outside 24 (kills 96)
+seed 3 1p: defeat/car round 1 | 4.77 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +0 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (-) bicho 1× R$ 2 prime 0 dry 0 | 0.807 ms/tick 4.62s | digest 24686026e1f9
+   seed 3 1p: defeat/car at 4.77 min | ETA left 524s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 4, volta 1 | deliveries clean 1 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 746 asleep, 74 awake, 0 dead | never woke 5 | max enemies 87 | stuck 1 | waves 1: map 1 nests 8 outside 5 (kills 0)
+seed 4 1p: defeat/car round 1 | 4.92 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +68 evo 0 rep 0 forge 0 end 0 | banks R$ 30 (44.1 %) bicho 0× R$ 0 prime 0 dry 0 | 0.648 ms/tick 3.82s | digest 17350118e72e
+   seed 4 1p: defeat/car at 4.92 min | ETA left 521s | hits 120/120 parts 1111 | Grana 68 budget 385 paid 68 debt 317 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 4, volta 3 | deliveries clean 1 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 736 asleep, 55 awake, 29 dead | never woke 4 | max enemies 60 | stuck 0 | waves 1: map 1 nests 13 outside 3 (kills 0)
+seed 5 1p: defeat/car round 1 | 5.48 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +96 evo 0 rep 0 forge 0 end 0 | banks R$ 35 (36.5 %) bicho 5× R$ 10 prime 0 dry 0 | 0.619 ms/tick 4.07s | digest 12477d3478f3
+   seed 5 1p: defeat/car at 5.3 min | ETA left 464s | hits 120/120 parts 1111 | Grana 96 budget 385 paid 96 debt 289 | wave 1 (+0 extra) | boss - | moto lombada 1, entrega 2, morta 1, tranco-sozinho 1, tombo 3, volta 4 | deliveries clean 2 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 727 asleep, 38 awake, 55 dead | never woke 4 | max enemies 53 | stuck 0 | waves 1: map 1 nests 11 outside 4 (kills 1)
+seed 6 1p: defeat/car round 1 | 5.34 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +51 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (0 %) bicho 1× R$ 2 prime 0 dry 0 | 0.733 ms/tick 4.69s | digest c525825aa6af
+   seed 6 1p: defeat/car at 5.24 min | ETA left 507s | hits 120/120 parts 1111 | Grana 51 budget 385 paid 51 debt 334 | wave 1 (+0 extra) | boss - | moto lombada 3, morta 1, tranco-sozinho 1, tombo 4, volta 4 | deliveries clean 0 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 736 asleep, 46 awake, 38 dead | never woke 5 | max enemies 53 | stuck 0 | waves 1: map 1 nests 10 outside 5 (kills 3)
+seed 7 1p: defeat/team round 1 | 8.93 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +249 evo 0 rep 0 forge 0 end 0 | banks R$ 78 (31.3 %) bicho 1× R$ 2 prime 0 dry 2 | 0.722 ms/tick 7.73s | digest 9b29738987d8
+   seed 7 1p: defeat/team at 8.41 min | ETA left 285s | hits 54/120 parts 0011 | Grana 249 budget 277 paid 249 debt 28 | wave 1 (+0 extra) | boss - | moto entrega 3, morta 2, tranco-sozinho 2, tombo 8, volta 6, lombada 2 | deliveries clean 2 dirty 1
+   nests 0/5 down (-) | groups 10 | sleepers 820: 734 asleep, 4 awake, 82 dead | never woke 4 | max enemies 49 | stuck 1 | waves 2: map 2 nests 21 outside 12 (kills 67)
+seed 8 1p: victory/opened round 1 | 14.44 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 1 ruined 0 | grana +259 evo 0 rep 0 forge 0 end 120 | banks R$ 0 (0 %) bicho 9× R$ 18 prime 0 dry 0 | 0.603 ms/tick 10.44s | digest e367857c1d7a
+   seed 8 1p: victory/opened at 13.73 min | ETA left 0s | hits 0/120 parts 0001 | Grana 259 budget 139 paid 139 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco-sozinho 3, tombo 15, volta 4, lombada 3, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+   nests 0/5 down (-) | groups 15 | sleepers 820: 667 asleep, 0 awake, 153 dead | never woke 5 | max enemies 68 | stuck 0 | waves 3: map 3 nests 27 outside 23 (kills 86)
+seed 9 1p: defeat/car round 1 | 5.2 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +38 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (0 %) bicho 0× R$ 0 prime 0 dry 0 | 0.528 ms/tick 3.29s | digest dcee52132882
+   seed 9 1p: defeat/car at 5.02 min | ETA left 511s | hits 120/120 parts 1111 | Grana 38 budget 385 paid 38 debt 347 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 4, entrega 4, volta 4 | deliveries clean 1 dirty 3
+   nests 0/5 down (-) | groups 5 | sleepers 820: 741 asleep, 46 awake, 33 dead | never woke 4 | max enemies 62 | stuck 3 | waves 1: map 1 nests 10 outside 4 (kills 7)
+seed 10 1p: defeat/car round 1 | 5.13 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +65 evo 0 rep 0 forge 0 end 0 | banks R$ 35 (53.8 %) bicho 3× R$ 6 prime 0 dry 0 | 0.51 ms/tick 3.14s | digest 2c1e69f68bfb
+   seed 10 1p: defeat/car at 5.12 min | ETA left 527s | hits 120/120 parts 1111 | Grana 65 budget 385 paid 65 debt 320 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 5, entrega 4, volta 4 | deliveries clean 0 dirty 4
+   nests 0/5 down (-) | groups 5 | sleepers 820: 740 asleep, 57 awake, 23 dead | never woke 3 | max enemies 66 | stuck 1 | waves 1: map 1 nests 11 outside 4 (kills 2)
+seed 11 1p: defeat/car round 1 | 4.75 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +0 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (-) bicho 0× R$ 0 prime 0 dry 0 | 0.474 ms/tick 2.7s | digest f3210ad13682
+   seed 11 1p: defeat/car at 4.75 min | ETA left 525s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto lombada 3, morta 1, tranco-sozinho 1, tombo 2, volta 1 | deliveries clean 0 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 753 asleep, 67 awake, 0 dead | never woke 4 | max enemies 79 | stuck 1 | waves 1: map 1 nests 7 outside 5 (kills 0)
+seed 12 1p: victory/opened round 1 | 15.36 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 1 ruined 0 | grana +322 evo 0 rep 0 forge 0 end 54 | banks R$ 45 (14 %) bicho 21× R$ 41 prime 0 dry 2 | 0.439 ms/tick 8.09s | digest e312b2d61bcd
+   seed 12 1p: victory/opened at 14.68 min | ETA left 0s | hits 6/120 parts 0001 | Grana 322 budget 268 paid 268 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, lombada 5, morta 3, tranco-sozinho 3, tombo 28, volta 10, chegou 1, abrindo 1 | deliveries clean 3 dirty 0
+   nests 0/5 down (-) | groups 15 | sleepers 820: 653 asleep, 0 awake, 167 dead | never woke 3 | max enemies 54 | stuck 0 | waves 3: map 3 nests 28 outside 25 (kills 88)
+seed 13 1p: defeat/car round 1 | 5.12 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +57 evo 0 rep 0 forge 0 end 0 | banks R$ 30 (52.6 %) bicho 3× R$ 6 prime 0 dry 0 | 0.453 ms/tick 2.78s | digest 8ba5111c5ad9
+   seed 13 1p: defeat/car at 5.1 min | ETA left 512s | hits 120/120 parts 1111 | Grana 57 budget 385 paid 57 debt 328 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 3, entrega 2, volta 2 | deliveries clean 0 dirty 2
+   nests 0/5 down (-) | groups 5 | sleepers 820: 734 asleep, 64 awake, 22 dead | never woke 4 | max enemies 74 | stuck 0 | waves 1: map 1 nests 13 outside 4 (kills 3)
+seed 14 1p: defeat/car round 1 | 4.6 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +0 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (-) bicho 0× R$ 0 prime 0 dry 0 | 0.437 ms/tick 2.41s | digest 2b7f118544b9
+   seed 14 1p: defeat/car at 4.6 min | ETA left 520s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, lombada 1, morta 1, tranco-sozinho 1, tombo 3, volta 1 | deliveries clean 1 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 770 asleep, 50 awake, 0 dead | never woke 5 | max enemies 61 | stuck 2 | waves 1: map 1 nests 9 outside 4 (kills 0)
+seed 15 1p: defeat/car round 1 | 5.17 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +75 evo 0 rep 0 forge 0 end 0 | banks R$ 35 (46.7 %) bicho 18× R$ 36 prime 0 dry 0 | 0.466 ms/tick 2.89s | digest da2d14bc98eb
+   seed 15 1p: defeat/car at 4.98 min | ETA left 512s | hits 120/120 parts 1111 | Grana 75 budget 385 paid 75 debt 310 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 5, lombada 3, volta 2 | deliveries clean 1 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 736 asleep, 45 awake, 39 dead | never woke 5 | max enemies 59 | stuck 0 | waves 1: map 1 nests 8 outside 4 (kills 2)
+seed 16 1p: defeat/car round 1 | 4.83 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +0 evo 0 rep 0 forge 0 end 0 | banks R$ 0 (-) bicho 2× R$ 4 prime 0 dry 0 | 0.588 ms/tick 3.41s | digest 5ef8e060a8e6
+   seed 16 1p: defeat/car at 4.83 min | ETA left 521s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 3, lombada 1, volta 1 | deliveries clean 1 dirty 0
+   nests 0/5 down (-) | groups 5 | sleepers 820: 747 asleep, 73 awake, 0 dead | never woke 4 | max enemies 90 | stuck 1 | waves 1: map 1 nests 11 outside 5 (kills 0)
+
+== summary ==
+1p: 4/16 wins (ok 2–6) causes {"boss":0,"team":1,"wall":0,"timeout":0,"opened":4,"car":11} deaths by round {"1":12}
+   sim minutes mean 7.74 | ms/tick mean 0.78
+   D-050 pauses/run 3.56 | wave min/run 7.74 | worst-case human share 0.07 (max 0.13)
+   first arrival s null | loot/intermission null ≈ null recipes (mean 35 u) | forge/run 0
+   round 1: downed 0 eliminated 0 defeats 12 (deaths) tutorial arrival null | boss reached 0 killed 0
+towers 1p: orders/run 0 units/run 0 standing at end 0.19 ruined 0 gustavão 0/16 | roots/run 0 fichas/run 0
+grana 1p: earned/run 119.94 spent/run 0 (evolutions 0 repairs 0 forge 0) final 14.81
+banks 1p: R$/run 26.56 share of Grana 22.1 % pooled (per run {"n":12,"mean":0.27,"min":0,"median":0.3,"max":0.54}; target 25–35 %: low) | bicho withdraws/run 4.56 (R$ 9) | primes/run 0 | dry ATMs/run 0.38
+vehicles 1p: rides/run 1.19 per bot 1.19 (target ≥ 1) | runs where every bot rode 8/16 | by kind {"crossfiteiro":5,"carrinho":7,"patinete":7} | ended: ran out 0.88 dropped 0.31
+chaveiro 1p:
+   seed 1 1p: victory/opened at 14.18 min | ETA left 0s | hits 83/120 parts 1111 | Grana 272 budget 412 paid 272 debt 140 | wave 1 (+0 extra) | boss called | moto lombada 3, entrega 3, morta 3, tranco-sozinho 3, tombo 15, volta 8, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+      first 180s: bot max u 28 | bot-s >20u 113 {"home":12,"loot":45,"veiculo":2,"unstick":54} | pulled 1
+   seed 2 1p: victory/opened at 14.31 min | ETA left 0s | hits 3/120 parts 0011 | Grana 367 budget 304 paid 304 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco-sozinho 3, tombo 28, lombada 8, volta 3, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+      first 180s: bot max u 34 | bot-s >20u 20 {"loot":14,"home":6} | pulled 3
+   seed 3 1p: defeat/car at 4.77 min | ETA left 524s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 4, volta 1 | deliveries clean 1 dirty 0
+      first 180s: bot max u 10 | bot-s >20u 0 {} | pulled 0
+   seed 4 1p: defeat/car at 4.92 min | ETA left 521s | hits 120/120 parts 1111 | Grana 68 budget 385 paid 68 debt 317 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 4, volta 3 | deliveries clean 1 dirty 0
+      first 180s: bot max u 24 | bot-s >20u 168 {"loot":84,"unstick":66,"bank":18} | pulled 0
+   seed 5 1p: defeat/car at 5.3 min | ETA left 464s | hits 120/120 parts 1111 | Grana 96 budget 385 paid 96 debt 289 | wave 1 (+0 extra) | boss - | moto lombada 1, entrega 2, morta 1, tranco-sozinho 1, tombo 3, volta 4 | deliveries clean 2 dirty 0
+      first 180s: bot max u 24 | bot-s >20u 127 {"loot":17,"unstick":61,"bank":1,"home":48} | pulled 0
+   seed 6 1p: defeat/car at 5.24 min | ETA left 507s | hits 120/120 parts 1111 | Grana 51 budget 385 paid 51 debt 334 | wave 1 (+0 extra) | boss - | moto lombada 3, morta 1, tranco-sozinho 1, tombo 4, volta 4 | deliveries clean 0 dirty 0
+      first 180s: bot max u 16 | bot-s >20u 0 {} | pulled 0
+   seed 7 1p: defeat/team at 8.41 min | ETA left 285s | hits 54/120 parts 0011 | Grana 249 budget 277 paid 249 debt 28 | wave 1 (+0 extra) | boss - | moto entrega 3, morta 2, tranco-sozinho 2, tombo 8, volta 6, lombada 2 | deliveries clean 2 dirty 1
+      first 180s: bot max u 18 | bot-s >20u 0 {} | pulled 0
+   seed 8 1p: victory/opened at 13.73 min | ETA left 0s | hits 0/120 parts 0001 | Grana 259 budget 139 paid 139 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco-sozinho 3, tombo 15, volta 4, lombada 3, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+      first 180s: bot max u 28 | bot-s >20u 111 {"loot":55,"home":8,"veiculo":1,"unstick":39,"bank":8} | pulled 3
+   seed 9 1p: defeat/car at 5.02 min | ETA left 511s | hits 120/120 parts 1111 | Grana 38 budget 385 paid 38 debt 347 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 4, entrega 4, volta 4 | deliveries clean 1 dirty 3
+      first 180s: bot max u 24 | bot-s >20u 39 {"loot":25,"unstick":14} | pulled 0
+   seed 10 1p: defeat/car at 5.12 min | ETA left 527s | hits 120/120 parts 1111 | Grana 65 budget 385 paid 65 debt 320 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 5, entrega 4, volta 4 | deliveries clean 0 dirty 4
+      first 180s: bot max u 24 | bot-s >20u 20 {"bank":19,"loot":1} | pulled 0
+   seed 11 1p: defeat/car at 4.75 min | ETA left 525s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto lombada 3, morta 1, tranco-sozinho 1, tombo 2, volta 1 | deliveries clean 0 dirty 0
+      first 180s: bot max u 9 | bot-s >20u 0 {} | pulled 0
+   seed 12 1p: victory/opened at 14.68 min | ETA left 0s | hits 6/120 parts 0001 | Grana 322 budget 268 paid 268 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, lombada 5, morta 3, tranco-sozinho 3, tombo 28, volta 10, chegou 1, abrindo 1 | deliveries clean 3 dirty 0
+      first 180s: bot max u 33 | bot-s >20u 113 {"loot":46,"home":22,"unstick":33,"bank":12} | pulled 7
+   seed 13 1p: defeat/car at 5.1 min | ETA left 512s | hits 120/120 parts 1111 | Grana 57 budget 385 paid 57 debt 328 | wave 1 (+0 extra) | boss - | moto lombada 1, morta 1, tranco-sozinho 1, tombo 3, entrega 2, volta 2 | deliveries clean 0 dirty 2
+      first 180s: bot max u 18 | bot-s >20u 0 {} | pulled 0
+   seed 14 1p: defeat/car at 4.6 min | ETA left 520s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, lombada 1, morta 1, tranco-sozinho 1, tombo 3, volta 1 | deliveries clean 1 dirty 0
+      first 180s: bot max u 15 | bot-s >20u 0 {} | pulled 0
+   seed 15 1p: defeat/car at 4.98 min | ETA left 512s | hits 120/120 parts 1111 | Grana 75 budget 385 paid 75 debt 310 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 5, lombada 3, volta 2 | deliveries clean 1 dirty 0
+      first 180s: bot max u 18 | bot-s >20u 0 {} | pulled 0
+   seed 16 1p: defeat/car at 4.83 min | ETA left 521s | hits 120/120 parts 1111 | Grana 0 budget 385 paid 0 debt 385 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, tombo 3, lombada 1, volta 1 | deliveries clean 1 dirty 0
+      first 180s: bot max u 14 | bot-s >20u 0 {} | pulled 0
+   victories with debt 1/4 (of 16 runs; debt {"n":4,"mean":35,"min":0,"median":0,"max":140})
+verdict: 1p: banks 22.1 % of the Grana, target 25–35 % (low); 1p: 12 death(s) in round 1
+written: C:\Users\Cabraiz\AppData\Local\Temp\solo-1p.json

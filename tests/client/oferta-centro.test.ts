@@ -38,7 +38,7 @@ test('one window over the whole screen (veil, title, fan, buttons) on every scre
   // px39: the cards open as a fan (the default pick in the middle, turned sides), the same in landscape.
   assert.match(css,/\.rh-card\[data-fan=l\]\{[^}]*--rot:-[\d.]+deg/);
   assert.match(css,/\.rh-card\[data-fan=r\]\{[^}]*--rot:[\d.]+deg/);
-  assert.match(ts,/card\.dataset\.fan=slots\[index\]/);
+  assert.match(ts,/cardFor\(offer,choice,index,slots\[index\]\)/);
   // Landscape: the same column (no grid of two columns), scaled to the height.
   assert.doesNotMatch(css,/grid-template-areas/);
   // No text under 12 px: every card size has a 12 px floor.

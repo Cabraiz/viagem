@@ -7,15 +7,17 @@
 import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 
-import {LABEL_CSS,labelScale,plateRings} from './map-label-rules.ts';
+import {LABEL_BORDER_CSS,LABEL_CSS,labelScale,plateRings} from './map-label-rules.ts';
 import {dropSlice,hideSlice,placeSlice,sliceArt,sliceFor} from '../art/frames-art.ts';
 import {labelPlaque} from '../art/hud-art.ts';
-export {LABEL_CSS,plateRings,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
+export {LABEL_CSS,plateRings,stackedLabelOffsetCss,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
 export type {AllyStatus,LabelKind,PlateRing} from './map-label-rules.ts';
 
 /** Rasterized at 2× and scaled down, so the glyphs stay crisp if the canvas ever renders above 1×. */
 const RASTER=2;
-const PAD_X=7,PAD_Y=3,BORDER=2,RADIUS=6;
+const PAD_X=7,PAD_Y=3,BORDER=LABEL_BORDER_CSS,RADIUS=6;
+/** Inside: the least room between a kept-on-screen ficha and the screen's side, in CSS px. */
+const EDGE_CSS=6;
 /** Caído: the boia sticker (16 px CSS) at the left of the ficha, as on the team strip and the "Me salva" button. */
 const BOIA_CSS=16,TAG_GAP=5;
 
@@ -24,7 +26,9 @@ export class MapLabel {
   readonly plate:Phaser.GameObjects.Graphics;
   private sos=false;
   private city=false;
-  private drawnText='';private drawnW=-1;private drawnH=-1;private drawnSos=false;private drawnCity=false;
+  private solid=false;
+  private inside=false;
+  private drawnText='';private drawnW=-1;private drawnH=-1;private drawnSos=false;private drawnCity=false;private drawnSolid=false;
   private x=0;private y=0;private depth=0;
   /** Screen box of the last frame it showed (CSS px from the camera's top-left), for the place fichas to step aside. */
   readonly screen={x:0,y:0,shown:false,sos:false};
@@ -48,35 +52,45 @@ export class MapLabel {
   setSos(on:boolean){this.sos=on;return this;}
   /** Cidade Nevada: a Breu ring of 2 CSS px outside the ficha (outside the caído's Cone ring), plateRings. */
   setCity(on:boolean){this.city=on;return this;}
+  /**
+   * Opaque ficha (auditoria-arte-mundo item 16): today's code ficha with its Breu body at full alpha, never the
+   * imported plaque, whose see-through body let the snow wash out "Te derrubou: X" under the caído ficha.
+   */
+  setSolid(on:boolean){this.solid=on;return this;}
+  /** Kept on screen sideways (a long line under a hero near the screen's side was cut on a phone). */
+  setInside(on:boolean){this.inside=on;return this;}
   /** World anchor (top center of the ficha) and depth; the ficha hangs below the anchor. */
   anchor(x:number,y:number,depth:number){this.x=x;this.y=y;this.depth=depth;return this;}
   /** Per frame: constant screen size at this zoom, and hidden when the rule says so. */
   draw(zoom:number,visible:boolean){
     const tag=this.sos;
     this.text.setVisible(visible);this.plate.setVisible(visible);
-    const plaque=labelPlaque(this.place?'place':'ally',tag);
+    const plaque=this.solid?undefined:labelPlaque(this.place?'place':'ally',tag);
     if(!visible||!plaque)hideSlice(this);
     const cam=this.scene.cameras.main;
     this.screen.shown=visible;this.screen.sos=visible&&!!tag;this.screen.x=(this.x-cam.worldView.x)*zoom;this.screen.y=(this.y-cam.worldView.y)*zoom;
     if(!visible)return;
     const s=labelScale(zoom),k=s/RASTER;
     const tw=this.text.width*k,th=this.text.height*k,tagW=tag?BOIA_CSS*s:0,gap=tag?TAG_GAP*s:0;
-    const w=tw+tagW+gap+2*PAD_X*s,h=th+2*PAD_Y*s,left=this.x-w/2;
+    const w=tw+tagW+gap+2*PAD_X*s,h=th+2*PAD_Y*s;
+    let x=this.x;
+    if(this.inside){const v=cam.worldView,m=EDGE_CSS*s;x=w+2*m>=v.width?v.centerX:Math.min(Math.max(x,v.x+m+w/2),v.right-m-w/2);}
+    const left=x-w/2;
     this.text.setScale(k).setPosition(left+PAD_X*s+tagW+gap+tw/2,this.y+PAD_Y*s).setDepth(this.depth+1);
-    this.plate.setPosition(this.x,this.y).setDepth(this.depth);
+    this.plate.setPosition(x,this.y).setDepth(this.depth);
     // Imported plaque: stretched to today's ficha box, its corners at the ficha's scale; the code plate is not drawn.
     const nine=plaque&&sliceFor(this.scene,this,plaque);
     if(nine&&plaque){this.plate.setVisible(false);this.drawnW=-1;placeSlice(nine,plaque,left,this.y,w,h,s).setDepth(this.depth);return;}
     // Repaint the plate only when the text or the size changes (no per-frame string or triangulation).
-    if(this.text.text===this.drawnText&&this.sos===this.drawnSos&&this.city===this.drawnCity&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
-    this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;this.drawnSos=this.sos;this.drawnCity=this.city;
+    if(this.text.text===this.drawnText&&this.sos===this.drawnSos&&this.city===this.drawnCity&&this.solid===this.drawnSolid&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
+    this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;this.drawnSos=this.sos;this.drawnCity=this.city;this.drawnSolid=this.solid;
     const g=this.plate.clear(),b=BORDER*s;
     // Rings outside the body, outermost first (island: the caído's Cone ring; city: a Breu ring outside it all).
     for(const ring of plateRings(tag,this.city)){
       const o=ring.out*b;
       g.lineStyle(b,this.colors[ring.color],1).strokeRoundedRect(-w/2-o,-o,w+2*o,h+2*o,(RADIUS+ring.out*BORDER)*s);
     }
-    g.fillStyle(this.colors.breu,.88).fillRoundedRect(-w/2,0,w,h,RADIUS*s);
+    g.fillStyle(this.colors.breu,this.solid?1:.88).fillRoundedRect(-w/2,0,w,h,RADIUS*s);
     g.lineStyle(b,this.colors.papel,1).strokeRoundedRect(-w/2+b/2,b/2,w-b,h-b,(RADIUS-1)*s);
     if(tag){
       // Boia: Papel ring with four Cone bands, Breu edge, the ficha's body showing through the hole.

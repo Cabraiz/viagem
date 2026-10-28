@@ -74,3 +74,11 @@
 .rh[data-hud=fone] .rh-inv-slot::before{content:'';position:absolute;inset:calc((var(--inv-lado) - 44px) / 2)}
 /* "Trocar" and the refusal line float over the column, right-aligned (they never push the slots). */
 .rh[data-hud=fone] :is(.rh-inv-trocar,.rh-inv-nota){position:absolute;bottom:calc(100% + 6px);right:0}
+
+/* PC (data-hud=mesa, auditoria-ui 28/10 item 6): 44 px slots, an empty one a solid ficha with its key (1–6) on it, never
+   a see-through dashed square a weapon lying on the ground behind it reads as "in the slot". */
+.rh[data-hud=mesa] .rh-inv{--inv-slot:44px}
+.rh[data-hud=mesa] .rh-inv-slot[data-empty=true]{border:2px solid var(--c-sombra);background:var(--c-ficha);box-shadow:var(--s-1)}
+.rh[data-hud=mesa] .rh-inv-ic .ic{width:30px;height:30px}
+.rh[data-hud=mesa] .rh-inv-tecla{left:3px;top:2px;font-size:12px}
+.rh[data-hud=mesa] .rh-inv-slot[data-empty=true] .rh-inv-tecla{opacity:.75}

@@ -27,6 +27,7 @@ import type {ColetaOutcome} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
+import {scrubRetired} from '../src/sim/index.ts';
 import type {ZueiraLab} from '../src/sim/index.ts';
 /**
  * The room's simulation (was src/game/net/shared.ts): seats, input tracks, bots and the run systems, plus the frames it
@@ -429,10 +430,12 @@ export class Simulation {
    * - Bancos: a city checkpoint written before the banks (this code's fingerprint without them, or reached through the
    *   steps above) gets a fresh run's bank state (every ATM full; the places come back from the seed);
    * - Veículos: a city checkpoint written before the vehicles (this code's fingerprint without them, or reached through
-   *   the steps above) gets a fresh run's vehicles state (the first vehicle firstS after the resume).
+   *   the steps above) gets a fresh run's vehicles state (the first vehicle firstS after the resume);
+   * - sem-arma-girando-no-chao: any checkpoint loses the items that left the game (sim/retired-items.ts).
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
+    scrubRetired(cp);
     const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown};banks?:unknown;veiculos?:unknown}}).systems;
     const b=sys?.stonewards?.balance,fresh=this.freshShape(),current=fresh.preBanks??fresh.fingerprint;
     if(cp.shape===fresh.legacy&&sys?.stonewards&&b&&typeof b.coco==='number'&&typeof b.pedra==='number'&&b.units===undefined){
@@ -495,7 +498,10 @@ export class Simulation {
       if(s){
         // hp after the stats: refreshStats would add the build's extra max hp on top of the stored hp.
         const {hp,...run}=structuredClone(s.run);
-        Object.assign(p,run);refreshStats(p);
+        Object.assign(p,run);
+        // An automatic build that only held a retired weapon (scrubRetired) starts over with its class's weapon.
+        if(p.build.hand===undefined&&!p.build.weapons.length)p.build.weapons=startingBuild(p.classId).weapons;
+        refreshStats(p);
         p.hp=p.eliminated?0:Math.min(hp as number,p.stats.maxHp);
       }else Object.assign(p,spawnSlot(slot++,this.start()),{score:0,attackTick:0,skillTick:0,skillReadyTick:0});
       p.ack=0;this.track(p.id).reset(0);this.trackReset(p.id);

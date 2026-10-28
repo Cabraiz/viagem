@@ -263,12 +263,12 @@ test('death: plays once on the pooled death actor, holds, fades and is released;
 // ---------------------------------------------------------------- 4. projectiles
 test('projectile keys: own art → art:proj:<id> (animated), tiro-aliado → today\'s friendly key, none → today\'s key',()=>{
   // Empty manifest: no look at all, so layers.ts keeps keys.ts projectileTexture exactly.
-  for(const source of ['chinelo','boleto','cafe-evo','audio'])assert.equal(projectileLook(false,source),undefined,source);
+  for(const source of ['pombo','boleto','cafe-evo','audio'])assert.equal(projectileLook(false,source),undefined,source);
   assert.equal(projectileLook(true,'boleto-juros'),undefined);
-  assert.equal(projectileTexture(false,'chinelo'),FX.projFriendly);assert.equal(projectileTexture(true,'boleto-juros'),FX.projBoleto);
-  useArt({chinelo:strip('chinelo.webp',8),'boleto-juros':strip('boleto-juros.webp',8,48),'garrafa-molotov':strip('garrafa-molotov.webp',8),'tiro-aliado':strip('tiro-aliado.webp',4,32)});
-  assert.deepEqual({...projectileLook(false,'chinelo')},{key:'art:proj:chinelo',frames:8,fps:8});
-  assert.equal(projectileLook(false,'chinelo'),projectileLook(false,'chinelo'),'cached: no allocation per push');
+  assert.equal(projectileTexture(false,'pombo'),FX.projFriendly);assert.equal(projectileTexture(true,'boleto-juros'),FX.projBoleto);
+  useArt({pombo:strip('pombo.webp',8),'boleto-juros':strip('boleto-juros.webp',8,48),'garrafa-molotov':strip('garrafa-molotov.webp',8),'tiro-aliado':strip('tiro-aliado.webp',4,32)});
+  assert.deepEqual({...projectileLook(false,'pombo')},{key:'art:proj:pombo',frames:8,fps:8});
+  assert.equal(projectileLook(false,'pombo'),projectileLook(false,'pombo'),'cached: no allocation per push');
   assert.deepEqual({...projectileLook(false,'cafe')},{key:FX.projFriendly,frames:4,fps:8},'no own art: the shared tiro-aliado');
   assert.equal(projectileLook(true,'boleto-juros')?.key,'art:proj:boleto-juros');
   assert.equal(projectileLook(true,'molotov')?.key,'art:proj:garrafa-molotov','alias');
@@ -279,13 +279,13 @@ test('projectile keys: own art → art:proj:<id> (animated), tiro-aliado → tod
   // Frames are played only when the texture under the key has them (frameTotal counts __BASE): a failed load leaves
   // today's procedural tiro-aliado (one frame) under FX.projFriendly, which must never be stepped.
   const tex=(total:Record<string,number>)=>({exists:(k:string)=>k in total,get:(k:string)=>({frameTotal:total[k]})});
-  const chinelo=projectileLook(false,'chinelo')!,friendly=projectileLook(false,'cafe')!;
-  assert.equal(projectileFrames(tex({'art:proj:chinelo':9}),chinelo),8);
-  assert.equal(projectileFrames(tex({'art:proj:chinelo':5}),chinelo),4,'fewer frames in the texture: only those');
+  const pombo=projectileLook(false,'pombo')!,friendly=projectileLook(false,'cafe')!;
+  assert.equal(projectileFrames(tex({'art:proj:pombo':9}),pombo),8);
+  assert.equal(projectileFrames(tex({'art:proj:pombo':5}),pombo),4,'fewer frames in the texture: only those');
   assert.equal(projectileFrames(tex({[FX.projFriendly]:1}),friendly),1,'procedural texture: still');
-  assert.equal(projectileFrames(tex({}),chinelo),1);
+  assert.equal(projectileFrames(tex({}),pombo),1);
   const loads=new Map(artLoads().map(l=>[l.key,l]));
-  assert.equal(loads.get('art:proj:chinelo')?.url,'/art/projectiles/chinelo.webp');assert.deepEqual(loads.get('art:proj:chinelo')?.cell,[64,64]);
+  assert.equal(loads.get('art:proj:pombo')?.url,'/art/projectiles/pombo.webp');assert.deepEqual(loads.get('art:proj:pombo')?.cell,[64,64]);
   assert.equal(loads.get('art:proj:boleto-juros')?.url,'/art/projectiles/boleto-juros.webp');
   assert.ok(loads.has('art:proj:garrafa-molotov'));assert.ok(!loads.has('art:proj:cafe'));assert.ok(!loads.has('art:proj:tiro-aliado'));
   assert.equal(loads.get(FX.projFriendly)?.url,'/art/projectiles/tiro-aliado.webp');assert.ok(!loads.has(FX.projBoleto));

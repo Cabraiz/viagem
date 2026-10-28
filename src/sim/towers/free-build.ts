@@ -46,6 +46,8 @@ export interface FreeBuildHooks {
   moto?(tick:number):Point|undefined;
   /** Living nests (D-051): no piece within CAR_NEST_KEEP_OUT of one. */
   nests?(tick:number):readonly Point[];
+  /** The banks' places (barracas-no-caminho: the feirinhas keep off their lots). */
+  banks?(tick:number):readonly Point[];
 }
 
 /** The build grid's cell (u). */
@@ -118,8 +120,8 @@ export function onGround(city:CityTerrain,o:{c:number;r:number},w:number,h:numbe
 }
 
 export const piecesOf=(state:StonewardsState):readonly PieceState[]=>state.defenses?.pieces??[];
-/** The team's standing pieces of a kind (the map's own tralha, owner 'mapa', never counts against the limit). */
-export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind&&p.owner!=='mapa').length;
+/** The team's standing pieces of a kind (the map's own: the tralha, owner 'mapa', the feirinhas, 'feira'; never counted against the limit). */
+export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind&&p.owner!=='mapa'&&p.owner!=='feira').length;
 
 /** NEW-20261021-ORQ-barricada-construir: the pieces that are walls to the enemies (rules FREE_PIECE_DEFS blocks: muro, barricada). */
 export const blocksEnemies=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].blocks;
@@ -163,6 +165,8 @@ export function damagePiece(terrain:TerrainField|undefined,state:StonewardsState
   if(!list||i<0)return false;
   if(state.wallDown||!(amount>0))return true;
   const p=list[i];
+  // barracas-no-caminho: the feirinhas' barracas are scenery (towers/barracas.ts), never hurt.
+  if(p.kind==='barraca')return true;
   p.hp=Math.max(0,p.hp-amount);
   if(p.hp<=0){list.splice(i,1);setMuro(terrain,p,true,onTerrainChanged);}
   return true;
@@ -171,7 +175,7 @@ export const isPiece=(state:StonewardsState,id:string)=>piecesOf(state).some(p=>
 
 /** Siege targets: a muro blocks (any body pressed against it bashes it), a barricade is a non-blocking target like a tower. */
 export function pieceTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
-  return piecesOf(state).map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:blockReach(p.kind,...pieceCells(p.kind,p.rot??0)),blocking:true as const}
+  return piecesOf(state).filter(p=>p.kind!=='barraca').map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:blockReach(p.kind,...pieceCells(p.kind,p.rot??0)),blocking:true as const}
     :{id:p.id,x:p.x,y:p.y,radius:Math.max(...pieceCells(p.kind,p.rot??0))*FREE_CELL/2});
 }
 

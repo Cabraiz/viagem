@@ -21,9 +21,9 @@ const ALLY_BURST_MS=2200;
 const CYCLE=Object.keys(FIRE_LOOK);
 /** The local hero's crate per cycle: its rarity and prize (`chao`: the inventory is full, the prize falls at the crate). */
 export const SELF_PRIZES:readonly {rarity:number;item:string;chao?:boolean}[]=[
-  {rarity:4,item:'kit:ninho-de-metralhadora',chao:true},{rarity:2,item:'submetralhadora'},{rarity:5,item:'chinelo-lendario'},{rarity:3,item:'rifle'}];
+  {rarity:4,item:'kit:ninho-de-metralhadora',chao:true},{rarity:2,item:'submetralhadora'},{rarity:5,item:'audio-lendario'},{rarity:3,item:'rifle'}];
 /** The items of the arc's crates (verde .. lendária): weapons and kits de torre, as the sim rolls them. */
-export const CRATE_ITEMS:readonly string[]=['pistola','kit:vigias-armados','escopeta','kit:morteiro','chinelo-lendario'];
+export const CRATE_ITEMS:readonly string[]=['pistola','kit:vigias-armados','escopeta','kit:morteiro','audio-lendario'];
 /** The ally's azul crate gives this, into its inventory. */
 export const ALLY_PRIZE='macarico';
 /** The weapon shown at `timeMs`: `arma` when it is one of the arsenal's shots, else the cycle. */

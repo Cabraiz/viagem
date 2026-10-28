@@ -19,7 +19,3 @@ test('consumables are not weapons; no weapon at all keeps DANGER+.2', () => {
   assert.equal(siegeStand([{id:'faca',level:1},{id:'coxinha',level:1}]),siegeStand([{id:'faca',level:1}]));
   assert.equal(siegeStand([]),DANGER+.2);
 });
-test('only the chinelo (orbit): inside its ring, as before', () => {
-  const ring=weaponLevel(weaponCatalog.get('chinelo')!,1).area;
-  assert.equal(siegeStand([{id:'chinelo',level:1}]),Math.max(.8,ring-.2));
-});

@@ -81,9 +81,9 @@ export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
 export const CAR_LOW=.3;
 /**
  * Card inimigos-querem-o-uno, the Uno takes hits: each hit's number ("-3") rises off the roof for HIT_POP_MS, the car
- * flashes for HIT_FLASH_MS, and under CAR_LOW of its life the hood smokes dark (a puff every LOW_SMOKE_MS).
+ * flashes for HIT_FLASH_MS, and under CAR_LOW of its life the hood's smoke turns dark (renderer.ts, card uno-capo-fumaca).
  */
-export const HIT_POP_MS=900,HIT_FLASH_MS=160,LOW_SMOKE_MS=260;
+export const HIT_POP_MS=900,HIT_FLASH_MS=160;
 /** At most this many numbers in the air: a horde's hits add into the newest one instead of piling up. */
 export const HIT_POPS_MAX=4;
 /** Hits closer than this (ms) add into one number. */

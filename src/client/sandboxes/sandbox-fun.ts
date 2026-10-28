@@ -86,7 +86,7 @@ if(!frozen){
     if(!others.length)return;
     const p=others[seed%others.length];
     if(seed%3===0){emote(p.id,EMOTES[seed%EMOTES.length].id);return;}
-    const events=[{type:'downed',player:p.id},{type:'revived',player:'me',by:p.id},{type:'upgrade',player:p.id,item:'chinelo',level:2},{type:'levelup',level:seed}] as const;
+    const events=[{type:'downed',player:p.id},{type:'revived',player:'me',by:p.id},{type:'upgrade',player:p.id,item:'boleto',level:2},{type:'levelup',level:seed}] as const;
     const line=lineForEvent(events[seed%events.length],crew,seed);
     if(line&&throttle.allow(line,performance.now())){const h=head(line.speaker);layer.show(line.speaker,line.text,h.x,h.y,{kind:line.situation==='down'?'help':'line'});}
   },1600);

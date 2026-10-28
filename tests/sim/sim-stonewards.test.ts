@@ -464,7 +464,7 @@ test('the forge works only inside the camp',()=>{
 });
 
 test('D-013: the forge says one line per player every 2 s; purchases still apply',()=>{
-  const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:1}],passives:[]}}),b=player('b',12.4,17);
+  const a=player('a',12,17,{build:{weapons:[{id:'audio',level:1}],passives:[]}}),b=player('b',12.4,17);
   const ctx=fakeCtx([a,b]),sys=system();
   fund(ctx,PLENTY);sys.state.wall.hp=10;
   assert.ok(sys.buy(ctx,'a','reparo').ok);assert.ok(sys.buy(ctx,'a','gambiarra').ok);assert.ok(sys.buy(ctx,'b','torre-chinelo').ok);

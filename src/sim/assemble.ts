@@ -330,6 +330,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+      banks:()=>banks?.places??[],
     }:{}}:{}),
   },cp?.stonewards);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.

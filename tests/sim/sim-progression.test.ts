@@ -80,7 +80,7 @@ interface PlayerInit {
 function addPlayer(ctx:FakeCtx,id:string,init:PlayerInit={}):SimPlayer{
   const p:SimPlayer={
     id,classId:'turista',x:init.x??5,y:init.y??5,hp:init.hp??100,online:init.online??true,spectator:init.spectator??false,
-    facing:{x:1,y:0},build:init.build??{weapons:[{id:'chinelo',level:1}],passives:[]},
+    facing:{x:1,y:0},build:init.build??{weapons:[{id:'pombo',level:1}],passives:[]},
     stats:{...BASE_STATS,...init.stats},weaponReady:{},
   };
   if(init.eliminated)p.eliminated=true;

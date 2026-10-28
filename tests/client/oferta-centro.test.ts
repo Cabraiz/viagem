@@ -15,8 +15,8 @@ test('the texts of the reference, in Portuguese',()=>{
 });
 
 test('rarity by the level the card reaches; an evolution is always lendária',()=>{
-  assert.deepEqual([1,2,3,4,5,6,7,8].map(l=>offerRarity('chinelo',l)),['nova','comum','comum','rara','rara','epica','epica','lendaria']);
-  assert.equal(offerRarity('chinelo-evo',1),'lendaria');
+  assert.deepEqual([1,2,3,4,5,6,7,8].map(l=>offerRarity('boleto',l)),['nova','comum','comum','rara','rara','epica','epica','lendaria']);
+  assert.equal(offerRarity('boleto-evo',1),'lendaria');
 });
 
 test('a passive shows its stat before and after ("1,1x > 1,2x"); a weapon or a snack has no line of numbers',()=>{

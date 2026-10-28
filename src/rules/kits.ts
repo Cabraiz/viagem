@@ -28,7 +28,7 @@ export interface ClassKit {
 
 export const KITS:readonly ClassKit[]=Object.freeze([
   {
-    classId:'cidadao-comum',role:'Linha de frente',weapon:'chinelo',
+    classId:'cidadao-comum',role:'Linha de frente',weapon:'audio',
     classBonus:{maxHp:10,armor:1},
     skill:{name:'Só Estou de Passagem',cooldown:12,
       effect:'Dá um passo à frente, empurra os bichos em volta e protege os aliados próximos; quanto mais confusão, mais tempo.'},
@@ -71,7 +71,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   // ----- VGM-044B: the other 30 classes -----
   {
-    classId:'pedreiro',role:'Linha de frente',weapon:'chinelo',
+    classId:'pedreiro',role:'Linha de frente',weapon:'audio',
     classBonus:{maxHp:25,armor:2,moveSpeed:-0.05},
     skill:{name:'Puxadinho Tático',cooldown:16,
       effect:'Ergue um puxadinho na frente: empurra os bichos do arco, derruba os tiros inimigos ali e fica protegido por um instante.'},
@@ -92,7 +92,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Qual apartamento, por favor?','Deixa o documento aqui comigo.','Encomenda só com autorização.','Interfonei, ninguém atendeu.'],
   },
   {
-    classId:'maromba',role:'Dano',weapon:'chinelo',
+    classId:'maromba',role:'Dano',weapon:'audio',
     classBonus:{might:0.15,maxHp:15,moveSpeed:-0.05},
     skill:{name:'Última Repetição',cooldown:12,
       effect:'Golpe pesado bem de perto, à frente: muito dano e um empurrão que tira os bichos do lugar.'},
@@ -176,7 +176,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Já tentou desligar e ligar de novo?','Abre um chamado, por favor.','Tá instalando atualização, aguarde.','Quem tirou esse cabo da tomada?'],
   },
   {
-    classId:'faxineira',role:'Controle',weapon:'chinelo',
+    classId:'faxineira',role:'Controle',weapon:'audio',
     classBonus:{area:0.1,armor:1},
     skill:{name:'Passa o Rodo',cooldown:14,
       effect:'Varre um arco largo à frente: dano, empurrão e limpeza dos tiros inimigos ali.'},
@@ -204,7 +204,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Culpa do Mercúrio, não minha.','Esse chefe é muito escorpiano.','Os astros mandaram eu fazer isso.','Hoje a lua tá contra você, viu?'],
   },
   {
-    classId:'rei-arraia',role:'Controle',weapon:'chinelo',
+    classId:'rei-arraia',role:'Controle',weapon:'audio',
     classBonus:{maxHp:10,moveSpeed:0.1},
     skill:{name:'Olha a Cobra',cooldown:13,
       effect:'Grita "olha a cobra": empurra para longe todos os bichos em volta, com um dano leve.'},
@@ -234,9 +234,9 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
 ] as ClassKit[]);
 
-/** Plain fallback for unknown class ids: chinelo, no bonus, no skill. */
+/** Plain fallback for unknown class ids: the Áudio de 5 Minutos (the chinelo left the game), no bonus, no skill. */
 export const DEFAULT_KIT:Readonly<Omit<ClassKit,'skill'|'role'>&{skill?:undefined}>=Object.freeze({
-  classId:'',weapon:'chinelo',classBonus:{},lines:[],
+  classId:'',weapon:'audio',classBonus:{},lines:[],
 });
 
 const byClass=new Map(KITS.map(kit=>[kit.classId,kit]));

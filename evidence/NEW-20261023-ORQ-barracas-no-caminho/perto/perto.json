@@ -1,0 +1,33 @@
+{
+ "report": [
+  {
+   "shot": "perto-1-1280x720.png",
+   "feirinha": {
+    "x": 134.2,
+    "y": 115.3,
+    "barracas": 2
+   },
+   "heroi": {
+    "x": 134.201171875,
+    "y": 118.779296875
+   },
+   "feirinhasNaView": 4,
+   "barracasNaView": 10
+  },
+  {
+   "shot": "perto-2-390x844.png",
+   "feirinha": {
+    "x": 47.5,
+    "y": 55.4,
+    "barracas": 3
+   },
+   "heroi": {
+    "x": 51.01953125,
+    "y": 55.439453125
+   },
+   "feirinhasNaView": 4,
+   "barracasNaView": 11
+  }
+ ],
+ "errors": []
+}

@@ -36,10 +36,10 @@ const roster=[
   {id:'p6',name:'Kaique Mil Grau',classId:'streamer'},
 ];
 const builds=[
-  {weapons:[{id:'chinelo',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},
+  {weapons:[{id:'audio',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},
   {weapons:[{id:'boleto',level:4},{id:'pombo',level:2}],passives:[{id:'cartao',level:3}]},
   {weapons:[{id:'audio',level:2},{id:'guarda-chuva',level:1},{id:'pombo',level:1},{id:'cafe',level:1}],passives:[{id:'bone',level:4},{id:'cartao',level:1},{id:'megafone',level:1}]},
-  {weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:2}],passives:[{id:'tenis',level:5},{id:'oculos',level:2}]},
+  {weapons:[{id:'cafe-evo',level:1},{id:'boleto',level:2}],passives:[{id:'tenis',level:5},{id:'oculos',level:2}]},
   {weapons:[{id:'guarda-chuva',level:6}],passives:[{id:'marmita',level:5},{id:'cafe-forte',level:2}]},
   {weapons:[{id:'pombo',level:7},{id:'audio',level:3}],passives:[{id:'oculos',level:4},{id:'megafone',level:2},{id:'cartao',level:3}]},
 ];
@@ -71,8 +71,8 @@ export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunV
 export const FIXTURE_INTERMISSION_SECONDS=17;
 function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferView{
   return source==='round'
-    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'chinelo',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
-    :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'chinelo',level:6}],deadlineTick,defaultIndex:0}
+    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'guarda-chuva',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
+    :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'guarda-chuva',level:6}],deadlineTick,defaultIndex:0}
     :{id:`lvl-${level}-p1`,source,level,choices:[{itemId:'tenis',level:3},{itemId:'audio',level:1},{itemId:'cartao',level:2}],deadlineTick,defaultIndex:2};
 }
 
@@ -112,7 +112,7 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
 
 /** Late-run worst case: 6 weapons + 6 passives each (the most a build can hold), for layout stress tests. */
 const FULL_BUILD={
-  weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
+  weapons:[{id:'boleto-evo',level:1},{id:'rojao',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
   passives:[{id:'cafe-forte',level:5},{id:'marmita',level:5},{id:'tenis',level:4},{id:'megafone',level:3},{id:'bone',level:2},{id:'cartao',level:1}],
 };
 

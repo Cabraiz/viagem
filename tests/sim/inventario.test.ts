@@ -124,7 +124,7 @@ test('the level cards of the manual combat are passives (the reinforcements incl
   assert.ok(ids.includes('pente'));
   assert.equal(ids.includes('silenciador'),false,'melee-alcance-2x: the user removed the Silenciador de Garagem');
   const auto=ITEMS.all().map(d=>d.id);
-  for(const id of ['faca','rojao','pente','silenciador',legendaryId('chinelo'),'coxinha'])assert.equal(auto.includes(id),false,id);
+  for(const id of ['faca','rojao','pente','silenciador',legendaryId('boleto'),'coxinha'])assert.equal(auto.includes(id),false,id);
   assert.ok(ITEMS.get('rojao')&&ITEMS.get('coxinha'),'the HUD still finds their names');
 });
 
@@ -132,7 +132,7 @@ test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries 
   const verde=resolveWeapon(getWeapon('pistola')!,1,BASE_STATS),dourada=resolveWeapon(getWeapon('pistola')!,4,BASE_STATS);
   assert.equal(dourada.damage,Math.round(verde.damage*RARITY_DAMAGE[4]*10)/10);
   assert.ok(dourada.cooldownTicks<verde.cooldownTicks);
-  assert.equal(getWeapon(legendaryId('chinelo'))!.evolved?.flingOnCycle,true,'the Havaianas do Caos');
+  assert.equal(getWeapon(legendaryId('boleto'))!.evolved?.returns,true,'the Carnê Infinito');
   for(const w of NEW_WEAPONS)assert.ok(w.minRarity>=1&&w.levels.length===4,w.id);
   assert.equal(weaponNoise('faca'),6);assert.equal(weaponNoise('rojao'),28);
 });

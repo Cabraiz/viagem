@@ -22,7 +22,7 @@ const sim=(players=1)=>{
 test('single item catalog covers weapons, evolutions and passives with the same max levels as chests',()=>{
   const ids=ITEMS.all().map(d=>d.id);
   assert.equal(new Set(ids).size,ids.length,'no duplicated ids');
-  for(const id of ['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo',
+  for(const id of ['boleto','cafe','guarda-chuva','pombo','audio','boleto-evo','cafe-evo',
     'cafe-forte','marmita','tenis','megafone','bone','oculos','cartao'])assert.ok(ITEMS.get(id),id);
   assert.equal(ITEMS.get('ima'),undefined,'D-054: no Ímã de Geladeira');
   for(const def of ITEMS.all())assert.equal(def.maxLevel,itemMaxLevel(def.id),def.id);

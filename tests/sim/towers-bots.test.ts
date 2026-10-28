@@ -382,9 +382,14 @@ test('review: a wall under WALL_CRITICAL is repaired out of the chaveiro\'s rese
 test('chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out at a dead moto when a wave starts; the moto is still pushed',()=>{
   // Seed 3 (one of the five whose team fell in wave 4): the first moto dies far out a few seconds before wave 2, and
   // the two pushers used to be ~50 u away when it started. PUSH_TRIP_SECONDS: in the intermission only a trip back in time.
-  const r=cityRun(3,6,4,'chaveiro');
-  console.log(`[onda-4] 6 bots, seed 3, to round ${r.sim.world.round.index}: ${r.pushes} pushes; at each wave start ${r.waves.map(w=>`w${w.round}:${w.pushing.length}`).join(' ')}`);
-  assert.ok(r.waves.length>=3,`${r.waves.length} waves`);
-  assert.deepEqual(r.waves.filter(w=>w.pushing.length),[],'nobody out at the moto when a wave starts');
-  assert.ok(r.pushes>=1,'the bots still push it (in the wave)');
+  // barracas-no-caminho: the map's feirinhas turn the enemies' paths, and seed 3's moto now lives to round 4; seed 9's
+  // dies twice, so the push is still seen.
+  let pushes=0;
+  for(const seed of [3,9]){
+    const r=cityRun(seed,6,4,'chaveiro');pushes+=r.pushes;
+    console.log(`[onda-4] 6 bots, seed ${seed}, to round ${r.sim.world.round.index}: ${r.pushes} pushes; at each wave start ${r.waves.map(w=>`w${w.round}:${w.pushing.length}`).join(' ')}`);
+    assert.ok(r.waves.length>=3,`${r.waves.length} waves`);
+    assert.deepEqual(r.waves.filter(w=>w.pushing.length),[],`seed ${seed}: nobody out at the moto when a wave starts`);
+  }
+  assert.ok(pushes>=1,'the bots still push it (in the wave)');
 });

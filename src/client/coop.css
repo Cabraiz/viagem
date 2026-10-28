@@ -68,9 +68,11 @@
 #coop-attack[data-work] .skillbtn-fill{stroke:var(--c-papel)}
 #coop-attack[data-work=dentro]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
 #coop-attack[data-work=dentro] .skillbtn-word{color:var(--c-papel)}
-/* exploracao-espera-carregar-e-sem-arma: empty hands, the button dances ("Dançar", full colour: it answers); the first
-   time in a run "Abra uma caixa" stands in for the word on two lines (the crate icon says where the weapon is). */
-#coop-attack[data-note-kind=caixa] .skillbtn-word{white-space:normal;max-width:9ch;text-align:center;line-height:1}
+/* exploracao-espera-carregar-e-sem-arma: empty hands, the button dances ("Dançar", full colour: it answers; the icon
+   is a pose of the hero's own dance sheet, hud/skill.ts danceIcon). The first time in a run the note "Abra uma caixa
+   para pegar uma arma" sits over the button as a ficha (too long for the button itself). */
+#coop-attack .skillbtn-danca{display:block;flex:none}
+#coop-attack[data-note-kind=caixa] .skillbtn-word{position:absolute;right:0;bottom:calc(100% + 8px);top:auto;width:max-content;max-width:min(60vw,240px);white-space:normal;text-align:center;padding:6px 8px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto)}
 /* torre-limite-rebocar-sem-arma: at the Uno's rope end Atacar turns Rebocar (the interaction colour, like Trabalhar); on the rope, Soltar pressed in. */
 #coop-attack[data-tow]{background:var(--c-cartolina);color:var(--c-breu);text-shadow:none}
 #coop-attack[data-tow] .skillbtn-fill{stroke:var(--c-papel)}

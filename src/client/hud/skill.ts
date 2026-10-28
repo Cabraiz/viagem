@@ -17,6 +17,7 @@ import {icon} from '../ui/icon.ts';
 import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
 import {itemDisplay} from './items.ts';
 import {WORKING_WORD,WORK_WORD,workLabel,workingLabel} from './bicos.ts';
+import {dancePlan} from '../sprites/movement128.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -93,7 +94,20 @@ export const BUILD_WORD='Construir';
  * "Abra uma caixa" for UNARMED_HINT_MS.
  */
 export const UNARMED_WORD='Dançar',UNARMED_LABEL='Dançar (sem arma: abra uma caixa para pegar uma)';
-export const NOTE_OPEN_CRATE='Abra uma caixa',UNARMED_HINT_MS=4000;
+export const NOTE_OPEN_CRATE='Abra uma caixa para pegar uma arma',UNARMED_HINT_MS=4000;
+/**
+ * The Dançar icon: one pose of the hero's own in-game dance (sprites/movement128.ts dancePlan, the sheet the dance
+ * plays from), the figure fitted in `size` px; '' when the class has no dance sheet (the crate icon stays).
+ */
+export function danceIcon(classId:string,size=40):string{
+  const plan=dancePlan(classId);
+  if(!plan)return '';
+  const cell=96,f=plan.figure,k=size/Math.max(f.right-f.left,f.bottom-f.top);
+  const frame=Math.floor(plan.frameCount/4),col=frame%plan.columns,row=Math.floor(frame/plan.columns);
+  const x=size/2-(col*cell+(f.left+f.right)/2)*k,y=size-(row*cell+f.bottom)*k;
+  const px=(n:number)=>`${Math.round(n*10)/10}px`;
+  return `<span class="skillbtn-icon skillbtn-danca" style="width:${size}px;height:${size}px;background:url('${plan.url}') ${px(x)} ${px(y)}/${px(plan.columns*cell*k)} ${px(plan.rows*cell*k)} no-repeat"></span>`;
+}
 export const TOW_WORD='Rebocar',TOW_OFF_WORD='Soltar',TOW_LABEL='Rebocar o Uno: toque para pegar a corda',TOW_OFF_LABEL='Soltar a corda';
 export const buildLabel=(kitId:string)=>`Construir ${itemDisplay(kitId).name} à sua frente`;
 /** What the action button shows with a kit selected (or not): its word, its sticker ('' the attack's own) and its name. */
@@ -262,7 +276,7 @@ export class SkillButton {
     if(this.kit||this.work||this.tow){this.paint();return;}
     this.el.setAttribute('aria-label',on?UNARMED_LABEL:actionFace(this.combat,this.classId,'',this.kit).label);
     const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
-    if(old)old.outerHTML=on?icon('bau',options):stickerOrIcon('atacar','chinelo',options);
+    if(old)old.outerHTML=on?danceIcon(this.classId)||icon('bau',options):stickerOrIcon('atacar','chinelo',options);
     this.handIcon='';
     this.paint();
   }

@@ -273,6 +273,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
+    net.onDance=id=>{if(controller&&sceneReady)dancedAt.set(id,controller.scene.time.now);};
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     // Out or watching (UX-espectador): ‹ › pick the friend, the chinelo is screen-only, "Voltar ao lobby" leaves the room.
@@ -364,9 +365,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
-  /** The scene-clock time of the last "Dançar" (the hero dances from it until it moves: sprites/hero-dance.ts cheer). */
-  let dancedAt:number|undefined;
-  const dance=()=>{pause(false);if(controller&&sceneReady)dancedAt=controller.scene.time.now;};
+  /** Scene-clock time of each hero's last "Dançar" (it dances from it until it moves: sprites/hero-dance.ts cheer). */
+  const dancedAt=new Map<string,number>();
+  const dance=()=>{pause(false);if(!net||!controller||!sceneReady)return;dancedAt.set(net.id,controller.scene.time.now);net.dance();};
   let closed=false,paused=false;
   /** When the per-frame shell attributes were last written (SHELL_DATA_MS). */
   let shellDataAt=-Infinity;
@@ -657,9 +658,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
-      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),danceAt:()=>dancedAt,
+      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),danceAt:id=>dancedAt.get(id),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(down&&skill?.dancing&&!skill.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(down&&skill?.dancing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{

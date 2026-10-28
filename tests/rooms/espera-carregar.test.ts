@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {register} from 'node:module';
-import {Room,OWNER_GAP_MS,type Peer} from '../../multiplayer/room.ts';
+import {Room,OWNER_GAP_MS,DANCE_RELAY_MS,type Peer} from '../../multiplayer/room.ts';
 import {LoadWait,LOAD_WAIT_MS} from '../../multiplayer/load-wait.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
@@ -106,4 +106,17 @@ test('LoadWait: a player who leaves is not waited for; no humans, no wait',()=>{
   assert.equal(w.holding(1,()=>true),false);
   w.arm(['a'],0);
   assert.equal(w.holding(LOAD_WAIT_MS,()=>true),false,'the cap');
+});
+
+test('Dançar: the room relays {t:"dancou"} to the team at once, one per DANCE_RELAY_MS per player',async()=>{
+  let {room,a,b,t}=await pair();
+  const round=room.run.snapshot().round,ana=a.messages.find(m=>m.t==='welcome').id;
+  const dances=()=>b.messages.filter(m=>m.t==='dancou');
+  say(room,a,{t:'dancar',round},t);
+  assert.deepEqual(dances(),[{t:'dancou',player:ana}]);
+  say(room,a,{t:'dancar',round},t+100);
+  say(room,a,{t:'dancar',round:round+1},t+DANCE_RELAY_MS);
+  assert.equal(dances().length,1,'a burst is one; a stale round drops');
+  say(room,a,{t:'dancar',round},t+DANCE_RELAY_MS);
+  assert.equal(dances().length,2);
 });

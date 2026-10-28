@@ -31,12 +31,12 @@ test('no tap and no cheer: the cue never dances by itself before the idle wait',
   assert.equal(gate.update(DANCE_IDLE_MS-1,true,cue(0)),undefined);
 });
 
-test('the button says Dançar and, once a run, Abra uma caixa; Space, the right button and a tap all dance',()=>{
+test('the button says Dançar and, once a run, Abra uma caixa para pegar uma arma; Space, the right button and a tap all dance',()=>{
   assert.equal(UNARMED_WORD,'Dançar');
-  assert.equal(NOTE_OPEN_CRATE,'Abra uma caixa');
+  assert.equal(NOTE_OPEN_CRATE,'Abra uma caixa para pegar uma arma');
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
   assert.match(explore,/if\(skill\?\.dancing\)\{[^}]*dance\(\);return;\}/,'Space');
-  assert.match(explore,/attackHold:down=>\{if\(down&&skill\?\.dancing/,'right button');
+  assert.match(explore,/towTap\(\);return;\}if\(down&&skill\?\.dancing\)\{[^}]*dance\(\);return;\}/,'right button');
   assert.match(explore,/window\.addEventListener\('pointerdown',onDance,\{capture:true,signal\}\)/,'tap');
-  assert.match(explore,/danceAt:\(\)=>dancedAt/);
+  assert.match(explore,/danceAt:id=>dancedAt\.get\(id\)/);
 });

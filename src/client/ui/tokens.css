@@ -124,6 +124,12 @@
   --perfil-balao:#FDFAF9;--perfil-balao-tinta:#0B0B0E;--perfil-match:#2DB84B;
   --perfil-sombra:0 0 0 1px color-mix(in srgb,var(--c-breu) 16%,transparent),0 3px 0 color-mix(in srgb,var(--c-breu) 22%,transparent);
   --perfil-balao-sombra:drop-shadow(0 0 .7px rgba(40,6,24,.95)) drop-shadow(0 1px 2.5px rgba(60,8,32,.4));
+  /* O popup de level-up em pixel art 16-bit (NEW-20261025-ORQ-popup-levelup-12-variacoes, a var-39 que o usuário
+     escolheu): as cores medidas nela (título ouro, texto creme, ganho verde, contorno anil) e o véu sobre o jogo.
+     Só hud/offer-centro.css .rh-ofc. */
+  --px39-ouro:#FDD05A;--px39-texto:#F7EEE8;--px39-verde:#7AFB86;--px39-selo:#3A1D14;
+  --px39-tinta:#160F3C;--px39-tinta-funda:#080320;
+  --px39-veu:color-mix(in srgb,var(--px39-tinta-funda) 95%,transparent);
 
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
@@ -135,6 +141,7 @@
   --f-insta-forte:'Bebas Neue',var(--f-cartaz);
   --f-insta-maquina:'Courier Prime',var(--f-sistema);
   --f-perfil:'Inter',var(--f-sistema); /* só o cartão de app de namoro (hud/perfis.css) */
+  --f-pixel:'Pixelify Sans',var(--f-cartaz); /* só o popup de level-up px39 (hud/offer-centro.css); sem a fonte, a Londrina */
   /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
   --t-escala:1;
   --t-13:calc(13px * var(--t-escala));

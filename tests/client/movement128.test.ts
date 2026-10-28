@@ -6,10 +6,11 @@ import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,mov
 import {Movement128Textures,movement128Textures,sheetWeight} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,ATTACK_MS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 /** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
 const T=(ms:number)=>Math.ceil(ms/HERO_ANIM_RATE);
 /** The walk frame after `steps` steps of 0.1 u along x (passo-sem-deslizar: the walk follows the ground, not the clock). */
-const W=(steps:number)=>String(cycleFrame(steps*walkCycles(.1,0,0,96*.8),128));
+const W=(steps:number)=>String(cycleFrame(steps*walkCycles(.1,0,0,96*HERO_DRAW_SCALE),128));
 import {screenDirection} from '../../src/client/projection.ts';
 import {heroSheetUrl,assetsParaPartida} from '../../src/client/preload/match-assets.ts';
 
@@ -257,7 +258,7 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
   try{
     render(0);render(10);await flush();assert.equal(requests.length,1);assert.match(sprite.texture.key,/dir4c$/,'legacy stays while the requested page loads');
     decoders.get(requests[0])!();await flush();render(10+T(300));
-    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,W(2));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
+    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,W(2));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*HERO_DRAW_SCALE);
     assert.deepEqual(renderer.figureIn(sprite as never,'aposentado'),clip().figure);
     render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,W(2));
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');

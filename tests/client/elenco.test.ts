@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ELENCO_ANTES,ELENCO_DIRS,elencoGrade,elencoIds,elencoPagina,elencoPaginas,elencoZoom,enemyEscala,heroEscala,caixaMundo,tileMundo} from '../../src/client/dev/elenco.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/index.ts';
+import {HERO_DRAW_SCALE,ENEMY_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 
 test('the rows shown are S, SE and E of the importer order S,SW,W,NW,N,NE,E,SE',()=>{
   assert.deepEqual(ELENCO_DIRS.map(d=>[d.nome,d.row]),[['S',0],['SE',7],['E',6]]);
@@ -27,11 +28,11 @@ test('grid from the screen only: 3×3 on 1335×620, 1×5 on 390×844; pages for 
   assert.equal(elencoPagina([1,2],99,3).pagina,1,'clamped');assert.equal(elencoPagina([1,2],Number.NaN,3).pagina,1);
 });
 
-test('game sizes: an enemy figure reaches its role target × 1.15, the hero 96 × 0.8',()=>{
-  assert.ok(Math.abs(heroEscala(101)*101-76.8)<1e-9);
-  assert.ok(Math.abs(enemyEscala('bolo-vivo',124,160)*124-96*1.3*1.15)<1e-9,'brutamontes');
-  assert.ok(Math.abs(enemyEscala('boleto-vivo',44,64)*44-96*.5*1.15)<1e-9,'enxame');
-  assert.ok(Math.abs(enemyEscala('grauzeiro',undefined,160)*160*.88-96*.9*1.15)<1e-9,'unmeasured: the cell rule');
+test('game sizes: an enemy figure reaches its role target × ENEMY_DRAW_SCALE, the hero 96 × HERO_DRAW_SCALE',()=>{
+  assert.ok(Math.abs(heroEscala(101)*101-96*HERO_DRAW_SCALE)<1e-9);
+  assert.ok(Math.abs(enemyEscala('bolo-vivo',124,160)*124-96*1.3*ENEMY_DRAW_SCALE)<1e-9,'brutamontes');
+  assert.ok(Math.abs(enemyEscala('boleto-vivo',44,64)*44-96*.5*ENEMY_DRAW_SCALE)<1e-9,'enxame');
+  assert.ok(Math.abs(enemyEscala('grauzeiro',undefined,160)*160*.88-96*.9*ENEMY_DRAW_SCALE)<1e-9,'unmeasured: the cell rule');
 });
 
 test('boxes around the feet and the zoom that fits every tile in a cell',()=>{

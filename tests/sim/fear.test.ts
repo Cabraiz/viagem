@@ -1,6 +1,6 @@
 // Card NEW-20261023-ORQ-fear-escuridao-sozinho (user 24/10): alone, the dark closes in and in 60 s consumes the hero
-// (the normal fall, source 'escuridao'). Company: an ally on their feet within 8, or the Uno within 6; bots count as
-// company and never fear; every phase counts.
+// (the normal fall, source 'escuridao'). Company: an ally on their feet within 8, or the Uno within 12 (card
+// escuridao-justa: was 6); bots count as company and never fear; every phase counts, exploring at FEAR_EXPLORE_RATE.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
@@ -8,7 +8,7 @@ import {BASE_STATS} from '../../src/contract/types.ts';
 import type {SimEvent,SimPlayer,RoundPhase} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
 import {createFearSystem,fearOf,type FearOptions} from '../../src/sim/fear.ts';
-import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_SOURCE,FEAR_TICKS} from '../../src/rules/index.ts';
+import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_EXPLORE_RATE,FEAR_SOURCE,FEAR_TICKS} from '../../src/rules/index.ts';
 
 type FakeCtx=SimContext&{tick:number;events:SimEvent[]};
 function player(id:string,x:number,y:number,extra:Partial<SimPlayer>={}):SimPlayer{
@@ -74,7 +74,8 @@ test('an offline hero keeps (freezes) the fear they had; a downed one loses it',
   assert.equal(a.fear,300);assert.equal(c.fear,undefined);assert.equal(downs(ctx).length,0);
 });
 
-test('the Uno within 6 (boundary counts) is company; just past it is not',()=>{
+test('the Uno within 12 (boundary counts) is company; just past it is not',()=>{
+  assert.equal(FEAR_BASE_RADIUS,12,'the Uno light on screen (escuridao-justa; was 6)');
   const a=player('a',FEAR_BASE_RADIUS,0,{fear:100}),ctx=fakeCtx([a]);
   run(ctx,{base:()=>({x:0,y:0})},2);assert.equal(a.fear,100-2*FEAR_CALM_RATE);
   a.x=FEAR_BASE_RADIUS+.01;run(ctx,{base:()=>({x:0,y:0})},2);assert.equal(a.fear,100-2*FEAR_CALM_RATE+2);
@@ -93,6 +94,23 @@ test('every phase counts (the intermission too); the dark stops once the run is 
   const a=player('a',0,0),ctx=fakeCtx([a],'prepare');
   run(ctx,{},10);assert.equal(a.fear,10);
   run(ctx,{runEnded:()=>true},FEAR_TICKS);assert.equal(a.fear,10);assert.equal(a.downed,undefined);
+});
+
+test('exploring (options.exploring) the dark grows at FEAR_EXPLORE_RATE: twice as long alone; company still backs it off',()=>{
+  assert.equal(FEAR_EXPLORE_RATE,.5);
+  const a=player('a',0,0),ctx=fakeCtx([a]);
+  let exploring=true;
+  const sys=createFearSystem({exploring:()=>exploring});
+  for(let i=0;i<FEAR_TICKS;i++){ctx.tick++;sys.step(ctx);}
+  assert.equal(a.fear,FEAR_TICKS*FEAR_EXPLORE_RATE);assert.equal(a.downed,undefined);
+  // The time to explore is over: full pace from where it was.
+  exploring=false;
+  for(let i=0;i<FEAR_TICKS/2-1;i++){ctx.tick++;sys.step(ctx);}
+  assert.equal(a.downed,undefined);
+  ctx.tick++;sys.step(ctx);
+  assert.ok(a.downed,'taken at 60 s of dark in all');
+  const b=player('b',0,0,{fear:300}),c=player('c',FEAR_ALLY_RADIUS,0),ctx2=fakeCtx([b,c]);
+  run(ctx2,{exploring:()=>true},1);assert.equal(b.fear,300-FEAR_CALM_RATE);
 });
 
 test('two heroes taken on the same tick fall in id order, whatever the map order',()=>{

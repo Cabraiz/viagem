@@ -5,6 +5,8 @@
  *   (an ally on their feet, the Uno) erases its company radius out of it, so they stay lit in the dark.
  * - The warm light: the same spots get a soft warm glow, stamped in the same texture after the erase, "light = safe".
  * - The arrow: a warm chevron with two dots by the hero, pointing at the nearest safe spot.
+ * - The countdown (card escuridao-justa, item 9): over the last seconds, a warm ring around the hero that empties
+ *   clockwise and "Escuro: N s" under his feet (a whole second changes the text, the ring redraws each frame).
  * Over the lighting vignette (render/vignette.ts), under the DOM HUD. Built on the first fear, hidden while there is none.
  * One full-screen layer (etapa 4 bench, SwiftShader phone: each full-screen layer cost ~4 ms a frame, the RT's redraw
  * nothing): the glows live in the texture, and the scene hides the 3 % vignette while the dark covers it.
@@ -13,6 +15,8 @@
 import Phaser from 'phaser';
 import {CITY_PALETTE,LAMP_LIGHT} from './city/palette.ts';
 import {VIGNETTE_DEPTH} from './vignette.ts';
+import {fearCountText} from './fear-rules.ts';
+import {token} from '../ui/tokens.ts';
 
 const DARK_KEY='medo-escuro',LIGHT_KEY='medo-luz',ARROW_KEY='medo-seta';
 const DARK_SIZE=512,LIGHT_SIZE=128,ARROW_SIZE=64;
@@ -30,6 +34,11 @@ const ARROW_PX=46;
 /** The arrow's fill: the lamp's warm light, deeper so it reads on snow. */
 const ARROW_FILL=0xFFB22E;
 
+/** The countdown's ring: its radius (× the hero's drawn height, at least RING_MIN_PX camera px) and line (camera px). */
+export const RING={share:.62,minPx:34,line:5,edge:3} as const;
+/** The countdown's text (camera px): its size and its gap under the ring. */
+const COUNT_PX=20,COUNT_GAP_PX=4;
+
 /** A safe spot as drawn: centre in world px and its ground ellipse's half axes (world px). */
 export interface FearSpotPx {x:number;y:number;rx:number;ry:number}
 export interface FearDraw {
@@ -38,11 +47,15 @@ export interface FearDraw {
   hole:number;
   /** The hero's centre (world px). */
   hero:{x:number;y:number};
+  /** The hero's drawn height (world px): the countdown's ring goes round him. */
+  heroH?:number;
   spots:readonly FearSpotPx[];
   /** The nearest safe spot (world px), or undefined: no arrow. */
   arrow?:{x:number;y:number};
   /** The arrow's bob, 0..1 (time-based; 0 with reduced motion). */
   bob:number;
+  /** The countdown (FearFrame.count): whole seconds left and the ring's share. Undefined: none. */
+  count?:{seconds:number;share:number};
 }
 
 const smoothStops=(g:CanvasGradient,from:number,to:number,rgb:string,inner:number,outer:number)=>{
@@ -81,6 +94,9 @@ function makeTextures(scene:Phaser.Scene){
 export class FearDark {
   private readonly rt:Phaser.GameObjects.RenderTexture;
   private readonly arrow:Phaser.GameObjects.Image;
+  private readonly ring:Phaser.GameObjects.Graphics;
+  private readonly countText:Phaser.GameObjects.Text;
+  private countShown=0;
   private shown=false;
   constructor(private readonly scene:Phaser.Scene){
     makeTextures(scene);
@@ -88,7 +104,10 @@ export class FearDark {
     this.rt=scene.add.renderTexture(0,0,Math.max(1,Math.ceil(cam.width/FEAR_RT_SCALE)),Math.max(1,Math.ceil(cam.height/FEAR_RT_SCALE)))
       .setOrigin(.5).setScrollFactor(0).setDepth(FEAR_DEPTH).setVisible(false).setName('medo-escuro');
     this.arrow=scene.add.image(0,0,ARROW_KEY).setDepth(FEAR_DEPTH+2).setVisible(false).setName('medo-seta');
-    this.mainOnly(this.rt);this.mainOnly(this.arrow);
+    this.ring=scene.add.graphics().setDepth(FEAR_DEPTH+1).setVisible(false).setName('medo-anel');
+    this.countText=scene.add.text(0,0,'',{fontFamily:token('--f-cartaz'),fontSize:`${COUNT_PX}px`,color:`#${ARROW_FILL.toString(16)}`,
+      stroke:`rgb(${rgbOf(CITY_PALETTE.breu)})`,strokeThickness:5}).setOrigin(.5,0).setDepth(FEAR_DEPTH+2).setVisible(false).setName('medo-conta');
+    this.mainOnly(this.rt);this.mainOnly(this.arrow);this.mainOnly(this.ring);this.mainOnly(this.countText);
   }
   /** Only the main camera draws it: a second one already made (the Uno's live window, the kill-cam) ignores it. */
   private mainOnly<T extends Phaser.GameObjects.GameObject>(object:T):T{
@@ -97,12 +116,27 @@ export class FearDark {
     return object;
   }
   /** Everything it draws (a second camera, the Uno's live window, ignores them). */
-  get objects():Phaser.GameObjects.GameObject[]{return [this.rt,this.arrow];}
+  get objects():Phaser.GameObjects.GameObject[]{return [this.rt,this.arrow,this.ring,this.countText];}
   /** True while the dark layer is on screen (the scene hides the vignette under it). */
   get covering(){return this.shown&&this.rt.visible;}
   hide(){
     if(!this.shown)return;
-    this.shown=false;this.rt.setVisible(false);this.arrow.setVisible(false);
+    this.shown=false;this.rt.setVisible(false);this.arrow.setVisible(false);this.drawCount(undefined,0,{x:0,y:0},0);
+  }
+  /** The countdown's ring and text around the hero (world px), or none. */
+  private drawCount(count:FearDraw['count'],z:number,hero:{x:number;y:number},heroH:number){
+    if(!count){
+      if(this.countShown){this.countShown=0;this.ring.clear().setVisible(false);this.countText.setVisible(false);}
+      return;
+    }
+    const r=Math.max(heroH*RING.share,RING.minPx/z),start=-Math.PI/2;
+    // The empty track (Breu) then the warm share left, clockwise from the top.
+    this.ring.clear().setVisible(true)
+      .lineStyle((RING.line+2*RING.edge)/z,CITY_PALETTE.breu,.85).strokeCircle(hero.x,hero.y,r)
+      .lineStyle(RING.line/z,ARROW_FILL,1);
+    if(count.share>0){this.ring.beginPath();this.ring.arc(hero.x,hero.y,r,start,start+count.share*Math.PI*2,false);this.ring.strokePath();}
+    if(this.countShown!==count.seconds){this.countShown=count.seconds;this.countText.setText(fearCountText(count.seconds));}
+    this.countText.setPosition(hero.x,hero.y+r+(RING.line/2+RING.edge+COUNT_GAP_PX)/z).setScale(1/z).setVisible(true);
   }
   draw(d:FearDraw){
     if(d.alpha<=0&&!d.arrow){this.hide();return;}
@@ -126,6 +160,7 @@ export class FearDark {
       // Scroll factor 0 still zooms around the camera's centre: undo the zoom.
       rt.setPosition(W/2,H/2).setDisplaySize(W/z,H/z).setVisible(true);
     }else rt.setVisible(false);
+    this.drawCount(d.count,z,d.hero,d.heroH??0);
     const a=d.arrow;
     if(!a){this.arrow.setVisible(false);return;}
     const angle=Math.atan2(a.y-d.hero.y,a.x-d.hero.x);
@@ -133,5 +168,5 @@ export class FearDark {
     this.arrow.setPosition(d.hero.x+Math.cos(angle)*ring/z,d.hero.y+Math.sin(angle)*ring/z).setRotation(angle)
       .setDisplaySize(ARROW_PX/z*ARROW_SIZE/48,ARROW_PX/z*ARROW_SIZE/48).setVisible(true);
   }
-  destroy(){this.rt.destroy();this.arrow.destroy();}
+  destroy(){this.rt.destroy();this.arrow.destroy();this.ring.destroy();this.countText.destroy();}
 }

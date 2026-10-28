@@ -20,6 +20,7 @@ import {STEP_MS} from '../../src/protocol/index.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots,botIdentity} from '../../multiplayer/room-bots.ts';
 import {LevelupPause} from '../../multiplayer/levelup-pause.ts';
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 
 const HZ=20,ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const IDLE_S=5,IDLE_MOVE=.5,STUCK_S=2,STUCK_MOVE=.3,FAR_U=25,FAR_S=60,ENEMY_STUCK_S=60,ENEMY_STUCK_MOVE=1,REVIVE_NEAR=6,CRATE_NEAR_CAR=20;
@@ -158,6 +159,9 @@ function play(seed:number,players:number,capTicks:number,city:Awaited<ReturnType
 
 async function main(){
   const a=args(process.argv.slice(2));
+  // bots-resgatam calibration: --crowd '{"hp":[1,1,1.3,...]}' overrides NEST_PACE.crowd's rows (the game never writes it).
+  const ci=process.argv.indexOf('--crowd');
+  if(ci>=0)Object.assign(NEST_PACE.crowd,JSON.parse(process.argv[ci+1]));
   try{os.setPriority(0,os.constants.priority.PRIORITY_LOW);}catch{}
   const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');
   const hash=(JSON.parse(fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;

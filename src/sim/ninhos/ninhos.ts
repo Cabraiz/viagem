@@ -77,7 +77,7 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row);
  *  - explore: the time to explore after a wave is over (s); waveMin, waveCap: a wave holds it at least / at most (s);
  *  - crowd: × march, hp and damage of a wave's body by room size (1..6 players, on top of march/hp/damage), so a big
- *    room meets stronger bodies while 1p-3p stay as before (a pair would move 3p too).
+ *    room meets stronger bodies while 1p-2p stay as before (a pair would move 2p too).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, 1p and 6p, evidence/NEW-20261022-ORQ-monstros-espalhados/bench): with the quota at 10 % of today's
@@ -91,7 +91,10 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // balanco-6p-facil (production bench, 6p × 16): six bots won 16/16 with the Uno untouched, the car open after 2-3 waves.
 // The chaveiro's ride alone (CHAVEIRO_PACE.ride, 6p 420 → 1080 s) left 15/16 at 23.5 min, and so did march / size alone;
 // the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
-const CROWD={march:[1,1,1,1.083,1.167,1.25] as number[],hp:[1,1,1,1.333,1.667,2] as number[],damage:[1,1,1,1.1,1.2,1.3] as number[]};
+// bots-resgatam (headless audit, 16 seeds): the bots that rescue first and keep by the Uno won 3p 15/16 and 6p 14/16
+// (target 7–11). 3p hp ×1.5 → 14/16, ×2 → 12, ×2.5 → 11, ×3 → 7; 6p hp ×2.5 → 14, ×3 (march 1.35, damage 1.6) → 10.
+// 3p at the middle (×2.75), 4p and 5p in between; 1p and 2p as before.
+const CROWD={march:[1,1,1.28,1.303,1.327,1.35] as number[],hp:[1,1,2.75,2.833,2.917,3] as number[],damage:[1,1,1.5,1.533,1.567,1.6] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
   // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).

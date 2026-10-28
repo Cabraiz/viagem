@@ -39,3 +39,26 @@ Mesmo script da auditoria (`evidence/auditoria-bots-sim-28-10/audit-bots.ts`, se
   - 6p ficou em 14/16, 3 acima do teto de 11.
   - 1p ficou em 4/16, dentro da meta.
   - Não mexi no balanço; isso fica com o ORQ.
+
+## Balanço (ORQ, 28/10 16:59): só 3p e 6p, na tabela CROWD de `src/sim/ninhos/ninhos.ts`
+Calibração headless, 16 seeds (`calib/`, flag `--crowd` do audit-bots.ts):
+
+| CROWD (march / hp / damage) | 3p | 6p |
+|---|---|---|
+| hoje (3p 1/1/1; 6p 1.25/2/1.3) | 15/16 | 14/16 |
+| 3p 1.05/1.25/1.1 | 16/16 | |
+| 3p 1.08/1.5/1.15 | 14/16 | |
+| 3p 1.15/2/1.3 | 12/16 | |
+| 3p 1.25/2.5/1.45 | 11/16 | |
+| 3p 1.3/3/1.6 | 7/16 | |
+| 6p 1.3/2.5/1.45 | | 14/16 |
+| 6p 1.33/2.75/1.5 | | 14/16 |
+| 6p 1.35/3/1.6 | | 10/16 |
+| **final: 3p 1.28/2.75/1.5, 4p e 5p entre eles, 6p 1.35/3/1.6** (`final/`) | **11/16** | **10/16** |
+
+- 1p e 2p não mudaram. O 1p continua em 4/16, dentro da meta.
+- **Resgate com a tabela final:**
+  - **3p:** 0 eliminados com colega ≤ 6 u.
+  - **6p:** 2 de 4 tiveram colega ≤ 6 u (antes do card eram 11 de 12). Os dois são da seed 4, onde o colega passou o tempo em rescue e dodge, ou seja, tentou socorrer debaixo de fogo.
+  - Tempo até reviver, mediana: 3p 4.2 s, 6p 3.4 s.
+- O 3p ficou exatamente no teto (11/16). O 6p dá 14/16 com hp ×2.75 e 10/16 com ×3, então o ruído entre seeds é grande.

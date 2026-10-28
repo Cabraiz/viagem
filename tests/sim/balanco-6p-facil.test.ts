@@ -81,10 +81,12 @@ test('a checkpoint keeps the ride: restored on a fresh world, the moto rides on 
   c.step(10);assert.equal(c.sys.state.ride,undefined);
 });
 
-test('NEST_PACE.crowd: 1p-3p bodies as before (× 1); a bigger room never meets weaker ones, six the strongest',()=>{
+// bots-resgatam: the bots that rescue first won 3p 15/16, so 3p meets stronger bodies too (1p-2p as before).
+test('NEST_PACE.crowd: 1p-2p bodies as before (× 1); a bigger room never meets weaker ones, 3p up stronger, six the strongest',()=>{
   for(const k of ['march','hp','damage'] as const){
     assert.equal(NEST_PACE.crowd[k].length,6,k);
-    for(const n of [1,2,3])assert.equal(crowd(k,n),1,`${k} ${n}p`);
+    for(const n of [1,2])assert.equal(crowd(k,n),1,`${k} ${n}p`);
+    assert.ok(crowd(k,3)>1,`${k} 3p: ${crowd(k,3)}`);
     for(let n=2;n<=6;n++)assert.ok(crowd(k,n)>=crowd(k,n-1),`${k} ${n}p ≥ ${n-1}p`);
     assert.ok(crowd(k,6)>1,`${k} 6p: ${crowd(k,6)}`);
     assert.equal(crowd(k,0),crowd(k,1));assert.equal(crowd(k,9),crowd(k,6));

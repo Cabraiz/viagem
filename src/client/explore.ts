@@ -44,7 +44,7 @@ import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWo
 import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState,towFace} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
-import {KIT_TAP_HINT,KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
+import {KIT_TAP_HINT,KitPlace,kitGround,kitRefusalText,towerKitsArrived} from './hud/kit-place/model.ts';
 import {KitGesture} from './hud/kit-place/gesture.ts';
 import {WorkLatch,workShop,workingIn} from './hud/bicos.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
@@ -137,7 +137,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
    * on the map puts the ghost there, the drag turns it and letting go builds (kitGesture → placeNow); the kit again, a
    * weapon or Esc lets it go. The attack button stays Atacar.
    */
-  const kitPlace=new KitPlace();let placeNow:()=>void=()=>undefined,refreshKitGhost:()=>void=()=>undefined,kitShown=false,kitGesture:KitGesture|undefined;
+  const kitPlace=new KitPlace(),kitArt={scene:undefined as unknown,seen:new Set<string>()};let placeNow:()=>void=()=>undefined,refreshKitGhost:()=>void=()=>undefined,kitShown=false,kitGesture:KitGesture|undefined;
   /** torre-limite-rebocar-sem-arma: the action button on the Uno's rope ("Rebocar"/"Soltar", skill.towing) sends {t:'puxar'}. */
   let towTap:()=>void=()=>undefined;
   /** Bicos (hud/bicos.ts): in an open shop's ring the attack button is Trabalhar; a tap clocks in, moving clocks out. */
@@ -762,6 +762,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(run.phase!=='combat')kitPlace.reset();
                 else if(!available)kitPlace.cancel();
                 kitPlace.sync(me?.weapons);
+                // torre-folha-ao-pegar-kit: a tower kit coming into the backpack fetches its sheets, before its first ghost.
+                if(kitArt.scene!==scene){kitArt.scene=scene;kitArt.seen.clear();}
+                for(const kind of towerKitsArrived(me?.weapons,kitArt.seen))scene.prepareTowerArt(kind);
                 // The ghost stands where the map was pressed (or the mouse hovers): its colour follows the room each frame.
                 if(kitPlace.active&&shown)refreshKitGhost();
                 else if(!fortBuild.open)scene.setBuildGhost(null);

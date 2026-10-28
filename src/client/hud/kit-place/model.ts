@@ -16,7 +16,7 @@
  */
 import type {BuildRot} from '../../../contract/index.ts';
 import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/index.ts';
-import {KIT_PLACE_REACH,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
+import {KIT_PLACE_REACH,isTowerKit,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
 import {fortRefusalText} from '../fortify/model.ts';
@@ -61,6 +61,21 @@ const bodyOn=(rect:CellRect,bodies:Iterable<{x:number;y:number}>|undefined)=>{
   return false;
 };
 const keyOf=(piece:string,c:number,r:number,rot:BuildRot)=>`${piece}:${c}:${r}:${rot}`;
+const NO_KITS:readonly KitPiece[]=Object.freeze([]);
+/**
+ * torre-folha-ao-pegar-kit: the tower kits in the backpack not in `seen` yet (added to it), for the scene to fetch
+ * their kind's sheets as the kit comes in, not at its first ghost (~2.5 s of a green box on a phone). The walls'
+ * (muro, barricada) are the base art, already there.
+ */
+export function towerKitsArrived(slots:readonly (KitSlotLike|undefined)[]|undefined,seen:Set<string>):readonly KitPiece[]{
+  let out:KitPiece[]|undefined;
+  if(slots)for(const s of slots){
+    const piece=kitPiece(s?.id);
+    if(!piece||!isTowerKit(piece)||seen.has(piece))continue;
+    seen.add(piece);(out??=[]).push(piece);
+  }
+  return out??NO_KITS;
+}
 
 export class KitPlace {
   /** The kit being placed: its inventory slot and item id. */

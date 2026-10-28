@@ -1,7 +1,8 @@
 // Kits de torre (card NEW-20261020-ORQ-torre-pela-caixa): the inventory's kit slot and the "pôr torre" mode's rules.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {KIT_REACH,KIT_TURN_DRAG,KitPlace,kitRefusalText} from '../../src/client/hud/kit-place/model.ts';
+import {readFileSync} from 'node:fs';
+import {KIT_REACH,KIT_TURN_DRAG,KitPlace,kitRefusalText,towerKitsArrived} from '../../src/client/hud/kit-place/model.ts';
 import {inventorySlots,slotLabel,tapCommand} from '../../src/client/hud/inventory.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';
@@ -123,4 +124,20 @@ test('barricada-tocar-no-mapa: a red ghost says why (no confirm sent); the hero 
   const moved=k.ghost({cell:CELL,structures:[]},{x:36,y:34})!;
   assert.deepEqual([moved.c,moved.r],[g.c,g.r]);
   k.cancel();assert.equal(k.ghost({cell:CELL,structures:[]},hero),null,'no kit, no ghost');
+});
+
+test('torre-folha-ao-pegar-kit: a tower kit coming into the backpack asks for its sheets once, before its first ghost',()=>{
+  const seen=new Set<string>();
+  assert.deepEqual(towerKitsArrived([{id:'faca'},kitItem('muro'),kitItem('barricada')],seen),[],'the walls are the base art');
+  assert.deepEqual(towerKitsArrived([{id:'faca'},kitItem('morteiro'),undefined,kitItem('vigia-do-predio')],seen),['morteiro','vigia-do-predio']);
+  assert.deepEqual(towerKitsArrived([kitItem('morteiro'),kitItem('vigia-do-predio')],seen),[],'once per kind');
+  assert.deepEqual(towerKitsArrived(undefined,seen),[]);
+  assert.deepEqual(towerKitsArrived([kitItem('holofote')],seen),['holofote']);
+  // The host: every frame's backpack (the kit mode's own sync), a new scene starts over; the scene fetches them past
+  // the loader's queue (needTowerArt, the ghost's own path).
+  const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
+  const hook=explore.slice(explore.indexOf('kitPlace.sync(me?.weapons);'));
+  assert.match(hook,/^kitPlace\.sync\(me\?\.weapons\);\n.*\n\s*if\(kitArt\.scene!==scene\)\{kitArt\.scene=scene;kitArt\.seen\.clear\(\);\}\n\s*for\(const kind of towerKitsArrived\(me\?\.weapons,kitArt\.seen\)\)scene\.prepareTowerArt\(kind\);/);
+  const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  assert.match(scene,/prepareTowerArt\(kind:string\)\{this\.needTowerArt\(kind as TowerKind\);\}/);
 });

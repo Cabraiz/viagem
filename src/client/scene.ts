@@ -438,6 +438,11 @@ export class IslandScene extends Phaser.Scene {
     // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).
   }
   private towerArtAsked=new Set<string>();
+  /**
+   * torre-folha-ao-pegar-kit: a tower kit came into the backpack (hud/kit-place towerKitsArrived): its kind's sheets
+   * now, so its first ghost already wears the art (it asked for them itself, a green box for ~2.5 s on a phone).
+   */
+  prepareTowerArt(kind:string){this.needTowerArt(kind as TowerKind);}
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
   private needTowerArt(kind:TowerKind){
     for(const l of towerLoads(kind)){

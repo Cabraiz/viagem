@@ -5,10 +5,11 @@
  *   design/cidade-hud.md §7) the city's arrows instead (groups, active mouths, base with the horn seconds; hud/city),
  *   switched per frame since the map can change in the lobby; the WC3 minimap at ≤ 10 Hz on every map (wc-minimap);
  * - "Me salva": while caído the skill button's place becomes a big ping button (3 s anti-spam, EmoteGate); the room
- *   relays the ping with the position to every phone, which lights the caído's arrow and dot, plays the fall whistle
- *   (and its buzz, VGM-050 settings) and shows the caído's own help line over the body;
+ *   relays the ping with the position to every phone, which lights the caído's arrow and dot, plays the 'sos' ping
+ *   (and its buzz, VGM-050 settings; the fall whistle itself played once at the fall) and shows the caído's own help
+ *   line over the body;
  * - lines over heads (fun/lines, 053A): the fall (what got you, else the class line), the rescuer's "Segura aí, Zé!"
- *   while it holds the rescue, the class rescue line, and the rescue sound with its buzz for the rescuer.
+ *   while it holds the rescue and the class rescue line (the rescue's sound is the match's, audio/events.ts).
  * Its pure helpers (holdLine, sosButton) live in radar.ts (tests); this part needs the DOM, the scene and the socket.
  */
 import type {CoopClient} from '../net/client.ts';
@@ -146,7 +147,7 @@ export class RescueBoard {
     if(!this.pings.add(ping,performance.now()))return;
     // The caller's own echo: the room took it and every phone now shows the arrow (UX onda 6: confirm to the caído).
     if(ping.id===this.net.id){this.scene()?.say(this.net.id,SOS_HEARD);return;}
-    const audio=getAudio();if(audio.unlocked)audio.play('queda');
+    const audio=getAudio();if(audio.unlocked)audio.play('sos');
     this.say(ping.id,'down',ping.tick);
   }
   /** The view the HUD shows: one clock for the arrows, the team strip and the map fichas (UX onda 6, aresta 1). */
@@ -163,7 +164,8 @@ export class RescueBoard {
     // The local hero's shots already heard on the press are not played again (net/attack-predict.ts).
     const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
     // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e));
+    // An elite's kill: its body is still in the feed on the kill's tick (the tombstone comes a few ticks later).
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite);
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -191,7 +193,6 @@ export class RescueBoard {
           // Right after the rescuer's balloon (they stand side by side): one balloon at a time, never one over the other.
           const by=this.net.players.get(e.by)?.name;
           if(by&&e.player!==e.by){const who=e.player,t=setTimeout(()=>{this.timers.delete(t);this.scene()?.say(who,thanks(by));},THANKS_AFTER_MS);this.timers.add(t);}
-          if(e.by===this.net.id){const audio=getAudio();if(audio.unlocked)audio.play('resgate');}
         }
       }
     }

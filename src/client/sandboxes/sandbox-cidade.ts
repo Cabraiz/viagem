@@ -243,6 +243,11 @@ const tralhaShot=obra&&params.get('tralha')==='1';
  * and a lone square (the joints: halves + pillars).
  */
 const muralhaShot=obra?params.get('muralha'):null;
+/**
+ * `atropela=<ms>` with obra=1 (uno-atravessa-tralha): a square of the map's tralha at the car's nose, gone after <ms>
+ * (the Uno ran it over): the junk burst of StonewardsRenderer.
+ */
+const atropela=obra&&params.has('atropela')?Math.max(0,Number(params.get('atropela'))||0):undefined;
 /** `fala=` in the modo foto: the lines are said this long before the photo's clock (speakFoto). */
 const FOTO_TALK_AGO_MS=700;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
@@ -630,13 +635,15 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
-    const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
+    const nose=atropela!==undefined?bar('tralha-sandbox',Math.round((car.x+CAR_HALF.l)/cell),Math.round(car.y/cell)-1,1,200):undefined;
+    const structures=nose?[nose]:muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
     const objectiveView={...this.chaveiro!.fake.view(0).view,car:freeRope?{...car}:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     this.stone.push(view);
+    if(nose){const stone=this.stone;console.info('sandbox: atropela armado');setTimeout(()=>stone.push({...view,structures:[]}),atropela);return;}
     if(tralhaShot){this.mountTralha(projector,structures.find(x=>x.id==='b1')!);return;}
     if(muralhaShot)return; // the junk wall alone, no ghost
     if(carMoves)return; // anda=: the car and its rope, no ghost over the hero

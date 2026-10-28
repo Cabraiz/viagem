@@ -16,7 +16,8 @@
  * - The heading (the nose): a move with a taut rope turns it toward the move at CAR_ROPE_TURN rad/s at most; a push
  *   alone takes the push's axis (the car may roll backwards: it never turns more than 90 degrees for a push).
  * - The car goes the way the movers point (the sum of their unit pushes and taut ropes) at carSpeed(movers); it slides
- *   along one axis when the straight step is blocked. Its body keeps to the hero mask (the city's walkable bitset),
+ *   along one axis when the straight step is blocked. Its body (carBodyDiscs: its shape, turned as it would be after
+ *   the step, else as it was) keeps to the hero mask (the city's walkable bitset),
  *   off the standing structures (barricades, tower defenses: what besiegers hit) and CAR_NEST_KEEP_OUT from every living
  *   nest; a step that only gets out of an overlap is allowed. It never hurts: enemies it overlaps are shoved to its
  *   edge (the boss stands its ground).
@@ -24,7 +25,7 @@
  *   attack (busy: the weapons system skips them); the rope holder never attacks, taut or not.
  * Everything kept is on the ChaveiroState's car (JSON-safe): movers, rope and the rope holder's hp at the last step.
  */
-import {CAR_HALF_LENGTH,CAR_HALF_WIDTH,CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH,CAR_NEST_KEEP_OUT,carBodyDiscs,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,
   CAR_ROPE_LET_GO_S,CAR_ROPE_TURN,SIM_HZ,carGap,carNose,carPushOut,carSpeed,ropeTip,ticks,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
 import {RADIUS as PLAYER_RADIUS,maskSurface,walkable,type Point} from '../../maps/index.ts';
 import type {SimContext} from '../context.ts';
@@ -96,10 +97,15 @@ function ropeGesture(ctx:SimContext,car:CarBody,world:CarWorld){
   if(best){car.rope=best.id;car.ropeHp=best.hp;car.ropeIdle=0;}
 }
 
-/** Whether the body may stand at `to` coming from `from` (an overlap it does not deepen is allowed). */
-function fits(ctx:SimContext,world:CarWorld,from:Point,to:Point){
+/** Whether the body (carBodyDiscs, the heading `h`) at `p` is clear of the mask. */
+const bodyClear=(mask:{clearDisc(x:number,y:number,r:number):boolean},p:Point,h:number|undefined)=>carBodyDiscs(p.x,p.y,h).every(d=>mask.clearDisc(d.x,d.y,d.r));
+/**
+ * Whether the body may stand at `to` turned to `toH`, coming from `from` turned to `fromH` (an overlap it does not
+ * deepen is allowed). On the mask it is the body's own shape (uno-atravessa-tralha); structures and nests keep the disc.
+ */
+function fits(ctx:SimContext,world:CarWorld,from:Point,to:Point,fromH:number|undefined,toH:number|undefined){
   const mask=maskSurface(ctx.terrain);
-  if(mask?!mask.clearDisc(to.x,to.y,CAR_RADIUS)&&mask.clearDisc(from.x,from.y,CAR_RADIUS):!walkable(to,ctx.terrain)&&walkable(from,ctx.terrain))return false;
+  if(mask?!bodyClear(mask,to,toH)&&bodyClear(mask,from,fromH):!walkable(to,ctx.terrain)&&walkable(from,ctx.terrain))return false;
   const deeper=(o:Point,keep:number)=>{
     const d=Math.hypot(to.x-o.x,to.y-o.y);
     return d<keep&&d<Math.hypot(from.x-o.x,from.y-o.y);
@@ -191,25 +197,27 @@ function moveCar(ctx:SimContext,car:CarBody,world:CarWorld,locked:boolean):boole
   if(!people||pull<1e-6){delete car.movers;return false;}
   car.movers=movers;
   const step=carSpeed(movers.length)/SIM_HZ,ux=dx/pull,uy=dy/pull,from={x:car.x,y:car.y};
+  // The body turns with the move when it fits turned (a narrow door: it goes on as it was, uno-atravessa-tralha).
+  const old=car.heading,next=turned(old,ux,uy,roped);
   for(const [sx,sy] of [[ux,uy],[ux,0],[0,uy]]){
     if(Math.abs(sx)+Math.abs(sy)<1e-6)continue;
     const to={x:car.x+sx*step,y:car.y+sy*step};
-    if(!fits(ctx,world,from,to))continue;
+    const h=fits(ctx,world,from,to,old,next)?next:next!==(old??0)&&fits(ctx,world,from,to,old,old)?old??0:undefined;
+    if(h===undefined)continue;
     car.x=to.x;car.y=to.y;
-    turn(car,ux,uy,roped);
+    if(h===0)delete car.heading;else car.heading=h;
     return true;
   }
   return false;
 }
 
 /** The nose after a move the movers want along (dx, dy) (even when the body slid along one axis): toward it at CAR_ROPE_TURN with a taut rope; else along its axis (<= 90 degrees). */
-function turn(car:CarBody,dx:number,dy:number,roped:boolean){
-  const old=car.heading??0,a=Math.atan2(dy,dx);
+function turned(heading:number|undefined,dx:number,dy:number,roped:boolean):number{
+  const old=heading??0,a=Math.atan2(dy,dx);
   let h:number;
   if(roped){const d=angleDiff(a,old),max=CAR_ROPE_TURN/SIM_HZ;h=old+Math.max(-max,Math.min(max,d));}
   else h=Math.abs(angleDiff(a,old))<=Math.PI/2?a:Math.atan2(-dy,-dx);
-  h=angleDiff(h,0);
-  if(h===0)delete car.heading;else car.heading=h;
+  return angleDiff(h,0);
 }
 
 /**

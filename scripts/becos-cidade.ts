@@ -16,7 +16,7 @@ import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
-import {CAR_RADIUS} from '../src/contract/index.ts';
+import {CAR_BODY_R,CAR_RADIUS} from '../src/contract/index.ts';
 import {BIG_ROCKS,LINK,bigCliffRocks,lineShape} from '../src/maps/city-decor.ts';
 
 /** A dead end: a skeleton branch at least this long (cells) from its end to a junction. */
@@ -477,10 +477,10 @@ const CLIFF_PENALTY=36;
 export const WIDEN_MAX_CELLS=30;
 
 interface UnoField {GW:number;GH:number;reach:Uint8Array;near:(p:CityPoint)=>boolean}
-function unoField(a:CityAsset,r=CAR_RADIUS):UnoField{
+function unoField(a:CityAsset,r=CAR_RADIUS,round=false):UnoField{
   const {w,h}=a.samples,W=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)W[x+y*w]=a.walkable(x,y)?1:0;
   const reach=carReach(a,W,a.points.praca,r),GW=Math.ceil(a.size.w/PROBE),GH=Math.ceil(a.size.h/PROBE),d=Math.round(UNO_LOOT_NEAR/PROBE);
-  const near=(p:CityPoint)=>{for(let dy=-d;dy<=d;dy++)for(let dx=-d;dx<=d;dx++){const gx=Math.floor(p.x/PROBE)+dx,gy=Math.floor(p.y/PROBE)+dy;if(gx>=0&&gy>=0&&gx<GW&&gy<GH&&reach[gx+gy*GW])return true;}return false;};
+  const near=(p:CityPoint)=>{for(let dy=-d;dy<=d;dy++)for(let dx=-d;dx<=d;dx++){if(round&&dx*dx+dy*dy>d*d)continue;const gx=Math.floor(p.x/PROBE)+dx,gy=Math.floor(p.y/PROBE)+dy;if(gx>=0&&gy>=0&&gx<GW&&gy<GH&&reach[gx+gy*GW])return true;}return false;};
   return {GW,GH,reach,near};
 }
 /** The loot points the Uno, from the plaza, gets within UNO_LOOT_NEAR of. */
@@ -610,8 +610,8 @@ const WIDEN_KINDS=new Set(['wall','rubble','edge','cliff','']);
 export const LOOT_MOVE_MAX=20;
 /** Share of the loot points that keeps LOOT_NEAR from every other (caixas-espalhadas wants .9; one point of margin). */
 const LOOT_WIDE_KEEP=.9;
-function moveLootToUno(data:CityAssetData,a:CityAsset,decode:()=>CityAsset):number{
-  const f=unoField(a),P=a.points,keys=[P.inicio,P.spawnN,P.spawnS,P.spawnL,P.spawnO],r3=(v:number)=>Math.round(v*1000)/1000;
+function moveLootToUno(data:CityAssetData,a:CityAsset,decode:()=>CityAsset,f=unoField(a)):number{
+  const P=a.points,keys=[P.inicio,P.spawnN,P.spawnS,P.spawnL,P.spawnO],r3=(v:number)=>Math.round(v*1000)/1000;
   const loot=[...data.loot];let moved=0;
   const g=cityGraph(a),m=g.m,u=g.u,roomy=(x:number,y:number)=>{const t=Math.floor(x/u)+Math.floor(y/u)*m;return [0,1,-1,m,-m].every(k=>g.city[t+k]);};
   const spot=(i:number,gap:number)=>{const p=loot[i];let best:CityPoint|undefined,bd=Infinity;
@@ -682,4 +682,125 @@ if(process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/becos-cidade.ts')){
   if(antes){const b=decodeCityAsset(readFileSync(antes,'utf8'));if(!b.ok)throw new Error(b.error);const m=d.asset.cells.w,u=d.asset.unitsPerCell;
     for(let t=0;t<m*m;t++){const x=(t%m+.5)*u,y=(Math.floor(t/m)+.5)*u;if(d.asset.walkableAt(x,y)&&!b.asset.walkableAt(x,y))holes.push(t);}}
   const png=flag('--png');if(png)await picture(d.asset,png,{holes});
+}
+
+/**
+ * NEW-20261028-ORQ-uno-atravessa-tralha (the user, 28/10: "muitas tralhas que vão me atrapalhar a caminhar com o carro
+ * pelo jogo todo"; a zinc fence alone in the open snow): a fence that closes nothing is junk in the street. A loose
+ * fence: a group of fence pieces (the 6 wall families, 8-neighbour) of at most CERCA_SOLTA_MAX cells, touching no other
+ * block, whose open sides all meet within CERCA_SOLTA_PAD cells around it (the ground goes round it, no yard behind).
+ */
+export const CERCA_SOLTA_MAX=6,CERCA_SOLTA_PAD=3;
+const FENCE=/^(alambrado|cerca-madeira|grade|muro-condominio|muro-pichado|tapume)-/;
+export function cercasSoltas(data:CityAssetData):number[][]{
+  const m=data.cells.w,u=data.unitsPerCell!,fence=new Set<number>(),solid=new Uint8Array(m*m),other=new Uint8Array(m*m);
+  for(const d of data.decor??[])if(FENCE.test(d.id))for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)fence.add(c+r*m);
+  for(const b of data.blocks)for(const [x,y,w,h] of b.rects)
+    for(let r=Math.floor(y/u+1e-6);r<Math.ceil((y+h)/u-1e-6);r++)for(let c=Math.floor(x/u+1e-6);c<Math.ceil((x+w)/u-1e-6);c++){solid[c+r*m]=1;if(b.kind!=='wall')other[c+r*m]=1;}
+  const seen=new Set<number>(),out:number[][]=[];
+  for(const k of [...fence].sort((p,q)=>p-q)){
+    if(seen.has(k))continue;
+    const group=[k];seen.add(k);
+    for(let i=0;i<group.length;i++){const c=group[i]%m,r=(group[i]-c)/m;
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const n=(c+dc)+(r+dr)*m;if(fence.has(n)&&!seen.has(n)){seen.add(n);group.push(n);}}}
+    if(group.length>CERCA_SOLTA_MAX)continue;
+    const inGroup=new Set(group);let c0=m,c1=0,r0=m,r1=0,touches=false;
+    for(const t of group){const c=t%m,r=(t-c)/m;c0=Math.min(c0,c);c1=Math.max(c1,c);r0=Math.min(r0,r);r1=Math.max(r1,r);
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const n=(c+dc)+(r+dr)*m;if(!inGroup.has(n)&&!fence.has(n)&&other[n])touches=true;}}
+    if(touches)continue;
+    c0-=CERCA_SOLTA_PAD;c1+=CERCA_SOLTA_PAD;r0-=CERCA_SOLTA_PAD;r1+=CERCA_SOLTA_PAD;
+    const open=(c:number,r:number)=>c>=Math.max(c0,0)&&c<=Math.min(c1,m-1)&&r>=Math.max(r0,0)&&r<=Math.min(r1,m-1)&&!solid[c+r*m];
+    const sides:number[]=[];
+    for(const t of group){const c=t%m,r=(t-c)/m;for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]])if(open(c+dc,r+dr))sides.push(c+dc+(r+dr)*m);}
+    if(!sides.length)continue;
+    const met=new Set([sides[0]]),q=[sides[0]];
+    for(let i=0;i<q.length;i++){const c=q[i]%m,r=(q[i]-c)/m;
+      for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){const n=(c+dc)+(r+dr)*m;if(open(c+dc,r+dr)&&!met.has(n)){met.add(n);q.push(n);}}}
+    if(sides.every(t=>met.has(t)))out.push(group.sort((p,q)=>p-q));
+  }
+  return out;
+}
+/** Takes the loose fences out (openCells), each only while the defence holds (as alargarParaUno). Returns the groups taken. */
+export function tirarCercasSoltas(data:CityAssetData):{taken:number[][];refused:number}{
+  const decode=()=>{const d=decodeCityAsset(encodeCityAsset(data));if(!d.ok)throw new Error(d.error);return d.asset;};
+  const defence=(x:CityAsset)=>{const g=cityGraph(x),P=x.points,cell=(p:CityPoint)=>Math.floor(p.x/g.u)+Math.floor(p.y/g.u)*g.m,d=walk(g.city,g.m,cell(P.praca));
+    return {safe:[...g.safe].sort((p,q)=>p-q).join(','),walks:[P.spawnN,P.spawnS,P.spawnL,P.spawnO].map(p=>d[cell(p)])};};
+  const kept=defence(decode()),taken:number[][]=[];let refused=0;
+  for(const group of cercasSoltas(data)){
+    const was=structuredClone(data);openCells(data,group);const now=defence(decode());
+    if(now.safe!==kept.safe||now.walks.some((w,i)=>w<kept.walks[i]-1)){Object.assign(data,was);refused++;continue;}
+    taken.push(group);
+  }
+  return {taken,refused};
+}
+
+// ——— The hero's ground, open to the Uno's body (NEW-20261028-ORQ-uno-atravessa-tralha) ———
+
+/** The hero's disc on the map (u: maps PLAYER_RADIUS). */
+const HERO_R=.35;
+/** A widened lane for the body fits a disc this wide (u): carBodyDiscs' radius with 0.1 u to spare on each side. */
+export const UNO_BODY_LANE=CAR_BODY_R+.1;
+/** The share of the hero's ground (off the safe places) the Uno's body gets within UNO_LOOT_NEAR of, aimed for. */
+export const UNO_AREA_GOAL=.99;
+/** At most this many cells opened for one patch of ground the Uno misses. */
+export const AREA_MAX_CELLS=40;
+/** Patches smaller than this (probes) are left: a nook, not a street. */
+const AREA_MIN_PATCH=8;
+
+/**
+ * The hero's ground the Uno's body misses: probes the hero reaches from the plaza, off the safe places, further than
+ * UNO_LOOT_NEAR from every probe the body (a disc of CAR_BODY_R) reaches. Share: 1 − missed / hero's.
+ */
+export function unoArea(a:CityAsset):{share:number;missed:Uint8Array;GW:number}{
+  const {w,h}=a.samples,W=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)W[x+y*w]=a.walkable(x,y)?1:0;
+  const car=carReach(a,W,a.points.praca,CAR_BODY_R),hero=carReach(a,W,a.points.praca,HERO_R),GW=Math.ceil(a.size.w/PROBE),GH=Math.ceil(a.size.h/PROBE);
+  const g=cityGraph(a),d=Math.round(UNO_LOOT_NEAR/PROBE),near=new Uint8Array(GW*GH);
+  for(let i=0;i<GW*GH;i++)if(car[i]){const x=i%GW,y=(i-x)/GW;
+    for(let dy=-d;dy<=d;dy++)for(let dx=-d;dx<=d;dx++){if(dx*dx+dy*dy>d*d)continue;const X=x+dx,Y=y+dy;if(X>=0&&Y>=0&&X<GW&&Y<GH)near[X+Y*GW]=1;}}
+  const missed=new Uint8Array(GW*GH);let all=0,miss=0;
+  for(let i=0;i<GW*GH;i++){if(!hero[i])continue;const t=Math.floor((i%GW+.5)*PROBE/g.u)+Math.floor((Math.floor(i/GW)+.5)*PROBE/g.u)*g.m;
+    if(g.safe.has(t))continue;all++;if(!near[i]){missed[i]=1;miss++;}}
+  return {share:all?1-miss/all:1,missed,GW};
+}
+
+/**
+ * Widens the narrow ways into the hero's ground the Uno's body misses (unoArea), the biggest patch first, while the share
+ * is under UNO_AREA_GOAL: the cheapest lane (widenTo, UNO_BODY_LANE) to the patch's middle, at most AREA_MAX_CELLS, only
+ * through cuttable cells (allowedIn) and only while the defence holds (as alargarParaUno). `data` changes in place.
+ */
+export function alargarAreaUno(data:CityAssetData):{cells:number[];widened:number;refused:number;moved:number;before:number;after:number}{
+  const decode=()=>{const d=decodeCityAsset(encodeCityAsset(data));if(!d.ok)throw new Error(d.error);return d.asset;};
+  let a=decode();const before=unoArea(a).share,opened:number[]=[];let widened=0,refused=0;
+  const defence=(x:CityAsset)=>{const g=cityGraph(x),P=x.points,cell=(p:CityPoint)=>Math.floor(p.x/g.u)+Math.floor(p.y/g.u)*g.m,d=walk(g.city,g.m,cell(P.praca));
+    return {safe:[...g.safe].sort((p,q)=>p-q).join(','),walks:[P.spawnN,P.spawnS,P.spawnL,P.spawnO].map(p=>d[cell(p)])};};
+  const kept=defence(a),skip=new Set<number>();
+  for(let pass=0;pass<200;pass++){
+    const {share,missed,GW}=unoArea(a);if(share>=UNO_AREA_GOAL)break;
+    // The patches (8-neighbour) of missed probes, the biggest first; one with a skipped probe is skipped.
+    const seen=new Uint8Array(missed.length),patches:number[][]=[];
+    for(let i=0;i<missed.length;i++){if(!missed[i]||seen[i])continue;const q=[i];seen[i]=1;
+      for(let k=0;k<q.length;k++){const x=q[k]%GW,y=(q[k]-x)/GW;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const n=x+dx+(y+dy)*GW;if(x+dx>=0&&x+dx<GW&&n>=0&&n<missed.length&&missed[n]&&!seen[n]){seen[n]=1;q.push(n);}}}
+      if(q.length>=AREA_MIN_PATCH&&!q.some(t=>skip.has(t)))patches.push(q);}
+    // A loot point off the safe places the body misses (the card: every crate) goes first, as a patch of its own.
+    const g0=cityGraph(a);
+    for(const l of a.loot){const i=Math.floor(l.x/PROBE)+Math.floor(l.y/PROBE)*GW;
+      if(missed[i]&&!skip.has(i)&&!g0.safe.has(Math.floor(l.x/g0.u)+Math.floor(l.y/g0.u)*g0.m)){patches.unshift([i]);break;}}
+    if(!patches.length)break;
+    if(patches[0].length>1)patches.sort((p,q)=>q.length-p.length);
+    const patch=patches[0];let mx=0,my=0;for(const t of patch){mx+=t%GW;my+=Math.floor(t/GW);}mx/=patch.length;my/=patch.length;
+    const mid=patch.reduce((b,t)=>(t%GW-mx)**2+(Math.floor(t/GW)-my)**2<(b%GW-mx)**2+(Math.floor(b/GW)-my)**2?t:b);
+    const target={x:(mid%GW+.5)*PROBE,y:(Math.floor(mid/GW)+.5)*PROBE};
+    const g=cityGraph(a),cells=widenTo(a,g,allowedIn(a,g),unoField(a,CAR_BODY_R),target,UNO_BODY_LANE);
+    const no=()=>{for(const t of patch)skip.add(t);};
+    if(!cells?.length||cells.length>AREA_MAX_CELLS){if(process.env.ALARGAR_LOG)console.log('área skip',target.x.toFixed(0),target.y.toFixed(0),patch.length,cells?.length??'sem caminho');no();continue;}
+    const was=structuredClone(data);openCells(data,cells);const next=decode(),now=defence(next);
+    if(now.safe!==kept.safe||now.walks.some((w,i)=>w<kept.walks[i]-1)){Object.assign(data,was);refused++;no();continue;}
+    if(process.env.ALARGAR_LOG)console.log('área alarga',target.x.toFixed(0),target.y.toFixed(0),patch.length,cells.length);
+    a=next;opened.push(...cells);widened++;
+  }
+  if(data.decor&&opened.length)data.decor=bigCliffRocks(data.decor,BIG_ROCKS,opened.length);
+  // The loot the body still misses (behind a building) moves out to the nearest street it reaches (as alargarParaUno).
+  a=decode();const moved=moveLootToUno(data,a,decode,unoField(a,CAR_BODY_R,true));
+  return {cells:opened,widened,refused,moved,before,after:unoArea(decode()).share};
 }

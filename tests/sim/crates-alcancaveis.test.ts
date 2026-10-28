@@ -3,9 +3,10 @@
 // spotAhead) is reached on foot from the Uno's start by the hero's own step (maps moveDirection: clearSegment against
 // the walkable mask), not only by the cell flood that picks them. Asset-deterministic: a seed only chooses among these
 // spots, so checking them all covers every seed.
-// The k13 of the audit (75.55, 93.5; an aroundUno spot, 4 u south of where the hero stood at y 89.5) is pinned: a strip of
-// the mask (y 90–91, x 70.5–82, the white edge of the snow) stops a hero walking straight south from x 71–79, but the
-// way down at x ≈ 81.5, right under the start, reaches it in a few seconds.
+// The k13 of the audit (75.55, 93.5; 4 u south of where the hero stood at y 89.5; an aroundUno spot of seeds 8 and 101
+// solo) is pinned: a strip of the mask (y 90–91, x 70.5–82, the white edge of the snow) stops a hero walking straight
+// south from x 71–79; the way down at x ≈ 81.5, right under the start, reaches it, but at 1.5× the straight line, so it
+// is no longer a first-minute spot (AROUND_DETOUR_MAX).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,7 +18,7 @@ import {Rng,SIM_HZ} from '../../src/contract/index.ts';
 import {UNREACHABLE} from '../../src/maps/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {cityUnoStart} from '../../src/sim/city/uno-start.ts';
-import {cityLoot} from '../../src/sim/stonewards/loot.ts';
+import {AROUND_DETOUR_MAX,cityLoot} from '../../src/sim/stonewards/loot.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const manifest=JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string};
@@ -58,9 +59,9 @@ test('the walker misses walkable ground walled off from the Uno (the check can f
   assert.deepEqual(missed([shut]),[shut]);
 });
 
-test('the k13 of the audit is reached from the Uno, by the way down under the start', ()=>{
+test('the k13 of the audit is reached from the Uno, by the way down under the start, and is no longer a start spot', ()=>{
   const k13={x:75.55,y:93.5};
-  assert.ok(loot.aroundUno.some(p=>p.x===k13.x&&p.y===k13.y),'k13 is still an aroundUno spot');
+  assert.ok(!loot.aroundUno.some(p=>p.x===k13.x&&p.y===k13.y),'k13 is behind the edge: not a first-minute spot');
   // Where the auditor stood: straight south is the mask's edge.
   for(const x of [71,73,75,77,79])assert.equal(clearSegment({x,y:88.5},{x,y:91.5},city),false,`x ${x}: the edge stops a straight walk`);
   const s=walkTo(start,k13,10);
@@ -90,4 +91,8 @@ test('trail spots (spotAhead) from walkable ground around the Uno are reached fr
   }
   assert.ok(spots.length>=100,`${spots.length} trail spots`);
   assert.deepEqual(missed(spots),[]);
+});
+
+test("the Uno's first-minute spots are at most AROUND_DETOUR_MAX × the straight line on foot from the start", ()=>{
+  for(const p of loot.aroundUno)assert.ok(p.walk<=AROUND_DETOUR_MAX*Math.hypot(p.x-start.x,p.y-start.y)+.01,`${p.x},${p.y}: walk ${p.walk}`);
 });

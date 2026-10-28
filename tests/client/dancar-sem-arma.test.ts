@@ -40,3 +40,12 @@ test('the button says Dançar and, once a run, Abra uma caixa para pegar uma arm
   assert.match(explore,/window\.addEventListener\('pointerdown',onDance,\{capture:true,signal\}\)/,'tap');
   assert.match(explore,/danceAt:id=>dancedAt\.get\(id\)/);
 });
+
+test('carregou and the crate note wait for the island on screen, not the loading screen (PC lento: 22.9 s)',()=>{
+  const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  assert.match(scene,/if\(phase!=='combat'\)this\.loadSaid=false;else if\(!this\.readyHeld&&!this\.loadSaid\)\{this\.loadSaid=true;net\.loaded\(\);\}/);
+  const skill=readFileSync(new URL('../../src/client/hud/skill.ts',import.meta.url),'utf8');
+  assert.match(skill,/if\(this\.unarmed&&this\.visible&&!this\.hinted\)/);
+  const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
+  assert.match(explore,/ready:\(\)=>\{sceneReady=true;if\(skill\)skill\.visible=true;/);
+});

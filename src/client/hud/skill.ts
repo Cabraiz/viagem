@@ -146,6 +146,8 @@ export class SkillButton {
   private unarmed=false;
   /** "Abra uma caixa" was already said in this run (once, the first time the hands are empty). */
   private hinted=false;
+  /** The island is on screen (explore.ts hooks.ready): the note waits for it, not for the loading screen. */
+  visible=false;
   /** The rope face (setTow): 'rebocar' or 'soltar', undefined for Atacar. */
   private tow?:'rebocar'|'soltar';
   /** Bicos: 'oferta|<bico>' or 'dentro|<bico>' while the slot is Trabalhar, undefined otherwise. */
@@ -262,7 +264,7 @@ export class SkillButton {
     this.player=player;this.tick=tick;
     const free=this.combat==='manual'&&!this.kit&&!this.work&&!this.tow;
     this.setUnarmed(free&&!!player&&attackIconOf(player)===undefined);
-    if(this.unarmed&&!this.hinted){this.hinted=true;this.flash(NOTE_OPEN_CRATE,now,UNARMED_HINT_MS);}
+    if(this.unarmed&&this.visible&&!this.hinted){this.hinted=true;this.flash(NOTE_OPEN_CRATE,now,UNARMED_HINT_MS);}
     if(free&&!this.unarmed)this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);

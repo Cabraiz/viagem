@@ -63,6 +63,13 @@ export const AROUND_PLAZA:readonly [number,number]=[5,8];
  * 60 s at the hero's 4 u/s walk reaches far beyond; these stay where a hero who walks off in any direction passes them.
  */
 export const AROUND_START:readonly [number,number]=[6,48];
+/**
+ * NEW-20261028-ORQ-caixa-sempre-alcancavel (auditoria de jogabilidade, item 5): a first-minute spot (aroundStart,
+ * aroundUno) whose walk from the start is more than this × its straight distance is dropped. Such a spot is reachable
+ * but behind a wall the hero does not read as one (the snow's white edge south of the Uno: k13, 9 u straight, 13.5 u of
+ * walk, cost the player 26 s pushing against the edge); the first minute's crates are the ones he walks straight to.
+ */
+export const AROUND_DETOUR_MAX=1.4;
 /** CityLoot.spotAhead: tries, and how far (rad) a try turns off the heading at most. */
 export const SPOT_TRIES=12,SPOT_SPREAD=.5;
 export function lootHeroSpeed(terrain:TerrainField|undefined):number{return baseHeroSpeed(terrain);}
@@ -90,7 +97,8 @@ export interface CityLoot {
   /**
    * The first minute's crate spots (BUG-20261022-ORQ-caixas-sumiram): hero cell centres AROUND_START u of walk from
    * the run's start (cityRunStart; from the foot of the ramp when it is on a viaduct's deck), a crate's whole body on open
-   * ground, outside the base and off the viaduct; cell order, with the walk.
+   * ground, outside the base and off the viaduct, no farther on foot than AROUND_DETOUR_MAX × the straight line; cell
+   * order, with the walk.
    */
   readonly aroundStart:readonly (Point&{walk:number})[];
   /** The same around the Uno (sim/city/uno-start.ts cityUnoStart), where mode 'ninhos' spawns the team (inicio-no-uno). */
@@ -186,7 +194,7 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
       const cost=fromStart.cellCost(cx,cy);
       if(cost===UNREACHABLE)continue;
       const walk=cost/STRAIGHT_COST*cs,x=Math.round((cx+.5)*cs*100)/100,y=Math.round((cy+.5)*cs*100)/100;
-      if(byViaduct(city,x,y))continue;
+      if(byViaduct(city,x,y)||walk>AROUND_DETOUR_MAX*Math.hypot(x-from.x,y-from.y))continue;
       if(walk>=AROUND_START[0]&&walk<=AROUND_START[1]&&city.clearDisc(x,y,CRATE_BODY_RADIUS)&&!planner.insideBase({x,y}))
         out.push(Object.freeze({x,y,walk:Math.round(walk*100)/100}));
     }

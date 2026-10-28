@@ -396,7 +396,7 @@
           "sha256": "bf3f185c69c24e0d021b0bc1b3cb295455399a209ce630950bfbd32a64a5852f"
         },
         "dance-loop": {
-          "file": "aposentado.dance.64f76b4f31fb.webp",
+          "file": "aposentado.dance.88441aecf611.webp",
           "revision": 16,
           "cell": [
             96,
@@ -424,15 +424,15 @@
           },
           "pages": [
             {
-              "file": "aposentado.dance.64f76b4f31fb.webp",
+              "file": "aposentado.dance.88441aecf611.webp",
               "columns": 6,
               "rows": 5,
               "firstFrame": 0,
               "frameCount": 26,
-              "sha256": "64f76b4f31fbd7aa998dc774dfc2a6fd0ab5c1627ba3d7d47b9587d0c9181da4"
+              "sha256": "88441aecf611396aa344f2bd690ebd677a08bde89fafa58c698eabba8538e231"
             }
           ],
-          "sha256": "64f76b4f31fbd7aa998dc774dfc2a6fd0ab5c1627ba3d7d47b9587d0c9181da4"
+          "sha256": "88441aecf611396aa344f2bd690ebd677a08bde89fafa58c698eabba8538e231"
         },
         "dir4": {
           "file": "aposentado.dir4.webp",
@@ -3056,7 +3056,7 @@
           "sha256": "c0cd2502af22e1f8a509b3944f035b46eafcad22db392900f51f08740f0bfef4"
         }
       },
-      "sha256": "e23fad89a8ecd82d50f5cf580763351559a3f4550aeea6a140f968e8e5e8947b"
+      "sha256": "624cabe7e844854ecc09fcd87a9ca01a0f4e27d371ac7c463194090706cf05d2"
     },
     "astrologa": {
       "kind": "dir8",
@@ -3760,7 +3760,7 @@
           "sha256": "e5c08a05174965017efbb8fdc8da7a8bc7e5fbae5a158401cef9bfea8ba0244c"
         },
         "dance-loop": {
-          "file": "clt-cansado.dance.16bf2e0065b7.webp",
+          "file": "clt-cansado.dance.ecb0e5d905b5.webp",
           "revision": 16,
           "cell": [
             96,
@@ -3788,15 +3788,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.dance.16bf2e0065b7.webp",
+              "file": "clt-cansado.dance.ecb0e5d905b5.webp",
               "columns": 6,
               "rows": 5,
               "firstFrame": 0,
               "frameCount": 25,
-              "sha256": "16bf2e0065b7544280600f19e7d4b0497838dd458b7878172c7a57450b529173"
+              "sha256": "ecb0e5d905b54d952335d36b0e77e491db9ea05dc942817b89668eb05a039a20"
             }
           ],
-          "sha256": "16bf2e0065b7544280600f19e7d4b0497838dd458b7878172c7a57450b529173"
+          "sha256": "ecb0e5d905b54d952335d36b0e77e491db9ea05dc942817b89668eb05a039a20"
         },
         "dir4": {
           "file": "clt-cansado.dir4.webp",
@@ -6662,7 +6662,7 @@
           "sha256": "f2c9a88bb0874c4330ba27e2d182dc1a8bd3fce2408d49936d3b063c97b7355f"
         }
       },
-      "sha256": "ff2696e4c495b1ae7655883b1ddd8d1e923b87037810942df06cfc372b998030"
+      "sha256": "dab4dc6962d99ccb25410494c83a3c8ffed76c42c51e93230a2074add1471420"
     },
     "coach": {
       "kind": "dir8",
@@ -13363,7 +13363,7 @@
           "sha256": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6"
         },
         "dance-loop": {
-          "file": "maromba.dance.c2165441ce05.webp",
+          "file": "maromba.dance.0b188145e7a4.webp",
           "revision": 16,
           "cell": [
             96,
@@ -13391,15 +13391,15 @@
           },
           "pages": [
             {
-              "file": "maromba.dance.c2165441ce05.webp",
+              "file": "maromba.dance.0b188145e7a4.webp",
               "columns": 6,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 24,
-              "sha256": "c2165441ce054abcae6b8cfc809f66bd75531c446790a562dc95e0149b43980c"
+              "sha256": "0b188145e7a47d5559b1074c80915445a5340b044166ea0380c39491919bfefb"
             }
           ],
-          "sha256": "c2165441ce054abcae6b8cfc809f66bd75531c446790a562dc95e0149b43980c"
+          "sha256": "0b188145e7a47d5559b1074c80915445a5340b044166ea0380c39491919bfefb"
         },
         "dir4": {
           "file": "maromba.dir4.webp",
@@ -16337,7 +16337,7 @@
           "sha256": "65ff30c99f533dd5c9d641ea5e1f6ed0f9d68172f93d8c2e9d87203d6a13c068"
         }
       },
-      "sha256": "575fb589a706748c00807435e768fc2f3e96ab366e23a2beb51868e3be0c78cb"
+      "sha256": "eaa09adc6800499de1b0a56dc0f8695cf757603254303b84911a7b0d0d2e9737"
     },
     "mendigo": {
       "kind": "dir8",
@@ -21101,7 +21101,7 @@
           "sha256": "e75d2361973bdd493c18e7e38f182fd564d870b724b0c40997ae7cbc32c8ca9a"
         },
         "dance-loop": {
-          "file": "vendedor-praia.dance.7bf2bf0cae8a.webp",
+          "file": "vendedor-praia.dance.1104d83cfef6.webp",
           "revision": 16,
           "cell": [
             96,
@@ -21129,15 +21129,15 @@
           },
           "pages": [
             {
-              "file": "vendedor-praia.dance.7bf2bf0cae8a.webp",
+              "file": "vendedor-praia.dance.1104d83cfef6.webp",
               "columns": 6,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 24,
-              "sha256": "7bf2bf0cae8ac4fa1c5b614c42c9fb0ae415c2df565e32bce2d081b0122285b5"
+              "sha256": "1104d83cfef669806ca1b1a04a389b3dc5c64a4dbc03be568c39a1e5b294d7c7"
             }
           ],
-          "sha256": "7bf2bf0cae8ac4fa1c5b614c42c9fb0ae415c2df565e32bce2d081b0122285b5"
+          "sha256": "1104d83cfef669806ca1b1a04a389b3dc5c64a4dbc03be568c39a1e5b294d7c7"
         },
         "dir4": {
           "file": "vendedor-praia.dir4.webp",
@@ -23761,7 +23761,7 @@
           "sha256": "7f0e9fcc97ee3f8e38243aac98cba7f5245915e92046fb4c54b401776b5b1be5"
         }
       },
-      "sha256": "ea7cf246552930d4ca2e6dd5a0ddb5d7a4ab1c7d5c8d78a0185451c2367efc5b"
+      "sha256": "1582f081a4428593c636017a240fa8254d9e3e90f4b2aea9f7b7bbf1015c9cfb"
     },
     "viciado-em-bet": {
       "kind": "dir8",
@@ -24407,7 +24407,7 @@
           "sha256": "c71b1a1580635b10247eb942561e26d8a8e33aaad2aecee874899ea1a92bafb3"
         },
         "dance-loop": {
-          "file": "viciado-em-bet.dance.8cf27c7fe640.webp",
+          "file": "viciado-em-bet.dance.16aa2d21068a.webp",
           "revision": 16,
           "cell": [
             96,
@@ -24435,15 +24435,15 @@
           },
           "pages": [
             {
-              "file": "viciado-em-bet.dance.8cf27c7fe640.webp",
+              "file": "viciado-em-bet.dance.16aa2d21068a.webp",
               "columns": 6,
               "rows": 5,
               "firstFrame": 0,
               "frameCount": 26,
-              "sha256": "8cf27c7fe64041e31736955ba5913b803c1578b046c9e083cb9c872d73950079"
+              "sha256": "16aa2d21068a693c6c174f6f7590c760298f7bda559b11c946b63335dbb0c544"
             }
           ],
-          "sha256": "8cf27c7fe64041e31736955ba5913b803c1578b046c9e083cb9c872d73950079"
+          "sha256": "16aa2d21068a693c6c174f6f7590c760298f7bda559b11c946b63335dbb0c544"
         },
         "dir4": {
           "file": "viciado-em-bet.dir4.webp",
@@ -27381,7 +27381,7 @@
           "sha256": "051f67a6c14382577c2a2540fc3f5ecaf52a320e5655ce35a8af0d9951aa45aa"
         }
       },
-      "sha256": "8ca59f2ea11acf83261ab5b08b4e3a2f5d9e2ea6c79672f1d9a0118dddbb2e47"
+      "sha256": "47829bc0549b5d9372394c6ce3502b0fd2d864eb579b2656bc18a466e1ef4e68"
     },
     "vizinha-fofoqueira": {
       "kind": "dir8",

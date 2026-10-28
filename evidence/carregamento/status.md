@@ -1,4 +1,5 @@
 # NEW-20261028-ORQ-carregamento-config-menu · status
+Fase: NA FILA (P1, vgm/carregamento-config-menu). PRÓXIMO PASSO: nenhum do E1; o ORQ integra no lote. Se o lote pedir conflito em render/arsenal-rules.ts, fica a versão do E3 e só o comentário de arsenalLoads.
 
 Itens da auditoria-ui-menus-28-10: 5, 4, 9, 12, 13, 14, 15; mais o 14 da auditoria de jogabilidade (pedido do ORQ).
 

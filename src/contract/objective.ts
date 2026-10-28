@@ -126,7 +126,7 @@ export const ropeTip=(car:{x:number;y:number;heading?:number})=>{const h=unitHea
  * block nele"): the car's body is the Uno's footprint, a box CAR_HALF_LENGTH along the heading and CAR_HALF_WIDTH across
  * it (the renderer's CAR_HALF), not the CAR_RADIUS disc (which left 0.3 u of bumper outside it at each end). Heroes and
  * critters stand clear of the box (carPushOut), pushers lean on it and critters hit it from its edge (carGap). The
- * disc stays where the car itself meets the world (walls, structures, nests, the build rules).
+ * disc stays where the car itself meets the structures, nests and the build rules (the map's walls: carBodyDiscs).
  */
 export const CAR_HALF_LENGTH=1.32,CAR_HALF_WIDTH=.58;
 type CarPlace={x:number;y:number;heading?:number};
@@ -155,6 +155,20 @@ export function carPushOut(car:CarPlace,p:{x:number;y:number},radius:number):{x:
   }else if(ol>ow)l=(q.l<0?-1:1)*(CAR_HALF_LENGTH+radius);
   else w=(q.w<0?-1:1)*(CAR_HALF_WIDTH+radius);
   return {x:car.x+l*q.c-w*q.s,y:car.y+l*q.s+w*q.c};
+}
+/**
+ * NEW-20261028-ORQ-uno-atravessa-tralha (the user, 28/10: "muitas tralhas que vão me atrapalhar a caminhar com o carro
+ * pelo jogo todo"): where the car meets the map (the hero mask) it is its body, not the CAR_RADIUS disc (2 u wide: it
+ * stayed out of every yard behind a one-cell door, 1.5 u). The body as CAR_BODY_DISCS.length discs of CAR_BODY_R along
+ * the heading (a capsule over the box: its sides, its bumpers).
+ */
+export const CAR_BODY_R=CAR_HALF_WIDTH;
+const CAR_BODY_STEP=CAR_HALF_LENGTH-CAR_BODY_R;
+export const CAR_BODY_DISCS=[-CAR_BODY_STEP,0,CAR_BODY_STEP] as const;
+/** The body's discs (centres, radius CAR_BODY_R) at (x, y) with the nose along `heading`. */
+export function carBodyDiscs(x:number,y:number,heading=0):{x:number;y:number;r:number}[]{
+  const h=unitHeading(heading);
+  return CAR_BODY_DISCS.map(l=>({x:x+h.x*l,y:y+h.y*l,r:CAR_BODY_R}));
 }
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;

@@ -19,7 +19,7 @@ import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
 import {barracaColumn,barracaLona} from './stonewards-rules.ts';
-import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
+import {HIT_FLASH_MS,RUN_OVER_MS,WALL_LOW,ranOver,runOverChunks,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
 import {artPiece} from '../art/manifest.ts';
 
@@ -52,6 +52,8 @@ const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,
 const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
 
 interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
+/** A tralha square the Uno ran over: its junk flies apart (uno-atravessa-tralha). */
+interface Burst {g:Phaser.GameObjects.Graphics;x:number;y:number;born:number;chunks:ReturnType<typeof runOverChunks>}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
@@ -98,6 +100,7 @@ export class StonewardsRenderer {
   private flashUntil=new Map<string,number>();
   private marks=new Map<string,NodeMark>();
   private pops:Pop[]=[];
+  private bursts:Burst[]=[];
   private structures:StructureView[]=[];
   /** barracas-no-caminho: a feirinha barraca's footprint drawn without the art (its art is an image in `images`). */
   private barracaGround=new Map<string,Phaser.GameObjects.Graphics>();
@@ -130,7 +133,9 @@ export class StonewardsRenderer {
 
   /** A new authoritative view: structures, nodes, phase; "+N" pops for the units that came out since the last one. */
   push(view:RunView){
+    const was=new Map(this.structures.map(s=>[s.id,s]));
     this.tick=view.tick;this.structures=view.structures;this.objective=objectiveOf(view)!==undefined;
+    if(!this.options.reduced)for(const s of ranOver(was,this.structures,objectiveOf(view)?.car))this.burst(s);
     this.prepare=view.round?.phase==='prepare'&&!view.camp?.wallDown;
     const nodes=this.prepare?view.nodes??[]:[];
     const before=new Map([...this.marks].map(([id,m])=>[id,m.view]));
@@ -175,7 +180,7 @@ export class StonewardsRenderer {
       else if(role==='barraca')this.drawBarraca(s,k,u);
     }
     this.wallGlow.flush(this.glow,k);
-    this.drawPops(k);
+    this.drawPops(k);this.drawBursts(k);
     this.glow.end();
   }
 
@@ -189,6 +194,7 @@ export class StonewardsRenderer {
     this.muralha.destroy();this.glow.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
+    for(const b of this.bursts)b.g.destroy();this.bursts=[];
   }
 
   private project(x:number,y:number){return this.options.projector.project(x,y,this.q);}
@@ -490,6 +496,25 @@ export class StonewardsRenderer {
     const side=CITY_BUILD_CELL*2,c0=s.c!==undefined?s.c*CITY_BUILD_CELL:s.x-side/2,r0=s.r!==undefined?s.r*CITY_BUILD_CELL:s.y-side/2;
     const corners=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]].map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
     g.clear().setDepth(depth).fillStyle(this.c.papel,.9).fillPoints(corners,true).lineStyle(2*k,this.c.breu,1).strokePoints(corners,true);
+  }
+  private burst(s:StructureView){
+    const g=this.scene.add.graphics().setName('tralha-atropelada');
+    this.bursts.push({g,x:s.x,y:s.y,born:this.now,chunks:runOverChunks(s.id.length*31+Math.round(s.x*7+s.y*13))});
+  }
+  /** The run-over junk: chunks thrown out from the square's ground centre, falling back and fading. */
+  private drawBursts(k:number){
+    const tints=[this.c.casca,this.c.pedra,this.c.cartolina];
+    this.bursts=this.bursts.filter(b=>{
+      const age=this.now-b.born;
+      if(age>=RUN_OVER_MS){b.g.destroy();return false;}
+      const t=age/RUN_OVER_MS,s=age/1000,q=this.project(b.x,b.y);
+      b.g.clear().setDepth(this.options.projector.depth(b.x,b.y)+.01).setAlpha(t<.6?1:1-(t-.6)/.4);
+      for(const c of b.chunks){
+        const dx=Math.cos(c.a)*c.v*s,dy=Math.sin(c.a)*c.v*s*.5,lift=Math.max(0,140*s-420*s*s)+10;
+        b.g.fillStyle(tints[c.tint],1).fillRect(q.x+(dx-c.size/2)*k,q.y+(dy-lift-c.size/2)*k,c.size*k,c.size*k);
+      }
+      return true;
+    });
   }
   private drawPops(k:number){
     this.pops=this.pops.filter(p=>{

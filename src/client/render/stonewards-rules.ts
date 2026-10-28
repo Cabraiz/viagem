@@ -117,5 +117,25 @@ export function hpDropped(before:ReadonlyMap<string,number>,after:readonly Struc
   for(const s of after){const old=before.get(s.id);if(old!==undefined&&s.hp<old)out.push(s.id);}
   return out;
 }
+/**
+ * NEW-20261028-ORQ-uno-atravessa-tralha: the map's tralha squares (ids TRALHA_PREFIX, sim/towers/tralha.ts) gone since
+ * the last view with the Uno's centre within RUN_OVER_NEAR u of them: the Uno ran them over (a coleta or a horde far from
+ * the car gets no burst).
+ */
+export function ranOver(before:ReadonlyMap<string,StructureView>,after:readonly StructureView[],car:{x:number;y:number}|undefined):StructureView[]{
+  if(!car)return [];
+  const now=new Set(after.map(s=>s.id)),out:StructureView[]=[];
+  for(const [id,s] of before)if(!now.has(id)&&id.startsWith('tralha')&&Math.hypot(s.x-car.x,s.y-car.y)<=RUN_OVER_NEAR)out.push(s);
+  return out;
+}
+export const RUN_OVER_NEAR=4;
+/** The burst of junk a run-over square throws (ms), and its chunks: angle, speed (px/s at zoom 1), size, colour slot. */
+export const RUN_OVER_MS=520;
+export function runOverChunks(seed:number,n=9){
+  const out:{a:number;v:number;size:number;tint:number}[]=[];
+  let h=(seed*2654435761)>>>0;const rnd=()=>{h=(h^(h>>>15))*2246822507>>>0;h=(h^(h>>>13))*3266489909>>>0;return ((h^=h>>>16)>>>0)/4294967296;};
+  for(let i=0;i<n;i++)out.push({a:(i+rnd()*.8)/n*Math.PI*2,v:60+rnd()*90,size:3+rnd()*4,tint:i%3});
+  return out;
+}
 /** How long a hit structure flashes (ms); never with reduced effects (UX checklist B9). */
 export const HIT_FLASH_MS=140;

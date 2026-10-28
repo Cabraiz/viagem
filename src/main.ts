@@ -28,7 +28,7 @@ import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
 import { emLoop, montarAneis } from './client/ui/insta-aneis.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
-import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
+import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText, soloProgress, type SoloStep } from './client/ui/solo-plan.ts';
 import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -486,6 +486,8 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
   mostrarEscolha(dialog,selected.id);
   dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
+  // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
+  if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);
@@ -517,6 +519,20 @@ const showBots=()=>{
 };
 soloBots.hidden=island;showBots();
 soloBots.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.solo-bots-step');if(b&&!b.disabled){bots=saveBots(storage(),bots+Number(b.dataset.step));showBots();}});
+/** The bar under "Jogar sozinho"'s line while the match opens (0..1; undefined hides it). */
+function soloBar(button:HTMLElement){
+  let bar=button.querySelector<HTMLElement>('.carga');
+  if(!bar){
+    bar=document.createElement('span');bar.className='carga';bar.setAttribute('role','progressbar');bar.setAttribute('aria-label','Carregando a partida');
+    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');bar.hidden=true;bar.innerHTML='<span class="carga-cheio"></span>';
+    const line=rotulo(button);if(line===button)button.append(bar);else line.after(bar);
+  }
+  const el=bar;
+  return {set(fraction:number|undefined){
+    el.hidden=fraction===undefined;if(fraction===undefined)return;
+    const pct=Math.round(fraction*100);el.setAttribute('aria-valuenow',String(pct));el.style.setProperty('--carga',`${pct}%`);
+  }};
+}
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   toMatch();
@@ -530,13 +546,19 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
     finally {releaseDance();button.disabled=false;}
     return;
   }
-  const label=rotulo(button).textContent;rotulo(button).textContent='Preparando…';
+  // auditoria-ui-menus 5: the card says which step is running, over a bar of the real steps (solo-plan.ts).
+  const label=rotulo(button).textContent,parts:Partial<Record<SoloStep,number>>={};
+  const bar=soloBar(button);
+  const showStep=()=>{const p=soloProgress(parts);rotulo(button).textContent=p.text;bar.set(p.fraction);};
+  button.setAttribute('aria-busy','true');showStep();
   const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
-    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
+    await openSolo(selected,nickname.trim(),{bots,
+      onStep:(step,fraction)=>{parts[step]=Math.max(parts[step]??0,fraction);showStep();},
+      onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {releaseDance();button.disabled=false;rotulo(button).textContent=label;}
+  finally {releaseDance();button.disabled=false;button.removeAttribute('aria-busy');bar.set(undefined);rotulo(button).textContent=label;}
 });
 syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,

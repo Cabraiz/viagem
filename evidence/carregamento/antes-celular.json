@@ -1,0 +1,152 @@
+{
+ "url": "https://viagem.cyou",
+ "tela": "retrato",
+ "cpu": 4,
+ "rede": "4g",
+ "rodadas": {
+  "frio": {
+   "menu": 3263,
+   "pronta": 9981,
+   "rede": {
+    "n": 208,
+    "bytes": 455438,
+    "corpo": 4776201,
+    "ultimo": 5315
+   },
+   "linha": [
+    {
+     "ms": 48,
+     "botao": "Preparando…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 3860,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 0%|p0=0",
+     "pronta": false
+    },
+    {
+     "ms": 4510,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 33%|p0=33",
+     "pronta": false
+    },
+    {
+     "ms": 4797,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Tô pronto!|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 6153,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "countdown|Ops, peraí|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 9981,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "",
+     "pronta": true
+    }
+   ]
+  },
+  "quente": {
+   "menu": 852,
+   "pronta": 9597,
+   "rede": {
+    "n": 208,
+    "bytes": 16261,
+    "corpo": 4816284,
+    "ultimo": 4158
+   },
+   "linha": [
+    {
+     "ms": 37,
+     "botao": "Preparando…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 2927,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 0%|p0=0",
+     "pronta": false
+    },
+    {
+     "ms": 3358,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Tô pronto!|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 4809,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "countdown|Ops, peraí|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 7737,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 9597,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "",
+     "pronta": true
+    }
+   ]
+  }
+ }
+}

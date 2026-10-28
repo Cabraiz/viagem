@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BOTS_DEFAULT,BOTS_KEY,SOLO_FAILED,SOLO_GAP_MS,SOLO_MAP,SOLO_RETRY_MS,botsLabel,clampBots,islandFlag,readBots,saveBots,soloErrorText,
-  objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
+  objectiveFromSearch,soloMemory,soloNext,soloPlan,soloProgress,SOLO_STEPS,SOLO_STARTING,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
@@ -117,7 +117,7 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
   assert.match(main,/const island=islandFlag\(location\.search\);/);
   // danca-no-podio: the menu dance lets go of its pages before the island loads (menu-dance.ts hold).
   assert.match(main,/if\(island\)\{\s*const releaseDance=menuDance\.hold\(\);\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
-  assert.match(main,/await openSolo\(selected,nickname\.trim\(\),\{bots,onJoined:/);
+  assert.match(main,/await openSolo\(selected,nickname\.trim\(\),\{bots,\s*onStep:[^\n]*\n\s*onJoined:/);
   assert.equal(main.match(/openExploration\(/g)?.length,1,'the island opens from one place only');
   const lobby=read('src/client/lobby.ts');
   const solo=lobby.slice(lobby.indexOf('export async function openSolo'));
@@ -140,4 +140,31 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
 test('?modo= (D-051, rodada-legado): the solo room is always the nests with the manual combat, whatever the address',()=>{
   for(const s of ['','?modo=ninhos','?modo=ondas','?modo=muralha','?modo=chaveiro','?ilha=1&modo=chaveiro','?modo=ondas&combate=auto',undefined])
     assert.deepEqual(objectiveFromSearch(s),{mode:'ninhos',combat:'manual'},String(s));
+});
+
+test('auditoria-ui-menus 5: the card\'s bar moves only with real steps, and its line names the first one not done',()=>{
+  assert.equal(SOLO_STEPS.reduce((s,x)=>s+x.weight,0).toFixed(2),'1.00','the steps fill the whole bar');
+  assert.deepEqual(soloProgress({}),{fraction:0,text:'Baixando o jogo…'});
+  // The city's map may end before the code: the line stays on the code, the bar has the city's share.
+  assert.deepEqual(soloProgress({city:1}),{fraction:.35,text:'Baixando o jogo…'});
+  assert.deepEqual(soloProgress({code:1,city:.6}),{fraction:.56,text:'Baixando a cidade…'});
+  assert.deepEqual(soloProgress({code:1,city:1}),{fraction:.7,text:'Abrindo a sala…'});
+  assert.deepEqual(soloProgress({code:1,city:1,room:1}),{fraction:.85,text:'Entrando…'});
+  assert.deepEqual(soloProgress({code:1,city:1,room:1,join:1}),{fraction:1,text:'Entrando…'});
+  assert.equal(soloProgress({code:7,city:-1}).fraction,.35,'out-of-range parts are clamped');
+  assert.equal(SOLO_STARTING,'Começando…');
+});
+
+test('auditoria-ui-menus 5: the solo downloads start when the popup opens, and the card shows the steps on a bar',()=>{
+  const main=read('src/main.ts'),lobby=read('src/client/lobby.ts');
+  const confirm=main.slice(main.indexOf("document.getElementById('confirm')!.addEventListener"));
+  assert.ok(confirm.indexOf('m.warmSolo(selected.id)')>confirm.indexOf('dialog.showModal()'),'warm right as the popup opens');
+  assert.doesNotMatch(main,/'Preparando…'/,'no bare "Preparando…" any more');
+  assert.match(main,/bar\.setAttribute\('role','progressbar'\)/);
+  const solo=lobby.slice(lobby.indexOf('export async function openSolo'));
+  assert.match(solo,/const warm=warmSolo\(hero\.id\)/,'the tap reuses what the popup started');
+  assert.ok(solo.indexOf("step('room')")<solo.indexOf('await client.join()')&&solo.indexOf("step('join')")>solo.indexOf('await client.join()'));
+  assert.match(lobby,/options\.solo&&client\.run\?\.phase==='countdown'\?SOLO_STARTING/,'no "Ops, peraí" in a solo countdown');
+  const css=read('src/client/ui/escolha.css');
+  assert.match(css,/#enter-island\[aria-busy=true\]:disabled\{opacity:1\}/,'the card is not faded while it loads');
 });

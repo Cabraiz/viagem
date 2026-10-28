@@ -61,3 +61,10 @@
   /* Deitado a arte larga já vem afastada: inteira, encostada na base. */
   #confirmation.escolha-arte #enter-coop .escolha-img{bottom:30px;height:calc(100% - 34px);object-fit:contain;object-position:50% 100%}
 }
+/* auditoria-ui-menus 5: "Jogar sozinho" while the match opens. The card stays lit (not the faded look of a disabled
+   button), its line names the running step and the bar fills with the real steps (solo-plan.ts soloProgress). */
+#enter-island[aria-busy=true]:disabled{opacity:1}
+#enter-island .carga{position:relative;display:block;height:8px;margin:5px 10px 2px;border-radius:var(--r-pilula);overflow:hidden;background:color-mix(in srgb,var(--c-breu) 55%,var(--c-lilas));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-papel-claro) 35%,transparent)}
+#enter-island .carga[hidden]{display:none}
+#enter-island .carga-cheio{display:block;width:var(--carga,0%);height:100%;border-radius:inherit;background:var(--c-amarelo);transition:width .3s ease-out}
+@media (prefers-reduced-motion:reduce){#enter-island .carga-cheio{transition:none}}

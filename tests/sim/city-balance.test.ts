@@ -215,11 +215,12 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * move; with main's asset v2 the old digests still come out), and for mapa-175-com-viaduto (asset v4: the distances
  * 1.75× shorter, the map lengths × CITY_DISTANCE_SCALE, the nests and the field to it), and for its viaduct (etapa 3: the
  * pillars and the ramp's embankment are solid on the ground, the run starts on the deck, the group behind the team comes
- * on it and the plaza group never takes the N avenue, the team's now).
+ * on it and the plaza group never takes the N avenue, the team's now), and for mapa-conexoes-sem-beco (asset v5: holes
+ * through thin walls and the rubble off the Uno's way open new routes for the bodies).
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'acefb9daa78c73c1','tutorial seed 8 r4':'efa78507dd062e90','plain seed 21 r10':'132d395115bbbcd7',
+  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'a4febc34d85c4284',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

@@ -290,7 +290,11 @@ test('assembled mode ninhos: no round from the director, a wave (map, nests, out
   stepRun(a,ticks(FIRST_EXIT[1]-FIRST_EXIT[0])+2);
   assert.ok(nests.state.sent>0&&nests.state.spawned>0,'a wave came by 90 s');
   // boss-fim-onda-1: the 1st wave's chefão comes at the end of its exit with his own controller (to the Uno), not a wave body.
-  const all=[...a.world.enemies.values()],out=all.filter(e=>!WAVE_BOSS_IDS.includes(e.kind as never)),log=nests.state.log![0];
+  const all=[...a.world.enemies.values()],log=nests.state.log![0];
+  // A map body the heroes' noise woke and that now hunts them (sono 2, caçando) is no wave body (asset v5: a pombo of
+  // the S training band, at the S mouth by 90 s).
+  const hunting=(e:EnemyState)=>sono.bodies.some(b=>b.id===e.id)&&e.memory?.[SIEGE_FLAG]!==1&&e.memory?.sono===2;
+  const out=all.filter(e=>!WAVE_BOSS_IDS.includes(e.kind as never)&&!hunting(e));
   assert.ok(out.length>0&&out.every(e=>e.memory?.[SIEGE_FLAG]===1),'every body of the wave besieges the car');
   assert.ok(log.map>0&&log.nests>=NEST_COUNT&&log.outside>0,`map ${log.map}, nests ${log.nests}, outside ${log.outside}`);
   assert.equal(out.filter(e=>sono.bodies.some(b=>b.id===e.id)).length,log.map,'the map share: plan bodies woken');

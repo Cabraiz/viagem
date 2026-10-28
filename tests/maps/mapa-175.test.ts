@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,CITY_NEST_POOL,citySafePlaces,decodeCityAsset,type Point} from '../../src/maps/index.ts';
-import {PLAZA_DROP,SOURCE_COMMIT,compactedAsset,sourceAsset,sourceAvailable} from '../../scripts/compactar-cidade.ts';
+import {PLAZA_DROP,SOURCE_COMMIT,compactBase,compactedAsset,sourceAsset,sourceAvailable} from '../../scripts/compactar-cidade.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -38,10 +38,13 @@ test('every base is still there: every block of the 1.7× city (but the plaza fo
   const src=await sourceAsset(),U=src.unitsPerCell;
   assert.equal(asset.unitsPerCell,U,'the cell keeps its size');
   assert.equal(m,Math.round(src.cells.w/1.75));
-  const ids=new Set(asset.blocks.map(b=>b.id));
+  const ids=new Set(asset.blocks.map(b=>b.id)),baseIds=new Set((await compactBase()).data.blocks.map(b=>b.id));
   let lost=0;
   for(const b of src.blocks){
     if(PLAZA_DROP.includes(b.id)||ids.has(b.id))continue;
+    // mapa-conexoes-sem-beco (scripts/becos-cidade.ts): the heaps of rubble in the Uno's way are taken off after the
+    // compaction, on purpose (tests/maps/mapa-becos.test.ts); here, the compaction's own blocks.
+    if(b.kind==='rubble'&&baseIds.has(b.id))continue;
     // Only slivers may go: a block of a few cells whose ground a door needed.
     const area=b.rects.reduce((sum,r)=>sum+r[2]*r[3],0)/U/U;
     assert.ok(area<=6,`${b.kind} ${b.id} (${area.toFixed(1)} cells) kept`);lost++;

@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3240,
-  "bytes": 2259545792,
-  "liteBytes": 787558510,
+  "bytes": 2259545976,
+  "liteBytes": 787558554,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28050,11 +28050,11 @@
    "shownPsnr": 46.2
   },
   "menu/insta/logo-gato-nada-pra-comer.webp": {
-   "source": "e9c265a3ab51fa41002c53b09ead9609cb1d046e651e977878fae2918775d6ba",
-   "lite": "57c1028825d59200592df77c7fc42e98f31e1cb60246112776801024bdef8d4a",
-   "bytes": 25112,
-   "liteBytes": 21624,
-   "psnr": 39.8,
+   "source": "c8f375640c577da12a64b04dad00ede26ef83f84042d7c327cc4de24fed36e3b",
+   "lite": "a2bb22070ef7154116b52a92b51f13253e4278a1f1843a75cdd40c084c5ae7ed",
+   "bytes": 25296,
+   "liteBytes": 21668,
+   "psnr": 39.7,
    "shownPsnr": 42
   },
   "menu/insta/logo-maromba.webp": {

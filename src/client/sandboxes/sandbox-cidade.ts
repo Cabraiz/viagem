@@ -83,7 +83,7 @@ import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {buildFacing} from '../sprites/build-facing.ts';
 import {workFacing} from '../sprites/work-facing.ts';
-import {hasWork16} from '../sprites/movement128.ts';
+import {hasWork16,hasDowned16} from '../sprites/movement128.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
@@ -463,8 +463,8 @@ class CitySandbox extends Phaser.Scene {
     const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
     const fell=this.fallen;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,!fell,this.view,undefined,push?.dir??pull,fell?0:danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined,undefined,
-      this.working?workFacing(this.view):buildFacing(this.at,this.defenses.filter(d=>!d.ruined&&this.towerTick<d.readyTick)));
-    if(fell)this.hero.setAngle(-90).setAlpha(.85);else if(this.hero.angle)this.hero.setAngle(0).setAlpha(1);
+      this.working?workFacing(this.view):buildFacing(this.at,this.defenses.filter(d=>!d.ruined&&this.towerTick<d.readyTick)),fell);
+    if(fell)this.hero.setAngle(hasDowned16(classId)?0:-90).setAlpha(.85);else if(this.hero.angle)this.hero.setAngle(0).setAlpha(1);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);

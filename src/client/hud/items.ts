@@ -27,7 +27,7 @@ const items:ItemDisplay[]=[
   {id:'megafone',kind:'passive',name:'Megafone do Carro do Ovo',icon:'megafone',blurb:'Ataques em área maior.',joke:'Olha o ovo!'},
   {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte nos drops e ofertas.',joke:'Aba reta, sorte torta.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'oculos',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
-  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
+  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Cada caixa aberta dá grana.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
   {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'coxinha',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
   // D-051 arsenal (sim/weapons/arsenal.ts, manual combat): the new weapons wait for their stickers (the user's art), the

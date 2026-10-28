@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {ALBEDO_URL} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {existsSync,readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex,artIndex} from '../../src/client/art/manifest.ts';
-import {assetsParaPartida,matchAssets,matchKey,heroSheetUrl,heroMotionUrls,ENDLESS_GROUND} from '../../src/client/preload/match-assets.ts';
+import {assetsParaPartida,matchAssets,matchKey,heroSheetUrl,heroMotionUrls,offerIconUrls,ENDLESS_GROUND} from '../../src/client/preload/match-assets.ts';
 import {directionalSheet} from '../../src/client/sprites/sprite-sheets.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../../src/client/sprites/art-urls.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
@@ -17,7 +17,9 @@ import {framesLoads} from '../../src/client/art/frames-art.ts';
 import {telegraphArtLoads} from '../../src/client/render/telegraph-art.ts';
 import {buildCityArtPlan,cityArtOptions} from '../../src/client/render/city/art-plan.ts';
 import {liveSheets} from '../../src/client/render/city/live/art.ts';
-import {classes} from '../../src/rules/index.ts';
+import {PASSIVE_IDS,classes} from '../../src/rules/index.ts';
+import {itemDisplay} from '../../src/client/hud/items.ts';
+import {uiArtUrl} from '../../src/client/ui/icon.ts';
 
 const ids=classes.map(c=>c.id).filter(id=>spriteCatalog[id]);
 const [A,B,C]=ids;
@@ -47,7 +49,8 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   const wanted=[heroSheetUrl(A),heroSheetUrl(B),heroSheetUrl(C),thumbUrl(A),thumbUrl(B),thumbUrl(C),treeUrl('arvore-nevada'),
     ...heroMotionUrls(A), // own walk and attack clips only (preload-heroi-primeiro): the teammates' come on demand
     ...plan.sheets.filter(s=>s.key.startsWith('city:ground:')).map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
-    ALBEDO_URL]; // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
+    ALBEDO_URL, // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
+    ...offerIconUrls()]; // the upgrade cards' stickers (ofertas-sem-xp-e-icones)
   assert.deepEqual(new Set(all),new Set(wanted));
   for(const url of all)assert.ok(existsSync('public'+url),`${url} is served`);
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
@@ -62,6 +65,22 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
   assert.equal(at(ALBEDO_URL),'P0');
+});
+
+test('real manifest: every upgrade card sticker is downloaded before the match (P1), on both maps',()=>{
+  real();
+  // Card ofertas-sem-xp-e-icones (print of 25/10): Cartão Fidelidade and Café Coado na Meia opened as an empty frame.
+  const icons=offerIconUrls();
+  for(const id of [...PASSIVE_IDS,'heal']){
+    const url=uiArtUrl(itemDisplay(id).icon);
+    assert.ok(url,`${id}: its sticker has imported art`);
+    assert.ok(icons.includes(url!),`${id}: ${url} is preloaded`);
+  }
+  assert.ok(icons.includes('/art/ui/cartao.webp')&&icons.includes('/art/ui/cafe-forte.webp'));
+  for(const map of ['cidade-nevada','infinito'] as const){
+    const list=assetsParaPartida({self:A,others:[],map});
+    for(const url of icons)assert.equal(list.find(a=>a.url===url)?.priority,'P1',`${map}: ${url}`);
+  }
 });
 
 test('real manifest, endless map: no city art; a class with no sheet adds nothing; sizes are carried',()=>{

@@ -99,6 +99,7 @@ import {OPEN_SECONDS} from '../src/sim/crates.ts';
 import {CRATE_STAND} from '../src/sim/bot-loot.ts';
 import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
+import {BOT_WALK_MULT} from '../src/contract/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
@@ -547,6 +548,8 @@ export class NavDriver {
   private boxesRound=-1;
   private readonly loot:NonNullable<ReturnType<typeof cityLoot>>;
   private readonly speed:number;
+  /** Card bots-20-mais-lentos: a bot's walk (u/s), BOT_WALK_MULT of a person's unless it is the person's seat (Simulation.personPace). */
+  private speedOf(id:string){return this.sim.personPace.has(id)?this.speed:this.speed*BOT_WALK_MULT;}
   readonly nav:CityNavigator;readonly sim:Simulation;readonly room:RoomBots;
   private readonly setStick:(id:string,d:Point)=>void;
   constructor(nav:CityNavigator,sim:Simulation,room:RoomBots,setStick:(id:string,d:Point)=>void){
@@ -589,8 +592,8 @@ export class NavDriver {
         const home=homeOf(view,p),toHome=dist(p,home),left=round.phaseEndsTick-tick;
         const recipe=forger===mind.id?pickRecipe(view,mind.memory.refused):undefined;
         const walk=this.loot.distanceToPlaza(p);
-        const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,this.speed)+4*HZ||
-          walk!==undefined&&left<=Math.ceil((walk/this.speed+HOME_MARGIN)*HZ);
+        const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,this.speedOf(mind.id))+4*HZ||
+          walk!==undefined&&left<=Math.ceil((walk/this.speedOf(mind.id)+HOME_MARGIN)*HZ);
         // D-051 (--combat manual): the arsenal's crates come before the gather nodes (a weapon beats a pile of bricks).
         const box=recipe||goHome?undefined:this.boxFor(mind.id,p,left);
         const node=recipe||goHome||box?undefined:this.crateFor(mind.id,p,inside,left)?.node;
@@ -640,7 +643,7 @@ export class NavDriver {
     const fits=(c:Crate)=>{
       const cost=this.nav.crateField(c.node.id,c.node).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;
-      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speed;
+      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speedOf(id);
       return (there+COLLECT_SECONDS+c.seconds+HOME_MARGIN)*HZ<=left;
     };
     const mine=this.targets.get(id);
@@ -668,8 +671,8 @@ export class NavDriver {
     const fits=(c:Point&{id:string})=>{
       const cost=this.nav.crateField(c.id,c).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;
-      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speed,back=this.loot.distanceToPlaza(c)??0;
-      return (there+OPEN_SECONDS[crates.state.crates[c.id].rarity-1]+back/this.speed+HOME_MARGIN)*HZ<=left;
+      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speedOf(id),back=this.loot.distanceToPlaza(c)??0;
+      return (there+OPEN_SECONDS[crates.state.crates[c.id].rarity-1]+back/this.speedOf(id)+HOME_MARGIN)*HZ<=left;
     };
     const mineId=this.boxes.get(id),mine=mineId?at(mineId):undefined;
     if(mine&&fits(mine))return mine;
@@ -781,6 +784,8 @@ export function playRun(o:RunOptions):RunRecord{
   for(let i=0;i<o.players;i++){
     const id=`bot${i+1}`,classId=CLASS_ROTATION[i%CLASS_ROTATION.length];
     sim.addBot(id,botName(getClass(classId)?.name??id,new Set([...sim.players.values()].map(p=>p.name))),classId);room.add(id,i);ids.push(id);cls.push(classId);
+    // Card bots-20-mais-lentos: the first seat stands for the person (a person's walk); the others are the room's bots.
+    if(i===0)sim.personPace.add(id);
   }
   sim.botState=()=>room.state();
   sim.resetRun();room.reset();

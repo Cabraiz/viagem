@@ -124,7 +124,10 @@ export class SpriteMotion {
       this.swing.start=now;this.lastSwingAt=now;
       this.attackUntil=now+this.swing.ms;
     }
-    return now<this.attackUntil?'attack':moving?'walk':'idle';
+    // NEW-20261028-ORQ-atirar-andando (the user: "toda arma, ao atirar, eu posso andar"): a hero walking while it fires
+    // keeps its walk (feet on the ground, the weapon in the hand fires: flash, shot, sound); the whole swing only shows
+    // standing. The swing is still timed, so a hero that stops in the middle of one shows its rest.
+    return moving?'walk':now<this.attackUntil?'attack':'idle';
   }
 }
 

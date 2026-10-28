@@ -10413,6 +10413,186 @@
           ],
           "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
         },
+        "downed16-N": {
+          "file": "gato-nada-pra-comer.downed16-n.ee0843cbd835.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 13,
+            "top": 25,
+            "right": 83,
+            "bottom": 92
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.downed16-n.ee0843cbd835.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ee0843cbd835b913a8e9dc6ba6299f368a56cda41b96745892ec7c5f1eeda437"
+            }
+          ],
+          "sha256": "ee0843cbd835b913a8e9dc6ba6299f368a56cda41b96745892ec7c5f1eeda437"
+        },
+        "downed16-NW": {
+          "file": "gato-nada-pra-comer.downed16-nw.297cc8f5e3d8.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 23,
+            "top": 27,
+            "right": 84,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.downed16-nw.297cc8f5e3d8.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "297cc8f5e3d809b036ac8ee9a16116e8e0aeaf38f586c693ec1ab5f108ef1618"
+            }
+          ],
+          "sha256": "297cc8f5e3d809b036ac8ee9a16116e8e0aeaf38f586c693ec1ab5f108ef1618"
+        },
+        "downed16-S": {
+          "file": "gato-nada-pra-comer.downed16-s.dae84f426174.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 22,
+            "top": 25,
+            "right": 82,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.downed16-s.dae84f426174.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "dae84f426174e66c902d2d6bb0636723157f0acf88eb57a5697e3d959408bd89"
+            }
+          ],
+          "sha256": "dae84f426174e66c902d2d6bb0636723157f0acf88eb57a5697e3d959408bd89"
+        },
+        "downed16-SE": {
+          "file": "gato-nada-pra-comer.downed16-se.e21d0817be3b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 20,
+            "right": 88,
+            "bottom": 90
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.downed16-se.e21d0817be3b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "e21d0817be3b126fdecdaef2b78a9cbec1e68197e547dfec3b7b7b9c5220c991"
+            }
+          ],
+          "sha256": "e21d0817be3b126fdecdaef2b78a9cbec1e68197e547dfec3b7b7b9c5220c991"
+        },
+        "downed16-W": {
+          "file": "gato-nada-pra-comer.downed16-w.b217e82fb831.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 26,
+            "top": 16,
+            "right": 85,
+            "bottom": 91
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.downed16-w.b217e82fb831.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b217e82fb8314f35b3c67c72efe2e10d9a3bb13479e16b6b4f7f76fbc9fced87"
+            }
+          ],
+          "sha256": "b217e82fb8314f35b3c67c72efe2e10d9a3bb13479e16b6b4f7f76fbc9fced87"
+        },
         "hurt16-N": {
           "file": "gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp",
           "cell": [
@@ -12964,7 +13144,7 @@
           "sha256": "a340fd188c368902a83a2c228f7bcb85eabc674d3890b8906955fb9399b90677"
         }
       },
-      "sha256": "21ac8af5b98f03bbbad1205c705f679f37abda6392517f92830fc39cd190e749"
+      "sha256": "5b5bae773880abcc6ce149d6aa5ca6d54e6c37c7247e8da09c4d5649e4e41b0f"
     },
     "mae-pet": {
       "kind": "dir8",
@@ -21769,6 +21949,186 @@
           ],
           "sha256": "39c0a4344d15c25aef17c4d8b1c81c0c20a2886500381b812b00d0c73503054e"
         },
+        "downed16-N": {
+          "file": "vendedor-praia.downed16-n.9781d30c2027.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 15,
+            "top": 22,
+            "right": 86,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.downed16-n.9781d30c2027.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "9781d30c2027004a2a4ad884896694a7dbe3f1876901ff7f2f88ec0a669d318f"
+            }
+          ],
+          "sha256": "9781d30c2027004a2a4ad884896694a7dbe3f1876901ff7f2f88ec0a669d318f"
+        },
+        "downed16-NW": {
+          "file": "vendedor-praia.downed16-nw.fc36ff43bd29.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 17,
+            "top": 24,
+            "right": 82,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.downed16-nw.fc36ff43bd29.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "fc36ff43bd2957f8073ca802f316b10514c31942cc9211975c8be579aada7773"
+            }
+          ],
+          "sha256": "fc36ff43bd2957f8073ca802f316b10514c31942cc9211975c8be579aada7773"
+        },
+        "downed16-S": {
+          "file": "vendedor-praia.downed16-s.2170f184bf11.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 15,
+            "top": 25,
+            "right": 81,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.downed16-s.2170f184bf11.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2170f184bf11b5879f4994caae2fad6c9ef536d091e087f8e41c7cb9d5e72892"
+            }
+          ],
+          "sha256": "2170f184bf11b5879f4994caae2fad6c9ef536d091e087f8e41c7cb9d5e72892"
+        },
+        "downed16-SE": {
+          "file": "vendedor-praia.downed16-se.6b2219f2d946.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 22,
+            "top": 24,
+            "right": 88,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.downed16-se.6b2219f2d946.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "6b2219f2d9468188e861f7cb5ba3a80eac7f5d17981431d57a9a451765dd7faf"
+            }
+          ],
+          "sha256": "6b2219f2d9468188e861f7cb5ba3a80eac7f5d17981431d57a9a451765dd7faf"
+        },
+        "downed16-W": {
+          "file": "vendedor-praia.downed16-w.a7f421ad66fe.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1500,
+          "fps": 10.666666666666666,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 15,
+            "top": 22,
+            "right": 81,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.downed16-w.a7f421ad66fe.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a7f421ad66feea00fdff1221bf65a122465a61039aa1826c8895229c0a192e4c"
+            }
+          ],
+          "sha256": "a7f421ad66feea00fdff1221bf65a122465a61039aa1826c8895229c0a192e4c"
+        },
         "hurt16-N": {
           "file": "vendedor-praia.hurt16-n.3eb185f0eb0b.webp",
           "cell": [
@@ -24320,7 +24680,7 @@
           "sha256": "7f0e9fcc97ee3f8e38243aac98cba7f5245915e92046fb4c54b401776b5b1be5"
         }
       },
-      "sha256": "0d596ad0ec882b3b654020fdad086a4d13834f0847812f1da1af6948eec083ad"
+      "sha256": "23487a6f0861510de2efac7918b824b6f6b1dfe16d1876e2b26da202351a4162"
     },
     "viciado-em-bet": {
       "kind": "dir8",

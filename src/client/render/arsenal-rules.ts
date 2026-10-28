@@ -211,17 +211,17 @@ export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number
 /**
  * Pack 12 fatia A1 (arsenal-completo-no-bau, sim/weapons/pack12.ts A1_PLAYABLE): the weapons on the sim's own patterns.
  * Their shots wear their `projeteis` piece (PACK12_A1_ALIAS); the thrown ones (traque, tijolo) burst with an `efeitos`
- * strip (FIRE_LOOK); the straight shots and the rings show no flash.
+ * strip (FIRE_LOOK); the straight shots show no flash (the rings left the game: sem-arma-girando-no-chao).
  */
-export const PACK12_A1_ITEMS:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa',
-  'vela-esoterica','tijolo-baiano','taro-vencido'];
+export const PACK12_A1_ITEMS:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','buscape','traque',
+  'tijolo-baiano','taro-vencido'];
 /** Every Pack 12 weapon the client shows (fatia A1 and A2). */
 export const PACK12_ITEMS:readonly string[]=[...PACK12_A1_ITEMS,...A2_ITEMS];
 /** Weapon id → its `projeteis` piece (the Pack's id; the two renamed beside their tomes wear the Pack's art). */
 const PACK12_A1_ALIAS:readonly (readonly [string,string])[]=PACK12_A1_ITEMS.map(id=>[id,id==='baladeira'?'estilingue':id==='tampa-voadora'?'tampa-de-panela':id] as const);
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
-  'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
+  'boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
   'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente',
   // Kits de torre (torre-pela-caixa): the tower's sticker on the ground.
   ...KIT_IDS,
@@ -297,7 +297,7 @@ export const coneSteps=(reach:number)=>Math.max(1,Math.round((reach-.5)/.6)+1);
  */
 export const ARSENAL_PROJECTILE_ALIAS:readonly (readonly [string,string])[]=[
   ['pistola','bala-revolver'],['submetralhadora','bala-metralhadora'],['rifle','bala-fuzil'],['rojao','rojao'],
-  ['chinelo-lendario','chinelo-evo'],['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
+  ['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
   ['guarda-chuva-lendario','guarda-chuva'],['pombo-lendario','pombo'],['audio-lendario','audio'],
   ...PACK12_A1_ALIAS,...A2_PROJECTILE_ALIAS,
 ];

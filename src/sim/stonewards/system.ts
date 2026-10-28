@@ -35,6 +35,7 @@ import {blockingCity,createBarricades,damageBarricade,findBarricade,raiseDue,syn
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 import {build as buildDefense,buildFree,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type FreeBuildContext,type TowerResult} from '../towers/system.ts';
 import {coletaStep,coletar as coletarTralha,destruir as destruirTralha,placeTralha,type ColetaOutcome} from '../towers/tralha.ts';
+import {placeFeirinhas} from '../towers/barracas.ts';
 import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,unoAlertStep,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
@@ -396,6 +397,11 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
         if(city&&car&&!state.defenses?.tralha?.placed)placeTralha(ctx,state,{city,car,moto:free.moto?.(ctx.tick),nests:free.nests?.(ctx.tick),onTerrainChanged:free.onTerrainChanged});
         const give=options.tralha.give;
         coletaOutcomes.push(...coletaStep(ctx,options.terrain,state,give,free.onTerrainChanged));
+      }
+      // barracas-no-caminho: the map's feirinhas (once, after the tralha so it lays as before).
+      if(free?.car&&!state.defenses?.feirinhas){
+        const city=blockingCity(options.terrain),car=free.car(ctx.tick);
+        if(city&&car)placeFeirinhas(ctx,state,{city,car,moto:free.moto?.(ctx.tick),nests:free.nests?.(ctx.tick),banks:free.banks?.(ctx.tick),onTerrainChanged:free.onTerrainChanged});
       }
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}

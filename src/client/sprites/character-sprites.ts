@@ -14,7 +14,7 @@ import {movement128Textures,movement128Visible,freeSheet,type Movement128Texture
 import {watchOrphans} from './texture-orphans.ts';
 import {handPoint,type HandPoint} from './hand-points.ts';
 import {HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
-import {DanceGate,DANCE_RATE,type DanceCue} from './hero-dance.ts';
+import {DanceGate,type DanceCue} from './hero-dance.ts';
 
 export type {FigureBox};
 /** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
@@ -432,9 +432,9 @@ export class CharacterSprites {
   }
 }
 
-/** The pose of a dance `ms` after it started: the menu's poses DANCE_RATE times faster, looping. */
-export const danceFrame=(plan:Pick<Movement128Plan,'durationMs'|'frameCount'>,ms:number)=>
-  Math.floor(Math.max(0,ms)*DANCE_RATE/plan.durationMs*plan.frameCount)%plan.frameCount;
+/** The pose of a dance `ms` after it started, looping: a class's own loop at its pace, the menu's poses DANCE_RATE times faster (plan.rate). */
+export const danceFrame=(plan:Pick<Movement128Plan,'durationMs'|'frameCount'|'rate'>,ms:number)=>
+  Math.floor(Math.max(0,ms)*(plan.rate??1)/plan.durationMs*plan.frameCount)%plan.frameCount;
 /** A cache owner standing for `sprite` (its scene, visibility and destroy event), to fetch the dance sheet ahead. */
 function danceFetcher(sprite:Phaser.GameObjects.Sprite):Phaser.GameObjects.Sprite{
   return {get scene(){return sprite.scene;},get active(){return sprite.active;},get visible(){return sprite.visible;},

@@ -15,7 +15,7 @@ import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
 import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
-import {sticker} from '../ui/sticker.ts';
+import {fanSlots,px39Icon,splitGain} from './offer-px39.ts';
 import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerGain,offerRarity,offerValue} from './offer-card.ts';
 import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
@@ -212,11 +212,14 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
+    // px39 (var-39): the cards open as a fan, the default pick in the middle with the gold frame (offer-px39.ts).
+    const slots=fanSlots(offer.choices.length,offer.defaultIndex);
     cards.replaceChildren(...offer.choices.map((choice,index)=>{
       const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
+      card.dataset.fan=slots[index];
       card.classList.toggle('rh-card-default',flags.isDefault);
-      el('span','rh-card-icon',card).innerHTML=sticker(item.icon);
+      el('span','rh-card-icon',card).innerHTML=px39Icon(item.icon);
       // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
       const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
       el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];
@@ -225,7 +228,11 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       el('strong','rh-card-name',body).textContent=item.name;
       // Card upgrades-megabonk: the tome's gain, short and big ("+1 projétil", "+10% dano").
       const gain=offerGain(choice.itemId,choice.level);
-      if(gain)el('b','rh-card-gain',body).textContent=gain;
+      if(gain){
+        const box=el('b','rh-card-gain',body),{big,small}=splitGain(gain);
+        el('span','rh-card-gain-big',box).textContent=big;
+        if(small)box.append(' ',Object.assign(el('span','rh-card-gain-small',box),{textContent:small}));
+      }
       const value=offerValue(choice.itemId,choice.level),line=el('span','rh-card-value',body);
       if(value&&choice.level>1){line.append(`${value.label}: ${value.from} > `);el('b','rh-card-value-new',line).textContent=value.to;}
       else line.textContent=item.blurb;

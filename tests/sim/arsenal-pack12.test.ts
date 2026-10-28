@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {A1_PLAYABLE,PACK12,PACK12_PLAYABLE} from '../../src/sim/weapons/pack12.ts';
+import {isRetired} from '../../src/sim/retired-items.ts';
 import {ARSENAL_DAMAGE,ARSENAL_WEAPONS,NEW_WEAPONS,PACK12_WEAPONS,RARITY_DAMAGE,weaponNoise,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_CATALOG,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {PASSIVE_IDS} from '../../src/rules/passives.ts';
@@ -33,6 +34,7 @@ test('pack12: every weapon has its sticker, and the HUD names it like the sim', 
   for(const w of PACK12){
     assert.ok(existsSync(`public/art/ui/${w.icon}.webp`),`ui/${w.icon}.webp`);
     if(w.id!=='corneta')assert.ok(isStickerName(w.icon),`${w.icon} is a sticker name`);
+    if(isRetired(w.id))continue; // the rings left the game (sem-arma-girando-no-chao)
     const shown=hud.get(w.id);
     assert.ok(shown,`${w.id} in hud/items.ts`);
     assert.equal(shown.kind,'weapon');assert.equal(shown.name,w.name);assert.equal(shown.icon,w.id==='corneta'?'misterio':w.icon);
@@ -48,8 +50,8 @@ test('pack12: rows like the firearms (verde × ARSENAL_DAMAGE × rarity), 4 rari
   }
 });
 
-test('pack12 A1: its eleven are playable (arsenal, catalog, noise, crates by minimum rarity); the others wait', ()=>{
-  const a1=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa','vela-esoterica','tijolo-baiano','taro-vencido'];
+test('pack12 A1: its eight are playable (arsenal, catalog, noise, crates by minimum rarity); the others wait', ()=>{
+  const a1=['baladeira','espeto','sacole','tampa-voadora','buscape','traque','tijolo-baiano','taro-vencido'];
   assert.deepEqual([...A1_PLAYABLE].sort(),[...a1].sort());
   assert.ok(a1.every(id=>PACK12_PLAYABLE.has(id)));
   assert.deepEqual(ARSENAL_WEAPONS.map(w=>w.id),[...NEW_WEAPONS.map(w=>w.id),...PACK12.filter(w=>PACK12_PLAYABLE.has(w.id)).map(w=>w.id)]);

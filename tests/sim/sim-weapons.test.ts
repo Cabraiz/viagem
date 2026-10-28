@@ -104,8 +104,8 @@ function assertGap(ctx:Fake,enemy:string,weapon:string,gap:number){
 
 // ---------- 1. Catalog ----------
 test('catalog: fixed ids, full level tables, pt-BR texts and monotonic power',()=>{
-  assert.deepEqual([...WEAPON_IDS],['chinelo','boleto','cafe','guarda-chuva','pombo','audio']);
-  assert.deepEqual([...EVOLUTION_IDS],['chinelo-evo','boleto-evo','cafe-evo']);
+  assert.deepEqual([...WEAPON_IDS],['boleto','cafe','guarda-chuva','pombo','audio']);
+  assert.deepEqual([...EVOLUTION_IDS],['boleto-evo','cafe-evo']);
   assert.deepEqual(weaponCatalog.all().map(d=>d.id).sort(),[...WEAPON_IDS,...EVOLUTION_IDS].sort());
   for(const id of [...WEAPON_IDS,...EVOLUTION_IDS]){
     const d=def(id),evo=(EVOLUTION_IDS as readonly string[]).includes(id);
@@ -129,7 +129,7 @@ test('catalog: fixed ids, full level tables, pt-BR texts and monotonic power',()
     }
     assert.equal(weaponLevel(d,0),d.levels[0]);assert.equal(weaponLevel(d,99),d.levels[d.maxLevel-1]);
   }
-  const pairs={'chinelo-evo':['chinelo','tenis'],'boleto-evo':['boleto','cartao'],'cafe-evo':['cafe','cafe-forte']};
+  const pairs={'boleto-evo':['boleto','cartao'],'cafe-evo':['cafe','cafe-forte']};
   for(const [id,[base,passive]] of Object.entries(pairs)){const d=def(id);assert.equal(d.base,base);assert.equal(d.passive,passive);}
   assert.ok(def('audio').coneHalfAngle!>0&&def('audio').coneHalfAngle!<Math.PI/2);
 });
@@ -155,36 +155,6 @@ test('catalog: resolveWeapon applies stats, clamps, and never applies might',()=
   }
 });
 
-// ---------- 2. Builds ----------
-function buildRun(weapons:[string,number][]){
-  const ctx=makeCtx(3),p=addPlayer(ctx,'p1',12,12,weapons);
-  const ring=R('chinelo',8).area;
-  for(let k=0;k<8;k++){const a=k*Math.PI/4+.1;addEnemy(ctx,`r${k}`,12+Math.cos(a)*ring,12+Math.sin(a)*ring);}
-  const far=Math.min(R('boleto',8).range,R('pombo',8).range)*.85;
-  assert.ok(far>ring+1.5,'far enemy must be beyond the orbit');
-  addEnemy(ctx,'f0',12,12-far);
-  p.target='f0';
-  const motions=new Set<string>(),sources=new Set<string>();
-  // The slower heroes' shots (HERO_SHOT_SPEED_MULT) need longer to reach the far target: the same flight, more ticks.
-  run(ctx,systems(),Math.round(100*PROJECTILE_SPEED_MULT/M),c=>{for(const q of projs(c)){sources.add(q.source);motions.add(q.motion==='linear'&&q.vx===0&&q.vy===0&&q.rehit!==undefined?'zone':q.motion??'linear');}});
-  noDeadHits(ctx);
-  const dmg:Record<string,number>={};for(const h of ctx.hits)dmg[h.enemy]=(dmg[h.enemy]??0)+h.amount;
-  const ringHit=Object.keys(dmg).filter(k=>k.startsWith('r')).length;
-  return {ctx,dmg,ringHit,motions,sources};
-}
-test('builds: chinelo+cafe and boleto+pombo behave measurably differently on the same layout',()=>{
-  const a=buildRun([['chinelo',8],['cafe',8]]),b=buildRun([['boleto',8],['pombo',8]]);
-  assert.deepEqual([...a.sources].sort(),['cafe','chinelo']);
-  assert.deepEqual([...b.sources].sort(),['boleto','pombo']);
-  assert.ok(a.motions.has('orbit')&&a.motions.has('zone')&&!a.motions.has('homing'),`A motions ${[...a.motions]}`);
-  assert.ok(b.motions.has('homing')&&b.motions.has('linear')&&!b.motions.has('orbit')&&!b.motions.has('zone'),`B motions ${[...b.motions]}`);
-  // Orbit sweeps the whole ring around the player; aimed shots concentrate on the line to the target.
-  assert.ok(a.ringHit>=6,`chinelo+cafe hit only ${a.ringHit}/8 close enemies`);
-  assert.ok(b.ringHit<a.ringHit,`boleto+pombo hit ${b.ringHit} close enemies, A ${a.ringHit}`);
-  assert.ok((b.dmg.f0??0)>0,'boleto+pombo never reached the far tapped target');
-  assert.notDeepEqual(a.dmg,b.dmg);
-});
-
 test('system: damage is base weapon damage (might applied by damageEnemy) and stats drive volleys',()=>{
   const ctx=makeCtx(),p=addPlayer(ctx,'p1',12,12,[['boleto',1]]);p.stats.might=3;
   addEnemy(ctx,'e',13,12);
@@ -204,48 +174,15 @@ test('system: damage is base weapon damage (might applied by damageEnemy) and st
     for(const [id] of all)assert.ok(cm.hits.some(x=>x.weapon===id),`${id} never hit`);
     for(const x of cm.hits)assert.equal(x.amount,R(x.weapon!,lvl[x.weapon!]).damage,`${x.weapon} passed ${x.amount}`);
   }
-  // amount stat adds projectiles to a volley; area stat widens the orbit.
-  const c2=makeCtx(),p2=addPlayer(c2,'p1',12,12,[['boleto',1],['chinelo',1]]);p2.stats.amount=2;
+  // amount stat adds projectiles to a volley.
+  const c2=makeCtx(),p2=addPlayer(c2,'p1',12,12,[['boleto',1]]);p2.stats.amount=2;
   addEnemy(c2,'e',15,12);
-  const c3=makeCtx(),p3=addPlayer(c3,'p1',12,12,[['chinelo',1]]);p3.stats.area=2;
-  run(c2,systems(),1);run(c3,systems(),1);
+  run(c2,systems(),1);
   assert.equal(projs(c2,'boleto').length,R('boleto',1,{amount:2}).amount);
-  assert.equal(projs(c2,'chinelo').length,R('chinelo',1,{amount:2}).amount);
-  assert.deepEqual([fires(c2,'boleto').length,fires(c2,'chinelo').length],[1,1],'one fire event per volley');
-  assert.ok(projs(c3,'chinelo')[0].orbitRadius!>projs(c2,'chinelo')[0].orbitRadius!);
-});
-
-test('system: orbiters re-anchor to the moving owner and vanish when the owner goes down',()=>{
-  const ctx=makeCtx(),p=addPlayer(ctx,'p1',12,12,[['chinelo',3]]);
-  run(ctx,systems(),2);
-  p.x=15;p.y=13;run(ctx,systems(),1);
-  const orb=projs(ctx,'chinelo');assert.ok(orb.length>0);
-  for(const q of orb){assert.equal(q.motion,'orbit');assert.ok(Math.abs(Math.hypot(q.x-15,q.y-13)-q.orbitRadius!)<1e-6);}
-  p.downed={sinceTick:ctx.tick,bleedOutTick:1e9,progress:0};
-  run(ctx,systems(),1);
-  assert.equal(projs(ctx,'chinelo').length,0);
+  assert.equal(fires(c2,'boleto').length,1,'one fire event per volley');
 });
 
 // ---------- 3. Evolutions ----------
-test('evolution: chinelo-evo flings linear sandals that chinelo lv8 never does',()=>{
-  const seen=(id:string,level:number)=>{
-    const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[[id,level]]);
-    for(let k=0;k<4;k++)addEnemy(ctx,`e${k}`,12+5*Math.cos(k*1.6),12+5*Math.sin(k*1.6));
-    const w=R(id,level),all=new Map<string,WeaponProjectile>();
-    run(ctx,systems(),2*(w.durationTicks+w.cooldownTicks)+3,c=>{for(const q of projs(c))if(!all.has(q.id))all.set(q.id,{...q});});
-    noDeadHits(ctx);
-    return [...all.values()];
-  };
-  const base=seen('chinelo',8),evo=seen('chinelo-evo',1);
-  assert.ok(base.some(q=>q.motion==='orbit'));
-  assert.ok(!base.some(q=>(q.motion??'linear')==='linear'),'chinelo lv8 flung something');
-  const flung=evo.filter(q=>q.motion==='linear'&&Math.hypot(q.vx,q.vy)>0);
-  assert.ok(evo.some(q=>q.motion==='orbit')&&flung.length>=R('chinelo-evo',1).amount,`flung ${flung.length}`);
-  assert.ok(flung.every(q=>q.source==='chinelo-evo'));
-  // Flung "outward": velocity points away from the owner.
-  for(const q of flung)assert.ok((q.x-12)*q.vx+(q.y-12)*q.vy>0,'flung sandal moves toward the owner');
-});
-
 test('evolution: boleto-evo returns, has infinite pierce, and hits once per pass',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto-evo',1]]);
   const w=R('boleto-evo',1);
@@ -341,12 +278,11 @@ test('projectiles: overlapping area hitboxes of one group share the per-enemy co
   assert.equal(c2.projectiles.size,2,'area projectiles never consume pierce');
 });
 
-test('weapons: orbit and zones with amount>1 respect rehit per enemy',()=>{
-  for(const id of ['chinelo','cafe','guarda-chuva']){
+test('weapons: zones with amount>1 respect rehit per enemy',()=>{
+  for(const id of ['cafe','guarda-chuva']){
     const ctx=makeCtx(),p=addPlayer(ctx,'p1',12,12,[[id,8]]);p.stats.amount=3;
     const w=R(id,8,{amount:3});
-    const orbitAt=id==='chinelo'?w.area:0;
-    addEnemy(ctx,'e',12+orbitAt,12);
+    addEnemy(ctx,'e',12,12);
     run(ctx,systems(),w.durationTicks+w.cooldownTicks+w.durationTicks);
     const t=assertGap(ctx,'e',id,w.rehitTicks);
     assert.ok(t.length>=1,`${id} never hit`);
@@ -365,7 +301,7 @@ test('projectiles: a dying enemy is damaged once and killed once when two projec
   assert.equal(ctx.events.filter(e=>e.event.type==='kill').length,1);
   noDeadHits(ctx);
   // Same through the weapon system: many pombos/boletos at weak enemies.
-  const c2=makeCtx(5),p=addPlayer(c2,'p1',12,12,[['pombo',8],['boleto',8],['audio',8],['chinelo',8]]);p.stats.amount=4;
+  const c2=makeCtx(5),p=addPlayer(c2,'p1',12,12,[['pombo',8],['boleto',8],['audio',8],['cafe',8]]);p.stats.amount=4;
   for(let i=0;i<20;i++)addEnemy(c2,`w${i}`,12+Math.cos(i)*(1+i*.2),12+Math.sin(i)*(1+i*.2),{hp:8,maxHp:8});
   run(c2,systems(),80);
   noDeadHits(c2);
@@ -381,7 +317,7 @@ test('cap: spawnProjectile refuses at the cap and the systems never exceed it',(
   const c2=makeCtx();
   for(let i=0;i<PROJECTILE_CAP;i++)spawnProjectile(c2,shot());
   assert.equal(spawnProjectile(c2,shot()),undefined);assert.equal(c2.projectiles.size,PROJECTILE_CAP);
-  const c3=makeCtx(9),p=addPlayer(c3,'p1',12,12,[...WEAPON_IDS.map(id=>[id,8] as [string,number]),['chinelo-evo',1],['boleto-evo',1]]);
+  const c3=makeCtx(9),p=addPlayer(c3,'p1',12,12,[...WEAPON_IDS.map(id=>[id,8] as [string,number]),['boleto-evo',1]]);
   p.stats.amount=10;p.stats.cooldown=.1;p.stats.duration=3;
   for(let i=0;i<30;i++)addEnemy(c3,`e${i}`,12+Math.cos(i)*(1+i*.15),12+Math.sin(i)*(1+i*.15));
   let peak=0;
@@ -513,24 +449,24 @@ test('skips: spectator, offline, downed, eliminated and dead players never fire'
 });
 
 test('cooldown: weapons fire exactly on their ready ticks',()=>{
-  const ctx=makeCtx();const p=addPlayer(ctx,'p1',12,12,[['boleto',1],['chinelo',1]]);addEnemy(ctx,'e',13,12);
-  const b=R('boleto',1),c=R('chinelo',1),period=c.durationTicks+c.cooldownTicks;
+  const ctx=makeCtx();const p=addPlayer(ctx,'p1',12,12,[['boleto',1],['cafe',1]]);addEnemy(ctx,'e',13,12);
+  const b=R('boleto',1),c=R('cafe',1),period=c.durationTicks+c.cooldownTicks;
   const n=Math.max(3*b.cooldownTicks,2*period)+1;
   run(ctx,systems(),n);
   const ticksOf=(id:string)=>fires(ctx,id).map(e=>e.tick);
   const expect=(step:number)=>Array.from({length:Math.floor((n-1)/step)+1},(_,i)=>1+i*step);
   assert.deepEqual(ticksOf('boleto'),expect(b.cooldownTicks));
-  assert.deepEqual(ticksOf('chinelo'),expect(period));
+  assert.deepEqual(ticksOf('cafe'),expect(period));
   assert.equal(p.weaponReady.boleto,ticksOf('boleto').at(-1)!+b.cooldownTicks);
   for(const t of new Set(fires(ctx).map(e=>e.tick)))
-    for(const id of ['boleto','chinelo'])assert.ok(fires(ctx,id).filter(e=>e.tick===t).length<=1,'more than one fire event per volley');
+    for(const id of ['boleto','cafe'])assert.ok(fires(ctx,id).filter(e=>e.tick===t).length<=1,'more than one fire event per volley');
 });
 
 test('determinism: same setup gives identical projectiles, enemies, events and hits',()=>{
   const once=()=>{
     const ctx=makeCtx(11);
     addPlayer(ctx,'p1',10,12,WEAPON_IDS.map(id=>[id,4]),{target:'e3'});
-    addPlayer(ctx,'p2',14,12,[['chinelo-evo',1],['boleto-evo',1],['cafe-evo',1]],{facing:{x:0,y:1}});
+    addPlayer(ctx,'p2',14,12,[['boleto-evo',1],['cafe-evo',1]],{facing:{x:0,y:1}});
     for(let i=0;i<16;i++)addEnemy(ctx,`e${i}`,12+Math.cos(i*.9)*(1.5+i*.3),12+Math.sin(i*.9)*(1.5+i*.3),{hp:300,maxHp:300});
     run(ctx,systems(),150);
     noDeadHits(ctx);
@@ -547,7 +483,7 @@ test('expiry: projectiles are removed at untilTick and weapon projectiles all ex
   const q=spawnProjectile(ctx,shot({untilTick:5}))!;
   run(ctx,[createProjectileSystem()],4);assert.ok(ctx.projectiles.has(q.id));
   run(ctx,[createProjectileSystem()],1);assert.equal(ctx.projectiles.has(q.id),false);
-  const c2=makeCtx(),p=addPlayer(c2,'p1',12,12,[...WEAPON_IDS.map(id=>[id,8] as [string,number]),['chinelo-evo',1],['boleto-evo',1],['cafe-evo',1]]);
+  const c2=makeCtx(),p=addPlayer(c2,'p1',12,12,[...WEAPON_IDS.map(id=>[id,8] as [string,number]),['boleto-evo',1],['cafe-evo',1]]);
   addEnemy(c2,'e',13,12);
   const sys=systems();
   run(c2,sys,10);assert.ok(c2.projectiles.size>0);
@@ -615,19 +551,7 @@ test('regression: hostile shots resolve along their path, not by player order',(
 });
 
 test('regression: evolving retires base projectiles next tick and inherits the base timer',()=>{
-  const ctx=makeCtx(),p=addPlayer(ctx,'p1',10,10,[['chinelo',8]]);addEnemy(ctx,'E',12,10,{radius:.5});
-  const sys=systems();run(ctx,sys,5);
-  const ready=p.weaponReady.chinelo;
-  assert.ok(projs(ctx,'chinelo').length>0&&ready>ctx.tick+1);
-  p.build.weapons=[{id:'chinelo-evo',level:1}];
-  const t0=ctx.tick;run(ctx,sys,1);
-  assert.equal(projs(ctx,'chinelo').length,0,'base orbiters survived the evolution');
-  assert.equal(fires(ctx,'chinelo-evo').length,0,'evolution fired on the swap tick');
-  assert.equal(p.weaponReady.chinelo,undefined);assert.equal(p.weaponReady['chinelo-evo'],ready);
-  run(ctx,sys,ready-ctx.tick);
-  assert.deepEqual(ctx.hits.filter(h=>h.tick>t0&&h.weapon==='chinelo'),[]);
-  assert.deepEqual(fires(ctx,'chinelo-evo').map(e=>e.tick),[ready]);
-  // Same for cafe puddles (stationary, not anchored).
+  // Cafe puddles (stationary, not anchored).
   const c2=makeCtx(),p2=addPlayer(c2,'p1',10,10,[['cafe',8]]);addEnemy(c2,'E',11,10);
   const s2=systems();run(c2,s2,3);
   const ready2=p2.weaponReady.cafe;
@@ -639,7 +563,7 @@ test('regression: evolving retires base projectiles next tick and inherits the b
   run(c2,s2,10);
   assert.deepEqual(c2.hits.filter(h=>h.tick>t1&&h.weapon==='cafe'),[]);
   // A non-weapon source (tower, skill) with rehit is never retired by evolution logic.
-  const c3=makeCtx();addPlayer(c3,'p1',10,10,[['cafe-evo',1],['chinelo-evo',1]]);addEnemy(c3,'T',20,20);
+  const c3=makeCtx();addPlayer(c3,'p1',10,10,[['cafe-evo',1],['boleto-evo',1]]);addEnemy(c3,'T',20,20);
   const torre=spawnProjectile(c3,shot({source:'torre',x:20,y:20,radius:1,rehit:5,group:'p1:torre',pierce:PIERCE_INFINITE,untilTick:100}))!;
   run(c3,systems(),12);
   assert.ok(c3.projectiles.has(torre.id));
@@ -663,30 +587,6 @@ test('regression: boomerang does not double-hit an enemy at the turnaround, but 
   assert.ok(hitsOn(c2,'T').length>=2,'path enemy should be hit on both passes');
 });
 
-test('regression: chinelo-evo spawns all orbiters before flings when near the cap',()=>{
-  const w=R('chinelo-evo',1),cap=w.amount+2;
-  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['chinelo-evo',1]]);
-  run(ctx,systems(cap),1);
-  const all=projs(ctx,'chinelo-evo');
-  assert.equal(all.filter(q=>q.motion==='orbit').length,w.amount);
-  assert.equal(all.filter(q=>q.motion==='linear').length,2);
-  assert.equal(ctx.projectiles.size,cap);
-});
-
-// ---------- BUG-20261009-N5-chinelo-buraco-orbita: the starting weapons answer a hug ----------
-test('orbit: a chinelo hits an enemy hugging a player who stands still (inside the ring), and still skips the far one',()=>{
-  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['chinelo',1]]);
-  const w=R('chinelo',1);
-  // Gosma contact distance: enemy radius .32 + player radius .22 + .05.
-  addEnemy(ctx,'hug',12+.59,12,{radius:.32});
-  addEnemy(ctx,'far',12,12+w.area+1.5,{radius:.32});
-  run(ctx,systems(),Math.round(2.5*SIM_HZ));
-  assert.ok(hitsOn(ctx,'hug').length>=1,'the hugging enemy is never hit');
-  assert.equal(hitsOn(ctx,'far').length,0,'the spoke must not reach past the ring');
-  assertGap(ctx,'hug','chinelo',w.rehitTicks);
-  noDeadHits(ctx);
-});
-
 test('cone: with nobody in the facing cone, the audio wave turns to the nearest enemy in reach (a hug from behind)',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['audio',1]],{facing:{x:1,y:0}});
   const w=R('audio',1);
@@ -698,31 +598,6 @@ test('cone: with nobody in the facing cone, the audio wave turns to the nearest 
   assert.ok(f.dx<-.99,'the wave points at the nearest enemy');
 });
 
-/** Hits per second on one still enemy at `dist` from a still chinelo owner (its own context, so no crowding). */
-function orbitRate(weapon:string,dist:number,seconds=20){
-  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[[weapon,weapon==='chinelo'?1:1]]);
-  addEnemy(ctx,'e',12+dist,12,{radius:.32});
-  run(ctx,systems(),Math.round(seconds*SIM_HZ));
-  return hitsOn(ctx,'e').filter(h=>h.weapon===weapon).length/seconds;
-}
-test('orbit: hugging the owner is no safer and no deadlier than standing on the ring (L1 and evolution)',t=>{
-  const rates=['chinelo','chinelo-evo'].map(id=>({id,hug:orbitRate(id,.59),ring:orbitRate(id,R(id,1).area)}));
-  for(const r of rates)t.diagnostic(`${r.id}: hugging ${r.hug.toFixed(2)} hits/s, on the ring ${r.ring.toFixed(2)} hits/s`);
-  for(const {id,hug,ring} of rates){
-    assert.ok(hug>0,`${id}: the hug is never answered`);
-    assert.ok(hug<=ring*1.25&&hug>=ring*.6,`${id}: hug ${hug.toFixed(2)} vs ring ${ring.toFixed(2)} hits/s`);
-  }
-});
-test('orbit: every chinelo hit pushes the enemy away from the owner, also from inside the ring',()=>{
-  for(const [x,y] of [[.59,0],[0,-.59],[-.4,.4]] as const){
-    const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['chinelo',1]]);
-    const e=addEnemy(ctx,'e',12+x,12+y,{radius:.32});
-    let knock:{x:number;y:number}|undefined;
-    run(ctx,systems(),Math.round(3*SIM_HZ),()=>{if(e.knock&&!knock)knock={...e.knock};});
-    assert.ok(knock,'never pushed');
-    assert.ok(knock.x*x+knock.y*y>0,`pushed toward the hero from (${x},${y}): ${JSON.stringify(knock)}`);
-  }
-});
 test('cone: a tapped target in reach but outside the facing cone is the one the turned wave hits',()=>{
   const ctx=makeCtx();const w=R('audio',1);
   addPlayer(ctx,'p1',12,12,[['audio',1]],{facing:{x:1,y:0},target:'tapped'});
@@ -785,7 +660,7 @@ test('velocidade: a fired boleto flies at the heroes shot speed and still covers
   assert.ok(ticksAlive>=w.durationTicks-1,`alive ${ticksAlive} ticks`);
 });
 
-test('velocidade: the pombo homes at the heroes shot speed with the same factor on the turn per tick (same curve per unit flown); flung sandals 8 × M u/s for 1 / M s',()=>{
+test('velocidade: the pombo homes at the heroes shot speed with the same factor on the turn per tick (same curve per unit flown)',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['pombo',1]]);addEnemy(ctx,'e',17,12);
   run(ctx,systems(),1);
   const [q]=projs(ctx,'pombo');
@@ -793,12 +668,6 @@ test('velocidade: the pombo homes at the heroes shot speed with the same factor 
   assert.ok(Math.abs(Math.hypot(q.vx,q.vy)-weaponLevel(def('pombo'),1).speed*M)<1e-9);
   assert.ok(Math.abs(q.turn!-.25*M)<1e-12,`turn ${q.turn}`);
   assert.equal(q.untilTick-ctx.tick,R('pombo',1).durationTicks);
-  // chinelo-evo: the flung sandals (tuned 8 u/s for 1 s) fly 8 × M u/s for 1 / M s.
-  const c2=makeCtx();addPlayer(c2,'p1',12,12,[['chinelo-evo',1]]);
-  const evo=R('chinelo-evo',1),flung:{v:number;life:number}[]=[];const seen=new Set<string>();
-  run(c2,systems(),2*(evo.durationTicks+evo.cooldownTicks)+3,c=>{for(const p of projs(c,'chinelo-evo'))if(p.motion==='linear'&&!seen.has(p.id)){seen.add(p.id);flung.push({v:Math.hypot(p.vx,p.vy),life:p.untilTick-c.tick});}});
-  assert.ok(flung.length>0,'sandals flung');
-  for(const f of flung){assert.ok(Math.abs(f.v-8*M)<1e-9,`fling speed ${f.v}`);assert.equal(f.life,Math.round(SIM_HZ/M),'fling life 1 / M s');}
 });
 
 test('velocidade: the offer text shows the real flight seconds of a travelling weapon (boleto lv2: +0,1 s of table, 1 / M × that)',()=>{

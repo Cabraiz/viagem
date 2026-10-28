@@ -48,7 +48,7 @@ test('the map\'s barricadas: laid once, rows away from the car, blockers that ne
   const g=rig(),laid=g.squares();
   assert.ok(laid.length>=TRALHA_GROUPS,`laid ${laid.length}`);
   assert.ok(laid.length<=TRALHA_GROUPS*TRALHA_GROUP_CELLS);
-  assert.equal(g.terrain.blockers().length,laid.length*BARRICADA_DISCS,'BARRICADA_DISCS blocker discs each');
+  assert.equal(g.terrain.blockers().filter(b=>b.id.startsWith('tralha')).length,laid.length*BARRICADA_DISCS,'BARRICADA_DISCS blocker discs each');
   // barricada-tocar-no-mapa: 2×1 pieces turned along their row, end to end (2 cells apart, never overlapping).
   for(const p of laid)assert.deepEqual(pieceCells(p.kind,p.rot??0),p.rot?[1,2]:[2,1]);
   for(let i=1;i<laid.length;i++){

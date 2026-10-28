@@ -1,6 +1,7 @@
 import {artIndexVersion,artPiece,artUrl} from '../art/manifest.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,HERO_GAIT,type HeroDirection} from './sprite-motion.ts';
 import type {FigureBox} from './sprite-catalog.ts';
+import {DANCE_RATE} from './hero-dance.ts';
 
 export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
@@ -15,6 +16,8 @@ export interface Movement128Plan {
   pivotX?:number;
   /** M16 run and push: the pose by the ground walked and the planted foot's travel (runPhase). */
   phase?:RunPhase;
+  /** The dance (danceFrame): its clock runs this many times faster than `durationMs` (the menu's dance128); 1 when absent. */
+  rate?:number;
 }
 /**
  * A run's phase table (card passo-3x-mais-lento): per pose, `d` the ground it covers in figure heights (the stance poses
@@ -75,14 +78,20 @@ export function movement128Plan(id:string,motion:DetailedMotion,direction:HeroDi
     columns:16,rows:8,frameCount:128,durationMs,loop:motion==='walk',anchor:[.5,.875],height:f.height,figure:f.figure};
   plans.set(key,plan);return plan;
 }
+/** A class's own dance loop (card dancas-5-herois-16q, scripts/import-danca-loop.mjs): 16 to 64 poses (the user asked for ~48 at 10 a second, a calm but fluid loop of ~5 s). */
+export const DANCE_LOOP_FRAMES={min:16,max:64} as const;
 /**
  * The hero's dance (card danca-no-jogo, scripts/import-danca-jogo.mjs): the menu's 128 frontal poses on a 16×8 sheet of
- * 96 px cells, the ground on the anchor and `height` the median pose, so it draws 96/height like a rest. One sheet for
- * every direction (the dance faces the camera). A manifest plan only: asking never downloads it.
+ * 96 px cells, the ground on the anchor and `height` the median pose, so it draws 96/height like a rest, played
+ * DANCE_RATE times faster. One sheet for every direction (the dance faces the camera). A class with a `dance-loop` file
+ * (card dancas-5-herois-16q: 16 to 64 poses drawn on its rest S, `height` and `pivotX` the rest's) dances that instead,
+ * at its own `durationMs`. A manifest plan only: asking never downloads it.
  */
 export function dancePlan(id:string):Movement128Plan|undefined{
   current();const key=`sprite128:${id}:dance`;
   if(plans.has(key))return plans.get(key)??undefined;
+  const loop=danceLoopPlan(id);
+  if(loop!==undefined){plans.set(key,loop);return loop??undefined;}
   const f=artPiece('personagens',id)?.files.dance128,p=f?.pages?.[0],original=f?.file&&artUrl('personagens',f.file);
   if(!f||!original||f.cell[0]!==96||f.cell[1]!==96||f.frames!==128||f.pages?.length!==1||!p||p.file!==f.file||p.columns!==16||
     p.rows!==8||p.firstFrame!==0||p.frameCount!==128||f.loop!==true||typeof f.durationMs!=='number'||!(f.durationMs>0)||
@@ -90,8 +99,21 @@ export function dancePlan(id:string):Movement128Plan|undefined{
     plans.set(key,null);return;
   }
   const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:16,rows:8,
-    frameCount:128,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure};
+    frameCount:128,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure,rate:DANCE_RATE};
   plans.set(key,plan);return plan;
+}
+/** The class's `dance-loop` plan; null when the file is there but malformed (no dance128 fallback: it was removed), undefined without one. */
+function danceLoopPlan(id:string):Movement128Plan|null|undefined{
+  const f=artPiece('personagens',id)?.files['dance-loop'];
+  if(!f)return;
+  const p=f.pages?.[0],original=f.file&&artUrl('personagens',f.file),frames=f.frames;
+  if(!original||typeof frames!=='number'||!Number.isInteger(frames)||frames<DANCE_LOOP_FRAMES.min||frames>DANCE_LOOP_FRAMES.max||f.revision!==16||f.cell[0]!==96||f.cell[1]!==96||
+    f.pages?.length!==1||!p||p.file!==f.file||!Number.isInteger(p.columns)||p.columns<1||p.rows!==Math.ceil(frames/p.columns)||p.firstFrame!==0||
+    p.frameCount!==frames||f.loop!==true||typeof f.durationMs!=='number'||!(f.durationMs>0)||f.anchor?.[0]!==.5||f.anchor[1]!==.875||
+    typeof f.height!=='number'||!Number.isFinite(f.height)||f.height<4||f.height>96||!box(f.figure)||
+    typeof f.pivotX!=='number'||!Number.isFinite(f.pivotX)||f.pivotX<=0||f.pivotX>=96)return null;
+  return {key:`sprite96:${id}:dance`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:p.columns,rows:p.rows,
+    frameCount:frames,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure,pivotX:f.pivotX};
 }
 /** One resting pose per direction, in the same oblique camera and coordinate system as the detailed motions. */
 export function movementIdle8Plan(id:string):Movement128Plan|undefined{

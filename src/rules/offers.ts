@@ -24,7 +24,7 @@ export const HEAL_AMOUNT=30;
 export const BASE_CHOICES=3,MAX_CHOICES=4;
 
 const EVO_SUFFIX='-evo';
-/** Base weapon of an evolution (chinelo-evo -> chinelo); other ids map to themselves. */
+/** Base weapon of an evolution (boleto-evo -> boleto); other ids map to themselves. */
 export const baseItemId=(id:string)=>id.endsWith(EVO_SUFFIX)?id.slice(0,-EVO_SUFFIX.length):id;
 
 const slotsOf=(build:PlayerBuild,def:ItemDef):{list:OwnedItem[];max:number}=>

@@ -330,6 +330,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+      banks:()=>banks?.places??[],
     }:{}}:{}),
   },cp?.stonewards);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
@@ -450,6 +451,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
       // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
       ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
+      // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
+      ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
+      ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],

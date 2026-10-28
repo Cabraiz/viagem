@@ -92,7 +92,7 @@ test('rematch reset is deterministic and clears world, combat fields and id coun
   for(const p of runA.players.values()){
     const twin=runB.players.get(p.id)!;
     assert.deepEqual(p.weaponReady,{});assert.deepEqual(p.build,twin.build);
-    assert.deepEqual(p.build.weapons.map(w=>[w.id,w.level]),[['chinelo',1]],'class kit starting weapon');
+    assert.deepEqual(p.build.weapons.map(w=>[w.id,w.level]),[['audio',1]],'class kit starting weapon');
     assert.deepEqual(p.build.passives,[]);
     assert.equal(p.target,undefined);assert.equal(p.downed,undefined);assert.ok(!p.eliminated);
     assert.equal(p.hp,p.stats.maxHp);assert.equal(p.stats.maxHp,110,'base 100 + cidadao-comum kit bonus');

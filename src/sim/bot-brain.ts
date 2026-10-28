@@ -127,8 +127,8 @@ export const NEST_THREAT_RADIUS=40;
 export const LOOT_CAR_THREAT=12;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
- * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
- * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP). With other weapons,
+ * only orbit weapons (they hit within their `area`; none is in the game since sem-arma-girando-no-chao), inside that ring (ninhos-padrao:
+ * at 2.8 u a lone bot's orbit never reached the siege at the car, so it got no kill and no XP). With other weapons,
  * within the longest `range` of them (carro-cedo-1p: a solo with only the faca, range 1.3, stood at 2.8 u from the
  * two critters at the car and never cut one; they took the car's 120 hits by minute 5 in ~1/5 of the 1p runs).
  */
@@ -211,6 +211,12 @@ export const CAR_ROPE_BOT_DOT=.7;
  * the push stays as it was (the moto would start by itself only after 75 s).
  */
 export const PUSH_TRIP_SECONDS=10;
+/**
+ * Mode 'ninhos' (bot-3p-longe-do-carro): with fewer than NEST_PUSH_TEAM standing players the pushers go only to a moto
+ * within NEST_PUSH_NEAR u of the car. Two of three bots walked ~60 u to a dead moto in the first minutes, pulled ~20
+ * map critters along and the team fell at 3:10 before any wave (the third alone at the car). The moto starts by itself.
+ */
+export const NEST_PUSH_TEAM=4,NEST_PUSH_NEAR=20;
 /**
  * D-048, the chaveiro's bill (the vaquinha at the end since NEW-20261014-ORQ-carteira-e-pix: equal parts from every
  * seat's wallet, the richest cover the rest, then debt): each bot always keeps its part of CHAVEIRO_KEEP_SHARE × the
@@ -359,7 +365,8 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   // Only a crew can push (PUSH_BOTS standing players, people included): a bot alone would leave the car for nothing
   // while the moto starts by itself anyway (balanco-pos-1-7 part B: a solo bot stood ~75 s at each dead moto).
   const crew=view.players.filter(standing).length>=PUSH_BOTS;
-  let pushers=crew&&o.moto.mode==='morta'?byDistance(moto,ready,PUSH_RADIUS).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  const small=nests&&view.players.filter(standing).length<NEST_PUSH_TEAM&&dist(moto,o.car)>NEST_PUSH_NEAR;
+  let pushers=crew&&!small&&o.moto.mode==='morta'?byDistance(moto,ready,PUSH_RADIUS).slice(0,PUSH_BOTS).map(p=>p.id):[];
   // In the intermission, only a trip that is back at the car before the wave (PUSH_TRIP_SECONDS).
   const round=view.round;
   if(pushers.length&&round?.phase==='prepare'){

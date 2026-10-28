@@ -7,8 +7,10 @@ import {SIM_HZ} from '../../contract/index.ts';
 import {HERO_SHOT_SPEED_MULT} from '../../rules/index.ts';
 import {ARSENAL_WEAPONS,legendaryWeapons} from './arsenal.ts';
 
-export const WEAPON_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'] as const;
-export const EVOLUTION_IDS=['chinelo-evo','boleto-evo','cafe-evo'] as const;
+// The Chinelo da Mãe and its Havaianas do Caos left the game (NEW-20261027-ORQ-sem-arma-girando-no-chao: nothing spins
+// around the hero as an aura). An old checkpoint that still holds them drops them on load (sim/retired-items.ts).
+export const WEAPON_IDS=['boleto','cafe','guarda-chuva','pombo','audio'] as const;
+export const EVOLUTION_IDS=['boleto-evo','cafe-evo'] as const;
 export type WeaponId=typeof WEAPON_IDS[number]|typeof EVOLUTION_IDS[number];
 
 /**
@@ -133,21 +135,6 @@ function withDescribe(def:Omit<WeaponDef,'describe'>,intro:string,unit:readonly 
 
 const defs:WeaponDef[]=[
   withDescribe({
-    id:'chinelo',kind:'weapon',name:'Chinelo da Mãe',icon:'chinelo',maxLevel:8,pattern:'orbit',
-    quip:'Volta sempre. Igual mãe.',
-    levels:[
-      //  dmg cd  amt area spd  dur pierce kb  hit range
-      lv(10,2.5,2,1.6,3.2,3,INF,.3,.5,0),
-      lv(12,2.5,2,1.6,3.2,3,INF,.3,.5,0),
-      lv(12,2.5,2,1.8,3.6,3,INF,.3,.5,0),
-      lv(12,2.5,3,1.8,3.6,3,INF,.3,.5,0),
-      lv(14,2.5,3,1.8,3.6,3.5,INF,.3,.5,0),
-      lv(14,2.2,3,1.9,3.8,3.5,INF,.35,.5,0),
-      lv(14,2.2,4,1.9,3.8,3.5,INF,.35,.5,0),
-      lv(16,2,4,2,4.2,4,INF,.4,.5,0),
-    ],
-  },'Chinelos giram em volta de você. Bicho que encostar leva a chinelada que você levou na infância.',['chinelo','chinelos']),
-  withDescribe({
     id:'boleto',kind:'weapon',name:'Boleto Vencido',icon:'boleto',maxLevel:8,pattern:'pierce',
     quip:'Venceu ontem. Os juros chegam hoje.',
     levels:[
@@ -218,12 +205,6 @@ const defs:WeaponDef[]=[
       lv(12,1.8,3,3.5,0,.2,INF,.6,.2,3.5),
     ],
   },'Manda um áudio de 5 minutos na sua frente. Se ali não tem ninguém, vira pro bicho mais perto. Todo bicho no caminho escuta tudo.',['direção','direções']),
-  withDescribe({
-    id:'chinelo-evo',kind:'evolution',name:'Havaianas do Caos',icon:'chinelo-evo',maxLevel:1,pattern:'orbit',
-    base:'chinelo',passive:'tenis',evolved:{flingOnCycle:true},
-    quip:'Todo mundo usa. Todo mundo apanha.',
-    levels:[lv(20,1.5,5,2.2,4.6,4,INF,.8,.45,0)],
-  },'Evolução! Cinco chinelos em órbita e, a cada giro novo, mais cinco voando longe.',['chinelo','chinelos']),
   withDescribe({
     id:'boleto-evo',kind:'evolution',name:'Carnê Infinito',icon:'boleto-evo',maxLevel:1,pattern:'pierce',
     base:'boleto',passive:'cartao',evolved:{returns:true},

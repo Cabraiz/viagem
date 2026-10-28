@@ -20,8 +20,8 @@ import {WEAPON_CATALOG} from '../../src/sim/weapons/catalog.ts';
 import {PASSIVES as PASSIVE_DEFS} from '../../src/rules/passives.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../src/rules/waves.ts';
 
-const WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
-const EVOLUTIONS=['chinelo-evo','boleto-evo','cafe-evo'];
+const WEAPONS=['boleto','cafe','guarda-chuva','pombo','audio'];
+const EVOLUTIONS=['boleto-evo','cafe-evo'];
 const PASSIVES=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao'];
 
 test('round chip shows Round N/10 with critters in a wave and a countdown in the interval',()=>{
@@ -192,7 +192,7 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
   const full=fakeResult(6,true,true).players[0];
   assert.equal(full.weapons.length+full.passives.length,12);
   const portrait=buildIcons(full,BUILD_SLOTS.portrait);
-  assert.deepEqual(portrait.items.map(i=>i.id),['chinelo-evo','boleto']);
+  assert.deepEqual(portrait.items.map(i=>i.id),['boleto-evo','rojao']);
   assert.equal(portrait.hidden.length,10);assert.equal(portrait.items.length+1,BUILD_SLOTS.portrait);
   assert.equal(buildIcons(full,BUILD_SLOTS.landscape).items.length,5);
   // Fits exactly: no chip wasted on a single hidden item.
@@ -288,9 +288,9 @@ test('D-050 (replaced D-021 in waves): a held offer shows only in the level-up p
 });
 
 test('etiqueta price: "Nv" plus the number, "Novo!" on the star, sentence-case words, no caps anywhere',()=>{
-  assert.deepEqual(priceTag('chinelo',6),{kind:'level',label:'Nv 6',level:6});
+  assert.deepEqual(priceTag('boleto',6),{kind:'level',label:'Nv 6',level:6});
   assert.deepEqual(priceTag('pombo',1),{kind:'new',label:'Novo!'});
-  assert.deepEqual(priceTag('chinelo-evo',1),{kind:'evo',label:'Evolução'});
+  assert.deepEqual(priceTag('boleto-evo',1),{kind:'evo',label:'Evolução'});
   assert.deepEqual(priceTag(HEAL_CHOICE,1),{kind:'snack',label:'Lanche'});
   for(const scenario of ['offer','offer-prepare','offer-round','offer-heal'] as const)for(const offer of fakeView(scenario,1).offers)
     for(const c of offer.choices){const label=priceTag(c.itemId,c.level).label;assert.notEqual(label,label.toUpperCase(),label);}

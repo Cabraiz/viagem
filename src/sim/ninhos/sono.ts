@@ -552,10 +552,8 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     recruit(ctx,route,count,tune){
       const room=Math.min(count,maxAwake-ctx.enemies.size);
       if(room<=0||!asleep.size||!route.length)return 0;
-      // Not one asleep on a viaduct's deck (card bot-parceiro-e-bichos-parados): from there a siege finds no car (the
-      // enemy-ai looks for structures on the ground), so a car-minded body (foco) stood on the deck, recruited again by
-      // every wave share after the safety net put it back to sleep (seed 1 6p, z-590, 210 s on).
-      const near=[...asleep.values()].filter(e=>order.has(e.id)&&e.andar!==1).map(e=>({e,d:routeDistance(e,route)}))
+      // One asleep on a viaduct's deck walks down the ramp to the car (enemy-ai, ritmo-morto-e-viaduto).
+      const near=[...asleep.values()].filter(e=>order.has(e.id)).map(e=>({e,d:routeDistance(e,route)}))
         .sort((a,b)=>a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
       const n=wakeAll(ctx,near,'chamado');
       for(const id of near){const e=ctx.enemies.get(id);if(e){(e.memory??={})[SIEGE]=1;tune?.(e);}}

@@ -57,7 +57,7 @@
  * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {BASE_STATS,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
+import {BASE_STATS,BOT_WALK_MULT,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
@@ -76,6 +76,13 @@ import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
+/**
+ * Card bots-20-mais-lentos: the bot's own walk (u/s), what its trips are timed by (home before the wave, a crate, an
+ * obra, a fallen friend, the moto, an ATM): the room walks its bots at BOT_WALK_MULT of a person (maps heroSpeed). A
+ * protocol bot walks faster, so its trips only end with more spare. `walkScale`: BrainInput.walkScale (the bench's
+ * person seat walks at 1).
+ */
+export const botSpeed=(terrain?:TerrainField,walkScale=BOT_WALK_MULT)=>heroSpeed(terrain)*walkScale;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */
 export const LEASH=6.5,BOSS_LEASH=9;
 /** Critters closer than this push the bot away. */
@@ -239,6 +246,11 @@ export interface BrainInput {
    * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
    */
   teamBots?:readonly string[];
+  /**
+   * Card bots-20-mais-lentos: this bot's share of a person's walk, what its own trips are timed by (botSpeed). Unset:
+   * BOT_WALK_MULT, the room's bots; the balance bench's person seat (Simulation.personPace) passes 1.
+   */
+  walkScale?:number;
   /** D-051: the room's combat. 'manual': hold the attack with a critter in reach, no skill. Unset: the automatic weapons. */
   combat?:CombatMode;
   /** D-051 mode 'ninhos' (room bots): at the car a bot walks into its orbit ring to hit the siege (siegeStand). Unset: DANGER+.2. */
@@ -316,7 +328,7 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   // In the intermission, only a trip that is back at the car before the wave (PUSH_TRIP_SECONDS).
   const round=view.round;
   if(pushers.length&&round?.phase==='prepare'){
-    const city=cityTerrainOf(terrain),car=homeOf(view,moto),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+    const city=cityTerrainOf(terrain),car=homeOf(view,moto),speed=botSpeed(terrain),left=round.phaseEndsTick-view.tick;
     const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
     const back=walk(moto,car);
     // A bot already at the moto owes only what is left of the push (o.moto.push, 0..1) plus the margin: the 10 s are the
@@ -411,7 +423,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
   if(grana>=bankTarget(view))return undefined;
   const open=view.banks.filter(b=>b.state!=='sem-cedulas'&&b.saldo>0);
   if(!open.length)return undefined;
-  const city=cityTerrainOf(terrain),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+  const city=cityTerrainOf(terrain),speed=botSpeed(terrain),left=round.phaseEndsTick-view.tick;
   const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p))
     .filter(p=>!objectiveTask(view,p.id,bots,forger,terrain));
@@ -663,7 +675,7 @@ export function decide(input:BrainInput):Decision{
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
     const late=prepare&&!!round&&!!loot.goal&&round.phaseEndsTick-tick<=
-      ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/heroSpeed(input.terrain)+LOOT_SPARE_SECONDS)*HZ;
+      ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/botSpeed(input.terrain,input.walkScale)+LOOT_SPARE_SECONDS)*HZ;
     if(loot.goal&&!late){
       decision.mode='loot';
       const close=dist(at,loot.goal.at)<=(loot.goal.stand?CRATE_STAND:.25);
@@ -712,7 +724,7 @@ export function decide(input:BrainInput):Decision{
     const needed=recipe==='reparo'&&!!wall&&wall.hp<wall.maxHp*REPAIR_BELOW;
     let site:Point|undefined,building=false;
     if(towers&&!needed){
-      const speed=heroSpeed(input.terrain),end=round.phaseEndsTick,from=Math.max(tick,towers.orderFrom??tick);
+      const speed=botSpeed(input.terrain,input.walkScale),end=round.phaseEndsTick,from=Math.max(tick,towers.orderFrom??tick);
       const back=(p:Point)=>returnTicks(city?botRouteDistance(city,p,home):dist(p,home),speed);
       // The estimate: the straight line × TOWER_DETOUR, or through the base (both from the cached field home), the shorter.
       const walk=(p:Point,exact:boolean)=>{
@@ -745,7 +757,7 @@ export function decide(input:BrainInput):Decision{
     // Home on the horn (island), or on its own walk back. City (BUG-20261013-E4-corneta-jogador-longe): the bot keeps
     // gathering until its own walk home (+4 s) is all the intermission has left; a horn sized by someone else's walk
     // (a far teammate) would call it home with the crates still out. A builder's trip ('build') goes first either way.
-    const goHome=(!city&&view.camp?.hornEndsTick!==undefined)||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
+    const goHome=(!city&&view.camp?.hornEndsTick!==undefined)||left<=returnTicks(walkHome,botSpeed(input.terrain,input.walkScale))+4*HZ||!view.nodes?.length;
     if(building){
       decision.mode='build';
       if(site)want=go(site);
@@ -802,7 +814,7 @@ export function decide(input:BrainInput):Decision{
   // Skill: something close and it is ready (the room answers whether it went off).
   // D-051: no skill in the manual combat.
   if(input.combat!=='manual'&&close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
-  const fallen=rescueOf(view,selfId,at,terrain);
+  const fallen=rescueOf(view,selfId,at,terrain,input.walkScale);
   const hpShare=me.maxHp>0?me.hp/me.maxHp:1;
   want=add(want,repel(view.enemies,at,hpShare<.4?2.2:1.4));
   // Hostile shots heading our way: sidestep.
@@ -906,7 +918,7 @@ const CAR_HELP_NEAR=4,CAR_RING=CAR_PUSH_REACH+.4;
  * The fallen friend this bot goes to: the nearest within RESCUE_REACH; else, up to RESCUE_FAR, one this bot is the
  * nearest standing bot to (ties: the lower id) and can reach in time (rescueFits).
  */
-function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undefined):{p:PlayerRunView;at:Point}|undefined{
+function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undefined,walkScale?:number):{p:PlayerRunView;at:Point}|undefined{
   const downs:{p:PlayerRunView;at:Point;d:number}[]=[];
   for(const p of view.players){
     if(p.id===selfId||!p.downed||p.eliminated||p.online===undefined)continue;
@@ -923,14 +935,17 @@ function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undef
   for(const f of downs){
     if(f.d>RESCUE_FAR)break;
     if(bots.some(b=>{const d=dist(b.at,f.at);return d<f.d||d===f.d&&b.id<selfId;}))continue;
-    if(rescueFits(at,f.at,f.p.downed!.bleedOutTick-view.tick,terrain))return f;
+    if(rescueFits(at,f.at,f.p.downed!.bleedOutTick-view.tick,terrain,walkScale))return f;
   }
   return undefined;
 }
-/** A walk from `at` to a fallen friend (along the streets in the city) that leaves RESCUE_SPARE s of its `ticksLeft`. */
-export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainField|undefined){
+/**
+ * A walk from `at` to a fallen friend (along the streets in the city) that leaves RESCUE_SPARE s of its `ticksLeft`, at
+ * the bot's walk (botSpeed; `walkScale` as BrainInput's).
+ */
+export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainField|undefined,walkScale?:number){
   const city=cityTerrainOf(terrain),walk=city?botRouteDistance(city,at,to):dist(at,to);
-  return Number.isFinite(walk)&&walk/heroSpeed(terrain)+RESCUE_SPARE<=ticksLeft/HZ;
+  return Number.isFinite(walk)&&walk/botSpeed(terrain,walkScale)+RESCUE_SPARE<=ticksLeft/HZ;
 }
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}

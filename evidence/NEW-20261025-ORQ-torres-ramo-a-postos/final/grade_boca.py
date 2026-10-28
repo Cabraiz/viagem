@@ -2,7 +2,7 @@
 import sys
 from PIL import Image, ImageDraw
 ID = sys.argv[1]; F = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-fire = Image.open(f'saida/torres/{ID}/fire.png'); cw = fire.width // 8; ch = fire.height // 8
+fire = Image.open(f"{__import__('os').environ.get('SAIDA', 'saida/torres')}/{ID}/fire.png"); cw = fire.width // 8; ch = fire.height // 8
 Z = 2; out = Image.new('RGBA', (4 * cw * Z, 2 * ch * Z), (150, 150, 150, 255)); d = ImageDraw.Draw(out)
 for i, n in enumerate(['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE']):
     fr = fire.crop((F * cw, i * ch, (F + 1) * cw, (i + 1) * ch)).resize((cw * Z, ch * Z))

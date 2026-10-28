@@ -1,27 +1,35 @@
 # Etapa 2: assemble the crew of one tower from anim-<id>-<DIR>/meio.png (4x4: idle poses 0-7, fire 8-15; drawn S, SW,
 # W, NW, N; SE/E/NE mirrored) into the importer's torres/<id>/idle.png + fire.png (8 rows S,SW,W,NW,N,NE,E,SE x 8
-# frames) + meta.json. Scale per sheet: pose 0 (neutral) opaque height = HERO_PX. Every pose stands on the anchor: feet
-# = its lowest opaque row, x = the centre of its lowest 12 % (feet planted, no slide). The parapet in front hides what
-# is below the V line y = feet + DY - 0.5*|x - ax|, at most 28 px above the feet (DY from cut-<id>.json; none = nothing
-# hidden).
-#   python montar_crew.py <id> <fps fire> [height px] [cell width px: 256, wider for a crew of three]
+# frames) + meta.json. Scale per sheet: pose 0 (neutral) opaque height = HERO_PX x regua.json escala x fator[id] (the
+# single ruler of 28/10: escala is the absolute size of every crew, fator evens out the helmets of one tower). Every pose
+# stands on the anchor: feet = its lowest opaque row, x = the centre of its lowest 12 % (feet planted, no slide). The
+# feet go on the deck floor at the base's mount (mount-<id>.json); the front parapet of the base, whose top is the V
+# y = apex_y - slope*|x - apex_x| in base pixels (parapeito-<id>.json), hides what is below it (none = nothing hidden).
+#   python montar_crew.py <id> <fps fire> [cell width px: 256, wider for a crew of three]
 import sys, json, os
 import numpy as np
 from PIL import Image
 from lib import key, grid, grid_gaps, bounds, clean_cell, clear_border, sheet_on_grey, HERO_PX
 
 ID, FPS_FIRE = sys.argv[1], int(sys.argv[2])
-HEIGHT = int(sys.argv[3]) if len(sys.argv) > 3 else HERO_PX
+REGUA = json.load(open('regua.json'))
+HEIGHT = HERO_PX * REGUA['escala'] * REGUA['fator'].get(ID, 1)
+# REGUA1=1: escala and fator 1 (the sheets the muzzles are read on); NOCUT=1: no parapet (the ruler board); SAIDA: output dir
+if os.environ.get('REGUA1'): HEIGHT = HERO_PX
 CH = 256
-CW = int(sys.argv[4]) if len(sys.argv) > 4 else 256
+CW = int(sys.argv[3]) if len(sys.argv) > 3 else 256
 AX, AY = CW // 2, 220
 DRAWN = ['S', 'SW', 'W', 'NW', 'N']
 MIRROR = {'NE': 'NW', 'E': 'W', 'SE': 'SW'}
 ORDER = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE']
-OUT = f'saida/torres/{ID}'
+OUT = f"{os.environ.get('SAIDA', 'saida/torres')}/{ID}"
 os.makedirs(OUT, exist_ok=True)
-cutf = f'cut-{ID}.json'
-DY = json.load(open(cutf))['dy'] if os.path.exists(cutf) else None
+MOUNT = json.load(open(f'mount-{ID}.json'))['mount']
+parf = f'parapeito-{ID}.json'
+PAR = json.load(open(parf)) if os.path.exists(parf) and not os.environ.get('NOCUT') else None
+# the parapet V in sheet pixels: apex row DY below the feet (>= 0, or the feet hide and the importer's foot check fails)
+DY, DX = (PAR['apex'][1] - MOUNT[1], PAR['apex'][0] - MOUNT[0]) if PAR else (None, 0)
+assert DY is None or DY >= 0, f'{ID}: the mount must be on the floor behind the parapet (apex y {PAR["apex"][1]} < feet y {MOUNT[1]})'
 
 
 def feet(c):
@@ -59,8 +67,7 @@ def build(d, s=None):
         if DY is not None:
             a = np.array(cell)
             yy, xx = np.mgrid[0:CH, 0:CW]
-            # never above AY - 28: the importer wants the drawing's lowest point within 0.12 cell of the anchor
-            cut = np.maximum(AY + DY - 0.5 * np.abs(xx - AX), AY - 28)
+            cut = AY + DY - PAR.get('slope', 0.5) * np.abs(xx - AX - DX)
             a[..., 3] = (a[..., 3] * np.clip(cut - yy + 0.5, 0, 1)).astype(np.uint8)
             cell = Image.fromarray(a, 'RGBA')
         out.append(clear_border(cell, 2))
@@ -80,14 +87,15 @@ for name, rng in (('idle', range(0, 8)), ('fire', range(8, 16))):
     sheet.save(f'{OUT}/{name}.png')
 json.dump({'cell': [CW, CH], 'anchor': [0.5, round(AY / CH, 4)], 'fps': {'idle': 4, 'fire': FPS_FIRE}},
           open(f'{OUT}/meta.json', 'w'))
-print(ID, 'escala', {d: round(s, 3) for d, s in scales.items()}, 'corte', DY)
-# contact sheets: one row per direction, 16 poses numbered (idle 0-7 | fire 8-15)
-for d in ORDER:
-    sheet_on_grey(poses[d], 16, scale=0.5, labels=[str(i) for i in range(16)]).save(f'contato-crew-{ID}-{d}.png')
-rows = [Image.open(f'contato-crew-{ID}-{d}.png') for d in ORDER]
-st = Image.new('RGBA', (rows[0].width, sum(r.height for r in rows)))
-for i, r in enumerate(rows):
-    st.alpha_composite(r.convert('RGBA'), (0, i * rows[0].height))
-st.save(f'contato-crew-{ID}.png')
-for d in ORDER:
-    os.remove(f'contato-crew-{ID}-{d}.png')
+print(ID, 'altura', round(HEIGHT, 1), 'escala', {d: round(s, 3) for d, s in scales.items()}, 'parapeito', PAR, 'pe', MOUNT)
+if not os.environ.get('SAIDA'):
+    # contact sheets: one row per direction, 16 poses numbered (idle 0-7 | fire 8-15)
+    for d in ORDER:
+        sheet_on_grey(poses[d], 16, scale=0.5, labels=[str(i) for i in range(16)]).save(f'contato-crew-{ID}-{d}.png')
+    rows = [Image.open(f'contato-crew-{ID}-{d}.png') for d in ORDER]
+    st = Image.new('RGBA', (rows[0].width, sum(r.height for r in rows)))
+    for i, r in enumerate(rows):
+        st.alpha_composite(r.convert('RGBA'), (0, i * rows[0].height))
+    st.save(f'contato-crew-{ID}.png')
+    for d in ORDER:
+        os.remove(f'contato-crew-{ID}-{d}.png')

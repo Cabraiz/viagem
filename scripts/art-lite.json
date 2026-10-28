@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3271,
-  "bytes": 2247091500,
-  "liteBytes": 786521094,
+  "bytes": 2245683342,
+  "liteBytes": 786467478,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -33578,28 +33578,28 @@
    "shownPsnr": 38.2
   },
   "towers/atiradores-do-telhado/fire.webp": {
-   "source": "6af00bbced1903fe0b72eea5f3a8f7ddd66638b8803c9f4906ab3c3767a13221",
-   "lite": "dda4f02d88f2f59a2d00444568b45d6f2bfb41e74741a9f57b9e7ce4a03c1a9a",
-   "bytes": 3836102,
-   "liteBytes": 495682,
+   "source": "89257cd2b75bec4ac3ce6193e01aade902b276f88cdac27e70c8ecfd07c312cf",
+   "lite": "c4b5069d5856e3e70bdc05c345b7cb5588c8743b4773559c4e5ac3f894206a25",
+   "bytes": 3111612,
+   "liteBytes": 453758,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 38.5,
-   "shownPsnr": 38.5
+   "psnr": 39.3,
+   "shownPsnr": 39.3
   },
   "towers/atiradores-do-telhado/idle.webp": {
-   "source": "11e4bf88714553f0ba4c326b10175de618e4db7f498f7bf3ff717a999037a6a0",
-   "lite": "087b1171e99674b26f41828e060975c8ec273791036fd5a01d427491021cd4c1",
-   "bytes": 3920288,
-   "liteBytes": 481404,
+   "source": "14af65ac3c35eca16f3a622a6c1be6bf0759fea777bd6f4e457c7c8981e43942",
+   "lite": "8d0bf9cd4c6ea4971aa3e466c8dda3dc3620d2fe812a5a07236d43a6f70570ae",
+   "bytes": 3156406,
+   "liteBytes": 440570,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 38.4,
-   "shownPsnr": 38.4
+   "psnr": 39.3,
+   "shownPsnr": 39.3
   },
   "towers/equipe-antimaterial/base.webp": {
    "source": "99b99cc7cc367d9e8354e08ee3742712db2bf55df59cdcb2124c48f43897d43f",
@@ -33614,28 +33614,28 @@
    "shownPsnr": 37.6
   },
   "towers/equipe-antimaterial/fire.webp": {
-   "source": "2ca9fa7a48c8c630426664c47bcc4c630149385ab3f8673826870518e73b36b0",
-   "lite": "f5a19e004b73bc1acfc7ceda6d22c8c3d5612bfdd02628c0c713965b1a2d0795",
-   "bytes": 2028162,
-   "liteBytes": 284296,
+   "source": "98e4ebb54fc9edf0db4ad4cec19ba28f1f3f06d480155a18e4c4c06d7ed8af20",
+   "lite": "b9d45bef39af94048d5d2e80ea8245c4214cb4b52bbf99e4a40de87752660a9c",
+   "bytes": 2396962,
+   "liteBytes": 325114,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 42.9,
-   "shownPsnr": 42.9
+   "psnr": 42.2,
+   "shownPsnr": 42.2
   },
   "towers/equipe-antimaterial/idle.webp": {
-   "source": "acf868108417e0a1dda45034997128c94db03af864cfa84c2a1cbcd15d440c2c",
-   "lite": "fdf5b926666be94d3be42a11d926b6d08ebcc60ba5d4e453437d0c6434c13f60",
-   "bytes": 1840636,
-   "liteBytes": 265454,
+   "source": "339018bb1ff84f4b97e3f148caae99efc1a3891720b666e5694b47c271406de8",
+   "lite": "06f7d122e4d64a98eb222e3afff7b5201df25f23d5e5644f362396dc1300f5ef",
+   "bytes": 2173366,
+   "liteBytes": 302616,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 42.7,
-   "shownPsnr": 42.7
+   "psnr": 41.9,
+   "shownPsnr": 41.9
   },
   "towers/guarnicao-do-predio/base.webp": {
    "source": "ef73293d18a4b2a761cd02cfc5b4196d868d2369e0e24ec5d5b12c66b2e6c97b",
@@ -33650,28 +33650,28 @@
    "shownPsnr": 39.8
   },
   "towers/guarnicao-do-predio/fire.webp": {
-   "source": "740e77ca07e3ed30affcf13ae0c8c97ddb1bddf3abd42704d00130b0456acd50",
-   "lite": "b309ea4d4058addaeccce6b02f6b00e530a5210fc64c8cc041c8660c5488d027",
-   "bytes": 3233746,
-   "liteBytes": 444264,
-   "liteCell": [
-    192,
-    128
-   ],
-   "psnr": 39.6,
-   "shownPsnr": 39.6
-  },
-  "towers/guarnicao-do-predio/idle.webp": {
-   "source": "4f44a1a7ac356850df8fac1a876eaf5e58b83de3b3019b1f723c9071d1084303",
-   "lite": "7a5f61b5b813399874e1e51f15f287bda99670e4624fe69aff2c0d59d37dd68b",
-   "bytes": 3297790,
-   "liteBytes": 412772,
+   "source": "22c1b6425921bc425dc70f17c92b4dae5fafd6806e31ca11c33fab9b855e1baa",
+   "lite": "284562a210201c0e63fcd8493d042ad4fa1377b9ea64dab82e0059d62e249b15",
+   "bytes": 3097258,
+   "liteBytes": 437146,
    "liteCell": [
     192,
     128
    ],
    "psnr": 39.5,
    "shownPsnr": 39.5
+  },
+  "towers/guarnicao-do-predio/idle.webp": {
+   "source": "b6e0f72d66759a2b7939d46308438ee2effed611ca28d0ebc27841ce1f06bab7",
+   "lite": "6d82097c0f8cfebbb82a12db0cec6f66caf8d399d807c34ad84964752e113e94",
+   "bytes": 3243638,
+   "liteBytes": 434152,
+   "liteCell": [
+    192,
+    128
+   ],
+   "psnr": 39.1,
+   "shownPsnr": 39.1
   },
   "towers/guindaste-de-municao/base.webp": {
    "source": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a",
@@ -33854,28 +33854,28 @@
    "shownPsnr": 38.9
   },
   "towers/ninho-de-metralhadora/fire.webp": {
-   "source": "5b6e014e342440a5826311414903d593693d79206b9d84d408272dce685887a8",
-   "lite": "3005b638ffce83ed86615b2671cdaac58c3f2699651df3043d739da1d7ce9734",
-   "bytes": 2506744,
-   "liteBytes": 377718,
+   "source": "7ff9650b3c044649bc70f2ad45618c674c4e744db99c527ff3e452a0b393f4b0",
+   "lite": "a1ead9aacf80915af68e0854f2c0cf9feb02ae0be463061665486c0df3a2d5fd",
+   "bytes": 2169492,
+   "liteBytes": 326624,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 41.2,
-   "shownPsnr": 41.2
+   "psnr": 41.8,
+   "shownPsnr": 41.8
   },
   "towers/ninho-de-metralhadora/idle.webp": {
-   "source": "6b4983a3063b54c6c5bf5a7805d53d91d22f1d47fd376db27285850022c2a100",
-   "lite": "8f10822ad6284e209b16977f80e2b6ce10c43992fdff623afd894834a2897eae",
-   "bytes": 2522404,
-   "liteBytes": 364936,
+   "source": "aebf3dff3edfc5241d4722417e0d60857165f0d3d76a1d08390973a7220f56c4",
+   "lite": "001ce698f9e4b4205abe083a512ddbe9db4b5de7db0c0d57153dd85f757a8f2b",
+   "bytes": 2181944,
+   "liteBytes": 314662,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 41.4,
-   "shownPsnr": 41.4
+   "psnr": 42,
+   "shownPsnr": 42
   },
   "towers/ninho-do-sniper/base.webp": {
    "source": "e6c2989339d9bdd2a4bf61ae6c5fbe9f8d128c87f00bb19aeca89f050bb87ee3",
@@ -33890,28 +33890,28 @@
    "shownPsnr": 40.1
   },
   "towers/ninho-do-sniper/fire.webp": {
-   "source": "d51ceacdcdcf349e392c5725751fe1445f760eb998e3ed52f6d3b15be19d134a",
-   "lite": "1a4c005e58bde5289873cabd772d735103b65fa04e3b2cee9d3a57b334a91446",
-   "bytes": 2090056,
-   "liteBytes": 300370,
+   "source": "e8f209634f923a557695e65c7d81f4fdbb0986b0387e530d53ab9f65e189005c",
+   "lite": "0e12e60ee76cc541dfbb64cf252166261e7ae1d3931551c9993c0420c0ccdc6a",
+   "bytes": 1965710,
+   "liteBytes": 286370,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 42.7,
-   "shownPsnr": 42.7
+   "psnr": 43,
+   "shownPsnr": 43
   },
   "towers/ninho-do-sniper/idle.webp": {
-   "source": "43b71fc6532cc45374e5efbe667e48caf82c3445b21f60a3da98d66a20eca1bd",
-   "lite": "4bd4ce26094335b3e729ac125fb35acda88e7b6bbd638f4a3a13f73d3b095c2b",
-   "bytes": 2028888,
-   "liteBytes": 291442,
+   "source": "138ebad21d1ee7ec1af679e53f31aa0731d036f629f7ec927f384da58a3c7334",
+   "lite": "5611f383f69214bf805d963411ae123626fd7fdf80849a497c6e64c312ddac41",
+   "bytes": 1906084,
+   "liteBytes": 277698,
    "liteCell": [
     192,
     128
    ],
-   "psnr": 42.8,
-   "shownPsnr": 42.8
+   "psnr": 43,
+   "shownPsnr": 43
   },
   "towers/obuseiro/base.webp": {
    "source": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958",
@@ -34046,28 +34046,28 @@
    "shownPsnr": 40.2
   },
   "towers/vigia-do-predio/fire.webp": {
-   "source": "1c5049740b018552651e185c01d4867fe9d122a906f8cca3abbe2e1c6e5c1a73",
-   "lite": "b7c64292450b955f69f71fd2641ed9aa6d039d0ec651fd6bb466cb9939acfdc0",
-   "bytes": 1830218,
-   "liteBytes": 267940,
+   "source": "eb024088938821794dc5bcb089b04af92999d0a04f276a2da169272d97934a8e",
+   "lite": "893b2dd81443ea4cd5f33e4abc036f0f91a7f616fddd9d19912667b717035f8d",
+   "bytes": 1426654,
+   "liteBytes": 214018,
    "liteCell": [
     128,
     128
    ],
-   "psnr": 40.1,
-   "shownPsnr": 40.1
+   "psnr": 42.4,
+   "shownPsnr": 42.4
   },
   "towers/vigia-do-predio/idle.webp": {
-   "source": "8e4fb67e715e788683cdb68f1cb4c63f6d30e1ebf7e3ed7819e08e5a6df01346",
-   "lite": "09e30910a9e7d8c752d814a6d4f55a25deb695472147e984695704210926ba93",
-   "bytes": 1907320,
-   "liteBytes": 273916,
+   "source": "9341c60c758b2ef3bb5b1e365b27b0b38fb097ba7ab0402e7fe6b32a38874b9b",
+   "lite": "3dbb8f998e388da3df617b425fc5818df1787b2b07bd4584d43df93d58ce0de4",
+   "bytes": 1450820,
+   "liteBytes": 210542,
    "liteCell": [
     128,
     128
    ],
-   "psnr": 39.8,
-   "shownPsnr": 39.8
+   "psnr": 42.1,
+   "shownPsnr": 42.1
   },
   "towers/vigias-armados/base.webp": {
    "source": "301c9376633d894633270b8ec076485d47aa0a169e5c9fbfaaa0edf102d51e46",
@@ -34082,28 +34082,28 @@
    "shownPsnr": 40.8
   },
   "towers/vigias-armados/fire.webp": {
-   "source": "6c6ee10356f532de99f3897d7a0a589d5e5e492037f98b282296fb0298745ae4",
-   "lite": "b35102195cdfce3c24e23ca7fbf4782b9f9dc770bbf01fb27830a39995c910b8",
-   "bytes": 1724766,
-   "liteBytes": 263502,
+   "source": "6dd75b25434b59ab4f699bd42341fc6886bc97f5925d55c45f7cb68e12a82b6f",
+   "lite": "40375746996e690c96decbca5e772239b55a965789054494db71ae68eb2f2d65",
+   "bytes": 2403810,
+   "liteBytes": 355260,
    "liteCell": [
     128,
     128
    ],
-   "psnr": 40.7,
-   "shownPsnr": 40.7
+   "psnr": 39.5,
+   "shownPsnr": 39.5
   },
   "towers/vigias-armados/idle.webp": {
-   "source": "421b2b5bf5c98220ea339f0bbfce0d30de418237c27fae1d15cca29cc400eaa9",
-   "lite": "6a4adc9d0ed28920ec19f471971f727bfe9bb4bb39b8dc803f0550e8c8cb716b",
-   "bytes": 1734696,
-   "liteBytes": 269906,
+   "source": "f96fbb71a17694a7266a354ba55a4a0eeababe464e47ef5dd1d57ec02727c357",
+   "lite": "e6fafef3381112ff076f0ffd43d051db2ead253b315a2121acbd142e5d564d9f",
+   "bytes": 2409902,
+   "liteBytes": 361456,
    "liteCell": [
     128,
     128
    ],
-   "psnr": 40.7,
-   "shownPsnr": 40.7
+   "psnr": 39.5,
+   "shownPsnr": 39.5
   },
   "trees/abeto-azul.webp": {
    "source": "74c79379f28120517334350ea2c7218b5ea260c7a5edfca5396f03e54ef86709",

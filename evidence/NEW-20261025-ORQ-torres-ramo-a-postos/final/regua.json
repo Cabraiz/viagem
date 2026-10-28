@@ -1,0 +1,13 @@
+{
+ "_": "escala = tamanho absoluto de todas as tripulações (1 = altura HERO_PX de lib.py); fator = iguala a aba do capacete de cada torre a ~62 px na escala 1 (medida 28/10 em saida-regua, grade 4x)",
+ "escala": 1.0,
+ "fator": {
+  "vigias-armados": 1.1,
+  "ninho-de-metralhadora": 0.92,
+  "ninho-do-sniper": 0.94,
+  "equipe-antimaterial": 1.07,
+  "vigia-do-predio": 0.97,
+  "atiradores-do-telhado": 1.0,
+  "guarnicao-do-predio": 1.0
+ }
+}

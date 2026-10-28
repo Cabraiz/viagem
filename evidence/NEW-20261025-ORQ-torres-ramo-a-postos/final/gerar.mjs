@@ -19,13 +19,19 @@ const LOOK={S:'facing the BOTTOM of the screen, towards the camera (front view)'
   N:'facing the TOP of the screen, away from the camera (back view: we see their backs, not their faces)'};
 
 const SOLDIER='chibi cartoon soldiers exactly like the little soldier in conceito.png: big round olive helmet, big head (about 40 % of the body height), short stocky body, olive-drab winter uniform, brown gloves, expressive cartoon faces';
+// Régua única (28/10, o usuário reprovou cabeças e corpos diferentes): os 3 cabeçudos são regerados com a proporção do Mirante.
+// tentativa do crew escolhida (a ref das anim): a t2 da Guarita copiou o rosto do Mirante.
+export const CREW_T={'vigia-do-predio':'t3','atiradores-do-telhado':'t2','guarnicao-do-predio':'t2'};
+export const REGUA=new Set(Object.keys(CREW_T));
+const SOLDIER_REGUA='cartoon soldiers with EXACTLY the proportions of the two soldiers in proporcao.png: the head with its helmet is about 30 % of the body height (NOT a big chibi head), the helmet the same size as theirs, normal legs with boots, the same olive-drab winter uniform with snow on the helmet, brown gloves and belts, expressive cartoon faces. Their FACES are new characters of their own, NOT the faces in proporcao.png (proporcao.png only gives the size and the proportions)';
+const soldier=id=>REGUA.has(id)?SOLDIER_REGUA:SOLDIER;
 // cut: 'waist' = the crew stands behind a parapet and the game only shows them from the waist up (we cut the sheet);
 // 'full' = they lie or kneel on an open roof/deck and are shown whole.
 export const T={
   'vigia-do-predio':{name:'Guarita',fp:2,cut:'waist',
     post:'a small square WOODEN GUARD POST: a low plank platform raised on short log stilts (its floor at about knee height of the character), a waist-high parapet all around its edge made of sandbags on the front and weathered planks on the sides, a short 3-rung wooden ladder on one side, a little oil lantern hanging on a pole at one corner, one small crate by the ladder. NO roof. The middle of the platform is an EMPTY floor (the guard is added later by the game).',
     height:'about 0.7 times the character (top of the parapet)',
-    crew:'ONE guard: a chubby young recruit whose helmet is a size too big for him, a wooden-stock rifle',
+    crew:'ONE guard: a chubby young recruit whose helmet keeps sliding down over his eyes, a wooden-stock rifle',
     idle:`0 alert, holding the rifle at his chest, looking ahead
 1 his eyelids get heavy
 2 his head nods forward, eyes closed
@@ -209,7 +215,7 @@ ${GRID(4,4)}`;
   if(kind==='crew')return `${CODEX_ONLY}
 
 ${STYLE}
-Subject: the crew of the defense post "${t.name}", drawn alone (no post, no tower, no floor): ${t.crew}. They are ${SOLDIER}, sized like the character in estilo.png (the same total height when standing). Funny Adult Swim cartoon characters, each with a very distinct face and silhouette.
+Subject: the crew of the defense post "${t.name}", drawn alone (no post, no tower, no floor): ${t.crew}. They are ${soldier(id)}, ${REGUA.has(id)?'each one EXACTLY as tall as the soldiers in proporcao.png (put them side by side: same helmet size, same head size, same height)':'sized like the character in estilo.png (the same total height when standing)'}. Funny Adult Swim cartoon characters, each with a very distinct face and silhouette.
 ${t.cut==='waist'?'They stand upright on flat ground, full body visible (we will hide their legs behind the parapet in the game).':'They are on flat ground in their lying / kneeling pose, full body visible.'}
 Pose: neutral and ready, as described for pose 0: ${t.idle.split('\n')[0].replace(/^0 /,'')}.
 The 5 columns are the 5 directions the crew faces (they turn as one group, the weapons pointing the way they face): column 1 = facing the BOTTOM of the screen (front view, towards the camera); column 2 = facing the BOTTOM-LEFT (three-quarter front, turned to our left); column 3 = facing the LEFT (pure profile); column 4 = facing the TOP-LEFT (three-quarter back view); column 5 = facing the TOP of the screen (back view, we see their backs).
@@ -218,7 +224,7 @@ SHADOW: a small soft dark contact shadow on the ground right under them, drawn a
 ${GRID(5,1)}`;
   const d=dir;return `${CODEX_ONLY}
 
-Subject: the SAME crew as ref.png (${t.crew}; ${SOLDIER}), same faces, same painted style, the SAME colours and the same light as ref.png.
+Subject: the SAME crew as ref.png (${t.crew}; ${REGUA.has(id)?'cartoon soldiers, the head with its helmet about 30 % of the body height (NOT big chibi heads), normal legs with boots':SOLDIER}), same faces, same painted style, the SAME colours and the same light as ref.png.
 BODY PROPORTIONS: EXACTLY the size and build of ref.png in every pose: if you put ref.png next to any pose, the helmets, heads, bodies and weapons are the same size.
 Direction: the group is ${LOOK[d]}, exactly the same angle as ref.png, in every pose; the weapons point that way.
 AIMING (poses 8-15): the weapons aim ${AIM[d]}.
@@ -239,8 +245,9 @@ const REF=path.join(HERE,'..','refs'),CONC=path.join(HERE,'refs');
 function refs(kind,id,dir){
   if(kind==='base1')return [[path.join(CONC,`conceito-a-${id}.png`),'conceito.png'],[path.join(REF,'ref-estilo.png'),'estilo.png']];
   if(kind==='base2')return [[path.join(HERE,`base1-${id}`,'meio.png'),'ref.png']];
+  if(kind==='crew'&&REGUA.has(id))return [[path.join(HERE,'crew-vigias-armados','dir-S.png'),'proporcao.png'],[path.join(REF,'ref-estilo.png'),'estilo.png']];
   if(kind==='crew')return [[path.join(CONC,`conceito-a-${id}.png`),'conceito.png'],[path.join(REF,'ref-estilo.png'),'estilo.png']];
-  return [[path.join(HERE,`crew-${id}`,`dir-${dir}.png`),'ref.png']];
+  return [[path.join(HERE,REGUA.has(id)?`crew-${id}-${CREW_T[id]}`:`crew-${id}`,`dir-${dir}.png`),'ref.png']];
 }
 function parse(job){
   const m=job.match(/^(base1|base2|crew|anim)-(.+?)(?:-(S|SW|W|NW|N))?(?:-(t\d+))?$/);

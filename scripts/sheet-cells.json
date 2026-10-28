@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4467,
+  "sheets": 4527,
   "failing": 0,
   "frames": 0
  },
@@ -16653,6 +16653,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/aposentado.downed16-n.f1f660419233.webp": {
+   "sha": "3abae3225021cfbd9d89283bfb084b87c7480569c4396da4d181ddd2614bf783",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.downed16-nw.66b19ed0f759.webp": {
+   "sha": "c557d76fe67c14bd557b29924ce91cf1b5c046c732f34fa831245805d35a301f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.downed16-s.2beaf850b0db.webp": {
+   "sha": "4704bfac91f19be2da8cd41562c8e6ba6ed9d4ef70cdc186e24007faa288295c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.downed16-se.2c8ac60f1566.webp": {
+   "sha": "788c4166a7618389af55db849b37375f424eeb1ba7c9e5fd242d7f2ea549b9b9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.downed16-w.3640238429d3.webp": {
+   "sha": "f89454c52a220a734f1b5aa501f9d635a6c463bd87a76d24e818877a37109704",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/aposentado.hurt16-n.e5fbc3b16d14.webp": {
    "sha": "7594153b1c927ebb9381879e2d48304af3303f8368de1fc2786587e291e633b7",
    "ilhas": 0,
@@ -16935,6 +16960,31 @@
   },
   "lite/sprites/clt-cansado.dir4c.webp": {
    "sha": "570979bc6ad221c7ec8835c66b43fc9da8d04d087ac2b13f1239683f0d602fa0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.downed16-n.4909decb4acc.webp": {
+   "sha": "a70c6c1d2388baa36d005ef0446270140541e4abffb42f0d8065481c4f202929",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.downed16-nw.9251404de9d7.webp": {
+   "sha": "c421bedd2397cdee624130717d7119ee1a7fb6a16b8e09890fade90d975ca533",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.downed16-s.94fecb972c7a.webp": {
+   "sha": "44f0b02e3e961d8aced1d4ebe2fbfb4435bd8456fd8ace80595de013d8a58177",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.downed16-se.02a989a22eba.webp": {
+   "sha": "ca8b7e293d233376fa019aa125f9c90a998c5eb6e0b269f77ff3f118ffdc2917",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.downed16-w.82598b2ec5fd.webp": {
+   "sha": "76fc5e72db5411a7baa4deb266e976cd794237b432a2f093f7412784180f5f57",
    "ilhas": 0,
    "fails": []
   },
@@ -17618,6 +17668,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.downed16-n.ee0843cbd835.webp": {
+   "sha": "3ec59d2a644a38d5e856e7fa8b8da30cba2a3da6251c847a3d762b71066c9aab",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.downed16-nw.297cc8f5e3d8.webp": {
+   "sha": "94c3850842086c3b04a602116c60fd38b5e1efafa90207be6594a72743d22456",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.downed16-s.dae84f426174.webp": {
+   "sha": "711204554bfbfc2d341e60812224772f74bdc6b37b0584c17786d77bf05f734a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.downed16-se.e21d0817be3b.webp": {
+   "sha": "29d3b9d20b9ab7ad0127d44c267d1ef04da031c35cd89c17af9b2bead1d7ab28",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.downed16-w.b217e82fb831.webp": {
+   "sha": "545a31dca1220e397976237c71a9c787c01d390c125fdcf47450ec83c2d27e51",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
    "sha": "b85f4a0af6ce0e7896175d17c7514e9f190b2784bc4bc0f46e0c34ee8c1d45f8",
    "ilhas": 0,
@@ -17910,6 +17985,31 @@
   },
   "lite/sprites/maromba.dir4c.webp": {
    "sha": "7bb5d7dc51fb1f74562402dc2753b2852fdca1bdabfdbd42577b689b78a75272",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.downed16-n.39c7e302b976.webp": {
+   "sha": "faf34177b432d0f5eeab606e9db87061e767dda02442f8117c56d21916a8e76b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.downed16-nw.202280f8a316.webp": {
+   "sha": "4194ae64b52649f04cb9c02462c9c3bfecf23e6c42319e41b42a1dabef2d307e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.downed16-s.32cee266eb85.webp": {
+   "sha": "78643719ac8ef09d069fbfa512a39d1af96822e7f974198c7d9879a622320bd3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.downed16-se.fec90da2f5a1.webp": {
+   "sha": "6591c8a73beeac32ab8c6508da4fa4523236910b72e7bf32110e1fe3f2206e4b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.downed16-w.af1560189721.webp": {
+   "sha": "921c3dc114b0f7c275b0f7735ee77fad3a68ce54a0e85f57695fefa64973aa19",
    "ilhas": 0,
    "fails": []
   },
@@ -18803,6 +18903,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/vendedor-praia.downed16-n.9781d30c2027.webp": {
+   "sha": "b8889584624117252067d4ddbe27074ad4c8ba1fc5d9fbcdfbcba54af31a6145",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.downed16-nw.fc36ff43bd29.webp": {
+   "sha": "c35a0462707df7b74b7727a178caf8596b4ba528ddd29e2f5408a5a21964a73d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.downed16-s.2170f184bf11.webp": {
+   "sha": "97721ac61e154cf3487ad02175764f7b209c5a6937b9edbc89d6dc09be6f7a21",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.downed16-se.6b2219f2d946.webp": {
+   "sha": "672608bf45c2b48886a9aff6d545205b4476e563a4b993cebb7d647956cf3f84",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.downed16-w.a7f421ad66fe.webp": {
+   "sha": "e3866dbc3711f46688dc42860f51a3848d06be37a5f54951381d2b4083b69fd3",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/vendedor-praia.hurt16-n.3eb185f0eb0b.webp": {
    "sha": "f096c58df5d5b20316f562cb14bcf0c46db73cc43c85724f869b158296d729a9",
    "ilhas": 0,
@@ -19081,6 +19206,31 @@
   "lite/sprites/viciado-em-bet.dir4c.webp": {
    "sha": "533a9cd5d60f8205eb0d14cbfee4bc5fa531543730fa3dd50413f6ca17b95108",
    "ilhas": 6,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.downed16-n.ba496821f5e1.webp": {
+   "sha": "cc639e5a2ebcc4e7fc43fc74f13f40d418b52524c3799fe427418ab8cb79adc6",
+   "ilhas": 4,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.downed16-nw.337022ee26c8.webp": {
+   "sha": "55d09f19912dc91d2533cd11e11b488a6e6a28e0cd1aa03625c06f9399e2dce5",
+   "ilhas": 2,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.downed16-s.d057cba4eb89.webp": {
+   "sha": "bfd50d5c0d51652c6864cee0c5b2e0b98c1a642f7f05429bd89915616c0c8f65",
+   "ilhas": 2,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.downed16-se.2c012e861f2b.webp": {
+   "sha": "e880f39d29cd04b911451b0ed4b15ed001811a6a28b8494623bf4e3f337b3956",
+   "ilhas": 4,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.downed16-w.6ff6bad2c241.webp": {
+   "sha": "767f856e2a607d1e3a47142defbc92f85d78c2ea662e542d692dc470dcdeac54",
+   "ilhas": 3,
    "fails": []
   },
   "lite/sprites/viciado-em-bet.hurt16-n.68e01f7bdb20.webp": {
@@ -19478,6 +19628,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/aposentado.downed16-n.f1f660419233.webp": {
+   "sha": "f1f6604192335af7546a21dedba4dd786333ebecc00c8e502ec6cd99e81afd95",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.downed16-nw.66b19ed0f759.webp": {
+   "sha": "66b19ed0f759b04878506594c7e632c9e8357293005e0606c27133501aa276b5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.downed16-s.2beaf850b0db.webp": {
+   "sha": "2beaf850b0db306f4003c07d27804d01874af6d5bb7fb06a14eda25e8d5765f0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.downed16-se.2c8ac60f1566.webp": {
+   "sha": "2c8ac60f1566a70c07e4f1866758254cd29973b4144ce74750681caae15a9602",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.downed16-w.3640238429d3.webp": {
+   "sha": "3640238429d3673e1745b965d935bc5b5278b8bb58bd9cbb53a980b78b3da451",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/aposentado.hurt16-n.e5fbc3b16d14.webp": {
    "sha": "e5fbc3b16d14d0df4c971bcf8bc356dfad1972e3c9a6b7cebe031e6e66572aa8",
    "ilhas": 0,
@@ -19775,6 +19950,31 @@
   },
   "sprites/clt-cansado.downed.webp": {
    "sha": "f9834d403da475fc0dc74aba3bdbcccfd32d81138812b9ad06194c12fccac2e2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.downed16-n.4909decb4acc.webp": {
+   "sha": "4909decb4acc6dc7d9bc22d9cecd1a6679a889a30cd3dd575a234acbcebb4a3f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.downed16-nw.9251404de9d7.webp": {
+   "sha": "9251404de9d72548e383691765e262494f0fc512298381514dc53d529db9b527",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.downed16-s.94fecb972c7a.webp": {
+   "sha": "94fecb972c7a26c0ba51fb3f3481f057ad3ab856b9fda81f8642cf93011fcbf1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.downed16-se.02a989a22eba.webp": {
+   "sha": "02a989a22eba5fe93790c4f52f4e3636ed522872839fb6c14144087077308932",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.downed16-w.82598b2ec5fd.webp": {
+   "sha": "82598b2ec5fd670c3deafcc9787e9a29f860085bbd40ce66669f3d718e6a6a62",
    "ilhas": 0,
    "fails": []
   },
@@ -20483,6 +20683,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gato-nada-pra-comer.downed16-n.ee0843cbd835.webp": {
+   "sha": "ee0843cbd835b913a8e9dc6ba6299f368a56cda41b96745892ec7c5f1eeda437",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.downed16-nw.297cc8f5e3d8.webp": {
+   "sha": "297cc8f5e3d809b036ac8ee9a16116e8e0aeaf38f586c693ec1ab5f108ef1618",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.downed16-s.dae84f426174.webp": {
+   "sha": "dae84f426174e66c902d2d6bb0636723157f0acf88eb57a5697e3d959408bd89",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.downed16-se.e21d0817be3b.webp": {
+   "sha": "e21d0817be3b126fdecdaef2b78a9cbec1e68197e547dfec3b7b7b9c5220c991",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.downed16-w.b217e82fb831.webp": {
+   "sha": "b217e82fb8314f35b3c67c72efe2e10d9a3bb13479e16b6b4f7f76fbc9fced87",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
    "sha": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a",
    "ilhas": 0,
@@ -20785,6 +21010,31 @@
   },
   "sprites/maromba.downed.webp": {
    "sha": "2f60bf672bd00a976cf1ca9e5478ecc4ae4abc0240eab523bb64a44447f7e821",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.downed16-n.39c7e302b976.webp": {
+   "sha": "39c7e302b97664e63370432663bee82b1e170f230c649b67579611d28d29c9b0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.downed16-nw.202280f8a316.webp": {
+   "sha": "202280f8a316f508fc0c07693d2f52660a2e11ff0b6f4f2e64f9a950022d51da",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.downed16-s.32cee266eb85.webp": {
+   "sha": "32cee266eb85adba5b42f1b2f20b30ac5b673267f44ad979621c30bef3e48346",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.downed16-se.fec90da2f5a1.webp": {
+   "sha": "fec90da2f5a1745d844fbbfc4148b976dce2720704bcf826f0eba1d06aefd697",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.downed16-w.af1560189721.webp": {
+   "sha": "af1560189721d2dd22513e4ba8f089cf8cb8a721c65952ea5efc48e2ca2722ee",
    "ilhas": 0,
    "fails": []
   },
@@ -21743,6 +21993,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/vendedor-praia.downed16-n.9781d30c2027.webp": {
+   "sha": "9781d30c2027004a2a4ad884896694a7dbe3f1876901ff7f2f88ec0a669d318f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.downed16-nw.fc36ff43bd29.webp": {
+   "sha": "fc36ff43bd2957f8073ca802f316b10514c31942cc9211975c8be579aada7773",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.downed16-s.2170f184bf11.webp": {
+   "sha": "2170f184bf11b5879f4994caae2fad6c9ef536d091e087f8e41c7cb9d5e72892",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.downed16-se.6b2219f2d946.webp": {
+   "sha": "6b2219f2d9468188e861f7cb5ba3a80eac7f5d17981431d57a9a451765dd7faf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.downed16-w.a7f421ad66fe.webp": {
+   "sha": "a7f421ad66feea00fdff1221bf65a122465a61039aa1826c8895229c0a192e4c",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/vendedor-praia.hurt16-n.3eb185f0eb0b.webp": {
    "sha": "3eb185f0eb0baa21574ba611ab9b0810665778de3930a2aa645f2540159547be",
    "ilhas": 0,
@@ -22026,6 +22301,31 @@
   "sprites/viciado-em-bet.downed.webp": {
    "sha": "1f4b301137d8cc4aa13ccdc58a2af0f542e99b0e51af76f7a8def1511f54d4df",
    "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.downed16-n.ba496821f5e1.webp": {
+   "sha": "ba496821f5e184c462495a684d3d4704de0ff92588305e9963204190ba4d2279",
+   "ilhas": 4,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.downed16-nw.337022ee26c8.webp": {
+   "sha": "337022ee26c8da7bf7f2c1565cc98318042bd00d8b3348f784d13c9c2e44a4cd",
+   "ilhas": 2,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.downed16-s.d057cba4eb89.webp": {
+   "sha": "d057cba4eb89cde7ba97aae1d71b3557756876da1c9b2727d9ce891c639e48b0",
+   "ilhas": 2,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.downed16-se.2c012e861f2b.webp": {
+   "sha": "2c012e861f2b34bccab9b6bee6fc3c0a4c7f00842a60288fec408e064b2e4225",
+   "ilhas": 4,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.downed16-w.6ff6bad2c241.webp": {
+   "sha": "6ff6bad2c241fa10c429ce8ec4b06cc6f0c791d099a57813210e2078d8fef927",
+   "ilhas": 3,
    "fails": []
   },
   "sprites/viciado-em-bet.hurt16-n.68e01f7bdb20.webp": {

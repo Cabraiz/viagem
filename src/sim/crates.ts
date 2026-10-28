@@ -656,9 +656,11 @@ export function createCrates(options:CratesOptions):Crates{
       respawn(ctx,rng);
       restage(ctx);
       trailStep(ctx,rng);
-      floorStep(ctx,rng);
       openStep(ctx);
       restock(ctx);
+      // After the opens and the restock: both hide crates at once (a colour taken; kit crates turned weapon when a bot
+      // took the kit), and the floor counts what the player sees at the end of this tick, not a second late.
+      floorStep(ctx,rng);
       hide(ctx);
       state.rng=rng.state;
     },

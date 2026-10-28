@@ -46,11 +46,11 @@ const CAR=placeWall(city);
 /** The seated players whose wallets pay (carteira-e-pix: SimPlayer.grana; assemble passes the run's players). */
 const walletOf=(players:Map<string,SimPlayer>=new Map())=>({seated:()=>seatedPlayers(players)});
 interface Rig {world:SimWorld;sys:ChaveiroSystem;outcomes:string[];bosses:{tick:number;at:Point}[];events:StampedEvent[];step(n?:number):StampedEvent[]}
-function rig(seed=7):Rig{
+function rig(seed=7,extra:{rate?:number}={}):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain:city,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const outcomes:string[]=[],bosses:{tick:number;at:Point}[]=[],events:StampedEvent[]=[];
-  const sys=createChaveiro({wallet:walletOf(players),seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:o=>outcomes.push(o),spawnBoss:(ctx,at)=>bosses.push({tick:ctx.tick,at})});
+  const sys=createChaveiro({wallet:walletOf(players),seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:o=>outcomes.push(o),spawnBoss:(ctx,at)=>bosses.push({tick:ctx.tick,at}),...extra});
   const step=(n=1)=>{
     const got:StampedEvent[]=[];
     for(let i=0;i<n;i++){world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);got.push(...world.flush());}
@@ -144,6 +144,20 @@ test('car hit: alarm (+1.5 s per hit, at most 8 s ahead), the moto rides around 
   assert.equal(ofType(crowd.world.flush(),'alarm').length,1);
   const s1=crowd.sys.state.moto.s;crowd.step(ticks(ALARM_MAX_SECONDS)+1);
   assert.ok(crowd.sys.state.moto.s>s1,'the delay is bounded by real time');
+});
+
+test('car hit cap (balanco-1p-3p-carro, rate): at most `rate` hit units a second; past it the blow still rings the alarm and shows',()=>{
+  const r=rig(7,{rate:3});r.step(ticks(1)-r.world.tick%ticks(1));r.world.flush();
+  for(let i=0;i<10;i++)r.sys.hitCar(r.world,addEnemy(r.world,`c${i}`,CAR));
+  assert.equal(r.sys.state.car.hits,3,'3 units in this second');
+  assert.equal(r.sys.state.budget,BUDGET_BASE+3*BUDGET_PER_HIT,'the bill counts what was taken');
+  const ev=r.world.flush();
+  assert.equal(ofType(ev,'alarm').length,1);assert.equal(ofType(ev,'structure').length,10,'every blow shows');
+  r.sys.hitCar(r.world,addEnemy(r.world,'el',CAR,{elite:true}));
+  assert.equal(r.sys.state.car.hits,3,'an elite past the cap takes nothing');
+  r.step(ticks(1));
+  r.sys.hitCar(r.world,addEnemy(r.world,'el2',CAR,{elite:true}));r.sys.hitCar(r.world,addEnemy(r.world,'n2',CAR));
+  assert.equal(r.sys.state.car.hits,6,'the next second: 3 again (an elite fills it)');
 });
 
 test('car limit: elite 3 and boss 2 hits (one alarm each), parts at 25/50/75/90 %, perda total at the limit (defeat, once)',()=>{

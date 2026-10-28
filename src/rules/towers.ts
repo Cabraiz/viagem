@@ -1,7 +1,7 @@
 /**
  * Moved from src/sim/towers/catalog.ts (torres-hud) so the client's build menu can read it; the sim re-exports it.
  *
- * Defense tree (torres-sim, D-041; design/proximos/08-TORRES.md §3): every defense is born as the Vigia do Prédio and
+ * Defense tree (torres-sim, D-041; design/proximos/08-TORRES.md §3): every defense is born as the Guarita (id vigia-do-predio) and
  * evolves in place. At tier 2 it picks a branch: A (more people shooting), B (structures that explode, up to the
  * Gustavão on the rail) or C (control and support). After A3 the A line forks: A4 → A5, or the alternative A4b → A5b.
  *
@@ -98,20 +98,20 @@ const s=(seconds:number)=>ticks(seconds);
 
 export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   // T1: one sleepy guard with a revolver.
-  'vigia-do-predio':def({id:'vigia-do-predio',name:'Vigia do Prédio',label:'T1',tier:1,branch:null,from:null,footprint:[2,2],hp:400,
+  'vigia-do-predio':def({id:'vigia-do-predio',name:'Guarita',label:'T1',tier:1,branch:null,from:null,footprint:[2,2],hp:400,
     range:6,cooldown:s(1),damage:8}),
   // A: more people spreading bullets (more targets per volley).
-  'vigias-armados':def({id:'vigias-armados',name:'Vigias Armados',label:'A2',tier:2,branch:'A',from:'vigia-do-predio',footprint:[2,2],hp:550,
+  'vigias-armados':def({id:'vigias-armados',name:'Mirante',label:'A2',tier:2,branch:'A',from:'vigia-do-predio',footprint:[2,2],hp:550,
     range:6.5,cooldown:s(.9),damage:7,shots:2}),
-  'atiradores-do-telhado':def({id:'atiradores-do-telhado',name:'Atiradores do Telhado',label:'A3',tier:3,branch:'A',from:'vigias-armados',footprint:[2,2],hp:700,
+  'atiradores-do-telhado':def({id:'atiradores-do-telhado',name:'Andaime',label:'A3',tier:3,branch:'A',from:'vigias-armados',footprint:[2,2],hp:700,
     range:7,cooldown:s(.8),damage:9,shots:3}),
-  'ninho-de-metralhadora':def({id:'ninho-de-metralhadora',name:'Ninho de Metralhadora',label:'A4',tier:4,branch:'A',from:'atiradores-do-telhado',footprint:[3,3],hp:900,
+  'ninho-de-metralhadora':def({id:'ninho-de-metralhadora',name:'Ninho',label:'A4',tier:4,branch:'A',from:'atiradores-do-telhado',footprint:[3,3],hp:900,
     range:7.5,cooldown:s(.5),damage:9,shots:4}),
-  'guarnicao-do-predio':def({id:'guarnicao-do-predio',name:'Guarnição do Prédio',label:'A5',tier:5,branch:'A',from:'ninho-de-metralhadora',footprint:[3,3],hp:1200,
+  'guarnicao-do-predio':def({id:'guarnicao-do-predio',name:'Trincheira',label:'A5',tier:5,branch:'A',from:'ninho-de-metralhadora',footprint:[3,3],hp:1200,
     range:8.5,cooldown:s(.45),damage:11,shots:6}),
-  'ninho-do-sniper':def({id:'ninho-do-sniper',name:'Ninho do Sniper',label:'A4b',tier:4,branch:'A',from:'atiradores-do-telhado',alt:true,footprint:[2,2],hp:700,
+  'ninho-do-sniper':def({id:'ninho-do-sniper',name:'Tocaia',label:'A4b',tier:4,branch:'A',from:'atiradores-do-telhado',alt:true,footprint:[2,2],hp:700,
     range:13,cooldown:s(1.6),damage:70,target:'strongest'}),
-  'equipe-antimaterial':def({id:'equipe-antimaterial',name:'Equipe Antimaterial',label:'A5b',tier:5,branch:'A',from:'ninho-do-sniper',alt:true,footprint:[2,2],hp:900,
+  'equipe-antimaterial':def({id:'equipe-antimaterial',name:'Casamata',label:'A5b',tier:5,branch:'A',from:'ninho-do-sniper',alt:true,footprint:[2,2],hp:900,
     range:15,cooldown:s(2.2),damage:200,target:'strongest'}),
   // B: explosives (area, slow cadence, never the flyers).
   'rojao-de-festa':def({id:'rojao-de-festa',name:'Rojão de Festa',label:'B2',tier:2,branch:'B',from:'vigia-do-predio',footprint:[1,1],hp:350,

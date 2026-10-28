@@ -155,7 +155,7 @@ function once(state:StonewardsState,playerId:string,requestId:string|undefined,r
 const radiusOn=(plan:BuildPlan,size:number)=>size*plan.cell/2;
 
 /**
- * Builds the root defense (Vigia do Prédio) on a free site, or lays the Gustavão's rail when `siteId` is the plan's
+ * Builds the root defense (the Guarita) on a free site, or lays the Gustavão's rail when `siteId` is the plan's
  * rail ('trilho'). A ruin on the site is cleared by the new obra.
  * D-052, the city: the sites are only hints now. A site id (the bots, an old client) becomes a free build of the root
  * on the cell under the site's centre (`buildFree`, the defense keeps the site id); the rail is gone ('rail').

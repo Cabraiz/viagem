@@ -147,6 +147,12 @@ export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
 export const ESCORT_LEASH=3;
 /**
+ * Card bot-parceiro-e-bichos-parados (item 6 of the 24/10 playtest: the person alone, away from the Uno, while the bots
+ * loot): the partner (BrainInput.partner) loots, takes a vehicle and opens a crate only within PARTNER_LOOT u of its
+ * person, never goes to an ATM, and in a lull walks back to within PARTNER_NEAR u of them (the fear's ally reach is 8).
+ */
+export const PARTNER_LOOT=5,PARTNER_NEAR=3;
+/**
  * BUG-20261023-ORQ-bots-na-nossa-velocidade: a person whose last decisions apart (at most ESCORT_PACE_GAP s) show them
  * walking at ESCORT_WALKING × the hero speed or more is walking, and the roamer with them walks too, at the full speed:
  * out of the leash straight along the way to them (no circling: its 0.35 sideways cost the walk ~18 %), inside it along
@@ -320,6 +326,12 @@ export interface BrainInput {
    * follows them once they leave the wall's leash; guards (even index) keep the wall. Unset: wall only (protocol bots).
    */
   escort?:Point;
+  /**
+   * Card bot-parceiro-e-bichos-parados: the person this bot keeps company (the room bots' partner: one bot, with the
+   * loneliest person, in mode 'ninhos'). It walks with them in combat, and in a lull stays within PARTNER_NEAR u of them,
+   * looting only near them (PARTNER_LOOT); a rescue, a dodge and the objective's tasks still go first. Unset: as before.
+   */
+  partner?:Point;
   /**
    * D-047 (the chaveiro objective): the room's bots, so each one knows whether it is one of the pushers of a dead moto
    * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
@@ -809,7 +821,9 @@ export function decide(input:BrainInput):Decision{
   }
   // Veículos (bot-loot.ts vehicleGoal): in a lull, a parked vehicle a few steps away is worth the detour (the sim takes
   // it as the bot walks over it); with an objective task (the moto, the car) the task goes first.
-  const vehicle=!task?vehicleGoal(view,me,at):undefined;
+  let vehicle=!task?vehicleGoal(view,me,at):undefined;
+  // The partner: only one by its person (its walk would take it away from them).
+  if(vehicle&&input.partner&&dist(vehicle,input.partner)>PARTNER_LOOT)vehicle=undefined;
   if(vehicle){
     decision.mode='veiculo';
     decision.direction=norm(go(vehicle));
@@ -823,7 +837,7 @@ export function decide(input:BrainInput):Decision{
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
-      {skip:id=>skipped(`loot:${id}`),...(car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+      {skip:id=>skipped(`loot:${id}`),...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
@@ -851,7 +865,7 @@ export function decide(input:BrainInput):Decision{
   }
   // Bancos: a bot with no objective task may go and hold an ATM (bankTask: in the intermission when the trip fits; in
   // the wave one bot per BANK_WAVE_PER, when the team is at least BANK_WAVE_MIN_UP).
-  const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
+  const bank=!task&&!input.partner&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';
     // Bicos: in the ring with the street clear and a short queue, it clocks in and stands still (the shift pays).
@@ -926,6 +940,10 @@ export function decide(input:BrainInput):Decision{
         decision.mode='forge';
         if(tick-memory.lastForgeTick>=FORGE_GAP){decision.forge=recipe;memory.lastForgeTick=tick;}
       }else{decision.mode='forge';want=go(home);}
+    }else if(input.partner){
+      // The partner keeps its person company (PARTNER_NEAR), wherever they gather or wait.
+      decision.mode='escort';
+      if(!reached(input.partner,PARTNER_NEAR,1))want=go(input.partner,1,'escortGoal');
     }else if(goHome){
       decision.mode='home';
       if(toHome>CAMP_RADIUS-2)want=go(home);
@@ -954,10 +972,11 @@ export function decide(input:BrainInput):Decision{
   // both guards held at their short leash 6 u from it while the roamer walked with a person).
   const last=city&&guard&&!boss&&!retreating&&view.enemies.length===1;
   // The person's walk, read from where they were at the last decision (kept up to date whether escorting or not).
-  const pace=escortPace(memory,input.escort,tick,terrain);
+  const pace=escortPace(memory,input.partner??input.escort,tick,terrain);
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
   // bots-na-nossa-velocidade: also with one walking out of it (away from home), so it leaves with them, not 6 u behind.
-  const escorting=!guard&&!!input.escort&&(dist(input.escort,home)>LEASH||!!pace&&outward(pace,input.escort,home));
+  // The partner (BrainInput.partner) walks with its person wherever they are, guard or not.
+  const escorting=!!input.partner||!guard&&!!input.escort&&(dist(input.escort,home)>LEASH||!!pace&&outward(pace,input.escort,home));
   // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
   // Item 2: not one it got no nearer to (nor hurt) in GOAL_STALL (awake inside a structure: the roamers stood ~2 min).
@@ -967,7 +986,7 @@ export function decide(input:BrainInput):Decision{
   if(prey&&stalled(`foe:${prey.id}`,prey,prey.hp))prey=undefined;
   // Item 6: a swarm at the car: the healthiest bot fights from CAR_LURE_R off it, on its side, and pulls what it hits away.
   const lure=!escorting&&!prey&&!focus?carLure(view,selfId,at,input.teamBots,input.nests):undefined;
-  const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:lure??home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
+  const anchor=escorting?(input.partner??input.escort)!:prey?{x:prey.x,y:prey.y}:lure??home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
   const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:lure?CAR_LURE_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
   const b=city?way(anchor,chase)??toward(at,anchor):undefined;

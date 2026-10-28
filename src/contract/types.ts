@@ -125,6 +125,12 @@ export interface SimPlayer extends Point {
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
+/**
+ * Card bots-20-mais-lentos (the user: "bots têm que ter 20 % menos velocidade que a gente"): a room bot (D-025) walks at
+ * this share of a person's walk of the same class, on top of everything else (stats, slow, brigadeiro, vehicle). The
+ * room alone moves the bots (no phone predicts them), so it is not on the wire; an autopiloted person walks at 1.
+ */
+export const BOT_WALK_MULT=.8;
 /** boss-fim-onda-1: a throw (Telegraph.push) flies over KNOCK_SECONDS, then the hero is down KNOCK_DOWN_SECONDS more. */
 export const KNOCK_SECONDS=.35,KNOCK_DOWN_SECONDS=.45;
 /** D-036: what a telegraph is, so the client draws each hazard its own way. Absent = generic. */

@@ -13,7 +13,7 @@ import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
 import {bodyRadius,resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
 import {CALMA,FEAR_TICKS,kitItem,kitPiece,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
-import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
+import {BASE_STATS,BOT_WALK_MULT,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX,isVehicleKind,ticks} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult,type KitOrder,type PlaceResult} from '../src/sim/index.ts';
@@ -337,6 +337,11 @@ export class Simulation {
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
   /**
+   * Card bots-20-mais-lentos: the bots walk at BOT_WALK_MULT of a person; the ones here walk at a person's pace anyway
+   * (the balance bench's first seat, which stands for the person: scripts/bench-city-run.ts). The room never adds any.
+   */
+  readonly personPace=new Set<string>();
+  /**
    * 3g-rede-sem-teleporte: people whose connection is gone; the room's light bot plays their hero (setBotInput) until
    * they are back, so a drop does not leave a statue in the horde.
    */
@@ -354,6 +359,7 @@ export class Simulation {
       },
       autopilot:id=>this.autopilot.has(id),
       bot:id=>this.bots.has(id),
+      walkScale:id=>this.bots.has(id)&&!this.personPace.has(id)?BOT_WALK_MULT:1,
       // heroi-empurra-inimigos: a step a body changed counts as an effect up to the next tick (confirmed): the phone's
       // replay starts from where the room has the bodies now, so while it pushes its frames go live.
       onBodyBlock:id=>this.effectEnd.set(id,Math.max(this.effectEnd.get(id)??-Infinity,this.world.tick+1)),
@@ -551,7 +557,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.walkStat.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.walkStat.delete(id);this.bots.delete(id);this.personPace.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * The inheritance (NEW-20261014-ORQ-carteira-e-pix): the wallet of a player who leaves for good (remove) is split
    * among the seated players who stay (sim/wallet.ts splitAmong: equal parts, the remainder from the run's cursor).

@@ -77,6 +77,8 @@ import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityAr
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {buildFacing} from '../sprites/build-facing.ts';
+import {workFacing} from '../sprites/work-facing.ts';
+import {hasWork16} from '../sprites/movement128.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
@@ -325,6 +327,8 @@ class CitySandbox extends Phaser.Scene {
   private defenses:TowerView[]=[];
   /** stepTowers' last tick: an obra (tick < readyTick) by the hero plays its build16 (animacao-construir-6). */
   private towerTick=0;
+  /** bancos=1: the hero is on a shift (stepBanks, last frame): it plays its work16 facing the camera (animacao-trabalhar-6). */
+  private working=false;
   /** fio=1: the game's wire path (TowerFeed) with each stand-in's volley counter and aim; volleys the stand-in fired. */
   private feed=new TowerFeed();private shots=new Map<string,number>();private aims=new Map<string,number>();private fired=0;
   private towers?:TowerRenderer;
@@ -341,7 +345,7 @@ class CitySandbox extends Phaser.Scene {
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
     // As the game's hero (scene.ts): its walk, flinch and build sheets come with the preload (animacao-construir-6 proofs).
-    if(kitParam)this.sprites.queueOwnWalk(classId);
+    if(kitParam||bancos)this.sprites.queueOwnWalk(classId);
     if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(towersParam)queueTowerArt(this);
@@ -451,7 +455,7 @@ class CitySandbox extends Phaser.Scene {
     const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
     const fell=this.fallen;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,!fell,this.view,undefined,push?.dir??pull,fell?0:danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined,undefined,
-      buildFacing(this.at,this.defenses.filter(d=>!d.ruined&&this.towerTick<d.readyTick)));
+      this.working?workFacing(this.view):buildFacing(this.at,this.defenses.filter(d=>!d.ruined&&this.towerTick<d.readyTick)));
     if(fell)this.hero.setAngle(-90).setAlpha(.85);else if(this.hero.angle)this.hero.setAngle(0).setAlpha(1);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
@@ -524,10 +528,12 @@ class CitySandbox extends Phaser.Scene {
     const {banks,tick}=b.fake.view(now);
     b.renderer.push(banks,tick);b.renderer.update(now);
     b.horde?.update(now,16);
-    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; inside the shift the hero is gone through the door.
+    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; on the shift the hero plays its work16 in the
+    // ring (animacao-trabalhar-6), or without one is gone through the door.
     const inside=workingIn(banks,'voce'),shop=inside??workShop(banks,this.at);
     this.skill?.setWork(shop?{bico:shop.bico,inside:!!inside}:undefined);
-    if(inside)this.hero.setAlpha(0);
+    this.working=!!inside;
+    if(inside&&!hasWork16(classId))this.hero.setAlpha(0);
   }
   /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
   private mountObjective(placeHero:boolean){

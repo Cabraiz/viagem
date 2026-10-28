@@ -111,10 +111,16 @@ export class RescueBoard {
   private cityAt=-Infinity;private cityPeople:CityPerson[]=[];private cityEnemies:EnemyPoint[]=[];private cityTargets:CityEdgeTarget[]=[];
   /** The heroes' footsteps and the boss's (audio/footsteps.ts), counted every frame. */
   private stepper?:{steps:Footsteps;figures:StepFigure[]};
+  /** The scene's cédulas caught on screen at the last frame (BUG-20261025-ORQ-ima-dinheiro-demora): one more clinks now. */
+  private caught=0;
+  /** Those cédulas' R$ at the last frame: a change repaints the top bar's R$ now (its full render waits for the hero's spot). */
+  private pending=0;
   constructor(options:RescueOptions){
     this.net=options.net;this.hud=options.hud;
     // A scene already torn down (a defeat closing the island, a stop) is no scene: its cameras are gone (BUG resgate-hud-apos-derrota).
     this.scene=()=>{const scene=options.scene();return scene?.live===false?undefined:scene;};
+    // The cédulas the hero caught on screen count in the top bar at once (render/cedula-catch.ts), until the room pays them.
+    this.hud.setGranaPending(()=>this.scene()?.pendingGrana()??0);
     const b=this.button=document.createElement('button');b.type='button';b.id='coop-sos';b.hidden=true;
     b.setAttribute('aria-label','Me salva: chama a turma até você');
     b.innerHTML=`<svg class="sos-ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" pathLength="100"/></svg>${icon('boia',{size:40})}<span>Me salva</span>`;
@@ -156,7 +162,8 @@ export class RescueBoard {
     // The match's sounds (audio/events.ts): the local hero's hits, shots, kills and pickups, and the team's moments.
     // The local hero's shots already heard on the press are not played again (net/attack-predict.ts).
     const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id);
+    // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e));
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -233,6 +240,12 @@ export class RescueBoard {
     const now=performance.now(),me=net.feed.players.get(net.id);
     this.footsteps(scene,now);
     this.alarm(now);
+    // The cédula the hero walked into clinks the moment it flies into him (render/cedula-catch.ts), not at the room's word.
+    const caught=scene?.cedulasCaught()??0;
+    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema');}
+    this.caught=caught;
+    const pending=scene?.pendingGrana()??0;
+    if(pending!==this.pending){this.pending=pending;hud.granaMoved();}
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){

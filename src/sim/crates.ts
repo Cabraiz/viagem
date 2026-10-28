@@ -61,9 +61,10 @@
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
+import {addGrana} from './wallet.ts';
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
@@ -607,6 +608,9 @@ export function createCrates(options:CratesOptions):Crates{
     }
     state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
+    // The Cartão Fidelidade's cashback (rules/passives.ts CARTAO_CASHBACK): Grana into the opener's wallet.
+    const cashback=cartaoCashback(p.build.passives.find(i=>i.id==='cartao')?.level??0);
+    if(cashback)addGrana(p,cashback);
     ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:rarity});
   }
 

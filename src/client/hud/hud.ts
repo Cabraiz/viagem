@@ -236,7 +236,7 @@ export class RunHud {
     this.objectiveRow=createObjectiveRow(parent.ownerDocument);
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
-    const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
+    const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target),pendingGrana:()=>this.granaPending()});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The Minuto de Minerva clock (relogio-minerva): the slot's first row while the monsters sleep.
     const minerva=createMinerva();
@@ -510,6 +510,11 @@ export class RunHud {
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
+  /** Where the top bar reads the R$ caught on screen and not paid by the room yet (hud/rescue.ts: the scene's, camp.ts). */
+  setGranaPending(source:()=>number){this.granaPending=source;}
+  private granaPending:()=>number=()=>0;
+  /** The R$ caught on screen moved (hud/rescue.ts, every frame): the top bar's R$ follows in this frame. */
+  granaMoved(){this.camp.refreshGrana();}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
   setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.cida.setHero(spot);this.inventory.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 

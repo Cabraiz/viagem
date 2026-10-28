@@ -25,6 +25,8 @@ import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
+import {workFacing} from './sprites/work-facing.ts';
+import {hasWork16} from './sprites/movement128.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -1234,7 +1236,7 @@ export class IslandScene extends Phaser.Scene {
     this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),buildFacing(this.position,this.obras));
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1357,7 +1359,10 @@ export class IslandScene extends Phaser.Scene {
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
   }
-  /** Bicos: the players inside a shop now (RunView.banks workers): they went in through the door, nobody draws them. */
+  /**
+   * Bicos: the players on a shift now (RunView.banks workers). A class with a work16 (card animacao-trabalhar-6) stays in
+   * the ring playing it, facing the camera (workFacing); one without goes in through the door and nobody draws it.
+   */
   private readonly shopWorkers=new Set<string>();
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
@@ -1447,6 +1452,12 @@ export class IslandScene extends Phaser.Scene {
     if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
     return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
   }
+  /** R$ of the cédulas the hero caught on screen that the room has not paid yet (render/cedula-catch.ts; the top bar shows them). */
+  pendingGrana(){return this.horde?.pendingGrana()??0;}
+  /** Cédulas the hero caught on screen so far: hud/rescue.ts clinks on each new one. */
+  cedulasCaught(){return this.horde?.caughtCount??0;}
+  /** The room's 'pickup' event of a cédula whose clink already played at the catch (it plays nothing). */
+  cedulaHeard(event:{type:string;pickup?:string;kind?:string}){return !!this.horde?.cedulaHeard(event);}
   /** Zueira FX state (dev probe). */
   zueiraState(){return this.zueira?{...this.zueira.last}:undefined;}
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
@@ -1564,8 +1575,8 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
-    // Bicos: inside the shop the hero is gone through its door (the silhouette follows the body's alpha).
-    if(this.shopWorkers.has(net.id))this.actor.setAlpha(0);
+    // Bicos: without a work16 the hero is gone through the shop's door (the silhouette follows the body's alpha).
+    if(this.shopWorkers.has(net.id)&&!hasWork16(this.hooks.classId))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
@@ -1590,13 +1601,13 @@ export class IslandScene extends Phaser.Scene {
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
       this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,buildFacing(player,this.obras));
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras));
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      const inShop=this.shopWorkers.has(player.id);
+      const inShop=this.shopWorkers.has(player.id)&&!hasWork16(player.classId);
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);

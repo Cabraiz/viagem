@@ -217,8 +217,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * pillars and the ramp's embankment are solid on the ground, the run starts on the deck, the group behind the team comes
  * on it and the plaza group never takes the N avenue, the team's now).
  */
+// Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'70cfb007d26b54a3','tutorial seed 8 r4':'81b032fc3ab13260','plain seed 21 r10':'c5de8d73936922d8',
+  'tutorial seed 3 r4':'acefb9daa78c73c1','tutorial seed 8 r4':'efa78507dd062e90','plain seed 21 r10':'132d395115bbbcd7',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -237,9 +238,11 @@ test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and outpu
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
-  const base=cityRun(3,4,true);
+  // Seed 8 (was 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
+  // modifier (its hpMult) can differ between the two runs; on seed 8 rounds 2-4 draw the same theme in both.
+  const base=cityRun(8,4,true);
   const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
-  const tuned=cityRun(3,4,true,{cityBalance:knobs});
+  const tuned=cityRun(8,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
   assert.ok(r1(base.bodies).length>0,'the tutorial spawned');
@@ -328,7 +331,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // All three again for sem-coxinha-no-chao (no coxinha from kills nor from the retired flash sale; the zueira plan has
 // one kind, so its shuffle draws one roll less).
 // All three again for the solid bodies (heroi-empurra-inimigos: a hero pushes the critters it walks into, in every world).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'3ff98437d2a46b9e',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+// cidade again for vida-inimigos-estilo-clash merged with all of the above (role hp, ×0.7 bodies from round 2, ×1.4 XP).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'29d73c67d2b49075',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

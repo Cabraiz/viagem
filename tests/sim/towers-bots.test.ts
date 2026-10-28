@@ -291,7 +291,8 @@ test('D-048: the bots never start a root without a whole ficha, and a 6-bot team
   // Seed 3 (was 5): after balanco-pos-1-7 part A (sites at the mouths, enemy radius × 1.15) seed 5's six bots fall in
   // round 3, before the ficha rule has anything to show; the rule, not survival, is under test here (survival: the bench).
   // Seed 4 (was 3) since the viaduct (mapa-175-com-viaduto: the run starts on its deck): seed 3's six fall in round 3 now.
-  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
+  // A root is a build order (a repair of a root also reads `→ ${ROOT_DEFENSE}` and needs no ficha: vida-inimigos-estilo-clash).
+  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>/^\d+:build /.test(o)&&o.endsWith(`→ ${ROOT_DEFENSE}`));
   console.log(`[D-048] 6 bots, seed 4, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
     `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.sim.teamGrana()}\n  orders: ${a.orders.join(' | ')}`);
   assert.ok(roots.length>=2,`${roots.length} roots`);

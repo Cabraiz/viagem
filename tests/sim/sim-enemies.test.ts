@@ -8,6 +8,7 @@ import {ELITE,ENEMIES,ENEMY_KINDS,AGIOTA_SHOT,TIO_JOKE,applyElite,createEnemy,de
 import {BARK_GAP,EnemyAi,STATE,moveSafely} from '../../src/sim/enemies/ai.ts';
 import {RADIUS,clearSegment,obstacles,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
+import {CLASH_XP} from '../../src/rules/enemy-roles.ts';
 
 // ---------- Fake core (the real SimContext is built elsewhere) ----------
 const TERRAIN=new TerrainField(DEFAULT_SEED);
@@ -142,7 +143,7 @@ test('createEnemy registers, scales hp only, applies elite/boss, readyIn; death 
   const t=ENEMIES['tio-pave'];
   assert.equal(el.elite,true);
   assert.equal(el.maxHp,Math.round(t.hp*2*ELITE.hp));assert.equal(el.hp,el.maxHp);
-  assert.ok(Math.abs(el.radius-t.radius*ELITE.radius)<1e-12);assert.equal(el.xp,t.xp*ELITE.xp);
+  assert.ok(Math.abs(el.radius-t.radius*ELITE.radius)<1e-12);assert.ok(Math.abs(el.xp-t.xp*CLASH_XP*ELITE.xp)<1e-9,'xp × CLASH_XP × ELITE.xp');
   assert.ok(Math.abs(el.speed-t.speed*ELITE.speed)<1e-12);assert.equal(el.damage,Math.round(t.damage*ELITE.damage));
   const boss=createEnemy(ctx,'chefe',at);assert.equal(boss.boss,true);assert.ok(!boss.elite);
   const late=createEnemy(ctx,'pombos',at,1,{readyIn:30});assert.equal(late.readyTick,40);

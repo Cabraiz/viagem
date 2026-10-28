@@ -22,6 +22,7 @@
  * `ritmo=antes` (card inimigos-animacao-2x-lenta): the enemies' loops and walk cadence of before, 2x faster (ENEMY_PACE).
  * `golpe=antes` (card inimigos-animacao-auditoria): the swing and the walking of before: each contact hit swings once
  * at the sheet's pace (idle in between) and a jiggle against the hero walks in place (ENEMY_SWING, ENEMY_WALK.leash).
+ * barras=1 (with elenco=1): every critter of the line-up takes a hit every 5 ticks, so its health bar shows.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -291,6 +292,9 @@ class FakeHorde {
       return;
     }
     if(this.lineup){
+      // `barras=1` (card vida-inimigos-estilo-clash): every critter of the line-up takes a hit every 5 ticks (hp 55 %), so
+      // the Clash bars of every size show side by side.
+      if(BARRAS&&this.tick%5===0)for(const e of this.enemies)if(!e.boss){e.hp=e.maxHp*.55;this.emit({type:'damage',target:e.id,amount:1,source:this.players[0].id});}
       this.lineUpDanger();this.lineUpCharge();
       for(const b of this.projectiles){b.x+=b.vx/SIM_HZ;b.y+=b.vy/SIM_HZ;} // vx/vy in units per second, like the sim and the wire
       this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
@@ -461,6 +465,7 @@ class HordeSandboxScene extends Phaser.Scene {
   }
 }
 
+const BARRAS=new URLSearchParams(location.search).get('barras')==='1';
 declare global {interface Window {__horde?:Record<string,unknown>}}
 
 export async function openHordeSandbox(){

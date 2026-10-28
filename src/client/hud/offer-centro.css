@@ -8,9 +8,10 @@
    corners, the snow or the icicles. No text under 12 px. The cards open spinning from the middle (px39-leque).
    The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc). Nothing in it scrolls. */
 .rh .rh-offer.rh-ofc{
-  /* --mw / --sw: the middle and side cards' widest; their height comes from the fan's own height (cqh). */
-  --mw:min(42vw,230px);--sw:min(27.5vw,165px);--tall:2.75;--side-h:.86;--asp:.62;
-  --tw:min(92vw,440px);--bw:min(44vw,210px);--bh:calc(var(--bw) * 248 / 600);
+  /* --mw / --sw: the middle and side cards' width; --tall their height for it (about the reference's), the fan's
+     own height (cqh) capping it. --bw: each button about 40 % of the width, as in the reference. */
+  --mw:min(40vw,260px);--sw:min(29vw,190px);--tall:1.62;--side-h:.9;--asp:.7;
+  --tw:min(92vw,440px);--bw:min(41vw,300px);--bh:calc(var(--bw) * 248 / 600);
   --px-line:1px 0 0 var(--px39-tinta),-1px 0 0 var(--px39-tinta),0 1px 0 var(--px39-tinta),0 -1px 0 var(--px39-tinta),
     1px 1px 0 var(--px39-tinta),-1px 1px 0 var(--px39-tinta),1px -1px 0 var(--px39-tinta),-1px -1px 0 var(--px39-tinta),
     0 2px 0 var(--px39-tinta-funda);
@@ -24,13 +25,12 @@
   animation:px39-veu .25s ease-out backwards;
 }
 @keyframes px39-veu{from{opacity:0}}
-/* The reference's snowflakes, two layers falling at two speeds (transform only: no repaint per frame). Not infinite
+/* The reference's fine snow (2-4 px dots, a few bigger flakes), two layers falling at two speeds (transform only: no repaint per frame). Not infinite
    (design §2.5): they fall for about the offer's half minute and stop where they started, the tile repeating. */
 .rh .rh-ofc::before,.rh .rh-ofc::after{content:'';position:absolute;z-index:-1;left:0;right:0;pointer-events:none;
   top:-260px;height:calc(100% + 260px);background:url('/art/ui-extra/px39/flocos.webp') 0 0/220px 260px repeat;
   animation:px39-neve 11s linear 3}
-.rh .rh-ofc::after{top:-390px;height:calc(100% + 390px);background-size:330px 390px;background-position:110px 140px;
-  opacity:.8;animation-duration:8s;animation-iteration-count:4;--queda:390px}
+.rh .rh-ofc::after{background-position:110px 130px;opacity:.7;animation-duration:8s;animation-iteration-count:4}
 @keyframes px39-neve{to{transform:translateY(var(--queda,260px))}}
 @media (prefers-reduced-motion:reduce){.rh .rh-ofc,.rh .rh-ofc::before,.rh .rh-ofc::after,.rh .rh-ofc .rh-card{animation:none}}
 .rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:10%;right:10%;height:3px;border-radius:0}
@@ -46,7 +46,7 @@
 .rh .rh-ofc>.rh-window-fall{margin:0}
 /* The fan: takes the height left between the title and the buttons; the cards' height is a share of it. */
 .rh .rh-ofc .rh-offer-cards{flex:1 1 0;align-self:stretch;min-height:0;container-type:size;
-  display:flex;flex-direction:row;justify-content:center;align-items:center;gap:0;padding:0}
+  display:flex;flex-direction:row;justify-content:center;align-items:flex-end;gap:0;padding:0 0 3dvh}
 .rh .rh-ofc .rh-card{
   --h:calc(min(calc(var(--mw) * var(--tall)),100cqh) * var(--side-h));--w:min(var(--sw),calc(var(--h) * var(--asp)));
   --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.04);
@@ -89,7 +89,7 @@
 /* The icon fills what the words leave; it rises a little into the frame's top, as in the reference. */
 .rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:1 1 0;display:grid;place-items:center;align-self:stretch;
   width:auto;height:auto;min-width:0;min-height:0;margin:calc(var(--w) * -.1) 0 0;border:0;border-radius:0;background:none}
-.rh .rh-ofc .rh-card-icon>.ic{position:absolute;inset:0;width:100%;height:100%;margin:auto;max-width:calc(var(--w) * .8);object-fit:contain;image-rendering:pixelated}
+.rh .rh-ofc .rh-card-icon>.ic{position:absolute;inset:0;width:100%;height:100%;margin:auto;max-width:calc(var(--w) * .6);object-fit:contain;image-rendering:pixelated}
 .rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-6% 2%;z-index:-1;
   background:url('/art/ui-extra/px39/raios.webp') center/contain no-repeat}
 /* "Niv N" on the dark plate with the arrow tips, across the card under the icon. */
@@ -124,7 +124,7 @@
   width:var(--bw);height:var(--bh);min-height:44px;margin:0;padding:0;border:0 solid transparent;border-radius:0;background:none;box-shadow:none;
   border-image:url('/art/ui-extra/px39/botao-pular.webp') 95 60 70 60 fill/
     calc(var(--bh) * 95 / 248) calc(var(--bh) * 60 / 248) calc(var(--bh) * 70 / 248)/0 stretch;
-  font:700 calc(var(--bw) * .094)/1 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
+  font:700 calc(var(--bw) * .12)/1 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
 .rh .rh-ofc :is(.rh-ofc-reroll,.rh-offer-all){border-image-source:url('/art/ui-extra/px39/botao-rolar.webp')}
 .rh .rh-ofc .rh-offer-all{flex:1 0 100%;width:auto;max-width:300px}
 .rh .rh-ofc .rh-ofc-btn:disabled{opacity:1;filter:saturate(.55) brightness(.82);cursor:default}
@@ -134,9 +134,11 @@
 .rh .rh-ofc.rh-ofc-only-wait{justify-content:center}
 /* Short screens (phone landscape): the same composition, scaled to the height; the cards wider for their height. */
 @media (max-height:500px){
-  .rh .rh-offer.rh-ofc{--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:calc(var(--bh) * 3);
+  .rh .rh-offer.rh-ofc{--mw:min(42vw,230px);--sw:min(27.5vw,165px);--tall:2.75;--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:min(30vw,calc(var(--bh) * 5));
     padding-top:max(1.5dvh,env(safe-area-inset-top));padding-bottom:max(1.5dvh,env(safe-area-inset-bottom));gap:1dvh}
   .rh .rh-ofc .rh-card{font-size:max(12px,calc(var(--w) / 13))}
   .rh .rh-ofc .rh-card.rh-card-default{font-size:max(12px,calc(var(--w) / 14))}
-  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(14px,calc(var(--bh) * .32))}
+  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(16px,calc(var(--bh) * .42))}
+  .rh .rh-ofc .rh-offer-cards{align-items:center;padding:0}
+  .rh .rh-ofc .rh-card-icon>.ic{max-width:calc(var(--w) * .8)}
 }

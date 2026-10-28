@@ -10,7 +10,7 @@
 .rh .rh-offer.rh-ofc{
   /* --mw / --sw: the middle and side cards' width; --tall their height for it (about the reference's), the fan's
      own height (cqh) capping it. --bw: each button about 40 % of the width, as in the reference. */
-  --mw:min(40vw,260px);--sw:min(29vw,190px);--tall:1.62;--side-h:.9;--asp:.7;
+  --mw:min(46vw,280px);--sw:min(28vw,180px);--tall:1.62;--side-h:.9;--asp:.7;
   --tw:min(92vw,440px);--bw:min(41vw,300px);--bh:calc(var(--bw) * 248 / 600);
   --px-line:1px 0 0 var(--px39-tinta),-1px 0 0 var(--px39-tinta),0 1px 0 var(--px39-tinta),0 -1px 0 var(--px39-tinta),
     1px 1px 0 var(--px39-tinta),-1px 1px 0 var(--px39-tinta),1px -1px 0 var(--px39-tinta),-1px -1px 0 var(--px39-tinta),
@@ -19,7 +19,7 @@
   position:fixed;z-index:30;inset:0;transform:none;
   box-sizing:border-box;width:auto;height:auto;max-width:none;max-height:none;margin:0;
   padding:max(2dvh,env(safe-area-inset-top)) 2vw max(2.5dvh,env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1.4dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4dvh;
   border:0;border-radius:0;background:var(--px39-veu);box-shadow:none;
   color:var(--px39-texto);font-family:var(--f-pixel);text-align:center;overflow:hidden;image-rendering:pixelated;
   animation:px39-veu .25s ease-out backwards;
@@ -44,12 +44,13 @@
 .rh .rh-ofc :is(.rh-offer-queue,.rh-offer-time){font:700 var(--t-13)/1.2 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-offer-later{min-height:24px;padding:0 8px}
 .rh .rh-ofc>.rh-window-fall{margin:0}
-/* The fan: takes the height left between the title and the buttons; the cards' height is a share of it. */
-.rh .rh-ofc .rh-offer-cards{flex:1 1 0;align-self:stretch;min-height:0;container-type:size;
-  display:flex;flex-direction:row;justify-content:center;align-items:flex-end;gap:0;padding:0 0 3dvh}
+/* The fan: one block with the title and the buttons, centred on the screen as in the reference; as tall as the
+   middle card, shrinking (and the cards with it, cqh) only when the screen is short. */
+.rh .rh-ofc .rh-offer-cards{flex:0 1 auto;height:calc(var(--mw) * var(--tall) * 1.04);align-self:stretch;min-height:0;container-type:size;
+  display:flex;flex-direction:row;justify-content:center;align-items:center;gap:0;padding:0}
 .rh .rh-ofc .rh-card{
   --h:calc(min(calc(var(--mw) * var(--tall)),100cqh) * var(--side-h));--w:min(var(--sw),calc(var(--h) * var(--asp)));
-  --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.04);
+  --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.08);
   position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);height:var(--h);min-height:0;margin:0;
   padding:calc(var(--w) * 142 / 480) calc(var(--w) * 64 / 480) calc(var(--w) * 64 / 480);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .03);
@@ -136,9 +137,10 @@
 @media (max-height:500px){
   .rh .rh-offer.rh-ofc{--mw:min(42vw,230px);--sw:min(27.5vw,165px);--tall:2.75;--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:min(30vw,calc(var(--bh) * 5));
     padding-top:max(1.5dvh,env(safe-area-inset-top));padding-bottom:max(1.5dvh,env(safe-area-inset-bottom));gap:1dvh}
-  .rh .rh-ofc .rh-card{font-size:max(12px,calc(var(--w) / 13))}
+  .rh .rh-ofc .rh-card{--in:calc(var(--w) * -.04);font-size:max(12px,calc(var(--w) / 13))}
   .rh .rh-ofc .rh-card.rh-card-default{font-size:max(12px,calc(var(--w) / 14))}
   .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(16px,calc(var(--bh) * .42))}
-  .rh .rh-ofc .rh-offer-cards{align-items:center;padding:0}
+  .rh .rh-offer.rh-ofc{justify-content:space-between}
+  .rh .rh-ofc .rh-offer-cards{flex:1 1 0;height:auto}
   .rh .rh-ofc .rh-card-icon>.ic{max-width:calc(var(--w) * .8)}
 }

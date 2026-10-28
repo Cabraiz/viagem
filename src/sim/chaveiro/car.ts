@@ -4,8 +4,9 @@
  *
  * - Push: a standing hero within CAR_PUSH_REACH of the body (its box, carGap) whose stick points at the car (cos ≥
  *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A person starts only after leaning
- *   PUSH_LEAN_S with the stick within PUSH_AIM_DOT of the car (card uno-nao-empurra-sem-querer: walking back to the Uno
- *   pushed it ~11 u); then it pushes as before (CAR_PUSH_DOT). A helper (a room bot, a player on the
+ *   PUSH_LEAN_S on the body (within PUSH_TOUCH) with the stick within PUSH_AIM_DOT of the car (card
+ *   uno-nao-empurra-sem-querer: walking back to the Uno pushed it ~11 u); then it pushes as before (CAR_PUSH_REACH,
+ *   CAR_PUSH_DOT). A helper (a room bot, a player on the
  *   room's autopilot) only helps: it counts while a person moves the car (a bot walking home never drags it away).
  * - Pull (card puxar-uno-corda): the rope is tied to the front bumper (carNose) and its free end lies on the ground
  *   ahead (ropeTip), one hero at a time. A person takes it only by hand (torre-limite-rebocar-sem-arma, the user, 25/10:
@@ -42,6 +43,8 @@ export const PUSH_MIN_INPUT=.3;
 export const PUSH_LEAN_S=.5;
 /** ...with the stick this close to the car's centre (cos 35 degrees) while leaning; pushing, CAR_PUSH_DOT keeps it going. */
 export const PUSH_AIM_DOT=Math.cos(35*Math.PI/180);
+/** ...touching the body: this close to its box (u; a hero the body stops stands PLAYER_RADIUS off it). */
+export const PUSH_TOUCH=.4;
 
 /** The car's part of ChaveiroState (only the fields this module reads and writes). */
 /**
@@ -188,12 +191,12 @@ function moveCar(ctx:SimContext,car:CarBody,world:CarWorld,locked:boolean):boole
       }
       continue;
     }
-    const d=Math.hypot(p.x-car.x,p.y-car.y),s=stick(world,p.id);
-    if(!s||gapTo(car,p)>CAR_PUSH_REACH||d<1e-6)continue;
+    const d=Math.hypot(p.x-car.x,p.y-car.y),s=stick(world,p.id),gap=gapTo(car,p);
+    if(!s||gap>CAR_PUSH_REACH||d<1e-6)continue;
     const dot=s.x*(car.x-p.x)/d+s.y*(car.y-p.y)/d;
     if(helper){if(dot>=CAR_PUSH_DOT){helpers.push(p.id);hx+=s.x;hy+=s.y;}continue;}
-    const leaned=was?.[p.id]??0;
-    if(dot<(leaned>=leanTicks?CAR_PUSH_DOT:PUSH_AIM_DOT))continue;
+    const leaned=was?.[p.id]??0,pushing=leaned>=leanTicks;
+    if(pushing?dot<CAR_PUSH_DOT:dot<PUSH_AIM_DOT||gap>PUSH_TOUCH)continue;
     leans[p.id]=Math.min(leanTicks,leaned+1);
     if(leans[p.id]<leanTicks)continue;
     movers.push(p.id);people++;dx+=s.x;dy+=s.y;

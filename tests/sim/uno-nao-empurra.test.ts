@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CAR_PUSH_REACH,SIM_HZ,carGap,carSpeed,ticks} from '../../src/contract/index.ts';
-import {PUSH_AIM_DOT,PUSH_LEAN_S} from '../../src/sim/chaveiro/car.ts';
+import {PUSH_AIM_DOT,PUSH_LEAN_S,PUSH_TOUCH} from '../../src/sim/chaveiro/car.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 
@@ -32,8 +32,8 @@ function room(){
   let seq=0;
   /** `n` ticks with the stick at `stick` (undefined: let go). */
   const walk=(n:number,stick?:{x:number;y:number})=>{for(let i=0;i<n;i++){calm();sim.input('ana',{seq:++seq,x:stick?.x??0,y:stick?.y??0,attack:false});sim.step(sim.tick*50);}};
-  /** Walks with `stick` until leaning on the car (within CAR_PUSH_REACH of its body); the ticks it took. */
-  const reach=(stick:{x:number;y:number})=>{let n=0;while(carGap(car(),ana)>CAR_PUSH_REACH){walk(1,stick);assert.ok(++n<ticks(10),'reaches the car');}return n;};
+  /** Walks with `stick` until the body stops the hero (on it: PUSH_TOUCH); the ticks it took. */
+  const reach=(stick:{x:number;y:number})=>{let n=0;while(carGap(car(),ana)>PUSH_TOUCH){walk(1,stick);assert.ok(++n<ticks(10),'reaches the car');}return n;};
   return {sim,car,ana,walk,reach};
 }
 const EAST={x:1,y:0};
@@ -42,8 +42,11 @@ const moved=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.
 test('walking back to the Uno and stopping does not move it (also a beat of the stick on it, and standing there)',()=>{
   const r=room(),c0={...r.car()};
   r.ana.x=c0.x-6;r.ana.y=c0.y;
-  assert.ok(r.reach(EAST)>0,'walked to it');
-  // The player lets go a moment after arriving (shorter than the lean), then stands leaning there.
+  // Walking at it, the hero comes within CAR_PUSH_REACH of the body ticks before it stops on it: none of that is leaning.
+  let near=0;
+  while(carGap(r.car(),r.ana)>PUSH_TOUCH){r.walk(1,EAST);if(carGap(r.car(),r.ana)<=CAR_PUSH_REACH)near++;}
+  assert.ok(near>=2,`walked ${near} ticks near it`);
+  // The player lets go a moment after the body stops the hero (shorter than the lean), then stands leaning there.
   r.walk(ticks(PUSH_LEAN_S)-2,EAST);
   r.walk(ticks(2));
   assert.ok(moved(r.car(),c0)<.5,`the car moved ${moved(r.car(),c0)} u`);

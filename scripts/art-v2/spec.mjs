@@ -211,9 +211,11 @@ const EFEITOS=Object.freeze({
   'anel-alvo':strip(128,4),'anel-habilidade':strip(128,4),'marcador-destino':strip(128,4),
   'heroi-voce':strip(128,1),'caido-resgate':strip([128,256],6),'sombra-contato':strip([128,64],1),
   'olhos-escuro':strip([64,32],4,P1),'veu-apagao':{priority:P1},
-  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery: the balloon's left/bottom corner
-  // keeps its tail whole; the bars keep their 3–4 px frame.
-  'balao-fala':{priority:P0,kind:'nineslice',cell:[96,64],slice:[28,25,20,24]},
+  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery; the bars keep their 3–4 px frame.
+  // The balloon is its body only, edge to edge (card heroi-fala-cade-amigos): the 16/10 cell had 12–19 px of empty
+  // margin and its own tail inside the slices, so the body sized to the text shrank to a thin strip; the code draws the
+  // tail (layers.ts drawBubble, pointing at the speaker).
+  'balao-fala':{priority:P0,kind:'nineslice',cell:[74,28],slice:[10,9,10,9]},
   'etiqueta-devendo':{priority:P0,kind:'nineslice',cell:[96,64],slice:[16,24,16,24]},
   ...Object.fromEntries(['moldura','preenchimento','moldura-elite','preenchimento-elite']
     .map(p=>[`barra-vida-${p}`,{priority:P0,kind:'nineslice',cell:[64,12],slice:[4,3,4,3]}])),

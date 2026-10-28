@@ -212,6 +212,12 @@ export const CAR_ROPE_BOT_DOT=.7;
  */
 export const PUSH_TRIP_SECONDS=10;
 /**
+ * Mode 'ninhos' (bot-3p-longe-do-carro): with fewer than NEST_PUSH_TEAM standing players the pushers go only to a moto
+ * within NEST_PUSH_NEAR u of the car. Two of three bots walked ~60 u to a dead moto in the first minutes, pulled ~20
+ * map critters along and the team fell at 3:10 before any wave (the third alone at the car). The moto starts by itself.
+ */
+export const NEST_PUSH_TEAM=4,NEST_PUSH_NEAR=20;
+/**
  * D-048, the chaveiro's bill (the vaquinha at the end since NEW-20261014-ORQ-carteira-e-pix: equal parts from every
  * seat's wallet, the richest cover the rest, then debt): each bot always keeps its part of CHAVEIRO_KEEP_SHARE × the
  * bill (÷ the seated players), from the start (1.3: the bill itself plus a margin for the hits still to come, 33 R$
@@ -359,7 +365,8 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   // Only a crew can push (PUSH_BOTS standing players, people included): a bot alone would leave the car for nothing
   // while the moto starts by itself anyway (balanco-pos-1-7 part B: a solo bot stood ~75 s at each dead moto).
   const crew=view.players.filter(standing).length>=PUSH_BOTS;
-  let pushers=crew&&o.moto.mode==='morta'?byDistance(moto,ready,PUSH_RADIUS).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  const small=nests&&view.players.filter(standing).length<NEST_PUSH_TEAM&&dist(moto,o.car)>NEST_PUSH_NEAR;
+  let pushers=crew&&!small&&o.moto.mode==='morta'?byDistance(moto,ready,PUSH_RADIUS).slice(0,PUSH_BOTS).map(p=>p.id):[];
   // In the intermission, only a trip that is back at the car before the wave (PUSH_TRIP_SECONDS).
   const round=view.round;
   if(pushers.length&&round?.phase==='prepare'){

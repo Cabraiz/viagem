@@ -382,7 +382,14 @@ export interface NestRecord {
   neverWoke:number;maxEnemies:number;stuck:number;stuckAt:{id:string;kind:string;x:number;y:number}[];
   /** Card monstros-espalhados: the waves (count, summed shares: map recruits, nest-born, outside; map kills counted). */
   waves?:{n:number;map:number;nests:number;outside:number;kills:number};
+  /**
+   * bot-3p-longe-do-carro: the bots in the first FAR_CAR_S s (sampled every s): each bot's farthest distance from the car
+   * (u), the bot-seconds spent farther than FAR_CAR_U, the bot's mode in those seconds, and `pulled`: distinct enemies
+   * that came within PULL_U of a bot while that bot was farther than FAR_CAR_U from the car.
+   */
+  bots?:{maxU:number[];farS:number;farModes:Record<string,number>;pulled:number};
 }
+export const FAR_CAR_S=180,FAR_CAR_U=20,PULL_U=8;
 export const STUCK_ENEMY_S=60,STUCK_ENEMY_MOVE=1;
 /** D-051: one line of a nest run (nests down, groups, sleepers, stuck bodies). */
 export function nestLine(r:RunRecord):string{
@@ -451,7 +458,11 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
     const rs=runs.filter(r=>r.players===n&&r.objective);
     if(!rs.length)continue;
     out.push(`chaveiro ${n}p:`);
-    for(const r of rs)out.push(`   ${objectiveLine(r)}`);
+    for(const r of rs){
+      out.push(`   ${objectiveLine(r)}`);
+      const b=r.nests?.bots;
+      if(b)out.push(`      first ${FAR_CAR_S}s: bot max u ${b.maxU.join('/')} | bot-s >${FAR_CAR_U}u ${b.farS} ${JSON.stringify(b.farModes)} | pulled ${b.pulled}`);
+    }
     const c=s.byPlayers[n]?.chaveiro;
     if(c)out.push(`   victories with debt ${c.winsWithDebt}/${c.wins} (of ${c.runs} runs; debt ${JSON.stringify(c.debt)})`);
   }
@@ -852,6 +863,7 @@ export function playRun(o:RunOptions):RunRecord{
   const waves={n:0,map:0,nests:0,outside:0,kills:0};let lastWave=-1;
   const nestSeen=new Map<string,{hit:number|null;down:number|null}>(),samples=new Map<string,{x:number;y:number;tick:number}>(),stuck=new Map<string,{id:string;kind:string;x:number;y:number}>();
   let maxEnemies=0;
+  const farBots={maxU:[] as number[],farS:0,farModes:{} as Record<string,number>},pulledIds=new Set<string>();
   const seenEnemies=new Set<string>(),alivePerMinute:number[]=[],newPerMinute:number[]=[];
   const trackNests=(tick:number)=>{
     // Both modes: how many enemies are alive at each minute mark and how many new ones came in that minute.
@@ -874,6 +886,16 @@ export function playRun(o:RunOptions):RunRecord{
       nestSeen.set(n.id,s);
     }
     const w=sim.world;
+    const car=sim.run.chaveiro?.state.car;
+    if(car&&tick%HZ===0&&tick<=FAR_CAR_S*HZ){
+      [...sim.players.values()].forEach((p,i)=>{
+        const d=Math.hypot(p.x-car.x,p.y-car.y);
+        farBots.maxU[i]=Math.max(farBots.maxU[i]??0,Math.round(d));
+        if(d<=FAR_CAR_U)return;
+        farBots.farS++;const m=driver.room.modes.get(p.id)??'-';farBots.farModes[m]=(farBots.farModes[m]??0)+1;
+        for(const e of w.enemies.values())if(Math.hypot(e.x-p.x,e.y-p.y)<=PULL_U)pulledIds.add(e.id);
+      });
+    }
     if(tick%(5*HZ))return;
     for(const e of w.enemies.values()){
       if(e.boss||stuck.has(e.id))continue;
@@ -995,7 +1017,7 @@ export function playRun(o:RunOptions):RunRecord{
     const neverWoke=ns.nests.filter(n=>!n.hit&&sono!==undefined&&sono.asleepIn(n.id)===sono.bodiesOf(n.id).length).length;
     return {list,destroyed:list.filter(x=>x.downS!==null).length,groups:list.reduce((a,x)=>a+x.groups,0),
       sleepers:{total:life.length,asleep:count(1),awake:count(2),dead:count(0)},neverWoke,maxEnemies,stuck:stuck.size,stuckAt:[...stuck.values()].slice(0,10),
-      ...(ns.log?{waves:{...waves}}:{})};
+      ...(ns.log?{waves:{...waves}}:{}),...(sim.run.chaveiro?{bots:{...farBots,pulled:pulledIds.size}}:{})};
   }
   function towerSummary(){
     const list=st().defenses?.list??[],final:Record<string,number>={};

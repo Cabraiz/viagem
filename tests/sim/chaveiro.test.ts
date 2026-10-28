@@ -32,7 +32,7 @@ import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
   GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
-import {PUSH_BOTS,PUSH_TRIP_SECONDS,botSpeed,objectiveTask} from '../../src/sim/bot-brain.ts';
+import {NEST_PUSH_NEAR,NEST_PUSH_TEAM,PUSH_BOTS,PUSH_TRIP_SECONDS,botSpeed,objectiveTask} from '../../src/sim/bot-brain.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -488,6 +488,22 @@ test('bots and a dead moto: two standing players make a crew and the two nearest
   assert.equal(objectiveTask(crew,'b2',['b1','b2','b3']),undefined,'only the two nearest');
   // A person standing makes the crew with one bot.
   assert.equal(objectiveTask(view([player('p',20),player('b1',5)]),'b1',['b1'])?.kind,'push');
+});
+
+test('bot-3p-longe-do-carro: in the nests a small team pushes only a moto near the car; four standing push as before',()=>{
+  const player=(id:string,x:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y:0});
+  const view=(players:ReturnType<typeof player>[],motoX:number)=>({tick:100,players,
+    objective:{car:{x:0,y:0},moto:{x:motoX,y:0,mode:'morta'},etaS:300,budget:120}} as unknown as Parameters<typeof objectiveTask>[0]);
+  const three=[player('b1',2),player('b2',4),player('b3',0)],bots=['b1','b2','b3'];
+  const far=NEST_PUSH_NEAR+40;
+  for(const id of bots)assert.equal(objectiveTask(view(three,far),id,bots,null,undefined,true),undefined,`${id}: three keep the car`);
+  assert.equal(objectiveTask(view(three,far),'b2',bots)?.kind,'push','outside the nests: as before');
+  assert.equal(objectiveTask(view(three,NEST_PUSH_NEAR-1),'b2',bots,null,undefined,true)?.kind,'push','a moto near the car: they go');
+  const four=[...three,player('b4',1)],all=[...bots,'b4'];
+  assert.equal(NEST_PUSH_TEAM,4);
+  assert.equal(objectiveTask(view(four,far),'b2',all,null,undefined,true)?.kind,'push','four standing: two stay at the car');
+  const downed=[...three,{...player('b4',1),downed:true}];
+  assert.equal(objectiveTask(view(downed,far),'b2',all,null,undefined,true),undefined,'a downed one does not count');
 });
 
 test('chaveiro-time-cai-onda-4: in the intermission the bots push a dead moto only on a trip back at the car before the wave',()=>{

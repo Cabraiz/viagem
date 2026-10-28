@@ -113,9 +113,10 @@ export interface ChaveiroState {
   /**
    * movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step; heading,
    * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
-   * pulling, and who a hit knocked off it (no gesture until then).
+   * pulling, and who a hit knocked off it (no gesture until then); leans: card uno-nao-empurra-sem-querer, the ticks each
+   * person has leaned on it (a push starts at PUSH_LEAN_S).
    */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number;rateAt?:number;rateUsed?:number};
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];leans?:Record<string,number>;rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number;rateAt?:number;rateUsed?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,

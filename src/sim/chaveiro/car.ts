@@ -3,7 +3,10 @@
  * src/contract/objective.ts): the chaveiro's car moves. Stepped by the ChaveiroSystem (system.ts) before the moto rides.
  *
  * - Push: a standing hero within CAR_PUSH_REACH of the body (its box, carGap) whose stick points at the car (cos ≥
- *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A helper (a room bot, a player on the
+ *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A person starts only after leaning
+ *   PUSH_LEAN_S on the body (within PUSH_TOUCH) with the stick within PUSH_AIM_DOT of the car (card
+ *   uno-nao-empurra-sem-querer: walking back to the Uno pushed it ~11 u); then it pushes as before (CAR_PUSH_REACH,
+ *   CAR_PUSH_DOT). A helper (a room bot, a player on the
  *   room's autopilot) only helps: it counts while a person moves the car (a bot walking home never drags it away).
  * - Pull (card puxar-uno-corda): the rope is tied to the front bumper (carNose) and its free end lies on the ground
  *   ahead (ropeTip), one hero at a time. A person takes it only by hand (torre-limite-rebocar-sem-arma, the user, 25/10:
@@ -37,13 +40,19 @@ export const ROPE_SLACK=1;
 export const ROPE_SHY_SECONDS=1;
 /** A stick shorter than this does not push. */
 export const PUSH_MIN_INPUT=.3;
+/** Card uno-nao-empurra-sem-querer: a person leans on the car this long (s) before it rolls; passing by or stopping does not push. */
+export const PUSH_LEAN_S=.5;
+/** ...with the stick this close to the car's centre (cos 35 degrees) while leaning; pushing, CAR_PUSH_DOT keeps it going. */
+export const PUSH_AIM_DOT=Math.cos(35*Math.PI/180);
+/** ...touching the body: this close to its box (u; a hero the body stops stands PLAYER_RADIUS off it). */
+export const PUSH_TOUCH=.4;
 
 /** The car's part of ChaveiroState (only the fields this module reads and writes). */
 /**
- * heading: the nose (radians, absent = 0); ropeIdle: ticks the rope holder went without pulling away; ropeShy/ropeShyUntil:
+ * leans: the ticks each person has been leaning on it (up to ticks(PUSH_LEAN_S): pushing); heading: the nose (radians, absent = 0); ropeIdle: ticks the rope holder went without pulling away; ropeShy/ropeShyUntil:
  * who was knocked off it (a hit, a fall) and until which tick they may not take it again by gesture.
  */
-export interface CarBody {x:number;y:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number}
+export interface CarBody {x:number;y:number;movers?:string[];leans?:Record<string,number>;rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number}
 export interface CarWorld {
   /** The stick of `id` on this tick (absent or zero: not walking). */
   input(id:string):{x:number;y:number}|undefined;
@@ -173,7 +182,8 @@ function moveCar(ctx:SimContext,car:CarBody,world:CarWorld,locked:boolean):boole
   }
   if(!locked)ropeGesture(ctx,car,world);
   const movers:string[]=[];let dx=0,dy=0,hx=0,hy=0,people=0,roped=false;const helpers:string[]=[];
-  const nose=carNose(car);
+  const nose=carNose(car),was=car.leans,leans:Record<string,number>={},leanTicks=ticks(PUSH_LEAN_S);
+  delete car.leans;
   if(!locked)for(const p of ctx.players.values()){
     if(!isStanding(p))continue;
     const helper=!!world.helper?.(p.id);
@@ -187,11 +197,17 @@ function moveCar(ctx:SimContext,car:CarBody,world:CarWorld,locked:boolean):boole
       }
       continue;
     }
-    const d=Math.hypot(p.x-car.x,p.y-car.y),s=stick(world,p.id);
-    if(!s||gapTo(car,p)>CAR_PUSH_REACH||d<1e-6)continue;
-    if(s.x*(car.x-p.x)/d+s.y*(car.y-p.y)/d<CAR_PUSH_DOT)continue;
-    if(helper){helpers.push(p.id);hx+=s.x;hy+=s.y;}else{movers.push(p.id);people++;dx+=s.x;dy+=s.y;}
+    const d=Math.hypot(p.x-car.x,p.y-car.y),s=stick(world,p.id),gap=gapTo(car,p);
+    if(!s||gap>CAR_PUSH_REACH||d<1e-6)continue;
+    const dot=s.x*(car.x-p.x)/d+s.y*(car.y-p.y)/d;
+    if(helper){if(dot>=CAR_PUSH_DOT){helpers.push(p.id);hx+=s.x;hy+=s.y;}continue;}
+    const leaned=was?.[p.id]??0,pushing=leaned>=leanTicks;
+    if(pushing?dot<CAR_PUSH_DOT:dot<PUSH_AIM_DOT||gap>PUSH_TOUCH)continue;
+    leans[p.id]=Math.min(leanTicks,leaned+1);
+    if(leans[p.id]<leanTicks)continue;
+    movers.push(p.id);people++;dx+=s.x;dy+=s.y;
   }
+  for(const id in leans){car.leans=leans;break;}
   if(people){movers.push(...helpers);dx+=hx;dy+=hy;}
   const pull=Math.hypot(dx,dy);
   if(!people||pull<1e-6){delete car.movers;return false;}

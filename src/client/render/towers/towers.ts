@@ -151,7 +151,7 @@ const FX={flash:'fx:flash',flashLong:'fx:clarao-longo',blast:'fx:blast',blastBig
   tracer:'fx:tracante',tracerBranco:'fx:tracante-branco',tracerVermelho:'fx:tracante-vermelho',smoke:'fx:fumaca',
   headPapel:'fx:ponta-papel',headShell:'fx:ponta-granada',headRocket:'fx:ponta-foguete',puff:'fx:baforada',
   cone:'fx:cone',spot:'fx:foco'} as const;
-const FLASH_TEX=64,FLASH_LONG_W=96,FLASH_LONG_H=40,SPARK_TEX=32,BLAST_R=48,BLAST_W=104,BLAST_H=60,BLAST_GROUND=44,RING_W=256,RING_H=132,STREAK_W=64,STREAK_H=12,STREAK_LINE=8,HEAD_TEX=32,CONE_W=128,CONE_H=64,SPOT_W=64,SPOT_H=32;
+const FLASH_TEX=64,FLASH_LONG_W=96,FLASH_LONG_H=40,SPARK_TEX=32,BLAST_R=48,BLAST_W=104,BLAST_H=60,BLAST_GROUND=44,BLAST_BIG_H=80,BLAST_BIG_GROUND=64,RING_W=256,RING_H=132,STREAK_W=64,STREAK_H=12,STREAK_LINE=8,HEAD_TEX=32,CONE_W=128,CONE_H=64,SPOT_W=64,SPOT_H=32;
 /** The weapon's pivot stands this high over the roof (CSS px × actor scale), on a drum. */
 const POST_PX=10;
 
@@ -641,7 +641,8 @@ export class TowerRenderer {
         continue;
       }
       // The fireball rises as it fades (the baked one is drawn at half its rise).
-      b.img=this.fxImage(b.img,b.look==='fogo-g'?FX.blastBig:FX.blast,b.depth,false,.5,BLAST_GROUND/BLAST_H).setPosition(p.x,p.y-rw*.3*(k-.5))
+      const big=b.look==='fogo-g';
+      b.img=this.fxImage(b.img,big?FX.blastBig:FX.blast,b.depth,false,.5,big?BLAST_BIG_GROUND/BLAST_BIG_H:BLAST_GROUND/BLAST_H).setPosition(p.x,p.y-rw*.3*(k-.5))
         .setScale(rw/BLAST_R).setAlpha(1-k);
     }
     for(const f of this.flashes){
@@ -729,10 +730,12 @@ export class TowerRenderer {
       make(FX.blast,BLAST_W,BLAST_H,()=>g.fillStyle(this.breu,.35).fillEllipse(cx,cy-lift,R*2.1,rh*2.4)
         .fillStyle(this.cone,.85).fillEllipse(cx,cy-lift*.6,R*1.6,rh*1.9).fillStyle(this.amarelo,1).fillEllipse(cx,cy-lift*.4,R*.9,rh*1.1));
       // The big shells': the same fireball under a dark smoke cap, a white-hot core, snow kicked up at its foot.
-      make(FX.blastBig,BLAST_W,BLAST_H,()=>{
+      // Its texture is taller (the cap rises above the fireball), the ground as far from its foot as the small one's.
+      make(FX.blastBig,BLAST_W,BLAST_BIG_H,()=>{
+        const cy=BLAST_BIG_GROUND;
         g.fillStyle(this.breu,.35).fillEllipse(cx,cy-lift,R*2.1,rh*2.4).fillStyle(this.cone,.9).fillEllipse(cx,cy-lift*.6,R*1.6,rh*1.9)
           .fillStyle(this.amarelo,1).fillEllipse(cx,cy-lift*.4,R*.95,rh*1.15).fillStyle(this.papel,1).fillEllipse(cx,cy-lift*.3,R*.42,rh*.5);
-        for(const [dx,dy,r] of [[-.5,-1.55,.42],[0,-1.75,.5],[.5,-1.5,.4],[-.25,-1.95,.34],[.28,-2,.32]] as const)
+        for(const [dx,dy,r] of [[-.5,-1,.42],[0,-1.2,.5],[.5,-.95,.4],[-.25,-1.35,.34],[.28,-1.4,.32]] as const)
           g.fillStyle(this.breu,.55).fillCircle(cx+dx*R,cy-lift+dy*rh,r*R*.62).fillStyle(MATERIALS.pedra.escura,.9).fillCircle(cx+dx*R,cy-lift+dy*rh-1,r*R*.5);
         g.fillStyle(this.papel,.9).fillEllipse(cx-R*.75,cy+rh*.35,R*.5,rh*.4).fillEllipse(cx+R*.78,cy+rh*.3,R*.45,rh*.36);
       });

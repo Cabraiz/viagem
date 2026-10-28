@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL,ELENCO_MAX,parseElenco} from '../../src/protocol/room.ts';
-import {ROSTER,ROTATION_SIZE} from '../../src/rules/index.ts';
+import {ELENCO_8_CHEFAO,ROSTER,ROTATION_SIZE,elenco8Rotation,playsElenco8,rotationIds} from '../../src/rules/index.ts';
 
 function peer(){
   const messages:any[]=[];
@@ -31,7 +31,12 @@ test('the room sends the drawn rotation once when the run draws it, and to a joi
   const sent=elencos(a);
   assert.equal(sent.length,1,'once per rotation, not per tick');
   const ids:string[]=sent[0].ids,known=new Set(ROSTER.map(r=>r.id));
-  assert.ok(ids.length>=ROTATION_SIZE.min&&ids.length<=ROTATION_SIZE.max+2,`${ids.length} ids`);
+  // The cast of eight (ELENCO_8): its eight, and nothing else; the drawn rotation's 12-18 (+ the chefão) without it.
+  if(playsElenco8()){
+    const eight=rotationIds(elenco8Rotation());
+    assert.deepEqual(ids.filter(id=>id!==ELENCO_8_CHEFAO),eight,`${ids.join(',')}`);
+  }
+  else assert.ok(ids.length>=ROTATION_SIZE.min&&ids.length<=ROTATION_SIZE.max+2,`${ids.length} ids`);
   assert.ok(ids.every(id=>known.has(id)),'roster ids');
   assert.deepEqual(ids,room.sim.rotationIds());
   assert.deepEqual(parseElenco(sent[0]),ids,'the client reads it whole');

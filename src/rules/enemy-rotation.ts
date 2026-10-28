@@ -18,7 +18,7 @@
  */
 import type {Rng} from '../contract/index.ts';
 import {ROSTER,type RosterEntry} from './enemy-roster.ts';
-import type {EnemyRole} from './enemy-roles.ts';
+import {LEGACY_ROLE,type EnemyRole} from './enemy-roles.ts';
 import {ENEMY_ART_IDS} from './enemy-art-ids.ts';
 
 /** Draw only roster entries with imported art (see above). Data flag: false brings back the whole roster. */
@@ -29,12 +29,32 @@ let onlyWithArt=ROSTER_ONLY_WITH_ART;
  * tests/rules/enemy-art-ids.test.ts the art-only one). The game never calls it.
  */
 export function setRosterOnlyWithArt(on:boolean){onlyWithArt=on;}
+/**
+ * The cast of eight (card NEW-20261028-ORQ-elenco-de-8, the user 28/10: "vamos reduzir para ter atualmente 8 inimigos,
+ * depois expandimos"): every run's rotation is the eight hand-tuned kinds, one per role (LEGACY_ROLE), and no
+ * mini-chefe (the ninhos run never spawns one: its director has no rounds), so a phone downloads those eight and the
+ * run's chefão (chefao-onda.ts ELENCO_8_CHEFAO) and nothing else. A body's numbers are its role's, as before; the
+ * roles without one of the eight (brutamontes, invocador, voador) stay empty and their share goes to the others (the
+ * empty-slot path below). Data flag: false brings back the art-only draw; the pack entries stay in the roster and the
+ * manifest. Only with ROSTER_ONLY_WITH_ART: the whole roster (onlyWithArt false) is the rotation's design and ignores it.
+ */
+export const ELENCO_8=true;
+let elenco8=ELENCO_8;
+/** As setRosterOnlyWithArt, for ELENCO_8 (tests and tools: tests/rules/enemy-art-ids.test.ts draws the art-only cast). */
+export function setElenco8(on:boolean){elenco8=on;}
 export interface RotationOptions {
   /** Default ROSTER_ONLY_WITH_ART. */
   onlyWithArt?:boolean;
   /** The ids with art (default the generated ENEMY_ART_IDS). */
   artIds?:readonly string[];
+  /** Default ELENCO_8; never with onlyWithArt false. */
+  elenco8?:boolean;
 }
+/** The eight by role (ELENCO_8): the hand-tuned kinds without the boss. */
+export const ELENCO_8_ROLES:Readonly<Partial<Record<EnemyRole,string>>>=Object.freeze(Object.fromEntries(
+  Object.entries(LEGACY_ROLE).filter(([,role])=>role!=='chefe').map(([id,role])=>[role,id])));
+/** Whether a draw with `options` plays the cast of eight. */
+export const playsElenco8=(options:RotationOptions={})=>(options.onlyWithArt??onlyWithArt)&&(options.elenco8??elenco8);
 
 export type RoundBand='early'|'mid'|'late';
 export const ROUND_BANDS:readonly RoundBand[]=['early','mid','late'];
@@ -69,7 +89,7 @@ export const ART_SLOT_WIDEN:Readonly<Partial<Record<EnemyRole,{readonly min:numb
 export interface Rotation {
   /** Roster ids per role, in draw order. */
   roles:Partial<Record<EnemyRole,string[]>>;
-  /** Mini-chefes for MINI_ROUNDS, in that order. */
+  /** Mini-chefes for MINI_ROUNDS, in that order (none with ELENCO_8). */
   mini:string[];
 }
 /** What one round may draw from: the roles of its band and the ones before, and its mini-chefe if any. */
@@ -126,6 +146,7 @@ export function slotPools(options:RotationOptions={}):{slots:SlotPool[];mini?:Re
  * ROSTER_ONLY_WITH_ART) fewer when the art entries run out. Deterministic for the rng state.
  */
 export function drawRotation(rng:Rng,options:RotationOptions={}):Rotation{
+  if(playsElenco8(options))return elenco8Rotation();
   const {slots,mini}=slotPools(options);
   const size=rng.int(ROTATION_SIZE.min,ROTATION_SIZE.max);
   const counts=slots.map(s=>s.min);
@@ -138,6 +159,13 @@ export function drawRotation(rng:Rng,options:RotationOptions={}):Rotation{
   const roles:Rotation['roles']={};
   slots.forEach((s,i)=>{if(counts[i]>0)roles[s.slot.role]=pick(rng,s.slot.role,counts[i],s.only);});
   return {roles,mini:pick(rng,'mini-chefe',MINI_COUNT,mini)};
+}
+
+/** The cast of eight's rotation (ELENCO_8): one entry per role that has one, in ROTATION_SLOTS order, no mini-chefe. */
+export function elenco8Rotation():Rotation{
+  const roles:Rotation['roles']={};
+  for(const s of ROTATION_SLOTS){const id=ELENCO_8_ROLES[s.role];if(id)roles[s.role]=[id];}
+  return {roles,mini:[]};
 }
 
 /** A later band's role a short round may borrow, from round `fromRound` on. */
@@ -185,6 +213,8 @@ export const rotationIds=(r:Rotation)=>[...Object.values(r.roles).flatMap(ids=>i
 export function isRotation(value:unknown,options:RotationOptions={}):value is Rotation{
   if(!value||typeof value!=='object')return false;
   const r=value as Rotation;
+  // The cast of eight: exactly its rotation (a checkpoint of a run drawn before is refused: the director draws again).
+  if(playsElenco8(options))return JSON.stringify({roles:r.roles,mini:r.mini})===JSON.stringify(elenco8Rotation());
   if(!Array.isArray(r.mini)||r.mini.length!==MINI_COUNT||!r.roles||typeof r.roles!=='object'||Array.isArray(r.roles))return false;
   const role=new Map(ROSTER.map(e=>[e.id,e.role]));
   if(!r.mini.every(id=>role.get(id)==='mini-chefe'))return false;

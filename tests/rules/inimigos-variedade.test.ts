@@ -4,8 +4,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
-import {ART_SLOT_WIDEN,ENEMY_ART_IDS,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,drawRotation,isRotation,rotationSize,roundRoster,slotPools} from '../../src/rules/index.ts';
+import {ART_SLOT_WIDEN,ENEMY_ART_IDS,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,drawRotation,isRotation,rotationSize,roundRoster,setElenco8,slotPools} from '../../src/rules/index.ts';
 import {enemyDef} from '../../src/sim/enemies/catalog.ts';
+
+// The art-only draw's widening (the cast of eight, ELENCO_8, has one per role: tests/rules/elenco-8.test.ts).
+setElenco8(false);
 
 const art=new Set(ENEMY_ART_IDS);
 const artOf=(role:string)=>ROSTER.filter(e=>e.role===role&&art.has(e.id)).length;

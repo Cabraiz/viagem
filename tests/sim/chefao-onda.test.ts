@@ -25,7 +25,7 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems,type RunSystemsState} from '../../src/sim/assemble.ts';
 import {bossMaxHp} from '../../src/sim/boss.ts';
 import {holdChaveiroClock,holdWaveClock,waveBossSpot,waveBossTuning,type ChaveiroClock,type WaveClock} from '../../src/sim/ninhos/chefao.ts';
-import {WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss} from '../../src/rules/index.ts';
+import {ELENCO_8_CHEFAO,WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss,setElenco8} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -57,10 +57,15 @@ function waveOneLeft(sys:RunSystems,world:SimWorld,dripping=false){
 }
 const bossesOf=(world:SimWorld)=>[...world.enemies.values()].filter(e=>e.boss);
 
-test('who: the seed draws one of the four, the same each time; all four come up; the option forces one',()=>{
+test('who: the cast of eight (ELENCO_8) always gets ELENCO_8_CHEFAO; off, the seed draws one of the four, the same each time; all four come up; the option forces one',()=>{
   assert.deepEqual([...WAVE_BOSS_IDS].sort(),['boitata-de-sacolinha','dj-do-fim-do-mundo','mapinguari-do-shopping','o-grande-credor']);
-  for(let s=0;s<20;s++)assert.equal(pickWaveBoss(s).id,pickWaveBoss(s).id);
-  assert.equal(new Set(Array.from({length:64},(_,s)=>pickWaveBoss(s).id)).size,4);
+  assert.ok(WAVE_BOSS_IDS.includes(ELENCO_8_CHEFAO));
+  for(let s=0;s<64;s++)assert.equal(pickWaveBoss(s).id,ELENCO_8_CHEFAO);
+  setElenco8(false);
+  try{
+    for(let s=0;s<20;s++)assert.equal(pickWaveBoss(s).id,pickWaveBoss(s).id);
+    assert.equal(new Set(Array.from({length:64},(_,s)=>pickWaveBoss(s).id)).size,4);
+  }finally{setElenco8(true);}
   const {sys}=run({chefao:'boitata-de-sacolinha'});
   assert.equal(sys.chefao!.who.id,'boitata-de-sacolinha');
 });

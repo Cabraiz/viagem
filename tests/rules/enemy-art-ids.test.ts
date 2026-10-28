@@ -5,10 +5,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Rng} from '../../src/contract/index.ts';
 import {BORROW_TUNE,ENEMY_ART_IDS,MINI_COUNT,ROLE_PROFILES,ROSTER,ROSTER_ONLY_WITH_ART,ROTATION_SLOTS,drawRotation,isRotation,planRound,roleOf,
-  rosterEntry,rotationIds,roundRoster,slotPools,TUTORIAL_ART_TUNE,type Rotation} from '../../src/rules/index.ts';
+  rosterEntry,rotationIds,roundRoster,setElenco8,slotPools,TUTORIAL_ART_TUNE,type Rotation} from '../../src/rules/index.ts';
 // @ts-expect-error: a plain .mjs script (no types)
 import {enemyArtIds,enemyArtIdsSource} from '../../scripts/art-v2/enemy-art-ids.mjs';
 
+// The art-only draw itself (the cast of eight, ELENCO_8, narrows it to eight: tests/rules/elenco-8.test.ts).
+setElenco8(false);
 const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));
 const SEEDS=Array.from({length:200},(_,i)=>i*104729+7);
 

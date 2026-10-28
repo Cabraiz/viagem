@@ -12,6 +12,7 @@
  *    him (CENA.goMs), holds with the name (CENA.holdMs) and comes back (CENA.backMs). Nobody moves nor takes damage.
  */
 import {Rng} from '../contract/index.ts';
+import {playsElenco8} from './enemy-rotation.ts';
 
 export interface WaveBoss {
   /** Roster id (rules/enemy-roster.ts, role 'chefe'): the enemy kind and its art. */
@@ -38,8 +39,18 @@ export const WAVE_BOSSES:readonly WaveBoss[]=Object.freeze([
 export const WAVE_BOSS_IDS:readonly string[]=Object.freeze(WAVE_BOSSES.map(b=>b.id));
 export const waveBossById=(id:string|undefined)=>WAVE_BOSSES.find(b=>b.id===id);
 
-/** The run's chefão: drawn from the room's seed, so every player (and a resumed run) gets the same one. */
-export const pickWaveBoss=(seed:number):WaveBoss=>WAVE_BOSSES[new Rng(seed).fork('chefao-onda').int(0,WAVE_BOSSES.length-1)];
+/**
+ * The cast of eight's chefão (enemy-rotation.ts ELENCO_8, card elenco-de-8): always him, so a phone keeps one HD
+ * chefão in its cache. The lightest of the four on a phone: 14.3 MB and ~356 MB of textures against 14.3-20.2 MB and
+ * 361-398 MB (evidence/NEW-20261028-ORQ-elenco-de-8/mapa.md).
+ */
+export const ELENCO_8_CHEFAO='dj-do-fim-do-mundo';
+/**
+ * The run's chefão: ELENCO_8_CHEFAO with the cast of eight, else drawn from the room's seed, so every player (and a
+ * resumed run) gets the same one.
+ */
+export const pickWaveBoss=(seed:number):WaveBoss=>playsElenco8()?waveBossById(ELENCO_8_CHEFAO)!:
+  WAVE_BOSSES[new Rng(seed).fork('chefao-onda').int(0,WAVE_BOSSES.length-1)];
 
 /**
  * The fight (first pass; the balance is noted on the card): the final boss's controller (sim/boss.ts) with these

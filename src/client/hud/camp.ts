@@ -62,6 +62,11 @@ export interface CampOptions {
    * 'reparo' repairs ('barricada-N'), only for a city barricade; the wall's tags never send one.
    */
   onForge(recipe:RecipeId,target?:string):number|undefined;
+  /**
+   * BUG-20261025-ORQ-ima-dinheiro-demora: R$ of the cédulas the hero caught on screen that the room has not paid yet
+   * (render/cedula-catch.ts): the top bar's Grana shows them at once. Only shown: every price compares the room's wallet.
+   */
+  pendingGrana?():number;
 }
 /** Where the hero is (client prediction) and where the base lies on screen (degrees, 0 = right, clockwise). */
 export interface HeroSpot {x:number;y:number;bearing?:number}
@@ -194,6 +199,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 export interface CampPart extends HudPart {
   /** The base ficha, for the top band. */
   readonly readout:HTMLElement;
+  /** Only the R$ of the top bar, again: the cédulas caught on screen moved (render/cedula-catch.ts) between two renders. */
+  refreshGrana():void;
   /** The horn / wall notice, for the announcement slot. */
   readonly notice:HTMLElement;
   /** The forge window. */
@@ -346,6 +353,11 @@ export function createCamp(options:CampOptions):CampPart{
 
   const label=(name:string,describe:string,cost:number,reason:string|undefined,recipe:RecipeId)=>
     `${name}: ${describe}. Custa ${forgePriceLabel(cost).speech}.${reason?` ${refusal(reason,recipe)}`:''}`;
+  const paintGrana=(wallet:number)=>{
+    const money=granaReadout(wallet+(options.pendingGrana?.()||0));
+    if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
+    return money;
+  };
   const render=()=>{
     const view=last;
     const camp=view?.camp;
@@ -353,8 +365,7 @@ export function createCamp(options:CampOptions):CampPart{
     if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
     paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,windows);
-    const money=granaReadout(camp.grana);
-    if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
+    const money=paintGrana(camp.grana);
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
     // D-051 nests: no intermission, the forge opens when the hero is calm (calm-phase.ts).
@@ -427,6 +438,7 @@ export function createCamp(options:CampOptions):CampPart{
     el:forge,readout,notice,forge,
     update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;windows={minervaAteTick:ctx.minervaAteTick,explora:ctx.explora};render();},
     setHero(at){hero=at;if(last)render();},
+    refreshGrana(){if(last?.camp)paintGrana(last.camp.grana);},
     setBocas(next){bocas=next;},
     yieldTo(obra){if(yielded===obra)return;yielded=obra;if(last)render();},
     forged(answer){

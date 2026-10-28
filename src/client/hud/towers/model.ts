@@ -94,7 +94,7 @@ export const EFFECT:Readonly<Record<DefenseId,string>>=Object.freeze({
   'holofote':'Ofusca e atrasa',
   'arame-e-sirene':'Atrasa quem encosta',
   'antiaerea-quadrupla':'Só no que voa',
-  'posto-de-radar':'+30% de alcance perto',
+  'posto-de-radar':'Pulso e +30% de alcance',
 });
 export const RAIL_NAME='Linha férrea',RAIL_EFFECT='Trilho do Gustavão';
 

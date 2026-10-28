@@ -36,6 +36,8 @@ export interface AttackDeps {
   reach?():number|undefined;
   /** The ring's radius (CSS px): the left stick's. */
   ringRadius?():number;
+  /** A new press (not a key's repeat, not a press while already held): the scene draws it at once (tiro-delay-1s-predicao). */
+  pressed?():void;
 }
 
 const SVG='http://www.w3.org/2000/svg';
@@ -66,6 +68,7 @@ export class AttackButton {
       this.radius=deps.ringRadius?.()||RING_PX;
       this.ring.setAttribute('cx',f1(this.centre.x));this.ring.setAttribute('cy',f1(this.centre.y));this.ring.setAttribute('r',f1(this.radius));
       this.press.press();deps.setHeld(true);this.frame();
+      if(this.press.fresh)deps.pressed?.();
     },opts);
     button.addEventListener('pointermove',e=>{
       if(e.pointerId!==this.pointer||!this.centre)return;
@@ -75,7 +78,7 @@ export class AttackButton {
     button.addEventListener('pointerup',up,opts);
     button.addEventListener('pointercancel',up,opts);
     // A keyboard click (detail 0) is one attack, the debug fallback like the skill's (D-009).
-    button.addEventListener('click',e=>{if(this.on&&e.detail===0&&!button.disabled){deps.wake();this.press.press();this.press.release();}},opts);
+    button.addEventListener('click',e=>{if(this.on&&e.detail===0&&!button.disabled){deps.wake();this.press.press();this.press.release();deps.pressed?.();}},opts);
   }
   private hide(hidden:boolean){this.svg.style.display=hidden?'none':'';}
   /** The room's CombatMode turned manual (or back): off lets go of everything and hides the ring. */
@@ -90,9 +93,10 @@ export class AttackButton {
     if(down)this.deps.wake();
     this.press.key(source,down);
     this.deps.setHeld(this.press.held);
+    if(down&&this.press.fresh)this.deps.pressed?.();
   }
   /** One quick attack (a click on an enemy on the desktop). */
-  once(){if(!this.on)return;this.press.press();this.press.release();}
+  once(){if(!this.on)return;this.press.press();this.press.release();if(this.press.fresh)this.deps.pressed?.();}
   /** One input step (scene, every 50 ms): whether it attacks. */
   take(){return this.on&&this.press.take();}
   /** Pause, focus lost, button greyed, run reset: nothing stays pressed, no ring. */
@@ -135,6 +139,12 @@ export class AttackButton {
     const {pick,auto}=autoAim(hero,enemies,{tick,...(chosen!==undefined?{chosen}:{}),...(lastHit?{lastHit}:{}),...(this.current!==undefined?{current:this.current}:{})});
     this.current=auto;
     return pick;
+  }
+  /** The auto aim's pick now (world), for the predicted shot's direction; undefined with nobody in reach. */
+  autoPick():Point|undefined{
+    const hero=this.deps.hero();if(!hero)return undefined;
+    const pick=this.track(hero);
+    return pick?{x:pick.x,y:pick.y}:undefined;
   }
   destroy(){this.clear();this.svg.remove();}
 }

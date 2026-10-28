@@ -762,9 +762,9 @@ async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
   const calls:string[]=[],area=USEFUL.portrait.n100,hero={x:84.5,y:150};
   const board=Object.create(RescueBoard.prototype) as Record<string,unknown>;
   const hud={el:{hidden:false,classList:{contains:()=>false}},
-    setCityRoute:(input:unknown)=>calls.push(`cityRoute ${input?'on':'off'}`),prewarmCity:()=>calls.push('prewarm'),zones:()=>({useful:area}),
+    setCityRoute:(input:unknown)=>calls.push(`cityRoute ${input?'on':'off'}`),prewarmCity:()=>calls.push('prewarm'),zones:()=>({useful:area}),granaMoved:()=>{},
     edges:{clear:()=>calls.push('edges.clear'),render:(a:readonly EdgeArrow[])=>calls.push(`edges.render ${a.length}`),need:()=>calls.push('edges.need'),scale:()=>1}};
-  const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,
+  const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,cedulasCaught:()=>0,pendingGrana:()=>0,
     locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-hero.x)*60,y:area.y+area.height/2+(p.y-hero.y)*60}})};
   const net={id:'me',terrain,run:{phase},feed:{players:new Map(),enemies:new Map()},view:()=>({players:[]})};
   Object.assign(board,{net,hud,scene:()=>scene,gate:{remaining:()=>0},button:{hidden:true,setAttribute(){},style:{setProperty(){}}},

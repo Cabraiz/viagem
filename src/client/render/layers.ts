@@ -36,6 +36,7 @@ import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
+import {CedulaCatch,catchFlight} from './cedula-catch.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
 import {THROW_MS,rosterEntry} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
@@ -45,6 +46,7 @@ import {SHOT_BANDS} from './usable-glow-rules.ts';
 import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 import {MapLabel} from './map-labels.ts';
 import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
+import {enemyLook} from './enemy-variety.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -88,6 +90,8 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /** One of the local hero's 'fire' events (the view's tick): false when it was already drawn on the press (tiro-delay-1s-predicao). */
+  ownFire?:(event:Extract<SimEvent,{type:'fire'}>,eventId:number,tick:number)=>boolean;
   /** The ground point the local hero aims at (world u): the mouse on a PC, undefined on touch (melee aim cone, render/melee-cone.ts). */
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
@@ -155,6 +159,8 @@ interface EnemyActor{
   tex:string;
   /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
   tint:number|undefined;
+  /** Card inimigos-variedade (enemy-variety.ts): this critter's tone over its art (undefined: none) and size (× the kind's). */
+  tone:number|undefined;vary:number;lookOf?:string;lookSpecial?:boolean;
   /** The viaduct (EnemyView.andar): 1 on a deck, drawn lifted onto it (Projector.projectOn); absent on the ground. */
   floor?:1;
 }
@@ -410,7 +416,7 @@ export class HordeRenderer{
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,cell:128,name:undefined,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,tone:undefined,vary:1,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
     // The kill's cédula (render/cedula.ts): its front/back sheet, loaded in the background (the procedural note until then).
@@ -440,7 +446,7 @@ export class HordeRenderer{
 
   /** Feed a new authoritative view (≈20 Hz). Processes view.events once each by eventId. */
   push(view:RunView){
-    if(view.tick<this.viewTick)this.lastEventId=-1; // new run or server restart
+    if(view.tick<this.viewTick){this.lastEventId=-1;this.catcher.reset();} // new run or server restart
     this.viewTick=view.tick;this.pushAt=this.now;this.numbersThisPush=0;
     this.arrivals.push(this.now);this.glide=Math.max(this.pushMs,this.arrivals.delay());
     // Sync first and retire after the events, so damage on a just-spawned or just-killed enemy still finds its actor.
@@ -461,6 +467,7 @@ export class HordeRenderer{
     this.pickups.begin();
     for(let i=0;i<view.pickups.length;i++)this.syncPickup(view.pickups[i]);
     this.pickups.end();
+    this.catcher.push(this.now,view.pickups,this.selfAt);
     this.projectiles.begin();
     for(let i=0;i<view.projectiles.length;i++)this.syncProjectile(view.projectiles[i]);
     this.projectiles.end();
@@ -479,7 +486,8 @@ export class HordeRenderer{
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.body=this.options.actorScale?.()??1;this.enemyBody=this.body*ENEMY_DRAW_SCALE;
-    this.playerCount=0;for(const id of this.playerIds){const p=this.options.locate?.(id);if(p)this.playerAt[this.playerCount++]=p;}
+    this.playerCount=0;this.selfAt=undefined;this.othersAt.length=0;const me=this.options.selfId?.();
+    for(const id of this.playerIds){const p=this.options.locate?.(id);if(!p)continue;this.playerAt[this.playerCount++]=p;if(id===me)this.selfAt=p;else this.othersAt.push(p);}
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();this.glow.begin(timeMs);
@@ -518,6 +526,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
@@ -546,6 +556,12 @@ export class HordeRenderer{
   setEffects(profile:EffectsProfile){this.fx=FX_BUDGET[profile];this.recentHits.setCap(this.fx.bars);}
   /** New run or reconnection to a fresh server: accept event ids from the start again. */
   resetEvents(){this.lastEventId=-1;}
+  /** R$ of the cédulas the local hero caught on screen that the room has not paid yet (the top bar shows them already). */
+  pendingGrana(){return this.catcher.pending();}
+  /** Cédulas the local hero has caught on screen so far: one more is a clink now (hud/rescue.ts), not at the room's word. */
+  get caughtCount(){return this.caughtTotal;}
+  /** The room's 'pickup' event of a cédula whose clink played at the catch (audio/events.ts plays nothing for it). */
+  cedulaHeard(event:{type:string;pickup?:string;kind?:string}){return this.catcher.heardBefore(event);}
 
   stats(){
     const byLayer:Record<string,{created:number;active:number}>={
@@ -559,7 +575,7 @@ export class HordeRenderer{
   }
 
   destroy(){
-    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
+    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();this.catcher.reset();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
     this.art.destroy();this.arsenal.destroy();this.glow.destroy();
     for(const label of this.names.values())label.destroy();this.names.clear();
@@ -606,6 +622,11 @@ export class HordeRenderer{
     a.moving=ENEMY_WALK.leash?leashMoving(a,view.x,view.y):Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
     a.name=enemyNameTag(view.kind,!!view.elite,a.boss);
+    // Card inimigos-variedade: its tone and size from its id (the elite and the boss keep theirs).
+    if(used.fresh||a.lookOf!==view.id||a.lookSpecial!==(a.elite||a.boss)){
+      const look=enemyLook(view.id,a.elite||a.boss);
+      a.lookOf=view.id;a.lookSpecial=a.elite||a.boss;a.vary=look.size;a.tone=look.tone===0xffffff?undefined:look.tone;
+    }
   }
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view);
@@ -658,6 +679,7 @@ export class HordeRenderer{
   private handle(event:SimEvent,eventId:number){
     // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
     if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
+    else if(event.type==='fire'&&event.player===this.options.selfId?.()&&this.options.ownFire?.(event,eventId,this.viewTick)===false){/* drawn on the press */}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
@@ -717,6 +739,9 @@ export class HordeRenderer{
   };
   /** The players standing in the run (last push), and where they are this frame: an enemy near one faces it. */
   private playerIds:string[]=[];private playerAt:Pt[]=[];private playerCount=0;
+  /** This frame: the local hero if standing (as drawn, the prediction) and the other standing heroes (cedula-catch.ts). */
+  private selfAt:Pt|undefined;private othersAt:Pt[]=[];
+  private readonly catcher=new CedulaCatch();private caughtTotal=0;
   private nearestPlayer(x:number,y:number):Pt|undefined{
     let best:Pt|undefined,bd=Infinity;
     for(let i=0;i<this.playerCount;i++){const p=this.playerAt[i],d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p;}}
@@ -866,7 +891,7 @@ export class HordeRenderer{
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
     const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines,this.nearestPlayer(a.x,a.y));
-    const tint=shown?undefined:a.accent;
+    const tint=shown?a.tone:a.accent;
     if(tint!==a.tint){a.tint=tint;if(!flashing){a.litFlip=a.flip;sunlit(a.image,tint);}}
     if(!shown&&outlines){
       // City mode (contorno-breu): the procedural texture's Breu-ring copy at screen scale; the base outside the city.
@@ -1050,21 +1075,30 @@ export class HordeRenderer{
     this.ground.lineStyle(3*b,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
   }
   private drawPickup=(a:PickupActor)=>{
+    const f=this.frac,now=this.now,reduced=this.reduced,note=a.kind==='grana';
+    if(!a.hidden){a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;}
+    // BUG-20261025-ORQ-ima-dinheiro-demora: the cédula the local hero walks into is his at once (render/cedula-catch.ts):
+    // it flies into him in CATCH_FLY_MS and stays gone while the room settles it.
+    const caught=note&&!a.hidden?this.catcher.get(a.id)??this.catchNote(a,now):undefined;
+    const flight=caught?catchFlight(now-caught.at,reduced):0;
     // The old chest (FX chest, the crate sheet) is never drawn: a crate shows only as its floating item.
-    if(a.image.visible===a.hidden){a.image.setVisible(!a.hidden);a.shadow.setVisible(!a.hidden);}
-    if(a.hidden)return;
-    const f=this.frac,now=this.now,reduced=this.reduced;
-    a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
+    const off=a.hidden||flight>=1;
+    if(a.image.visible===off){a.image.setVisible(!off);a.shadow.setVisible(!off);}
+    if(off)return;
+    const into=this.selfAt;
+    if(caught&&into){a.x=caught.x+(into.x-caught.x)*flight;a.y=caught.y+(into.y-caught.y)*flight;}
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
     let y=0,scale=1,rotation=0,turn=1,floatShadow=0;
-    const body=this.body,note=a.kind==='grana';
+    const body=this.body;
     if(note){
       // The kill's cédula: floats and turns like the crate's item (render/cedula.ts), its back while the turn faces away.
       a.spin=floatSpin(a.spin,Math.min(100,now-a.spunAt),0);a.spunAt=now;
       const pose=cedulaPose(now,a.born,a.phase,a.spin,a.value,reduced),k=floatLegible(this.ui,body),art=a.look===CEDULA_ART.key;
       if(art){const frame=pose.back?1:0;if(a.image.frame.name!==String(frame))a.image.setFrame(frame);}
       y=-pose.lift*k;turn=art||!pose.back?pose.turn:-pose.turn;scale=pose.scale*k*CEDULA_PX/Math.max(1,a.image.width);floatShadow=pose.shadow*k;
+      // Caught: it shrinks into the hero as it flies.
+      if(caught){scale*=1-.6*flight;floatShadow*=1-flight;}
     }
     else if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
@@ -1099,6 +1133,12 @@ export class HordeRenderer{
     const shadow=note?CEDULA_PX*.8*floatShadow*body:a.float?FLOAT_PX*.7*floatShadow*body:18*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
+  /** A cédula drawn at (a.x, a.y): the local hero's when he is within the room's magnet and the nearest standing hero. */
+  private catchNote(a:PickupActor,now:number){
+    const c=this.catcher.near(now,a.id,a.value,a.x,a.y,this.selfAt,this.othersAt);
+    if(c)this.caughtTotal++;
+    return c;
+  }
   private drawProjectile=(a:ProjectileActor,id:string)=>{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);

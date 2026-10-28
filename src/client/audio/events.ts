@@ -89,12 +89,15 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
   }
 }
 
-/** Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played. */
-export function playEvents(audio:{play(id:SoundId):boolean},events:Iterable<SimEvent>,localPlayer?:string):number{
+/**
+ * Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played.
+ * `heard`: an event whose sound already played on the client (a cédula caught on screen, render/cedula-catch.ts).
+ */
+export function playEvents(audio:{play(id:SoundId):boolean},events:Iterable<SimEvent>,localPlayer?:string,heard?:(event:SimEvent)=>boolean):number{
   let played=0;
   for(const event of events){
     const id=soundForEvent(event,localPlayer);
-    if(id&&audio.play(id))played++;
+    if(id&&!heard?.(event)&&audio.play(id))played++;
   }
   return played;
 }

@@ -25,6 +25,8 @@ import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
+import {workFacing} from './sprites/work-facing.ts';
+import {hasWork16} from './sprites/movement128.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -77,6 +79,9 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
+import {heldWeapon,heldCooldownMs} from './hud/weapon-reach.ts';
+import {weaponSound} from './audio/events.ts';
+import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -116,6 +121,10 @@ export interface SceneHooks {
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
    */
   attacking?:()=>boolean;
+  /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
+  attackHeld?:()=>boolean;
+  /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
+  aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
   working?:(direction:Point)=>boolean;
   /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
@@ -366,6 +375,8 @@ export class IslandScene extends Phaser.Scene {
   private facing=Math.PI/2;
   /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
   private intent:Point={x:0,y:0};
+  /** The last way the hero walked (a predicted shot without any aim goes there). */
+  private lastIntent:Point={x:1,y:0};
   /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
   private inputAt=-Infinity;
   /** Who cheers now (danca-no-jogo etapa 2): fed by the run's events, read by the dance cues. */
@@ -435,7 +446,7 @@ export class IslandScene extends Phaser.Scene {
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
   private needTowerArt(kind:TowerKind){
     for(const l of towerLoads(kind)){
-      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key))continue;
+      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key)||this.loaderTakes(l.key))continue;
       this.towerArtAsked.add(l.key);
       if(bitmapsAvailable()){
         void fetchBitmap(l.url,'high').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
@@ -447,6 +458,18 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
       }
     }
+  }
+  /**
+   * The late queue's own copy of a sheet (queueLateArt): already fetched or being added → it lands soon (true); still
+   * waiting its turn → taken out of the loader (false), fetched now instead. Both adding one key made Phaser log
+   * 'Texture key already in use' (art:torres:vigia-do-predio:idle, the T1 built before the late queue reached it).
+   */
+  private loaderTakes(key:string){
+    const load=this.load as unknown as {list:Phaser.Structs.Set<Phaser.Loader.File>;inflight:Phaser.Structs.Set<Phaser.Loader.File>;queue:Phaser.Structs.Set<Phaser.Loader.File>};
+    if(load.inflight?.entries.some(f=>f.key===key)||load.queue?.entries.some(f=>f.key===key))return true;
+    // Safe: the loader completes on its sets' sizes (LoaderPlugin.fileProcessComplete), only `progress` counts it.
+    for(const f of [...load.list?.entries??[]])if(f.key===key)load.list.delete(f);
+    return false;
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -589,7 +612,9 @@ export class IslandScene extends Phaser.Scene {
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
-        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
+        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
+        // The local hero's shots already drawn on the press are not drawn again (net/attack-predict.ts).
+        ownFire:(event,eventId,tick)=>net.attackPredict.fire(eventId,event.weapon,tick,performance.now()),onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround()??this.stickGround(),
@@ -898,6 +923,29 @@ export class IslandScene extends Phaser.Scene {
     const d=this.hooks.aimStick?.();
     return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
   }
+  /**
+   * BUG-20261027-ORQ-tiro-delay-1s-predicao: the attack button was pressed (hud/attack-button.ts `pressed`). When the
+   * room would take that press (manual combat, a weapon in the hand, nothing holding the hands), the swing, the shot's
+   * flash and its sound show now, aimed like the room aims: the mouse or the aim stick, the chosen target, the auto
+   * aim's pick, else the way the hero last walked. The room's copy of it is skipped (net/attack-predict.ts).
+   */
+  predictAttack(){
+    const net=this.hooks.net;
+    if(!net||!this.horde||!this.hooks.manual?.()||this.paused||net.run?.phase!=='combat'||net.run.pause||net.run.cena||net.handsBusy||this.isOut())return;
+    const me=net.feed.players.get(net.id),self=net.players.get(net.id);
+    if(!me||!self?.hp||me.downed||me.eliminated)return;
+    const held=heldWeapon(me),weapon=held?.id;
+    if(!weapon||!net.attackPredict.press(performance.now(),weapon,heldCooldownMs(held)))return;
+    const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
+    const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
+    const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
+    this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y);
+    const sound=weaponSound(weapon),audio=getAudio();
+    if(sound&&audio.unlocked)audio.play(sound);
+    // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).
+    const tiro=(window as {__tiro?:{local?:number[]}}).__tiro;
+    if(tiro?.local)requestAnimationFrame(()=>tiro.local!.push(performance.now()));
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -1196,9 +1244,11 @@ export class IslandScene extends Phaser.Scene {
     const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
-    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||this.hooks.attacking?.())this.inputAt=this.time.now;
+    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
     this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),buildFacing(this.position,this.obras));
+    // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
+    const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1321,7 +1371,10 @@ export class IslandScene extends Phaser.Scene {
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
   }
-  /** Bicos: the players inside a shop now (RunView.banks workers): they went in through the door, nobody draws them. */
+  /**
+   * Bicos: the players on a shift now (RunView.banks workers). A class with a work16 (card animacao-trabalhar-6) stays in
+   * the ring playing it, facing the camera (workFacing); one without goes in through the door and nobody draws it.
+   */
   private readonly shopWorkers=new Set<string>();
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
@@ -1411,6 +1464,12 @@ export class IslandScene extends Phaser.Scene {
     if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
     return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
   }
+  /** R$ of the cédulas the hero caught on screen that the room has not paid yet (render/cedula-catch.ts; the top bar shows them). */
+  pendingGrana(){return this.horde?.pendingGrana()??0;}
+  /** Cédulas the hero caught on screen so far: hud/rescue.ts clinks on each new one. */
+  cedulasCaught(){return this.horde?.caughtCount??0;}
+  /** The room's 'pickup' event of a cédula whose clink already played at the catch (it plays nothing). */
+  cedulaHeard(event:{type:string;pickup?:string;kind?:string}){return !!this.horde?.cedulaHeard(event);}
   /** Zueira FX state (dev probe). */
   zueiraState(){return this.zueira?{...this.zueira.last}:undefined;}
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
@@ -1498,6 +1557,7 @@ export class IslandScene extends Phaser.Scene {
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
+      if(Math.hypot(this.intent.x,this.intent.y)>1e-6)this.lastIntent=this.intent;
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
       const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       // Bicos: Trabalhar rides the step too (moving lets it go: hud/bicos.ts WorkLatch).
@@ -1527,8 +1587,8 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
-    // Bicos: inside the shop the hero is gone through its door (the silhouette follows the body's alpha).
-    if(this.shopWorkers.has(net.id))this.actor.setAlpha(0);
+    // Bicos: without a work16 the hero is gone through the shop's door (the silhouette follows the body's alpha).
+    if(this.shopWorkers.has(net.id)&&!hasWork16(this.hooks.classId))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
@@ -1553,13 +1613,13 @@ export class IslandScene extends Phaser.Scene {
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
       this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,buildFacing(player,this.obras));
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras));
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      const inShop=this.shopWorkers.has(player.id);
+      const inShop=this.shopWorkers.has(player.id)&&!hasWork16(player.classId);
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);

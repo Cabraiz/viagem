@@ -884,29 +884,39 @@ export class Room {
   private oldestPerson(){return this.sessions.keys().next().value as string|undefined;}
   private setOwner(id:string|undefined){if(this.owner!==id){this.owner=id;this.rosterDirty=true;}this.run.setOwner(id);}
   /**
-   * Offer pick. Malformed, stale-round or out-of-combat commands are dropped silently; a command that reaches the
-   * simulation (accepted, or refused there as forged, repeated or out of order) is answered with the peer's queue.
+   * Offer pick. Malformed, stale-round or out-of-combat commands are dropped silently; the rest wait for the next tick
+   * (N1-choose-no-tick: Simulation.queueOffer), where a command that reaches the simulation (accepted, or refused there
+   * as forged, repeated or out of order) is answered with the peer's queue (applyOffers).
    */
   private choose(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
     if(!Number.isInteger(m.index)||m.index<0||m.index>MAX_CHOICE_INDEX)return;
-    this.sim.choose(c.playerId!,m.offer,m.index);
-    this.pushOffers(c,true);
+    this.sim.queueOffer({t:'choose',id:c.playerId!,offer:m.offer,index:m.index});
   }
   /**
    * D-052: {t:'skip'|'reroll',round,offer} from the offer window ("Pular", "Rolar de novo"): the head offer closes with
-   * no prize, or gets new cards; the sim refuses a stale id or a player with none left. Answered with the queue (the
-   * new cards, or the next offer) and the run (the counters in the pause).
+   * no prize, or gets new cards; the sim refuses a stale id or a player with none left. Queued with the picks, in order;
+   * answered on the tick with the queue (the new cards, or the next offer) and the run (the counters in the pause).
    */
   private offerAction(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
-    if(m.t==='skip')this.sim.skipOffer(c.playerId!,m.offer);else this.sim.rerollOffer(c.playerId!,m.offer);
-    this.pushOffers(c,true);
-    this.pushRun();
+    this.sim.queueOffer({t:m.t==='skip'?'skip':'reroll',id:c.playerId!,offer:m.offer});
+  }
+  /**
+   * The offer commands queued since the last tick, applied before the level-up pause looks at the queues (a pick
+   * closes it on this tick) and before the step. Outside combat they are dropped (the run they were for is over).
+   * Each peer whose command reached the simulation gets its queue; the run (skip/reroll counters) goes out with
+   * this tick's pushRun.
+   */
+  private applyOffers(){
+    if(!this.sim.queuedOffers.length)return;
+    if(this.run.snapshot().phase!=='combat'){this.sim.clearOffers();return;}
+    const players=new Set(this.sim.applyOffers().map(a=>a.id));
+    for(const c of this.connections.values())if(c.playerId&&players.has(c.playerId))this.pushOffers(c,true);
   }
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
@@ -1277,6 +1287,7 @@ export class Room {
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     // D-050: a team level-up in a wave pauses the run for the picks (multiplayer/levelup-pause.ts): no step, no clock.
     // Card boss-fim-onda-1: the chefão's arrival scene holds it the same way (multiplayer/boss-scene.ts), the pause after it.
+    this.applyOffers();
     const paused=this.run.snapshot().phase==='combat'&&(this.cena.update(now)||this.levelup.update(this.sim,now));
     if(this.run.snapshot().phase==='combat'&&!paused){
       if(this.labHorde)this.fillHorde();

@@ -42,7 +42,7 @@ import {THROW_MS,rosterEntry} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
-import {SHOT_BANDS} from './usable-glow-rules.ts';
+import {GLOW_BANDS,ITEM_BANDS,SHOT_BANDS} from './usable-glow-rules.ts';
 import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 import {MapLabel} from './map-labels.ts';
 import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
@@ -1129,7 +1129,7 @@ export class HordeRenderer{
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
     if(outlines&&!a.arsenal&&!note)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
-    if(a.kind==='chest'||a.kind==='item'||a.kind==='vehicle')this.glow.mark(a.id,a.image,this.css());
+    if(a.kind==='chest'||a.kind==='item'||a.kind==='vehicle')this.glow.mark(a.id,a.image,this.css(),a.kind==='vehicle'?GLOW_BANDS:ITEM_BANDS);
     const shadow=note?CEDULA_PX*.8*floatShadow*body:a.float?FLOAT_PX*.7*floatShadow*body:18*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };

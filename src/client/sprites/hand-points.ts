@@ -9,6 +9,7 @@
 import type {HeroDirection} from './sprite-motion.ts';
 import type {VariantGeometry} from '../render/city-outline-rules.ts';
 import {HAND_POINTS} from './hand-points-data.ts';
+import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 
 /**
  * One measured sheet: the weapon hand's side (none for idle8, a direction per frame), whether the weapon goes behind the
@@ -102,17 +103,26 @@ export const AIM_ANGLE:Readonly<Record<HeroDirection,number>>={
  */
 export interface WeaponHold {grip:readonly [number,number];barrel:number;px:number;upright?:boolean}
 const deg=(d:number)=>d*Math.PI/180;
+/**
+ * Card NEW-20261028-ORQ-escala-heroi-uno-inimigo (auditoria-arte-mundo item 13): the weapon's length along its barrel,
+ * in heights of the drawn hero (96 × HERO_DRAW_SCALE at body 1): a long gun 0.6-0.7, a pistol ≈ 0.3. `len` is that
+ * share; `along` the share of the 128 px sticker the weapon spans along its barrel (measured on the art, alpha ≥ 0.5),
+ * so px = len × hero / along.
+ */
+const HERO_PX=96*HERO_DRAW_SCALE;
+const hold=(grip:readonly [number,number],barrel:number,len:number,along:number,upright?:true):WeaponHold=>
+  ({grip,barrel:deg(barrel),px:Math.round(len*HERO_PX/along),...(upright?{upright}:{})});
 export const WEAPON_HOLD:Readonly<Record<string,WeaponHold>>={
-  faca:{grip:[24/128,100/128],barrel:deg(-42),px:34},
-  pistola:{grip:[33/128,87/128],barrel:deg(-15),px:32},
-  escopeta:{grip:[102/128,85/128],barrel:deg(-154),px:44},
-  submetralhadora:{grip:[79/128,87/128],barrel:deg(-8),px:38},
-  rifle:{grip:[38/128,83/128],barrel:deg(-41),px:50},
-  macarico:{grip:[55/128,75/128],barrel:deg(-90),px:36,upright:true},
-  rojao:{grip:[37/128,95/128],barrel:deg(-54),px:44},
+  faca:hold([24/128,100/128],-42,.35,1.12),
+  pistola:hold([33/128,87/128],-15,.3,.88),
+  escopeta:hold([102/128,85/128],-154,.65,.86),
+  submetralhadora:hold([79/128,87/128],-8,.45,.88),
+  rifle:hold([38/128,83/128],-41,.68,1.08),
+  macarico:hold([55/128,75/128],-90,.4,.75,true),
+  rojao:hold([37/128,95/128],-54,.65,1.01),
 };
-/** A sticker without a hold (a legendary, a tool): held by its lower-left corner, pointing up-right. */
-export const DEFAULT_HOLD:WeaponHold={grip:[.25,.8],barrel:deg(-45),px:36};
+/** A sticker without a hold (a legendary, a tool): held by its lower-left corner, pointing up-right, about half a hero long. */
+export const DEFAULT_HOLD:WeaponHold=hold([.25,.8],-45,.45,1);
 
 /**
  * The held weapon's look (card arma-na-mao item 4, 22/10: "a arma não deveria estar tão brilhosa, já que ela pega

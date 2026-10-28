@@ -50,7 +50,8 @@ import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
 import {HD_ENEMIES} from '../src/client/art/manifest.ts';
-import {WAVE_BOSS} from '../src/rules/index.ts';
+import {WAVE_BOSS,WAVE_BOSS_IDS} from '../src/rules/index.ts';
+import {WAVE_BOSS_KEEP} from '../src/client/render/draw-scale.ts';
 import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../src/contract/offscreen.ts';
 import {cityLiteFiles} from '../src/client/render/city/art-plan.ts';
 
@@ -178,7 +179,9 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
   // The 1st wave's chefão (manifest.ts HD_ENEMIES) is drawn × WAVE_BOSS.drawScale from his approved cell: his computer
   // copy keeps that cell (horde-art enemyFileUrl loads it on both screens, ~half the bytes), and the phone copy no screen
   // loads stays at his role's size (BUG-20261025-ORQ-art-lite-chefoes-velho: at × 3 it would be the full sheet).
-  const boss=HD_ENEMIES.has(id),height=artTargetHeight(id)/(boss?WAVE_BOSS.drawScale:1);
+  // The copies are sized without the draw factors (render/draw-scale.ts); a wave's chefão kept his drawn size when the
+  // enemies went to the hero's ruler (NEW-20261028-ORQ-escala-heroi-uno-inimigo: WAVE_BOSS_KEEP), so his copy keeps its cell.
+  const boss=HD_ENEMIES.has(id),height=artTargetHeight(id)/(boss?WAVE_BOSS.drawScale:1)/(WAVE_BOSS_IDS.includes(id)?WAVE_BOSS_KEEP:1);
   const need=height*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
   const scale=fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*need/fig.drawn)/file.cell[1]):1;
   if(scale>=1)continue;

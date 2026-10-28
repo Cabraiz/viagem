@@ -15,6 +15,7 @@ import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
 import {CIDADE_MODIFIERS,WAVE_BOSS,WAVE_BOSS_IDS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import {WAVE_BOSS_KEEP} from '../render/draw-scale.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
 import {allItemDisplays} from '../hud/items.ts';
@@ -512,8 +513,8 @@ let waveBossDraw:number=WAVE_BOSS.drawScale;
 /** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
 export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
 if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
-/** The chefão's extra scale for art `id` (1 for every other art). */
-const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
+/** The chefão's extra scale for art `id` (1 for every other art), on the old ruler (render/draw-scale.ts WAVE_BOSS_KEEP). */
+const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw*WAVE_BOSS_KEEP:1;
 /**
  * The ground shadow's length × this for art `id` (render/silhouette.ts castSilhouette): the chefão's, as long as a
  * WAVE_BOSS_SHADOW-times-bigger figure's would be, never a streak across the street (the user, 24/10: "corrige a

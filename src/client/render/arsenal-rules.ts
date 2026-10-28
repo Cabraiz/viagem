@@ -43,8 +43,10 @@ export function crateRow(progress:number):string{
  * with no rarity colour (the rarity shows only when it opens). FLOAT_PX: the sticker's size at body 1 (CSS px, about
  * half the crate's width, so it reads on a phone); FLOAT_LIFT ± FLOAT_BOB: its centre over the ground; one bob in
  * FLOAT_BOB_MS, one turn in FLOAT_TURN_MS, FLOAT_TURN_OPEN× faster when a hero has it all but open.
+ * Card NEW-20261028-ORQ-escala-heroi-uno-inimigo (auditoria-arte-mundo item 13): half of the 120 it was, which drew the
+ * item bigger than the hero; with the hero ×1.875 (render/draw-scale.ts) it is now about half a hero tall on a phone.
  */
-export const FLOAT_PX=120,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
+export const FLOAT_PX=60,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
 /**
  * On a phone (the user, 23/10: "aumentar o item flutuando no celular até ficar legível") the floating item grows with the
  * square of the horde's legibility multiplier over the body scale (framing.ts hordeUiScale: 1 on the PC, ~1.25 at a

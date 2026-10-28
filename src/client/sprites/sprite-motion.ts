@@ -35,10 +35,11 @@ export const WALK_STRIDE=.68;
  * Share of the stride the cycle keeps up with (1 = the foot locked to the ground). Under 1 the cycle plays slower than
  * the ground goes by. The hero covers ~5.7 heights a second across the screen, a sprint for a walk drawn at 0.68 heights
  * a cycle: locked, that is ~8 cycles a second, too fast for the user (NEW-20261021-ORQ-passo-3x-mais-lento). The hero's
- * speed stays, so the walk plays at half (~4 cycles/s) and the foot slides back half the ground, until a run with a
- * longer drawn stride brings the lock back to 1. Mutable for the sandbox's proofs.
+ * speed stays, so the walk played at half (~4 cycles/s) with the foot sliding back half the ground. Since the hero draws
+ * at the Uno's ruler (NEW-20261028-ORQ-escala-heroi-uno-inimigo, HERO_DRAW_SCALE 1.5) he covers ~3 heights a second:
+ * locked, ~4.4 cycles a second, the cadence the user approved, so the foot is locked again. Mutable for the sandbox's proofs.
  */
-export const WALK_TUNE={lock:.5};
+export const WALK_TUNE={lock:1};
 /**
  * The hero's gait when moving (card passo-3x-mais-lento, the user's ask): a class with a drawn run (run16) runs, the foot
  * locked to the ground, since its stride is drawn for the hero's speed; `run:false` brings the walk back (WALK_TUNE).
@@ -46,7 +47,7 @@ export const WALK_TUNE={lock:.5};
 export const HERO_GAIT={run:true};
 /**
  * Drawn run stride, heights of the figure per cycle: the viciado's run16-W opens its feet 1.82× the walk's (widest minus
- * narrowest feet span over the figure, 0.65 against 0.35), so 0.68 × 1.82. Locked, ~4.6 cycles a second across the screen.
+ * narrowest feet span over the figure, 0.65 against 0.35), so 0.68 × 1.82. Locked, ~2.4 cycles a second across the screen (the hero at HERO_DRAW_SCALE 1.5).
  */
 export const RUN_STRIDE=1.24;
 /**

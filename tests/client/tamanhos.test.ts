@@ -11,9 +11,10 @@ import {HERO_WORLD_PX} from '../../src/contract/offscreen.ts';
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const source=(path:string)=>readFileSync(fromRoot(path),'utf8');
 
-test('draw factors: the heroes 20% smaller, the enemies 15% bigger',()=>{
-  assert.equal(HERO_DRAW_SCALE,.8);
-  assert.equal(ENEMY_DRAW_SCALE,1.15);
+// NEW-20261028-ORQ-escala-heroi-uno-inimigo: one ruler, the hero ~0.9 of the Uno's roof; ROLE_HEIGHT is in heroes.
+test('draw factors: the hero at the Uno ruler, the enemies on the same ruler',()=>{
+  assert.equal(HERO_DRAW_SCALE,1.5);
+  assert.equal(ENEMY_DRAW_SCALE,HERO_DRAW_SCALE);
 });
 
 test('the camera centres the drawn (smaller) body; the zoom keeps the reference hero',()=>{

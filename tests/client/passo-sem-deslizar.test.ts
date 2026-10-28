@@ -37,16 +37,17 @@ test('standing still never treads, a teleport adds nothing, and a bigger figure 
   near(walkCycles(.1,0,0,FIGURE)/walkCycles(.1,0,0,2*FIGURE),2);
 });
 
-test('the city hero at full speed across the screen: ~8 cycles a second with the foot locked, ~4 as shipped', ()=>{
+test('the city hero at full speed across the screen: ~4.4 cycles a second with the foot locked, as shipped (the hero at the Uno ruler)', ()=>{
   const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60,lock=WALK_TUNE.lock;
   const second=()=>{let cycles=0;for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE);return cycles;};
   try{
     WALK_TUNE.lock=1;const locked=second();
-    assert.ok(locked>7.5&&locked<9,`cycles in 1 s, foot locked: ${locked}`);
+    assert.ok(locked>4&&locked<5,`cycles in 1 s, foot locked: ${locked}`);
     WALK_TUNE.lock=.5;near(second(),locked/2);
   }finally{WALK_TUNE.lock=lock;}
-  // passo-3x-mais-lento: the user keeps the hero's speed and wants a slower walk; half until the viciado gets a run.
-  assert.equal(WALK_TUNE.lock,.5,'the game ships the walk at half the ground');
+  // passo-3x-mais-lento: the user keeps the hero's speed and wants ~4 cycles a second; the hero drawn at the Uno's
+  // ruler (escala-heroi-uno-inimigo) walks that with the foot locked.
+  assert.equal(WALK_TUNE.lock,1,'the game ships the walk with the foot locked');
 });
 
 test('cycleFrame wraps over the cycle and never leaves the clip', ()=>{
@@ -57,10 +58,10 @@ test('cycleFrame wraps over the cycle and never leaves the clip', ()=>{
   assert.equal(cycleFrame(3.25,6),1);
 });
 
-test('the run without a phase table (RUN_STRIDE): ~4.6 cycles a second across the screen, the foot locked', ()=>{
+test('the run without a phase table (RUN_STRIDE): ~2.4 cycles a second across the screen, the foot locked', ()=>{
   const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60;let cycles=0;
   for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE,RUN_STRIDE,1);
-  assert.ok(cycles>4.2&&cycles<5,`run cycles in 1 s: ${cycles}`);
+  assert.ok(cycles>2.2&&cycles<2.7,`run cycles in 1 s: ${cycles}`);
   assert.ok(RUN_STRIDE>1.6*WALK_STRIDE,'the run is drawn with a longer stride than the walk');
   assert.equal(HERO_GAIT.run,true,'a class with a run runs by default');
 });

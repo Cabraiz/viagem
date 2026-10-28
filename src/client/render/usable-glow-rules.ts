@@ -29,6 +29,14 @@ export const GLOW_BANDS:readonly GlowBand[]=Object.freeze([
   {css:2.5,color:INTERATIVO_COR,depth:-.0004},
 ]);
 /**
+ * Items and crate stickers on the ground (card NEW-20261028-ORQ-escala-heroi-uno-inimigo, auditoria-arte-mundo item 13):
+ * a thin gold and Breu line, so a small item does not read as a HUD icon dropped on the map; the pulse still calls.
+ */
+export const ITEM_BANDS:readonly GlowBand[]=Object.freeze([
+  {css:2,color:GLOW_BREU,depth:-.0006},
+  {css:1.25,color:INTERATIVO_COR,depth:-.0004},
+]);
+/**
  * The shot: the same gold and Breu, thinner (a bullet is a few px; the full glow would swallow it), 4 directions per band
  * (Breu on the diagonals, gold on the axes): 8 copies a bullet, not 16 (measured: shots are most of the glows in a fight).
  */

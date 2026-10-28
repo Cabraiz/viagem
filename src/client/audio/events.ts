@@ -1,7 +1,10 @@
 /**
  * Sim events -> sounds (VGM-050; the files of NEW-20261022-ORQ-sons-ia-ace-step). Client integration (VGM-043) feeds
- * RunView.events here. Only the local player's own hits, shots, kills and pickups make noise; team moments (falls,
- * rescues, boss, rounds) play for everyone.
+ * RunView.events here (hud/rescue.ts, once per authoritative view). Only the local player's own hits, shots, kills and
+ * pickups make noise; team moments (falls, rescues, boss, rounds) play for everyone.
+ * NEW-20261028-ORQ-sons-da-partida-ligados: each event is a cue (sound, level, pitch): the hits and the kill's plop
+ * vary in pitch by target, a crit lands lower and louder, an elite's death is a smaller chefe-morte, and the team
+ * hears a rescue quietly while the rescuer hears it full.
  */
 import type {SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
@@ -52,15 +55,55 @@ export function chestSound(rarity:number):SoundId{
   return rarity>=5?'bau-lendario':rarity>=4?'bau-epico':rarity>=2?'bau-raro':'bau-comum';
 }
 
+/** A sound and how to play it: its level (1 = the file's) and its pitch (playback rate, files only). */
+export interface EventCue {id:SoundId;gain?:number;rate?:number}
+/** The hit's four pitches, drawn by the target (the same critter always sounds the same, the crowd varies). */
+export const HIT_RATES:readonly number[]=[.9,.97,1.04,1.12];
+/** A crit: lower and louder than any plain hit. */
+export const CRIT_CUE={rate:.8,gain:1.25} as const;
+/** The kill's plop, a little apart by critter. */
+export const KILL_RATES:readonly number[]=[.94,1,1.07];
+/** An elite's death: the chefe's, smaller and higher (it is never throttled, so a crowd of plops never eats it). */
+export const ELITE_DEATH={rate:1.2,gain:.55} as const;
+/** The team hears a rescue this low; the rescuer full (the rescued stands up with 'levantar'). */
+export const TEAM_RESCUE_GAIN=.4;
+/** A string's stable bucket in [0, n) (FNV-1a). */
+export function bucket(id:string,n:number):number{
+  let h=0x811c9dc5;
+  for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),0x01000193);
+  return (h>>>0)%n;
+}
+
+/**
+ * The cue of one event for the local player, or undefined when it is silent for them. `elite` tells an elite enemy
+ * by id (the kill event carries only the kind; the feed still holds the body on the kill's tick).
+ */
+export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:string)=>boolean):EventCue|undefined{
+  const mine=(id:string|undefined)=>localPlayer!==undefined&&id===localPlayer;
+  switch(event.type){
+    case 'damage':{
+      if(mine(event.target))return {id:'dano-heroi'};
+      if(!mine(event.source))return undefined;
+      // A slash lands with a thwack; a shot with the critter's splat.
+      const id:SoundId=event.weapon&&MELEE.has(event.weapon.replace(/(-evo|-lendario)+$/,''))?'golpe':'bicho-acerto';
+      return event.crit?{id,...CRIT_CUE}:{id,rate:HIT_RATES[bucket(event.target,HIT_RATES.length)]};
+    }
+    case 'kill':
+      if(isBoss(event.kind))return {id:'chefe-morte'};
+      if(!mine(event.by))return undefined;
+      if(elite?.(event.enemy))return {id:'chefe-morte',...ELITE_DEATH};
+      return {id:'bicho-morte',rate:KILL_RATES[bucket(event.enemy,KILL_RATES.length)]};
+    case 'revived':
+      if(mine(event.player))return {id:'levantar'};
+      return mine(event.by)?{id:'resgate'}:{id:'resgate',gain:TEAM_RESCUE_GAIN};
+    default:{const id=soundForEvent(event,localPlayer);return id?{id}:undefined;}
+  }
+}
+
 export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefined{
   const mine=(id:string|undefined)=>localPlayer!==undefined&&id===localPlayer;
   switch(event.type){
-    case 'damage':
-      if(mine(event.target))return 'dano-heroi';
-      if(!mine(event.source))return undefined;
-      // A slash lands with a thwack; a shot with the critter's splat.
-      return event.weapon&&MELEE.has(event.weapon.replace(/(-evo|-lendario)+$/,''))?'golpe':'bicho-acerto';
-    case 'kill':return mine(event.by)?isBoss(event.kind)?'chefe-morte':'bicho-morte':isBoss(event.kind)?'chefe-morte':undefined;
+    case 'damage':case 'kill':case 'revived':return cueForEvent(event,localPlayer)?.id;
     case 'fire':return mine(event.player)?weaponSound(event.weapon):undefined;
     case 'pickup':
       if(!mine(event.player))return undefined;
@@ -78,8 +121,8 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'skill':return mine(event.player)?'boing':undefined;
     // The level-up's cards are dealt.
     case 'offer':return mine(event.player)?'ui-carta':undefined;
+    // The fall whistle once, for everyone, at the fall; the caído's "Me salva" later is the 'sos' ping (hud/rescue.ts).
     case 'downed':return 'queda';
-    case 'revived':return mine(event.player)?'levantar':'resgate';
     // Being eliminated earns a canned laugh from the studio audience.
     case 'eliminated':return 'risada';
     case 'boss-phase':return 'chefe';
@@ -92,12 +135,16 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
 /**
  * Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played.
  * `heard`: an event whose sound already played on the client (a cédula caught on screen, render/cedula-catch.ts).
+ * `elite`: an elite enemy by id (cueForEvent).
  */
-export function playEvents(audio:{play(id:SoundId):boolean},events:Iterable<SimEvent>,localPlayer?:string,heard?:(event:SimEvent)=>boolean):number{
+export function playEvents(audio:{play(id:SoundId,opts?:{gain?:number;rate?:number}):boolean},events:Iterable<SimEvent>,localPlayer?:string,
+  heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean):number{
   let played=0;
   for(const event of events){
-    const id=soundForEvent(event,localPlayer);
-    if(id&&!heard?.(event)&&audio.play(id))played++;
+    const cue=cueForEvent(event,localPlayer,elite);
+    if(!cue||heard?.(event))continue;
+    const {id,...opts}=cue;
+    if(audio.play(id,opts))played++;
   }
   return played;
 }

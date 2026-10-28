@@ -95,6 +95,8 @@ const PUSH_MS=2*STEP*1000;
  * the city too: its art is scaled by CITY_VIEW_SCALE under a zoom 1/CITY_VIEW_SCALE times larger).
  */
 const ENEMY_TAP_RADIUS_PX=26;
+/** Share of the hero sprite's frame its body fills (the frame keeps room for the swing): the level-up ring's size. */
+const HERO_BODY_SHARE=.6;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
 /** The visual hook (data-sprite-* on the canvas, for tests and scripts) runs at most this often (ms): F3. */
@@ -632,6 +634,7 @@ export class IslandScene extends Phaser.Scene {
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale,
         cell:()=>this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined});
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
+        heroAt:()=>this.actor.visible?{x:this.actor.x,y:this.actor.y}:undefined,heroHeight:()=>this.heroBodyPx(),localId:()=>this.hooks.net?.id,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
       const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;this.fallenLabel?.destroy();this.fallenLabel=undefined;this.fallenBy=undefined;};
@@ -1401,12 +1404,20 @@ export class IslandScene extends Phaser.Scene {
     for(let i=0;i<allies.length;i++)set(figures[i+1],allies[i]);
     towers.update(time,delta,figures);
   }
-  /** A heavy impact shakes the screen (none with reduced motion): added after the camera's own centring. */
+  /**
+   * A heavy impact shakes the screen (none with reduced motion): added after the camera's own centring. The towers' shells
+   * and a hit that hurts the local hero (zueira-fx.ts, card levelup-estouro-e-tremida) add up.
+   */
   private shakeCamera(){
-    const towers=this.towers;if(!towers)return;
-    const cam=this.cameras.main,o=towers.shakeOffset(cam.zoom,this.shakeAt);
-    if(o.x||o.y){cam.scrollX+=o.x;cam.scrollY+=o.y;}
+    const cam=this.cameras.main,o=this.shakeAt;
+    for(const source of [this.towers,this.zueira]){
+      if(!source)continue;
+      source.shakeOffset(cam.zoom,o);
+      if(o.x||o.y){cam.scrollX+=o.x;cam.scrollY+=o.y;}
+    }
   }
+  /** The hero's body height on screen (scene px), to size the level-up burst around it. */
+  private heroBodyPx(){return this.actor.displayHeight*HERO_BODY_SHARE;}
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
   private enemyAt(p:Point){
     const feed=this.hooks.net?.feed;if(!feed)return undefined;
@@ -1508,6 +1519,8 @@ export class IslandScene extends Phaser.Scene {
     this.lastPhase=phase;
     // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
     const frozen=this.paused||!!net.run?.pause;
+    // The level-up burst plays when the pause opens too, if the levelup event did not come first (one per level).
+    if(net.run?.pause)this.zueira?.levelUp(net.run.pause.level);
     const axis=frozen?{x:0,y:0}:this.hooks.direction(),keys=frozen?{sx:0,sy:0}:this.keyAxis();
     const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
     const still=frozen||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;

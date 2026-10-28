@@ -129,7 +129,7 @@
      Só hud/offer-centro.css .rh-ofc. */
   --px39-ouro:#FDD05A;--px39-texto:#F7EEE8;--px39-verde:#7AFB86;--px39-selo:#3A1D14;
   --px39-tinta:#160F3C;--px39-tinta-funda:#080320;
-  --px39-veu:color-mix(in srgb,var(--px39-tinta-funda) 72%,transparent);
+  --px39-veu:color-mix(in srgb,var(--px39-tinta-funda) 78%,transparent);
 
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */

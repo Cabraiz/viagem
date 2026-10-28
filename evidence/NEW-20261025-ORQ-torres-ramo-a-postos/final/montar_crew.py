@@ -29,21 +29,24 @@ def feet(c):
     ys, xs = np.nonzero(a)
     top, bot = ys.min(), ys.max() + 1
     low = ys >= bot - 0.12 * (bot - top)
-    return xs[low].mean(), bot, bot - top
+    # a lying crew's lowest row is the rifle's bipod, not the feet: x = the middle of the whole drawing ({"pe": "caixa"})
+    fx = (xs.min() + xs.max() + 1) / 2 if ESC.get('pe') == 'caixa' else xs[low].mean()
+    return fx, bot, bot - top
 
 
 # chosen attempt per direction: escolha-<id>.json {"N": "t2"} (default: the first); a pose that breaks the loop is
-# replaced by a neighbour: {"pick": {"N": {"15": 13}}}
+# replaced by a neighbour: {"pick": {"N": {"15": 13}}}; a lying crew (pose 0 height changes with the direction) takes
+# the S sheet's scale in every direction: {"escala": "S"}
 escf = f'escolha-{ID}.json'
 ESC = json.load(open(escf)) if os.path.exists(escf) else {}
 
 
-def build(d):
-    g = grid(Image.open(f'anim-{ID}-{d}' + (f'-{ESC[d]}' if d in ESC and d != 'pick' else '') + '/meio.png'), 4, 4)
+def build(d, s=None):
+    g = grid(Image.open(f'anim-{ID}-{d}' + (f'-{ESC[d]}' if d in ESC and d not in ('pick', 'escala', 'pe') else '') + '/meio.png'), 4, 4)
     cells = [clean_cell(key(c)) for r in g for c in r]
     for i, j in ESC.get('pick', {}).get(d, {}).items():
         cells[int(i)] = cells[j]
-    s = HEIGHT / feet(cells[0])[2]
+    s = s or HEIGHT / feet(cells[0])[2]
     out = []
     for c in cells:
         fx, fy, _ = feet(c)
@@ -63,7 +66,7 @@ def build(d):
 
 poses, scales = {}, {}
 for d in DRAWN:
-    poses[d], scales[d] = build(d)
+    poses[d], scales[d] = build(d, scales.get(ESC.get('escala')))
 for d, src in MIRROR.items():
     poses[d] = [p.transpose(Image.FLIP_LEFT_RIGHT) for p in poses[src]]
 for name, rng in (('idle', range(0, 8)), ('fire', range(8, 16))):

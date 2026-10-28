@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3271,
-  "bytes": 2238794196,
-  "liteBytes": 785490776,
+  "bytes": 2244543408,
+  "liteBytes": 786197674,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -33650,28 +33650,28 @@
    "shownPsnr": 39.8
   },
   "towers/guarnicao-do-predio/fire.webp": {
-   "source": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe",
-   "lite": "045788986e0e8b2dcbae303e4ce7f38e4eb046f0354395840167074e6abbc826",
-   "bytes": 2813026,
-   "liteBytes": 396810,
+   "source": "740e77ca07e3ed30affcf13ae0c8c97ddb1bddf3abd42704d00130b0456acd50",
+   "lite": "b309ea4d4058addaeccce6b02f6b00e530a5210fc64c8cc041c8660c5488d027",
+   "bytes": 3233746,
+   "liteBytes": 444264,
    "liteCell": [
-    128,
+    192,
     128
    ],
-   "psnr": 43.5,
-   "shownPsnr": 43.5
+   "psnr": 39.6,
+   "shownPsnr": 39.6
   },
   "towers/guarnicao-do-predio/idle.webp": {
-   "source": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c",
-   "lite": "c70a72a30a3410487d61c9388b7afcdce2bcea00b24eb38e08a3d0efdac997ef",
-   "bytes": 1172594,
-   "liteBytes": 185544,
+   "source": "4f44a1a7ac356850df8fac1a876eaf5e58b83de3b3019b1f723c9071d1084303",
+   "lite": "7a5f61b5b813399874e1e51f15f287bda99670e4624fe69aff2c0d59d37dd68b",
+   "bytes": 3297790,
+   "liteBytes": 412772,
    "liteCell": [
-    128,
+    192,
     128
    ],
-   "psnr": 44.5,
-   "shownPsnr": 44.5
+   "psnr": 39.5,
+   "shownPsnr": 39.5
   },
   "towers/guindaste-de-municao/base.webp": {
    "source": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a",
@@ -33890,28 +33890,28 @@
    "shownPsnr": 40.1
   },
   "towers/ninho-do-sniper/fire.webp": {
-   "source": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727",
-   "lite": "f971ee22f7622bf60db218c32308eae347e56024c6148f3ccce82a7d15089b5c",
-   "bytes": 576558,
-   "liteBytes": 97990,
+   "source": "d51ceacdcdcf349e392c5725751fe1445f760eb998e3ed52f6d3b15be19d134a",
+   "lite": "1a4c005e58bde5289873cabd772d735103b65fa04e3b2cee9d3a57b334a91446",
+   "bytes": 2090056,
+   "liteBytes": 300370,
    "liteCell": [
-    80,
-    80
+    192,
+    128
    ],
-   "psnr": 44.9,
-   "shownPsnr": 44.9
+   "psnr": 42.7,
+   "shownPsnr": 42.7
   },
   "towers/ninho-do-sniper/idle.webp": {
-   "source": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995",
-   "lite": "ce88644a20a780efcad55c80c0a86ef797ae89c64c375a25761b6499d74ba78f",
-   "bytes": 339090,
-   "liteBytes": 61606,
+   "source": "43b71fc6532cc45374e5efbe667e48caf82c3445b21f60a3da98d66a20eca1bd",
+   "lite": "4bd4ce26094335b3e729ac125fb35acda88e7b6bbd638f4a3a13f73d3b095c2b",
+   "bytes": 2028888,
+   "liteBytes": 291442,
    "liteCell": [
-    80,
-    80
+    192,
+    128
    ],
-   "psnr": 45.7,
-   "shownPsnr": 45.7
+   "psnr": 42.8,
+   "shownPsnr": 42.8
   },
   "towers/obuseiro/base.webp": {
    "source": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958",

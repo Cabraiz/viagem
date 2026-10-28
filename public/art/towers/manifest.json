@@ -597,16 +597,16 @@
         "fire": {
           "file": "guarnicao-do-predio/fire.webp",
           "cell": [
-            256,
+            384,
             256
           ],
           "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.803
+            0.8594
           ],
-          "fps": 12,
+          "fps": 18,
           "pages": [
             {
               "file": "guarnicao-do-predio/fire.webp",
@@ -614,71 +614,46 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 64,
-              "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe"
+              "sha256": "740e77ca07e3ed30affcf13ae0c8c97ddb1bddf3abd42704d00130b0456acd50"
             }
           ],
-          "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe",
+          "sha256": "740e77ca07e3ed30affcf13ae0c8c97ddb1bddf3abd42704d00130b0456acd50",
           "liteCell": [
-            128,
+            192,
             128
           ]
         },
         "idle": {
           "file": "guarnicao-do-predio/idle.webp",
           "cell": [
-            256,
+            384,
             256
           ],
-          "frames": 4,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.803
+            0.8594
           ],
           "fps": 4,
           "pages": [
             {
               "file": "guarnicao-do-predio/idle.webp",
-              "columns": 4,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 32,
-              "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c"
+              "frameCount": 64,
+              "sha256": "4f44a1a7ac356850df8fac1a876eaf5e58b83de3b3019b1f723c9071d1084303"
             }
           ],
-          "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c",
+          "sha256": "4f44a1a7ac356850df8fac1a876eaf5e58b83de3b3019b1f723c9071d1084303",
           "liteCell": [
-            128,
+            192,
             128
           ]
-        },
-        "reload": {
-          "file": "guarnicao-do-predio/reload.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 12,
-          "directions": 8,
-          "anchor": [
-            0.5,
-            0.803
-          ],
-          "fps": 8,
-          "pages": [
-            {
-              "file": "guarnicao-do-predio/reload.webp",
-              "columns": 12,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 96,
-              "sha256": "8e19d56fa31537c1fcdbf12a1b3906558446635bfaa5566a550a9105c848ab45"
-            }
-          ],
-          "sha256": "8e19d56fa31537c1fcdbf12a1b3906558446635bfaa5566a550a9105c848ab45"
         }
       },
-      "sha256": "1920b0ad83e1314df785ba6e2255c311958dc25c2a9f677375a0cdacc438cd6f",
+      "sha256": "470bc6d4292c26f0c7d03fc6bf5af066a96b707e8ca4c43a2c2c15400e646c0b",
       "meta": {
         "footprint": [
           3,
@@ -687,6 +662,40 @@
         "mount": [
           290,
           262
+        ],
+        "muzzle": [
+          [
+            0.48,
+            0.64
+          ],
+          [
+            0.22,
+            0.62
+          ],
+          [
+            0.29,
+            0.58
+          ],
+          [
+            0.46,
+            0.37
+          ],
+          [
+            0.51,
+            0.18
+          ],
+          [
+            0.54,
+            0.37
+          ],
+          [
+            0.71,
+            0.58
+          ],
+          [
+            0.78,
+            0.62
+          ]
         ]
       }
     },
@@ -1519,7 +1528,7 @@
           ]
         }
       },
-      "sha256": "5d061b3070faf9a6c9dc9b78fec7f161a9825671d25a52a94d34e789b57f9283",
+      "sha256": "355f806e5b0fe796fcb173049b732728b45b852cb1de57062eb3ca42d93da3c6",
       "meta": {
         "footprint": [
           3,
@@ -1606,88 +1615,63 @@
         "fire": {
           "file": "ninho-do-sniper/fire.webp",
           "cell": [
-            160,
-            160
+            384,
+            256
           ],
-          "frames": 6,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
-          "fps": 12,
+          "fps": 6,
           "pages": [
             {
               "file": "ninho-do-sniper/fire.webp",
-              "columns": 6,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 48,
-              "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727"
+              "frameCount": 64,
+              "sha256": "d51ceacdcdcf349e392c5725751fe1445f760eb998e3ed52f6d3b15be19d134a"
             }
           ],
-          "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727",
+          "sha256": "d51ceacdcdcf349e392c5725751fe1445f760eb998e3ed52f6d3b15be19d134a",
           "liteCell": [
-            80,
-            80
+            192,
+            128
           ]
         },
         "idle": {
           "file": "ninho-do-sniper/idle.webp",
           "cell": [
-            160,
-            160
+            384,
+            256
           ],
-          "frames": 4,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
           "fps": 4,
           "pages": [
             {
               "file": "ninho-do-sniper/idle.webp",
-              "columns": 4,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 32,
-              "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995"
+              "frameCount": 64,
+              "sha256": "43b71fc6532cc45374e5efbe667e48caf82c3445b21f60a3da98d66a20eca1bd"
             }
           ],
-          "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995",
+          "sha256": "43b71fc6532cc45374e5efbe667e48caf82c3445b21f60a3da98d66a20eca1bd",
           "liteCell": [
-            80,
-            80
+            192,
+            128
           ]
-        },
-        "reload": {
-          "file": "ninho-do-sniper/reload.webp",
-          "cell": [
-            160,
-            160
-          ],
-          "frames": 10,
-          "directions": 8,
-          "anchor": [
-            0.5,
-            0.88
-          ],
-          "fps": 8,
-          "pages": [
-            {
-              "file": "ninho-do-sniper/reload.webp",
-              "columns": 10,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 80,
-              "sha256": "b3f3b2b707e7f8bc8853982d392107079a5da1e1059158004c8d1ca38fb30bd7"
-            }
-          ],
-          "sha256": "b3f3b2b707e7f8bc8853982d392107079a5da1e1059158004c8d1ca38fb30bd7"
         }
       },
-      "sha256": "9f8072fcfae722b678fd84bfa0f00864b48933bdf566eee8a93191e68f639d95",
+      "sha256": "6cce69905f5816bf0984a094af4b3cc798665aa201fd2ee903d60e0f6ff4102b",
       "meta": {
         "footprint": [
           2,
@@ -1696,6 +1680,40 @@
         "mount": [
           265,
           135
+        ],
+        "muzzle": [
+          [
+            0.4,
+            0.84
+          ],
+          [
+            0.23,
+            0.82
+          ],
+          [
+            0.27,
+            0.73
+          ],
+          [
+            0.33,
+            0.4
+          ],
+          [
+            0.58,
+            0.3
+          ],
+          [
+            0.67,
+            0.4
+          ],
+          [
+            0.73,
+            0.73
+          ],
+          [
+            0.77,
+            0.82
+          ]
         ]
       }
     },

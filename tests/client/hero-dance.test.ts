@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {dancePlan} from '../../src/client/sprites/movement128.ts';
+import {DANCE_LOOP_FRAMES,dancePlan} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites,danceFrame} from '../../src/client/sprites/character-sprites.ts';
-import {Cheers,DanceGate,danceAllowed,CHEER_MS,CHEER_RADIUS,DANCE_IDLE_MS,DANCE_PREFETCH_MS,DANCE_RATE} from '../../src/client/sprites/hero-dance.ts';
+import {Cheers,DanceGate,armed,danceAllowed,CHEER_MS,CHEER_RADIUS,DANCE_IDLE_MS,DANCE_PREFETCH_MS,DANCE_RATE} from '../../src/client/sprites/hero-dance.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 
@@ -13,6 +13,10 @@ afterEach(()=>setArtIndex(parseArtIndex(undefined)));
 const flush=async()=>{for(let i=0;i<15;i++)await Promise.resolve();};
 const dance=(extra:Record<string,unknown>={})=>({file:'tio.dance128.webp',cell:[96,96],frames:128,fps:128/36,durationMs:36000,loop:true,anchor:[.5,.875],
   height:64,figure:{left:16,top:16,right:82,bottom:88},pages:[{file:'tio.dance128.webp',columns:16,rows:8,firstFrame:0,frameCount:128}],...extra});
+// card dancas-5-herois-16q: 16 to 64 poses on a grid of 96 px cells, drawn on the rest S (its height and pivot)
+const loop=(frames=24,columns=6,extra:Record<string,unknown>={})=>({file:'tio.dance.abc.webp',revision:16,cell:[96,96],frames,durationMs:frames*100,loop:true,
+  anchor:[.5,.875],height:56,pivotX:48.2,figure:{left:20,top:10,right:78,bottom:86},
+  pages:[{file:'tio.dance.abc.webp',columns,rows:Math.ceil(frames/columns),firstFrame:0,frameCount:frames}],...extra});
 const idle8=()=>({file:'tio.idle8.webp',cell:[96,96],frames:1,directions:8,revision:6,movementHands:'empty',loop:false,anchor:[.5,.875],height:60,
   figure:{left:8,top:20,right:88,bottom:86},pages:[{file:'tio.idle8.webp',columns:8,rows:1,firstFrame:0,frameCount:8}]});
 const clip=(motion:string,direction:string)=>{
@@ -66,6 +70,19 @@ test('no dance dead, downed, out, offline, watching, riding or sliding; without 
   assert.equal(gate.update(20000+DANCE_IDLE_MS,true,on),20000+DANCE_IDLE_MS);
 });
 
+test('only empty-handed: a weapon in the hand stops the dance (and the cheer); a consumable or an empty slot does not',()=>{
+  const ok={hp:80,online:true,spectator:false},weapons=[{id:'chinelo'},{id:'coxinha'}],isWeapon=(id:string)=>id==='chinelo';
+  assert.equal(armed({weapons,hand:0},isWeapon),true);assert.equal(armed({weapons,hand:1},isWeapon),false,'a consumable in the hand');
+  assert.equal(armed({weapons,hand:5},isWeapon),false,'an empty slot');assert.equal(armed({weapons:[],hand:0},isWeapon),false);
+  assert.equal(armed({}),false,'no inventory (bots, old snapshots)');assert.equal(armed({weapons,hand:1}),true,'without a predicate every item counts');
+  assert.equal(danceAllowed({...ok,weapons,hand:0},100,isWeapon),false,'the chinelo in hand');
+  assert.equal(danceAllowed({...ok,weapons,hand:1},100,isWeapon),true,'the coxinha in hand');
+  assert.equal(danceAllowed({...ok,weapons:[],hand:0},100,isWeapon),true,'empty-handed');
+  // The cheer obeys the same gate: an armed hero does not dance even when everyone cheers.
+  const gate=new DanceGate(),armedCue={allowed:danceAllowed({...ok,weapons,hand:0},0,isWeapon),cheer:0};
+  for(let t=0;t<=DANCE_IDLE_MS+1000;t+=500)assert.equal(gate.update(t,true,armedCue),undefined);
+});
+
 test('a cheer dances at once while still, for CHEER_MS; a step or a tap cuts it; bots never dance from the wait',()=>{
   const gate=new DanceGate();
   assert.equal(gate.update(1000,true,{allowed:true,cheer:1000}),1000,'from the cheer, no 5 s wait');assert.equal(gate.prefetch,true);
@@ -116,8 +133,23 @@ test('the dance plan: one frontal 16×8 sheet of 96 px cells, its lite copy, mal
   index({});assert.equal(dancePlan('tio'),undefined,'a class without a dance');
 });
 
+test('the dance loop: N poses (16 to 64) on a grid of 96 px cells, at its own clock, on the rest pivot; it replaces the dance128',()=>{
+  index({'dance-loop':loop(),dance128:dance()});const plan=dancePlan('tio')!;
+  assert.equal(plan.key,'sprite96:tio:dance');assert.equal(plan.url,'/art/lite/sprites/tio.dance.abc.webp');assert.equal(plan.original,'/art/sprites/tio.dance.abc.webp');
+  assert.equal(plan.frameCount,24);assert.equal(plan.columns,6);assert.equal(plan.rows,4);assert.equal(plan.durationMs,2400);assert.equal(plan.rate,undefined);
+  assert.equal(plan.height,56);assert.equal(plan.pivotX,48.2);assert.equal(plan.loop,true);
+  assert.equal(danceFrame(plan,0),0);assert.equal(danceFrame(plan,100),1,'10 poses a second');assert.equal(danceFrame(plan,2399),23);assert.equal(danceFrame(plan,2400),0);
+  index({'dance-loop':loop(16,4)});assert.equal(dancePlan('tio')!.frameCount,DANCE_LOOP_FRAMES.min);
+  index({'dance-loop':loop(32,8)});assert.equal(dancePlan('tio')!.rows,4);
+  index({'dance-loop':loop(48,8)});assert.equal(dancePlan('tio')!.rows,6);assert.equal(danceFrame(dancePlan('tio')!,4799),47,'48 poses: a loop of 4.8 s');
+  for(const bad of [loop(15,4),loop(65,8),loop(24,6,{pages:[{file:'tio.dance.abc.webp',columns:6,rows:5,firstFrame:0,frameCount:24}]}),loop(24,6,{revision:6}),loop(24,6,{cell:[128,128]}),loop(24,6,{loop:false}),loop(24,6,{anchor:[.5,.9]}),
+    loop(24,6,{pivotX:undefined}),loop(24,6,{height:0}),loop(24,6,{durationMs:0})]){
+    index({'dance-loop':bad,dance128:dance()});assert.equal(dancePlan('tio'),undefined,`${JSON.stringify(bad)}: malformed, and no fallback to the old dance`);
+  }
+});
+
 test('the pose follows the clock at DANCE_RATE and loops',()=>{
-  const plan={durationMs:36000,frameCount:128};
+  const plan={durationMs:36000,frameCount:128,rate:DANCE_RATE};
   assert.equal(danceFrame(plan,0),0);
   assert.equal(danceFrame(plan,36000/128/DANCE_RATE),1);
   assert.equal(danceFrame(plan,36000/DANCE_RATE),0,'one loop');
@@ -174,14 +206,19 @@ test('in the match: still 5 s → the dance sheet, facing the camera whatever th
 test('the imported dances: every hero with one stands on the clip anchor at a sane size, and its lite copy exists',()=>{
   const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));setArtIndex(parseArtIndex(index));
   const pieces=index.groups.personagens.pieces as Record<string,{files:Record<string,{file:string;height:number}>}>;
-  const ids=Object.keys(pieces).filter(id=>pieces[id].files.dance128);
+  const ids=Object.keys(pieces).filter(id=>pieces[id].files.dance128||pieces[id].files['dance-loop']);
   assert.ok(ids.length>=27,`${ids.length} dances`);
   for(const id of ids){
     const plan=dancePlan(id);assert.ok(plan,id);
     assert.ok(plan!.height>=40&&plan!.height<=72,`${id}: height ${plan!.height}`);
     assert.ok(readFileSync(`public${plan!.url}`).length<600_000,`${id}: lite copy under 600 KB`);
   }
-  // Stage 3: the gato and the new maromba dance from Codex sheets (import-danca-jogo --input), not the old menu drawing.
-  for(const id of ['gato-nada-pra-comer','maromba'])
-    assert.equal((pieces[id]?.files.dance128 as unknown as {source?:{input?:string}}|undefined)?.source?.input,'codex',`${id}: its own dance`);
+  // The gato dances its Codex dance128 (import-danca-jogo --input); the other 5 heroes their dance-loop (import-danca-loop),
+  // ~48 poses at 10 a second, and the old dance128 is gone (card dancas-5-herois-16q).
+  assert.equal((pieces['gato-nada-pra-comer']?.files.dance128 as unknown as {source?:{input?:string}}|undefined)?.source?.input,'codex','the gato: its own dance');
+  for(const id of ['aposentado','clt-cansado','viciado-em-bet','maromba','vendedor-praia']){
+    const plan=dancePlan(id)!;assert.equal(plan.key,`sprite96:${id}:dance`,id);assert.equal(pieces[id].files.dance128,undefined,`${id}: no dance128 left`);
+    assert.ok(plan.frameCount>=24&&plan.frameCount<=DANCE_LOOP_FRAMES.max,`${id}: ${plan.frameCount} poses`);
+    assert.ok(plan.columns*96*plan.rows*96*4<=2.5e6,`${id}: the texture under 2.5 MB on the GPU`);
+  }
 });

@@ -34,6 +34,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
+import {isWeaponItem} from './render/arsenal-rules.ts';
 import {heldHand} from './sprites/hand-points.ts';
 import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt,releaseEnemyArt} from './art/horde-art.ts';
 import {ChefaoArtPlan,chefaoDeferred} from './art/chefao-art.ts';
@@ -1245,7 +1246,7 @@ export class IslandScene extends Phaser.Scene {
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
     if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
-    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
+    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
@@ -1611,7 +1612,7 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       // An ally dances too when it has stood still for a while (danca-no-jogo): its moves and swings show it. A room bot
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
-      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
+      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras));
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).

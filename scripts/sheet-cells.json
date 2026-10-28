@@ -16638,8 +16638,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/aposentado.dance128.b2d18b849abb.webp": {
-   "sha": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
+  "lite/sprites/aposentado.dance.88441aecf611.webp": {
+   "sha": "fa334d0e0abdcdf791e842d0540bdc0735fa0d0127f4daba216b74b0d87db4ba",
    "ilhas": 0,
    "fails": []
   },
@@ -16923,8 +16923,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
-   "sha": "b14197907d40324243daf0718c9ca5fc46d39f796c9442816d69ba5e34655352",
+  "lite/sprites/clt-cansado.dance.ecb0e5d905b5.webp": {
+   "sha": "ca802efc674cb1244dad661b8580ddcc66e56c909ce439cb19a2aa8df9da5c13",
    "ilhas": 0,
    "fails": []
   },
@@ -17898,8 +17898,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.dance128.576e79362713.webp": {
-   "sha": "14d2e95cc14de918839d7f9d993b08384dd1096d42f0627e96d05c7f90f3e153",
+  "lite/sprites/maromba.dance.0b188145e7a4.webp": {
+   "sha": "7b6661f5a3341a9d58e2013ebd33fe3a6718a858e95b1cf86577169ee6c60764",
    "ilhas": 0,
    "fails": []
   },
@@ -18788,8 +18788,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/vendedor-praia.dance128.932b5398d729.webp": {
-   "sha": "704c8541ed7162b3f0c057dc40b2c2b2182a13e8e2b53298ee65241632c35a0e",
+  "lite/sprites/vendedor-praia.dance.216ee30d195f.webp": {
+   "sha": "e7f5451d2e0685115727af517c69732cc2f43a80fab6807f2f1522e50e37fc2c",
    "ilhas": 0,
    "fails": []
   },
@@ -19068,8 +19068,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
-   "sha": "e2b6696b93dcec65e0d8e3c8c0b30fea5e32c85ae0116ef02669f4e025fadcb6",
+  "lite/sprites/viciado-em-bet.dance.16aa2d21068a.webp": {
+   "sha": "f25846f4e02b330beaacb53ed401231cad5a8a0bc65ccc29f3a5be0971b272cc",
    "ilhas": 0,
    "fails": []
   },
@@ -19458,8 +19458,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/aposentado.dance128.b2d18b849abb.webp": {
-   "sha": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
+  "sprites/aposentado.dance.88441aecf611.webp": {
+   "sha": "88441aecf611396aa344f2bd690ebd677a08bde89fafa58c698eabba8538e231",
    "ilhas": 0,
    "fails": []
   },
@@ -19758,8 +19758,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
-   "sha": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308",
+  "sprites/clt-cansado.dance.ecb0e5d905b5.webp": {
+   "sha": "ecb0e5d905b54d952335d36b0e77e491db9ea05dc942817b89668eb05a039a20",
    "ilhas": 0,
    "fails": []
   },
@@ -20768,8 +20768,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.dance128.576e79362713.webp": {
-   "sha": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f",
+  "sprites/maromba.dance.0b188145e7a4.webp": {
+   "sha": "0b188145e7a47d5559b1074c80915445a5340b044166ea0380c39491919bfefb",
    "ilhas": 0,
    "fails": []
   },
@@ -21723,8 +21723,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/vendedor-praia.dance128.932b5398d729.webp": {
-   "sha": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",
+  "sprites/vendedor-praia.dance.216ee30d195f.webp": {
+   "sha": "216ee30d195fd9416f2bd56f999a26966d69992c8c42ce124edea6231ebad1e8",
    "ilhas": 0,
    "fails": []
   },
@@ -22008,8 +22008,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
-   "sha": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d",
+  "sprites/viciado-em-bet.dance.16aa2d21068a.webp": {
+   "sha": "16aa2d21068a693c6c174f6f7590c760298f7bda559b11c946b63335dbb0c544",
    "ilhas": 0,
    "fails": []
   },

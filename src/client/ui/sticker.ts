@@ -23,8 +23,6 @@ export const STICKER_NAMES=[
 export const ART_STICKER_NAMES=[
   // D-051 arsenal: the 7 weapons, the snacks, the tower kit, the hand's passives and the legendary slot's frame.
   'faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre',
-  // The kit:barraca (barracas-no-caminho: scripts/kit-barraca-icone.mjs, from the barraca's own sheet).
-  'kit-barraca',
   'pente','silenciador','moldura-lendaria',
   // Controls and places: attack/push buttons, the nest, the crate, the bank, the wallet, PIX, Dona Cida, the chaveiro.
   'atacar','empurrar','ninho','caixa','banco','carteira','pix-envio','cida','chaveiro',

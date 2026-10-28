@@ -16,10 +16,13 @@ test('squareAt: the standing barricada on the cell under the point; a fallen one
   assert.equal(squareAt(list,{x:3.2*cell,y:4.9*cell},cell)?.id,'a');
   assert.equal(squareAt(list,{x:5.5*cell,y:4.5*cell},cell),undefined);
   assert.equal(squareAt(list,{x:6.5*cell,y:4.5*cell},cell),undefined);
-  // barricada-2x: a square covers its 2×2 cells (3..4 × 4..5), not the next ones.
-  assert.equal(squareAt(list,{x:4.9*cell,y:5.9*cell},cell)?.id,'a');
+  // barricada-tocar-no-mapa: a piece covers its 2×1 cells (3..4 × 4), along y when turned, not the next ones.
+  assert.equal(squareAt(list,{x:4.9*cell,y:4.9*cell},cell)?.id,'a');
+  assert.equal(squareAt(list,{x:3.5*cell,y:5.1*cell},cell),undefined,'1 cell thick');
   assert.equal(squareAt(list,{x:2.9*cell,y:4.5*cell},cell),undefined);
-  assert.equal(squareAt(list,{x:3.5*cell,y:6.1*cell},cell),undefined);
+  const turned=[sq('t',10,10,{rot:1})];
+  assert.equal(squareAt(turned,{x:10.5*cell,y:11.9*cell},cell)?.id,'t');
+  assert.equal(squareAt(turned,{x:11.5*cell,y:10.5*cell},cell),undefined);
   assert.equal(INTERATIVO_COR,0xffd23f,'Amarelo Encarte');
 });
 

@@ -1,0 +1,60 @@
+/* Popup de escolha (NEW-20261025-ORQ-popup-escolha-trico, ajustes em BUG-20261026-ORQ-popup-trico-ajustes). A moldura é
+   a da variação 6: borda lisa com PEDAÇOS de cachecol de tricô e neve só nos cantos (9-slice, os pedaços ficam nas
+   fatias dos cantos). Os dois botões são os blocos da variação 7 (amarelo e roxo, imagens do ChatGPT em 9-slice) com os
+   personagens recortados, sem cenário. Fundo de CSS só carrega com o popup aberto. */
+#confirmation{--moldura-corte:217 210 203 217;--moldura-borda:108px 105px 101px 108px;border:0;background:none;box-shadow:none;border-image:url('/art/menu/escolha/moldura-trico.webp') var(--moldura-corte) fill / var(--moldura-borda) stretch;padding:34px 26px 12px}
+#confirmation .close-dialog{top:4px;right:4px;border-radius:var(--r-circulo);background:url('/art/menu/escolha/x-fechar.webp') 50% 50% / 40px 40px no-repeat}
+#confirmation .close-dialog>svg{visibility:hidden}
+/* O foco ao abrir fica no próprio popup (main.ts); no X pelo teclado, o anel segue o círculo, nunca um quadrado escuro. */
+#confirmation:focus{outline:none}
+#confirmation .close-dialog:focus-visible{outline:3px solid var(--c-papel-claro);outline-offset:-2px}
+
+/* Herói com arte: dois blocos lado a lado; o seletor de bots fica DENTRO do bloco roxo, embaixo. */
+#confirmation.escolha-arte .chosen-card{margin:0;padding:4px 40px 4px 6px;border-radius:var(--r-janela);background:var(--c-sombra)}
+/* Topo baixo como na ref. 7 (o usuário: "a parte de cima deve ser menor"): a altura vai para os blocos. */
+#confirmation.escolha-arte .chosen-card{gap:10px}
+#confirmation.escolha-arte .chosen-card{margin-top:14px}
+/* Herói do topo no mesmo canto, bem maior, saindo para fora do popup por cima da moldura (escala do gato da ref. 6). */
+#confirmation.escolha-arte{overflow:visible}
+#confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,24dvh,190px);height:clamp(110px,24dvh,190px);margin:calc(-.5 * clamp(110px,24dvh,190px)) 0 -6px -8px;position:relative;z-index:1}
+/* Chip da classe como na ref. 7: pílula roxa viva, texto claro, numa linha só; a descrição vai embaixo. */
+#confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:11px;white-space:nowrap}
+#confirmation.escolha-arte .chosen-role .suit{fill:currentColor}
+#confirmation.escolha-arte #chosen-class{color:color-mix(in srgb,var(--c-papel-claro) 80%,var(--c-lilas))}
+#confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+#confirmation.escolha-arte :is(#enter-coop,.solo-row){border:0;border-radius:0;box-shadow:none;background:none;border-image:var(--bloco) var(--bloco-corte) fill / var(--bloco-borda) stretch;min-width:0}
+#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:55;--bloco-borda:28px;border-image-outset:11px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
+#confirmation.escolha-arte .solo-row{--bloco:url('/art/menu/escolha/bloco-sozinho.webp');--bloco-corte:34 34 76 34;--bloco-borda:17px 17px 38px 17px;display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px}
+#confirmation.escolha-arte #enter-island{display:flex;flex:1;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0;border:0;background:none;white-space:normal;color:var(--c-papel-claro)}
+#confirmation.escolha-arte .escolha-foto{display:contents}
+#confirmation.escolha-arte .escolha-img{display:block;flex:1 1 var(--escolha-img-h);width:100%;min-height:0;height:var(--escolha-img-h);object-fit:contain;object-position:50% 100%}
+/* Sozinho (traço da ref. 7): a arte cobre o bloco todo; o chão lavanda vai até a base, atrás do texto e dos bots, sem esmaecer. */
+#confirmation.escolha-arte .solo-row{position:relative}
+#confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
+#confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;border-radius:var(--r-janela)}
+#confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
+/* Amigos como na ref. 7: a arte vai de borda a borda; os corpos terminam um pouco acima do rótulo, dissolvendo no
+   amarelo, e o texto fica numa faixa amarela limpa embaixo. */
+#confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}
+#confirmation.escolha-arte #enter-coop .escolha-img{position:absolute;left:0;top:auto;bottom:30px;width:100%;height:68%;margin:0;object-fit:cover;object-position:50% 0;-webkit-mask-image:linear-gradient(var(--c-breu) 72%,transparent);mask-image:linear-gradient(var(--c-breu) 72%,transparent)}
+#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px}
+#confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
+/* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
+#confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}
+#confirmation.escolha-arte .solo-bots-title{color:color-mix(in srgb,var(--c-papel-claro) 80%,var(--c-violeta));font-weight:400;font-size:13px}
+#confirmation.escolha-arte .solo-bots-step{width:28px;height:28px;min-height:0;flex:none;color:transparent;background:url('/art/menu/escolha/bots-menos.webp') 50% 50% / contain no-repeat}
+#confirmation.escolha-arte .solo-bots-step[data-step="1"]{background-image:url('/art/menu/escolha/bots-mais.webp')}
+#confirmation.escolha-arte .solo-bots-value{min-width:34px;padding:3px 0;border-radius:var(--r-ficha);color:var(--c-papel-claro);background:color-mix(in srgb,var(--c-breu) 75%,var(--c-lilas))}
+#confirmation.escolha-arte{--escolha-img-h:clamp(90px,18dvh,150px);padding-left:20px;padding-right:20px}
+@media (max-height:520px){
+  /* O popup desce um pouco para o herói do topo sair por cima da moldura também deitado. */
+  #confirmation.escolha-arte{--escolha-img-h:clamp(50px,17dvh,80px);margin-top:max(40px,13dvh);margin-bottom:6px;max-height:calc(100dvh - max(40px,13dvh) - 8px);padding-top:22px}
+  #confirmation.escolha-arte .chosen-actions{margin-top:8px}
+  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,38dvh,150px);height:clamp(110px,38dvh,150px);margin:calc(-.55 * clamp(110px,38dvh,150px)) 0 -8px -6px}
+  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:4px 12px}
+  /* Bloco largo e baixo: a arte larga cobre o bloco (chão de lado a lado); o herói enche a altura acima do texto. */
+  #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
+  #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
+  /* Deitado a arte larga já vem afastada: inteira, encostada na base. */
+  #confirmation.escolha-arte #enter-coop .escolha-img{bottom:30px;height:calc(100% - 34px);object-fit:contain;object-position:50% 100%}
+}

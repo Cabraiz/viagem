@@ -11,8 +11,6 @@ import {baseHeroSpeed,clearSegment,floorOf,moveDirection,onFloor,settleFloor,typ
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';
 
-/** Local pickup cap for skill drops (D-003); integration swaps in budget.ts MAX_PICKUPS. */
-export const SKILL_PICKUP_CAP=250;
 
 /** Extra JSON-safe player field (D-002): tick when the class skill is ready again. */
 /** Extra JSON-safe player fields (D-002): skillReady = tick the skill is ready; skillFloor = earliest tick a refund can bring it to. */
@@ -62,8 +60,6 @@ const shield=(ctx:SimContext,p:SimPlayer,seconds:number)=>{
 /** Skill radii scale with stats.area and debuff durations with stats.duration (D-001). */
 const area=(p:SimPlayer,radius:number)=>radius*p.stats.area;
 const lasting=(p:SimPlayer,seconds:number)=>seconds*p.stats.duration;
-/** Seconds a found coxinha stays on the ground. */
-export const FOUND_PICKUP_SECONDS=10;
 
 interface Effect {hits:string[];helped:string[];outcome?:DiceOutcome;pickup?:string;movedTo?:Point;blocked?:number}
 /** Returns null when the skill has nothing to act on: no cooldown is spent. */
@@ -124,20 +120,12 @@ const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
   for(const ally of allies)shield(ctx,ally,seconds);
   return {hits,helped:allies.map(a=>a.id),movedTo:moved?{...at}:undefined};
 };
-interface ShelterSpec {radius:number;heal:number;shield:number;findsPickup:boolean}
-/** Heals (and briefly shields) nearby allies; optionally finds a coxinha during a wave (never XP, never between rounds). */
-const shelter=(spec:ShelterSpec):SkillFn=>(ctx,player,_source,rng)=>{
+interface ShelterSpec {radius:number;heal:number;shield:number}
+/** Heals (and briefly shields) nearby allies. It no longer finds a coxinha on the ground (NEW-20261025-ORQ-sem-coxinha-no-chao). */
+const shelter=(spec:ShelterSpec):SkillFn=>(ctx,player)=>{
   const allies=alliesNear(ctx,player,area(player,spec.radius));
   for(const ally of allies){heal(ally,spec.heal);if(spec.shield>0)shield(ctx,ally,spec.shield);}
-  let pickup:string|undefined;
-  if(spec.findsPickup&&ctx.round.phase==='wave'&&ctx.pickups.size<SKILL_PICKUP_CAP){
-    pickup=ctx.nextId('pickup');
-    const angle=rng.range(0,Math.PI*2);
-    ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:30,
-      x:player.x+Math.cos(angle)*0.6,y:player.y+Math.sin(angle)*0.6,
-      spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(FOUND_PICKUP_SECONDS)});
-  }
-  return {hits:[],helped:allies.map(a=>a.id),pickup};
+  return {hits:[],helped:allies.map(a=>a.id)};
 };
 interface TauntSpec {shield:number;radius:number;taunt:number;slow:number}
 /** Invulnerable for a moment; the enemies around chase the caster (and are optionally slowed). */
@@ -282,24 +270,22 @@ const volley=(spec:VolleySpec):SkillFn=>(ctx,player,source)=>{
   return {hits,helped:spec.refreshWeapons?[player.id]:[]};
 };
 interface FetchSpec {range:number;heal:number}
-/** The pet fetches a coxinha next to the most hurt ally in range (caster included). Only during a wave, so it cannot be farmed. */
+/**
+ * The pet feeds the most hurt ally in range (caster included) on the spot: the same heal its coxinha gave, with no
+ * coxinha on the ground any more (NEW-20261025-ORQ-sem-coxinha-no-chao). Only during a wave, so it cannot be farmed.
+ */
 const fetchFood=(spec:FetchSpec):SkillFn=>(ctx,player)=>{
-  if(ctx.round.phase!=='wave'||ctx.pickups.size>=SKILL_PICKUP_CAP)return null;
+  if(ctx.round.phase!=='wave')return null;
   const ally=alliesNear(ctx,player,spec.range).filter(a=>a.hp<a.stats.maxHp).sort((a,b)=>hpRatio(a)-hpRatio(b)||byId(a,b))[0];
   if(!ally)return null;
-  // Lands half a step from the ally toward the caster when walkable, else on the ally.
-  const d=dist(ally,player);
-  const spot=d>1e-6?{x:ally.x+(player.x-ally.x)/d*0.5,y:ally.y+(player.y-ally.y)/d*0.5}:{x:ally.x,y:ally.y};
-  const at=clearSegment(ally,spot,ctx.terrain)?spot:{x:ally.x,y:ally.y};
-  const pickup=ctx.nextId('pickup');
-  ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:spec.heal,x:at.x,y:at.y,spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(FOUND_PICKUP_SECONDS)});
-  return {hits:[],helped:[ally.id],pickup};
+  heal(ally,spec.heal);
+  return {hits:[],helped:[ally.id]};
 };
 
 const SKILLS:Readonly<Record<string,SkillFn>>={
   // ----- VGM-044A -----
   'cidadao-comum':advance({steps:4,pushRadius:2.5,damage:8,knock:0.8,shield:{radius:3,base:0.8,perEnemy:0.1,max:1.5}}),
-  mendigo:shelter({radius:3.5,heal:20,shield:1,findsPickup:true}),
+  mendigo:shelter({radius:3.5,heal:20,shield:1}),
   // Magic dice on the tapped/nearest enemy: guaranteed base damage plus a rolled bonus. Costs nothing but the cooldown.
   'viciado-em-bet'(ctx,player,source,rng){
     const target=targetOf(ctx,player,area(player,7));
@@ -353,7 +339,7 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   universitario:volley({targets:6,range:6,hits:1,damage:8,refreshWeapons:true}),
   'rei-pastel':burst({at:'target',range:7,radius:2,damage:20,slow:3}),
   // ----- Suporte -----
-  'tio-do-churrasco':shelter({radius:4,heal:25,shield:0,findsPickup:false}),
+  'tio-do-churrasco':shelter({radius:4,heal:25,shield:0}),
   feirante:rally({radius:4,heal:10,refreshWeapons:true}),
   coach:rally({radius:5,heal:5,shield:1.5}),
   'vendedor-praia':rally({radius:5,heal:18}),

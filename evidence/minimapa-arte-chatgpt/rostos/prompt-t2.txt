@@ -1,0 +1,10 @@
+Use your image generation tool to create ONE image, 1536x1024, and save it as rostos-2-t1.png in the current folder. Do not inspect files, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+
+Two attached images, both references only (do not copy, edit or reuse any part of them):
+- the FIRST (10 painted portraits) says WHO each character is;
+- the SECOND (6 flat icons on green) is the exact STYLE to use.
+
+Make a sheet of 10 game MINIMAP ICONS in the style of the second image, 5 columns x 2 rows, one centered in each cell, same order as the first image:
+Row 1: (1) confident coach man, slick dark hair, sunglasses on head, teal jacket; (2) young woman, long brown hair, round glasses, pencil; (3) cleaning lady, blue bandana headscarf, ponytail; (4) market vendor woman, dark skin, green headwrap, yellow apron; (5) homeless man, brown beanie, bushy beard.
+Row 2: (6) young woman, black hair bun with purple tie, headphones round her neck; (7) bricklayer, yellow hard hat, orange vest; (8) streamer girl, long lilac hair, cat-ear headset; (9) student, messy brown hair, round glasses; (10) nosy neighbour lady, pink hair curlers, pink robe.
+Each icon: head straight from the front plus a sliver of shoulders, flat cartoon, very simplified, big shapes, only the signature traits above, strong saturated colours, THICK dark purple-black outline (#1d1830), no gradients, readable when shrunk to 14 pixels; same proportions and line weight as the second image. Background: flat pure green #00FF00 everywhere, no frames, no shadows, no text.

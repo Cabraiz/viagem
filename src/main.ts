@@ -4,6 +4,7 @@ import { getClass, heroiPadrao, isLiberado, playableClasses, type HeroClass } fr
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
+import { mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { startAds } from './client/ui/ads-boot.ts';
@@ -21,6 +22,7 @@ import './client/ui/update-toast.css';
 import './client/ui/pull-refresh.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
+import './client/ui/escolha.css';
 import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, aneisHtml, aneisOf } from './client/ui/insta.ts';
 import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
@@ -101,7 +103,7 @@ app.innerHTML = `
     <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-cadeado" hidden>${icon('cadeado',{size:48})}</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
   </section>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title" tabindex="-1"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button"><span class="escolha-rotulo">Jogar sozinho</span></button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 // The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
@@ -475,10 +477,11 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role">${suit(selected.role)}${selected.role}</span> ${selected.name}`;
   // Saved: nothing to say. Only a failure to save is worth a line.
   text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
-  dialog.showModal();
+  mostrarEscolha(dialog,selected.id);
+  dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
-const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.querySelector('#confirmation .solo-row')!.before(coopButton);
+const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;
@@ -491,8 +494,8 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
 // Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
 // straight in (below); a new player makes one first and the confirmation's button says which room it opens.
 let invite=inviteCode(location.search);
-if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
-const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
+if(invite)rotulo(coopButton).textContent=`Entrar na sala ${formatRoomCode(invite)}`;
+const openInvite=()=>{const room=invite;invite=undefined;rotulo(coopButton).textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
 coopButton.addEventListener('click',()=>{toMatch();void(invite?openInvite():openCoop());});
 document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
@@ -520,13 +523,13 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
     finally {releaseDance();button.disabled=false;}
     return;
   }
-  const label=button.textContent;button.textContent='Preparando…';
+  const label=rotulo(button).textContent;rotulo(button).textContent='Preparando…';
   const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
-    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{button.textContent=label;dialog.close();}});
+    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {releaseDance();button.disabled=false;button.textContent=label;}
+  finally {releaseDance();button.disabled=false;rotulo(button).textContent=label;}
 });
 syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,

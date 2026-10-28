@@ -4,7 +4,7 @@
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
 import {goldSticker,isStickerName,type StickerName} from '../ui/sticker.ts';
-import {DEFENSES,FREE_PIECE_DEFS,KIT_CHARGES,KIT_IDS,isWallKit,kitPiece} from '../../rules/index.ts';
+import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -27,7 +27,7 @@ const items:ItemDisplay[]=[
   {id:'megafone',kind:'passive',name:'Megafone do Carro do Ovo',icon:'megafone',blurb:'Ataques em área maior.',joke:'Olha o ovo!'},
   {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte nos drops e ofertas.',joke:'Aba reta, sorte torta.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'oculos',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
-  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
+  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Cada caixa aberta dá grana.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
   {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'coxinha',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
   // D-051 arsenal (sim/weapons/arsenal.ts, manual combat): the new weapons wait for their stickers (the user's art), the
@@ -94,11 +94,11 @@ const items:ItemDisplay[]=[
   {id:'bola-de-cristal',kind:'weapon',name:'Bola de Cristal da Cartomante',icon:'bola-de-cristal',blurb:'Lendária: raios caem do céu.',joke:'Ela viu chegando.'},
   {id:'cristal-quantico',kind:'weapon',name:'Cristal Quântico do Coach',icon:'cristal-quantico',blurb:'Lendária: pula seis vezes.',joke:'Vibra no dano.'},
 ];
-// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, Construir puts it ahead of the hero (hud/kit-place).
+// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, a tap on the map places it (hud/kit-place).
 for(const id of KIT_IDS){
-  const piece=kitPiece(id)!,wall=isWallKit(piece);
-  const name=wall?FREE_PIECE_DEFS[piece].name:DEFENSES[piece].name;
-  items.push({id,kind:'snack',name:`Kit ${name}`,icon:piece==='barraca'?'kit-barraca':wall?'kit-torre':`torre-${piece}` as StickerName,
+  const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
+  const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
+  items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
     blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));

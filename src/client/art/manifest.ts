@@ -61,7 +61,7 @@ let index:ArtIndex=EMPTY;
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
 /** R06 (8 drawn directions) and M16 (5 drawn: S, SW, W, NW, N; E/NE/SE are mirrored, movement128.ts movement16Plan; push: empurrar-uno; pull: puxar-uno-corda). */
-const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt)16-(S|SW|W|NW|N|NE|E|SE))$/;
+const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build|work)16-(S|SW|W|NW|N|NE|E|SE))$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -96,7 +96,8 @@ function liteFile(file:ArtFile,pc:boolean):ArtFile{
 }
 /**
  * Enemies drawn from their approved files, not the lite copies: the 1st wave's chefão (rules WAVE_BOSS_IDS; the user,
- * 24/10: "pixelagem para ficar hd" at 3×). One of them loads per match (~30 MB against ~8 MB lite). Kept here as plain
+ * 24/10: "pixelagem para ficar hd" at 3×). ~30 MB to download but ~390 MB of GPU memory once decoded on a phone, so
+ * none loads at the opening: art/chefao-art.ts loads the run's one before he comes and frees him once he falls. Kept here as plain
  * ids (this module imports nothing); tests/client/chefao-cena.test.ts checks it against the rules.
  */
 export const HD_ENEMIES:ReadonlySet<string>=new Set(['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha']);

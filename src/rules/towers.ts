@@ -134,7 +134,9 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   'antiaerea-quadrupla':def({id:'antiaerea-quadrupla',name:'Antiaérea Quádrupla',label:'C4',tier:4,branch:'C',from:'arame-e-sirene',footprint:[2,2],hp:700,
     range:9,cooldown:s(.3),damage:12,shots:4,hits:'air'}),
   'posto-de-radar':def({id:'posto-de-radar',name:'Posto de Radar',label:'C5',tier:5,branch:'C',from:'antiaerea-quadrupla',footprint:[2,2],hp:800,
-    range:0,cooldown:s(1),damage:0,target:'none',radar:{reach:9,bonus:.3}}),
+    // torres-animacao-idle-tiro (the user, 25/10: "Radar ganha ataque"): it keeps the range bonus and sends a pulse at the
+    // densest group (ground and air), control like the rest of branch C: ~12 dps to each enemy in it (C4: 160, air only).
+    range:8,cooldown:s(1.5),damage:18,area:1.6,target:'cluster',slow:s(1),radar:{reach:9,bonus:.3}}),
 });
 export const DEFENSE_IDS=Object.keys(DEFENSES) as DefenseId[];
 /** D-052, free build: what {t:'build'} may name (contract/build.ts): a tower (the root) or a wall piece. */
@@ -160,11 +162,6 @@ export interface FreePieceDef {
   buildSeconds:number;
   /** True: solid to the enemies (the muro); false: they walk over it, slowed by `drag`. */
   blocks:boolean;
-  /**
-   * NEW-20261023-ORQ-barracas-no-caminho: a SOFT block (the barraca): solid to the enemies' bodies, unseen by their
-   * flow field, so the ones going to the Uno walk straight into it and bash it (always, not only when cut off).
-   */
-  soft?:true;
   /** Speed multiplier of an enemy standing on it (1: none). */
   drag:number;
 }
@@ -174,11 +171,12 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
   // enemies (they walk around it and bash it only when it shuts them off the car). R$ 5 a square: the old 2×1's price per cell.
   // NEW-20261022-ORQ-barricada-2x (user, 22/10): a square is BARRICADA_CELLS × BARRICADA_CELLS cells (2×2, twice as wide,
   // long and tall as before); its life stays 200 (one square, just bigger).
-  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
-  // NEW-20261023-ORQ-barracas-no-caminho (user, 23/10): the feira's barraca, rows of them across streets on the map;
-  // never bought (collected from the map and placed again from its kit, like the barricada). A soft block: the
-  // enemies bash it on their way to the Uno; the heroes walk through it at BARRACA_HERO_SLOW.
-  barraca:Object.freeze({id:'barraca',name:'Barraca',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:240,limit:40,buildSeconds:1,blocks:true,soft:true,drag:1}),
+  // NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "o cubo laranja está maior do que a barricada"): the piece is
+  // what the art is, a wall 2 cells long and 1 thick, turned by rot (0 along x, 1 along y).
+  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  // NEW-20261023-ORQ-barracas-no-caminho (user, 28/10): the feira's barraca, scenery the map lays in feirinhas
+  // (sim/towers/barracas.ts). Solid to the enemies, never built, bought, collected or hit (price/limit unused).
+  barraca:Object.freeze({id:'barraca',name:'Barraca',footprint:Object.freeze([2,2]) as readonly [number,number],price:0,hp:1,limit:0,buildSeconds:0,blocks:true,drag:1}),
 });
 /**
  * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
@@ -196,23 +194,35 @@ export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
 export const TRALHA_GROUPS=6,TRALHA_GROUP_CELLS=5,COLETAR_SECONDS=1.5,DESTRUIR_PIX=2,CARREGA_MAX=1;
 /** How far (u, from the square's edge) a hero reaches a barricada square to collect or destroy it. */
 export const TRALHA_REACH=3;
-export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada'||v==='barraca';
 /**
- * NEW-20261023-ORQ-barracas-no-caminho: the map's rows of barracas "de ponta a ponta". BARRACA_ROWS rows are laid from
- * the run's rng at the start, each across a street on the line from the car to a spawn (BARRACA_ROW_AT of the way),
- * up to BARRACA_ROW_MAX squares from wall to wall; a row never shuts the car off a spawn or the moto. A hero whose
- * body is on a barraca walks at BARRACA_HERO_SLOW × the step. Coletar/destruir and the kit as the barricada de tralha.
+ * NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "não gostei de eu ter que me mexer para pôr a barricada"): a kit
+ * from the inventory (a barricada, a kit de torre) is placed by a tap on the map, this far (u) from the hero to the
+ * footprint's edge, not BUILD_REACH. The nest keep-out (CAR_NEST_KEEP_OUT) still holds, so no nest is shut from afar.
  */
-export const BARRACA_ROWS=3,BARRACA_ROW_MAX=8,BARRACA_HERO_SLOW=.5;
-export const BARRACA_ROW_AT:readonly [number,number]=Object.freeze([.35,.7]) as readonly [number,number];
+export const KIT_PLACE_REACH=8;
+/** A piece a hero may build (the barraca is the map's own: never). */
+export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho (user, 28/10: "ponha essas barracas espalhadas em 4 a 5 lugares do mundo e bem
+ * distante uma das outras, talvez no futuro elas vendam algo"): FEIRA_COUNT feirinhas of FEIRA_BARRACAS barracas (2×2
+ * cells, FEIRA_STEP cells apart along one axis) are laid from the run's rng at the start, on open ground (a praça, a
+ * wide calçada: FEIRA_MARGIN free cells all around), at least FEIRA_GAP u from each other, FEIRA_SPAWN_GAP u from a
+ * spawn and FEIRA_CAR_GAP u from the car, never shutting the car off a spawn or the moto. Each keeps an id and a
+ * centre (TowersState.feirinhas) for the shop to come.
+ */
+export const FEIRA_COUNT:readonly [number,number]=Object.freeze([4,5]) as readonly [number,number];
+export const FEIRA_BARRACAS:readonly [number,number]=Object.freeze([2,4]) as readonly [number,number];
+export const FEIRA_STEP=3,FEIRA_MARGIN=2,FEIRA_GAP=45,FEIRA_SPAWN_GAP=18,FEIRA_CAR_GAP=14;
+/** A feirinha keeps this far (u) from a bank's place: the bank's lot (rules/bicos.ts lote) and room around it. */
+export const FEIRA_BANK_GAP=8;
 /** The lonas the art has (public/art/city/base/barraca.webp rows lona-1..3): a barraca's lona from its id. */
 export const BARRACA_LONAS=3;
-/** NEW-20261022-ORQ-barricada-2x: the side of a barricada square in build-grid cells (its footprint is square). */
+/** NEW-20261022-ORQ-barricada-2x: a barricada's length in build-grid cells (barricada-tocar-no-mapa: 1 cell thick). */
 export const BARRICADA_CELLS=FREE_PIECE_DEFS.barricada.footprint[0];
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{
-  if(isFreePiece(piece)){const [w,h]=FREE_PIECE_DEFS[piece].footprint;return rot?[h,w]:[w,h];}
-  const s=DEFENSES[piece].size??1;return [s,s];
+  if(Object.hasOwn(FREE_PIECE_DEFS,piece)){const [w,h]=FREE_PIECE_DEFS[piece as FreePiece].footprint;return rot?[h,w]:[w,h];}
+  const s=DEFENSES[piece as DefenseId].size??1;return [s,s];
 }
 /**
  * D-052: no piece within this of the car's body (u): room to push it and to defend it. Measured from the footprint's

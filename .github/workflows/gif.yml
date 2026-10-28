@@ -1,0 +1,180 @@
+# GIF and prints of a solo match, on GitHub instead of the shared PC (NEW-20261025-ORQ-cicd-gif-prints).
+# Nothing here publishes: both jobs only read a build (contents: read) and leave an artifact.
+#  - gif (workflow_dispatch; `node tools/gif-ci.mjs <branch> <roteiro>` dispatches it, waits and downloads): builds
+#    inputs.ref, starts its rooms Worker locally and records scripts/gravar-partida.mjs (menu → SELECIONAR → name → BORA!
+#    → Jogar sozinho, then the roteiro) on the phone 390x844@3 and/or the PC 1335x620: partida.gif, quadros.png (8 frames
+#    to Read), inicio/meio/fim.png and erros.txt in the artifact gif-<pedido>; the summary (<= 10 lines) on the run page.
+#  - site (workflow_run, after every "Publish viagem"): viagem.cyou on the phone, once its version.json is that commit's
+#    build: inicio/meio/fim.png and the console errors in the artifact site-<sha12>, which the ORQ downloads with
+#    `node tools/gif-ci.mjs site` (a line in the board's site-prints.md).
+# CI has no GPU: the game draws at 3-6 fps there (the summary says "jogo a N fps"; 53-58 on the PC), so the GIF shows
+# the scene, the HUD, the walk and its direction, not the animation's smoothness or the FPS (that stays a local check).
+# A 20 s roteiro takes ~60 s of wall clock (each step waits for the slow page); ~8 min per run with the build.
+# A separate workflow from prints.yml (the sheet of every vgm/** push): the board's vigia-prints.mjs delivers every run
+# named "Prints" to the branch's owner, and these runs have no folha-<sha>.
+name: GIF
+run-name: ${{ github.event_name == 'workflow_run' && format('Site {0}', github.event.workflow_run.head_sha) || format('GIF {0} {1} {2} {3}', inputs.pedido || 'manual', inputs.roteiro, inputs.tela, inputs.ref) }}
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'branch or full 40-char sha to record'
+        required: true
+      roteiro:
+        description: 'parado, andando (8 directions), uno (short steps beside the Uno), matches (uno with every kill a match, the flame tapped), nomes (the enemy-name photo, then parado), empurra (into the 1st wave), torres (each kind of tipos firing in the city sandbox) or todos'
+        type: choice
+        options: [parado, andando, uno, matches, nomes, empurra, torres, todos]
+        default: parado
+      tela:
+        description: 'celular (390x844@3), pc (1335x620) or ambas'
+        type: choice
+        options: [celular, pc, ambas]
+        default: celular
+      segundos:
+        description: 'seconds of roteiro (3-120)'
+        default: '20'
+      tipos:
+        description: 'torres: tower ids, comma separated (empty: the B and C branches)'
+        default: ''
+      lento:
+        description: 'torres: the defenses K times slower (1-20): CI records ~1 frame/s, 12 shows every fire frame'
+        default: '12'
+      modo:
+        type: choice
+        options: [normal, chaveiro]
+        default: normal
+      pedido:
+        description: 'request id (tools/gif-ci.mjs fills it in)'
+        default: ''
+  workflow_run:
+    workflows: ['Publish viagem (rooms Worker + frontend)']
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: gif-${{ github.event_name == 'workflow_run' && 'site' || inputs.pedido || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
+env:
+  NODE_VERSION: '26.9.0'
+jobs:
+  gif:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # The script (this commit) at the root; the game to record in game/ (prints.yml's layout).
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.sha }}
+          path: game
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            game/node_modules
+            game/backend/node_modules
+          key: deps-prints-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('game/package-lock.json', 'game/backend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        working-directory: game
+        run: npm ci --include=optional
+      # The bundle only: the branch's own CI checks the types.
+      - working-directory: game
+        run: npx vite build
+      - id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.63.0-${{ runner.os }}
+      - working-directory: game
+        run: npm install --no-save playwright@1.63.0
+      - if: steps.pw.outputs.cache-hit != 'true'
+        working-directory: game
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw.outputs.cache-hit == 'true'
+        working-directory: game
+        run: npx playwright install-deps chromium
+      - name: Gravar (1 = o jogo falhou, 2 = infra, tentada mais uma vez)
+        working-directory: game
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/game/node_modules/playwright
+          ROTEIRO: ${{ inputs.roteiro || 'parado' }}
+          TELA: ${{ inputs.tela || 'celular' }}
+          SEGUNDOS: ${{ inputs.segundos || '20' }}
+          MODO: ${{ inputs.modo || 'normal' }}
+          TIPOS: ${{ inputs.tipos || '' }}
+          LENTO: ${{ inputs.lento || '12' }}
+        run: |
+          set +e
+          args=(--roteiro "$ROTEIRO" --tela "$TELA" --segundos "$SEGUNDOS" --modo "$MODO" --lento "$LENTO")
+          if [ -n "$TIPOS" ]; then args+=(--tipos "$TIPOS"); fi
+          node ../scripts/gravar-partida.mjs ../gif-out "${args[@]}"; code=$?
+          if [ "$code" -eq 2 ]; then echo "::warning::gravar: infra (exit 2), tentando de novo"; node ../scripts/gravar-partida.mjs ../gif-out "${args[@]}"; code=$?; fi
+          exit $code
+      - if: always()
+        run: |
+          { echo "### GIF de \`${{ inputs.ref || github.ref_name }}\` ($(git -C game rev-parse --short=7 HEAD))"; echo; cat gif-out/resumo.md 2>/dev/null | sed 's/$/  /' || echo "(sem resumo)"; } >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gif-${{ inputs.pedido || github.run_id }}
+          path: gif-out
+          retention-days: 7
+          if-no-files-found: ignore
+
+  site:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.63.0-${{ runner.os }}
+      # Playwright alone (the live site needs no build): its own folder, outside the checkout.
+      - run: mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw" && npm init -y >/dev/null && npm install playwright@1.63.0
+      - if: steps.pw.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}/pw
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw.outputs.cache-hit == 'true'
+        working-directory: ${{ runner.temp }}/pw
+        run: npx playwright install-deps chromium
+      - id: sha
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: echo "short=${SHA:0:12}" >> "$GITHUB_OUTPUT"
+      # The Pages CDN keeps version.json up to 10 min: --build waits for it (12 min) before playing.
+      - name: Print do site (1 = não entrou, erro de página ou build errado; 2 = infra, tentada mais uma vez)
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright
+        run: |
+          set +e
+          args=(--url https://viagem.cyou --build "${{ steps.sha.outputs.short }}" --tela celular --roteiro parado --segundos 8 --sem-gif)
+          node scripts/gravar-partida.mjs site-out "${args[@]}"; code=$?
+          if [ "$code" -eq 2 ]; then echo "::warning::print do site: infra (exit 2), tentando de novo"; node scripts/gravar-partida.mjs site-out "${args[@]}"; code=$?; fi
+          exit $code
+      - if: always()
+        run: |
+          { echo "### viagem.cyou depois do deploy de \`${{ steps.sha.outputs.short }}\`"; echo; cat site-out/resumo.md 2>/dev/null | sed 's/$/  /' || echo "(sem resumo)"; } >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-${{ steps.sha.outputs.short }}
+          path: site-out
+          retention-days: 30
+          if-no-files-found: ignore

@@ -20,8 +20,8 @@
  * Positions are at 1/512 unit everywhere in the endless world: i16 relative to the frame origin (an integer point by
  * the client's player, so ±64 units around it cost 2 bytes), or the escape i16 -32768 followed by an absolute svar
  * (allies far away, a far base, up to ±4 194 304 units). Velocities are i16 at 1/256 unit/s, radii u16 at 1/256 unit.
- * Ticks inside a frame are signed offsets from the frame tick. Known strings travel as one-byte
- * dictionary indexes; unknown ones inline as UTF-8.
+ * Ticks inside a frame are signed offsets from the frame tick. Known strings travel as dictionary indexes (one byte
+ * up to 253, the escape 254 + uvar past it: DICT_EXTENDED); unknown ones inline as UTF-8 (255 + uvar length + bytes).
  * Wire ids are monotonic per entity type and never reused, so a client baseline can never confuse two entities.
  * Events are resent (after resendTicks, or right after a resync) until the client acks a frame that carried them;
  * the decoder drops ids it has seen. Entity references inside events are wire ids, not strings.
@@ -121,12 +121,13 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
  * banks block, an older room refuses the segments.
  * 39 given by the integration queue (tools/fila.mjs, lote 20261025-042005) to: NEW-20261024-ORQ-bancos-viram-bicos.
- * Next (the queue numbers it) since the barracas (card NEW-20261023-ORQ-barracas-no-caminho): the 'barraca' structure
- * kind (soft, it slows the heroes: an older phone would mispredict them) and the 'kit:barraca' kit. The DICT is full
- * (254), so both travel as inline strings (until NEW-20261025-ORQ-dict-protocolo-cheio).
+ * 40 given by the integration queue (tools/fila.mjs, lote 20261025-074625) to: NEW-20261025-ORQ-dict-protocolo-cheio.
+ * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
+ * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
+ * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=39;
+export const PROTOCOL_VERSION=41;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -216,14 +217,18 @@ export const DICT:readonly string[]=[
   // Cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the kill's Grana as a pickup kind.
   'grana',
   // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS; telemarketing, coach and influencer are
-  // already here as critters, fiscal too) and the `bico` event's `what`. The dictionary is now at 254 of 255.
+  // already here as critters, fiscal too) and the `bico` event's `what`. That is 253 entries (0..252): index 253 is
+  // the last one-byte index, whatever comes after it travels through DICT_EXTENDED, two bytes up to index 381.
   'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
   'entrou','saiu','expulso',
-  // NEW-20261023-ORQ-barracas-no-caminho: 'barraca' and 'kit:barraca' did not fit; they travel inline until the
-  // DICT grows past 255 (card NEW-20261025-ORQ-dict-protocolo-cheio).
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
-const INLINE_STRING=255;
+/**
+ * A string's first byte (NEW-20261025-ORQ-dict-protocolo-cheio): 0..253 is the DICT index itself, as it always was;
+ * DICT_EXTENDED is followed by a uvar of index-254 (2 bytes up to index 381, 3 up to 16 637); INLINE_STRING by the
+ * UTF-8 length and bytes. Every index below 254 keeps the byte it had before the escape, so no frame of today grows.
+ */
+const DICT_EXTENDED=254,INLINE_STRING=255;
 
 // ---------- Byte writer / reader ----------
 const encoder=new TextEncoder(),decoder=new TextDecoder('utf-8',{fatal:true});
@@ -251,9 +256,10 @@ class Writer {
   svar(v:number){v=Number.isFinite(v)?Math.max(-MAX_SVAR,Math.min(MAX_SVAR,Math.round(v))):0;this.uvar(v<0?-2*v-1:2*v);}
   i16(v:number){this.grow(2);const n=Math.max(-32768,Math.min(32767,Math.round(finite(v))));this.buf[this.len++]=n&255;this.buf[this.len++]=(n>>8)&255;}
   u16(v:number){this.grow(2);const n=Math.max(0,Math.min(65535,Math.round(finite(v))));this.buf[this.len++]=n&255;this.buf[this.len++]=n>>8;}
+  dictIndex(i:number){if(i<DICT_EXTENDED)this.u8(i);else{this.u8(DICT_EXTENDED);this.uvar(i-DICT_EXTENDED);}}
   str(s:string){
     const i=DICT_INDEX.get(s);
-    if(i!==undefined){this.u8(i);return;}
+    if(i!==undefined){this.dictIndex(i);return;}
     const bytes=encoder.encode(clip(s));
     this.u8(INLINE_STRING);this.uvar(bytes.length);this.raw(bytes);
   }
@@ -279,9 +285,11 @@ class Reader {
   svar(){const u=this.uvar();return u%2?-(u+1)/2:u/2;}
   i16(){this.need(2);const v=this.buf[this.pos]|(this.buf[this.pos+1]<<8);this.pos+=2;return v>=32768?v-65536:v;}
   u16(){this.need(2);const v=this.buf[this.pos]|(this.buf[this.pos+1]<<8);this.pos+=2;return v;}
+  /** A dictionary index, or -1 for INLINE_STRING (the caller reads the string: extended index 255 is not inline). */
+  dictIndex(){const b=this.u8();return b===INLINE_STRING?-1:b===DICT_EXTENDED?DICT_EXTENDED+this.uvar():b;}
   str(){
-    const i=this.u8();
-    if(i!==INLINE_STRING){if(i>=DICT.length)throw new FrameError('unknown dictionary string');return DICT[i];}
+    const i=this.dictIndex();
+    if(i>=0){if(i>=DICT.length)throw new FrameError('unknown dictionary string');return DICT[i];}
     const n=this.uvar();if(n>MAX_STRING_BYTES)throw new FrameError('string too long');
     this.need(n);
     try{return decoder.decode(this.buf.subarray(this.pos,this.pos+=n));}catch{throw new FrameError('bad utf-8');}
@@ -289,6 +297,11 @@ class Reader {
   take(n:number){this.need(n);return this.buf.subarray(this.pos,this.pos+=n);}
   count(max:number){const n=this.uvar();if(n>max)throw new FrameError('count over limit');return n;}
 }
+/** The dictionary index alone on the wire, for the limit tests: indexes past the DICT's end round-trip here. */
+export const dictIndexWire={
+  encode(i:number){const w=new Writer();w.dictIndex(i);return w.bytes();},
+  decode(bytes:Uint8Array){const r=new Reader(bytes),index=r.dictIndex();return {index,length:r.pos};},
+};
 
 // ---------- Field codecs ----------
 /** What a field needs from its frame: the tick (relative ticks) and the integer origin (relative positions). */
@@ -466,6 +479,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     prime:c(optional(trueFlag)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
     andar:c(optional(deckFlag)),
+    // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
+    radius:c(optional(milli)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),

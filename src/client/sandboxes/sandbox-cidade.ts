@@ -46,6 +46,11 @@
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
  *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
+ *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
+ *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
+ *     `&foco=torre` the camera on the first one's weapon (its mount), not the hero, and no fade; `&contorno=0` without the gold outline;
+ *   `anim=0` (with any torres=): the weapons stand on their idle's frame 0 and no fire sheet loads (main before
+ *     torres-animacao-idle-tiro), for the FPS check against the animated ones;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -76,6 +81,9 @@ import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
+import {buildFacing} from '../sprites/build-facing.ts';
+import {workFacing} from '../sprites/work-facing.ts';
+import {hasWork16} from '../sprites/movement128.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
@@ -89,6 +97,7 @@ import {unprojectView} from '../projection.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
 import {YouMarkers} from '../render/you.ts';
 import {MapLabel} from '../render/map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from '../render/enemy-name-rules.ts';
 import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
@@ -96,7 +105,7 @@ import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {heldHand} from '../sprites/hand-points.ts';
 import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './arsenal-view.ts';
 import {tokenColor} from '../ui/tokens.ts';
-import {baseArtKey,queueBaseArt} from '../art/base-art.ts';
+import {queueBaseArt} from '../art/base-art.ts';
 import {queueHordeArt} from '../art/horde-art.ts';
 import type {LiveNest} from '../render/city/live/nests.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
@@ -146,6 +155,9 @@ const kitParam=towersParam===1?kitPiece(`kit:${params.get('kit')??''}`):undefine
 const KIT_OBRA={dx:-1.4,dy:1.4},KIT_GHOST={dx:1.6,dy:1.4};
 const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
+/** torres=lista: `tiro=1` the listed defenses fire; `lento=K` (1..20) the defenses' clock K× slower (see the header). */
+const listFires=params.get('tiro')==='1',slowMo=Math.max(1,Math.min(20,Number(params.get('lento'))||1));
+const towerFocus=params.get('foco')==='torre',towerOutline=params.get('contorno')!=='0',towerAnim=params.get('anim')!=='0';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
 const acao=params.get('acao')==='1';
 /** dano=<ms> (animacao-receber-dano): the hero loses 1 hp every <ms> (default 1500), so its flinch plays at rest. */
@@ -171,6 +183,11 @@ const outlinesOn=params.get('contorno')!=='0';
 // elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
 const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
 const cast=tele&&params.has('elenco');
+/**
+ * nome-inimigo-rede-social, etapa 7: `elite=a,b` makes those cast ids elites and `chefao=id` a boss (the name ficha over
+ * the bar, render/enemy-name-rules.ts); `caido=<kind>` hangs "Te derrubou: X" under the caído ficha, as the scene does.
+ */
+const eliteIds=params.get('elite')?.split(',')??[],bossId=params.get('chefao'),fallenBy=fallenByText(params.get('caido')??undefined);
 /** veiculos=1 (bancos-e-veiculos, part 2): the three parked vehicles by the hero, and the hero riding the cart (its chip). */
 const veiculos=tele&&params.get('veiculos')==='1';
 /**
@@ -226,12 +243,6 @@ const tralhaShot=obra&&params.get('tralha')==='1';
  * and a lone square (the joints: halves + pillars).
  */
 const muralhaShot=obra?params.get('muralha'):null;
-/**
- * `barracas=1` with obra=1 (NEW-20261023-ORQ-barracas-no-caminho): a row of barracas de feira across the street by the
- * hero (the lonas by id): whole ones, a torn one (danificada) with its bar and a "-N", the tapped one in the gold
- * outline, and the wreck (quebrada) of one that just fell. Two views pushed: the hit, then the fall.
- */
-const barracasShot=obra&&params.get('barracas')==='1',BARRACA_SHOT_MS=200;
 /** `fala=` in the modo foto: the lines are said this long before the photo's clock (speakFoto). */
 const FOTO_TALK_AGO_MS=700;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
@@ -313,8 +324,6 @@ class CitySandbox extends Phaser.Scene {
   private fortify?:FortifyRenderer;
   /** obra=1: the fortify view pushed (anda= moves its car). */
   private obraView?:RunView;
-  /** `barracas=1`: the hit and the view where b5 fell, pushed once its sheet is loaded; then the renderer's clock stays BARRACA_SHOT_MS on. */
-  private barracaFall?:RunView[];private barracaClock?:number;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
@@ -324,6 +333,10 @@ class CitySandbox extends Phaser.Scene {
   private decoded?:CityTerrain;
   /** torres=…: the stand-in defenses, the renderer and the enemies' parallel arrays it aims at. */
   private defenses:TowerView[]=[];
+  /** stepTowers' last tick: an obra (tick < readyTick) by the hero plays its build16 (animacao-construir-6). */
+  private towerTick=0;
+  /** bancos=1: the hero is on a shift (stepBanks, last frame): it plays its work16 facing the camera (animacao-trabalhar-6). */
+  private working=false;
   /** fio=1: the game's wire path (TowerFeed) with each stand-in's volley counter and aim; volleys the stand-in fired. */
   private feed=new TowerFeed();private shots=new Map<string,number>();private aims=new Map<string,number>();private fired=0;
   private towers?:TowerRenderer;
@@ -339,15 +352,18 @@ class CitySandbox extends Phaser.Scene {
     this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{})});
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
+    // As the game's hero (scene.ts): its walk, flinch and build sheets come with the preload (animacao-construir-6 proofs).
+    if(kitParam||bancos)this.sprites.queueOwnWalk(classId);
     if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
-    if(towersParam)queueTowerArt(this);
+    if(towersParam)queueTowerArt(this,towerAnim);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
     // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match; objetivo=1: the chaveiro's
     // painted moto and the built muro's sheets (BASE_ART.moto / .muro, card trocar-procedurais-por-arte).
-    if((muralhaShot||barracasShot||objective)&&!base&&!arsenal)queueBaseArt(this);
+    // kit=barricada (barricada-tocar-no-mapa): its ghost is the junk wall's art too.
+    if((muralhaShot||objective||kitParam==='barricada')&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
     if(ninhos&&!arsenal)queueHordeArt(this);
   }
@@ -446,18 +462,15 @@ class CitySandbox extends Phaser.Scene {
     // anda= (puxar-uno-corda): the hero on the rope ahead of the car, drawn pulling (its pull16) along the swing's axis.
     const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
     const fell=this.fallen;
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,!fell,this.view,undefined,push?.dir??pull,fell?0:danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,!fell,this.view,undefined,push?.dir??pull,fell?0:danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined,undefined,
+      this.working?workFacing(this.view):buildFacing(this.at,this.defenses.filter(d=>!d.ruined&&this.towerTick<d.readyTick)));
     if(fell)this.hero.setAngle(-90).setAlpha(.85);else if(this.hero.angle)this.hero.setAngle(0).setAlpha(1);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
     this.tick(dt);
-    if(this.barracaFall&&this.textures.exists(baseArtKey('barraca'))){
-      // The fall a moment after the hit: the "-N" and the wreck are up, the hit flash is over; nothing ages after.
-      this.stone!.update(_t);for(const v of this.barracaFall)this.stone!.push(v);this.barracaFall=undefined;this.barracaClock=_t+BARRACA_SHOT_MS;
-    }
-    this.stone?.update(this.barracaClock??_t);
+    this.stone?.update(_t);
     if(this.chaveiro){
       const now=fotoT??_t,t0=performance.now();
       // anda= or empurrando= in the modo foto (a fixed clock): the second before, so the car has turned to its move.
@@ -523,10 +536,12 @@ class CitySandbox extends Phaser.Scene {
     const {banks,tick}=b.fake.view(now);
     b.renderer.push(banks,tick);b.renderer.update(now);
     b.horde?.update(now,16);
-    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; inside the shift the hero is gone through the door.
+    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; on the shift the hero plays its work16 in the
+    // ring (animacao-trabalhar-6), or without one is gone through the door.
     const inside=workingIn(banks,'voce'),shop=inside??workShop(banks,this.at);
     this.skill?.setWork(shop?{bico:shop.bico,inside:!!inside}:undefined);
-    if(inside)this.hero.setAlpha(0);
+    this.working=!!inside;
+    if(inside&&!hasWork16(classId))this.hero.setAlpha(0);
   }
   /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
   private mountObjective(placeHero:boolean){
@@ -615,20 +630,12 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
-    const structures=barracasShot?this.barracaRow():muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
+    const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
     const objectiveView={...this.chaveiro!.fake.view(0).view,car:freeRope?{...car}:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
-    if(barracasShot){
-      // Whole, then the hit (b5 about to fall), then the next view: b5 gone right after the hit (its wreck), b3 hit again.
-      const hit=(id:string,hp:number)=>structures.map(s=>s.id===id?{...s,hp}:s);
-      this.stone.push(view);
-      this.barracaFall=[{...view,structures:hit('b5',30)},{...view,tick:tick+1,structures:hit('b3',110).filter(s=>s.id!=='b5')}];
-      this.stone.outline='b1';
-      return;
-    }
     this.stone.push(view);
     if(tralhaShot){this.mountTralha(projector,structures.find(x=>x.id==='b1')!);return;}
     if(muralhaShot)return; // the junk wall alone, no ghost
@@ -654,14 +661,6 @@ class CitySandbox extends Phaser.Scene {
       ...[0,1,2,3,4].map(i=>bar(`t${i}`,hc+1+i,hr+1,0,200)),...[1,2].map(i=>bar(`u${i}`,hc+3,hr+1-i,1,200)),
       bar('so',hc-3,hr+2,1,200)];
     return [...row.map((d,i)=>bar(`w${i}`,hc+d,hr-2,0,200)),...row.map((d,i)=>bar(`d${i}`,hc+d,hr+2,0,i%2?40:110))];
-  }
-  /** `barracas=1`: six barracas side by side (2×2 each) across the street two cells ahead of the hero, all whole. */
-  private barracaRow():StructureView[]{
-    const cell=CITY_BUILD_CELL,n=BARRICADA_CELLS,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell);
-    return [0,1,2,3,4,5].map(i=>{
-      const c=hc-6+i*n,r=hr-n-1;
-      return {id:`b${i}`,kind:'barraca',x:(c+n/2)*cell,y:(r+n/2)*cell,hp:240,maxHp:240,c,r};
-    });
   }
   /**
    * `tralha=1` with obra=1 (barricada-construir part 2): barricada b1 tapped: its gold outline, the two circles COLETAR /
@@ -728,7 +727,7 @@ class CitySandbox extends Phaser.Scene {
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
-    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
+    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true),...(fallenBy?[new MapLabel(this,fallenBy).setCity(true)]:[])];
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
@@ -737,11 +736,15 @@ class CitySandbox extends Phaser.Scene {
   /** `kit=<peça>`: the kit's ghost (hud/kit-place KitPlace, the room's footprint) beside the kit's obra. */
   private mountKit(){
     const c=this.asset.cell,cell=CITY_BUILD_CELL,projector=this.cityProjector();
-    this.fortify??=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:()=>undefined});
+    // barricada-tocar-no-mapa: a kit de torre's ghost is the tower's own art (the sandbox's tower renderer).
+    this.fortify??=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:()=>undefined,
+      towerGhost:g=>g?this.towers?.setGhost({...g,kind:g.kind as TowerKind})??false:(this.towers?.setGhost(null),false)});
     const obra={x:this.at.x+KIT_OBRA.dx*c,y:this.at.y+KIT_OBRA.dy*c};
     const structures=isTowerKit(kitParam!)?[{id:'kit-obra',kind:kitParam!,x:obra.x,y:obra.y,hp:100}]:[];
     const place=new KitPlace(()=>0);
-    place.start(0,`kit:${kitParam}`,undefined,cell);
+    place.start(0,`kit:${kitParam}`);
+    // barricada-tocar-no-mapa: `giro=1` shows the barricade turned (the drag's other axis).
+    if(params.get('giro')==='1')place.turn();
     place.point(params.get('fantasma')==='ocupado'?obra:{x:this.at.x+KIT_GHOST.dx*c,y:this.at.y+KIT_GHOST.dy*c},cell);
     this.fortify.setGhost(place.ghost({cell,structures}));
   }
@@ -754,7 +757,7 @@ class CitySandbox extends Phaser.Scene {
       return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:foot.r,...(foot.half?{half:foot.half}:{}),hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
     };
     if(towersParam===2){
-      towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,{fireTick:1e9}));});
+      towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,listFires?{}:{fireTick:1e9}));});
     }else if(kitParam){
       // kit=: only the kit's tower, in obra (the showcase would hide it).
       if(isTowerKit(kitParam))this.defenses.push(make(kitParam,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
@@ -783,23 +786,28 @@ class CitySandbox extends Phaser.Scene {
     for(let i=0;i<n;i++)this.air[i]=i%10===9?1:0;
     if(!towersDrawn)return;
     const view=()=>this.view;
-    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+    // The craters over everything the city lays on its ground (glints +2, the lamps' light pools +3), under every
+    // actor, as the game's TOWER_GROUND_DEPTH (scene.ts) is. Not that number itself: the game re-bases its depths
+    // around the hero, the sandbox does not, so its actors far into the city (or in a turned view) sort below -9985.
+    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+4,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
       ...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),
       depthVersion:()=>this.layer?.columnsVersion??0,
       world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},
         depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,
         effectDepth:(px,py)=>this.layer?this.layer.effectDepth(px,py,groundZ(asset,px,py)):0}});
     this.towers.setEnemies(n,this.ex,this.ey,this.air);
+    this.towers.outline=towerOutline;this.towers.animate=towerAnim;
   }
   /** Stand-in for the sim's defensesStep (ready, cooldown, nearest reachable enemy), then the renderer's frame. */
   private stepTowers(time:number,dt:number){
     if(!this.defenses.length)return;
     if(this.simStart<0)this.simStart=time;
-    const tick=Math.floor((time-this.simStart)*SIM_HZ/1000),n=this.horde.length;
+    if(slowMo>1){time=this.simStart+(time-this.simStart)/slowMo;dt/=slowMo;}
+    const tick=Math.floor((time-this.simStart)*SIM_HZ/1000),n=this.horde.length;this.towerTick=tick;
     for(let i=0;i<n;i++){const w=this.horde[i];this.ex[i]=w.x;this.ey[i]=w.y;}
     for(const d of this.defenses){
       const l=TOWER_LOOK[d.kind];
-      if(d.ruined||tick<d.readyTick||tick<d.fireTick||l.calibre==='radar')continue;
+      if(d.ruined||tick<d.readyTick||tick<d.fireTick)continue;
       const i=aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air);
       if(i<0)continue;
       // Like the sim on the wire: the aim (turns from +x) of the volley, so the renderer turns to it and never scans
@@ -818,7 +826,11 @@ class CitySandbox extends Phaser.Scene {
         ...(this.aims.has(d.id)?{aim:Math.round(this.aims.get(d.id)!*255)/255}:{}),...(this.shots.has(d.id)?{shots:this.shots.get(d.id)}:{})}));
       t.push(tick,this.feed.views(wire,tick,this.asset.cell,{enemies:{n,xs:this.ex,ys:this.ey,air:this.air}}),time);
     }else t.push(tick,this.defenses,time);
-    t.update(time,dt,[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
+    // foco=torre: no figure for the fade test (the defense under the camera stays opaque in the recording).
+    t.update(time,dt,towerFocus?[]:[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
+    // foco=torre: every frame (place() runs only when the hero moves; the mount exists once the defense is drawn).
+    const m=towerFocus&&!cameraFixed?t.mountOf(this.defenses[0].id):undefined;
+    if(m)this.cameras.main.centerOn(m.x,m.y);
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
   private markDestination(){
@@ -846,6 +858,7 @@ class CitySandbox extends Phaser.Scene {
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
     lab.labels[0]?.anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
     lab.labels[1]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[2]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,zoom),96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -914,7 +927,9 @@ class CitySandbox extends Phaser.Scene {
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,cair:(on=true)=>{this.fallen=on;},at:this.at,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),
+      // torres-animacao-idle-tiro (the FPS check): bytes of every texture source in the GPU (w × h × 4) and those of the towers.
+      texBytes:()=>{let all=0,towers=0;for(const k of this.textures.getTextureKeys()){let b=0;for(const s of this.textures.get(k).source)b+=(s.width||0)*(s.height||0)*4;all+=b;if(k.startsWith('art:torres:'))towers+=b;}return {all,towers};},hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,cair:(on=true)=>{this.fallen=on;},at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,mate:this.mate,
       /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
@@ -972,7 +987,7 @@ function withCast(view:RunView,x:number,y:number):RunView{
   const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
-    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:(!castIds.length&&i===kinds.length-1)||eliteIds.includes(kind),...(kind===bossId?{boss:true}:{}),...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
     pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:1}))]};
 }
 

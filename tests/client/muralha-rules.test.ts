@@ -52,8 +52,9 @@ test('pieces: seeded by the cell (the same on every client), all of them used, n
   for(let i=1;i<pieces.length;i++)assert.notEqual(pieces[i],pieces[i-1],`cells ${i-1},${i}`);
   for(const p of a)for(const d of p)assert.ok(Number.isInteger(d.piece)&&d.piece>=0&&d.piece<(d.kind==='reto'?MURALHA_RETOS:MURALHA_PILARES));
   assert.equal(retoOf(3,5,'c',undefined,N),retoOf(3,5,'c',undefined,N));
-  // The junk wall's layer draws its squares BARRICADA_CELLS wide (render/muralha.ts TRALHA_SHEETS.size; Phaser: read as text).
-  assert.match(readFileSync(new URL('../../src/client/render/muralha.ts',import.meta.url),'utf8'),/TRALHA_SHEETS:MuralhaSheets=Object\.freeze\(\{[^}]*size:BARRICADA_CELLS,thick:MURALHA_GROSSURA\}/);
+  // The junk wall's layer draws its pieces BARRICADA_CELLS long, one whole piece along each one's rot
+  // (render/muralha.ts TRALHA_SHEETS: size, oriented; barricada-tocar-no-mapa; Phaser: read as text).
+  assert.match(readFileSync(new URL('../../src/client/render/muralha.ts',import.meta.url),'utf8'),/TRALHA_SHEETS:MuralhaSheets=Object\.freeze\(\{[^}]*size:BARRICADA_CELLS,thick:MURALHA_GROSSURA,oriented:true\}/);
 });
 
 test('barricada-grossura-e-contorno: thicker but not longer, inside the square the sim blocks',()=>{

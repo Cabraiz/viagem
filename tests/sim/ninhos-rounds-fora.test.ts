@@ -131,7 +131,8 @@ test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s 
     if(chefao&&r.world.enemies.has(chefao))r.world.damageEnemy(chefao,r.world.enemies.get(chefao)!.hp+1);
     for(const e of r.world.step())if(e.type==='happening')fired.push(r.world.tick);
   }
-  assert.ok(fired.length>=3&&fired.length<=CALMA.zueiraMax,`${fired.length} events`);
+  // Since sem-coxinha-no-chao a run plans one blackout only (the boleto rain and the flash sale retired): one event.
+  assert.ok(fired.length===1&&fired.length<=CALMA.zueiraMax,`${fired.length} events`);
   assert.ok(fired[0]>=ticks(CALMA.zueiraFirstS),`the first at ${fired[0]}`);
   for(let i=1;i<fired.length;i++){
     const gap=fired[i]-fired[i-1];

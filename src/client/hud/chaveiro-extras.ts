@@ -19,6 +19,7 @@ export function chaveiroExtras(view:ChaveiroView|undefined):MmExtra[]{
   }
   if(view.delivery)out.push({kind:'entrega',x:view.delivery.x,y:view.delivery.y,color:c.delivery});
   out.push({kind:'carro',x:view.car.x,y:view.car.y,color:c.car});
-  out.push({kind:'moto',x:view.moto.x,y:view.moto.y,color:motoNeedsTeam(view.moto.mode)?c.motoHelp:c.moto});
+  const help=motoNeedsTeam(view.moto.mode);
+  out.push({kind:'moto',x:view.moto.x,y:view.moto.y,color:help?c.motoHelp:c.moto,...help?{state:'ajuda' as const}:{}});
   return out;
 }

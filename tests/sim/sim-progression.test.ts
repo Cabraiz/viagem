@@ -956,17 +956,13 @@ test('dropLoot (D-054): the killer growth multiplies the XP; with no hero behind
   assert.equal(ctx.team.xp,14,'no XP, nothing');
 });
 
-test('dropLoot: huge killer luck makes heal drops appear, never a magnet; luck 1 rarely',()=>{
+test('dropLoot (sem-coxinha-no-chao): no coxinha nor magnet falls, whatever the killer luck; only the chest of an elite',()=>{
   const {ctx,sim}=setup();
   addPlayer(ctx,'lucky',{x:2,y:2,stats:{luck:1e9}});
   const kinds=new Set<string>();
   for(let i=0;i<60;i++)for(const p of sim.dropLoot(ctx,makeEnemy(`l${i}`,10,10,{xp:1}),'lucky'))kinds.add(p.kind);
-  assert.deepEqual([...kinds],['heal']);
-  const plain=setup(7);
-  addPlayer(plain.ctx,'a',{x:2,y:2});
-  let extras=0;
-  for(let i=0;i<60;i++)extras+=plain.sim.dropLoot(plain.ctx,makeEnemy(`n${i}`,10,10,{xp:1}),'a').filter(p=>p.kind==='heal').length;
-  assert.ok(extras<30,`luck 1 drops should be uncommon, got ${extras}/60`);
+  assert.deepEqual([...kinds],[]);
+  assert.ok(![...ctx.pickups.values()].some(p=>p.kind==='heal'));
 });
 
 test('unreachable drop (the chest of an elite) homes to the nearest collector and is collected',()=>{

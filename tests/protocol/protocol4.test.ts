@@ -6,7 +6,7 @@ import {Rng} from '../../src/contract/rng.ts';
 import {TELEGRAPH_KINDS,type SimEvent} from '../../src/contract/types.ts';
 import type {EnemyView,PickupView,ProjectileView,RunView,StructureView,TelegraphView} from '../../src/contract/view.ts';
 import {
-  DICT,FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
+  DICT,FrameDecoder,FrameEncoder,FrameError,dictIndexWire,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
 import {KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
@@ -719,10 +719,9 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
 
 test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 (every older index unchanged), within the escape',()=>{
   assert.ok(PROTOCOL_VERSION>=12);
-  // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape, so 94 slots are left.
-  // Protocol 15 (D-047) appends after these 161 (its own test below).
+  // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape. Protocol 15 (D-047) appends after
+  // these 161 (its own test below); past 253 the indexes take the DICT_EXTENDED escape (the dict-protocolo-cheio test).
   assert.ok(DICT.length>=161);
-  assert.ok(DICT.length<=255,'255 is the inline escape');
   assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer'],'protocol 10 indexes unchanged');
   assert.equal(DICT.indexOf('vigia-do-predio'),71,'protocol 11 (torres-fio) indexes unchanged');assert.equal(DICT[95],'C');
   assert.equal(DICT.indexOf('tiro'),96);
@@ -751,6 +750,33 @@ test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 
     assert.ok(!DICT.includes(kind),kind);
     assert.equal(frame(kind),base+3*(1+new TextEncoder().encode(kind).length),`${kind} inline`);
   }
+});
+
+test('dict-protocolo-cheio: indexes 0..253 keep their one byte, 254 on take the escape, and every limit round-trips',()=>{
+  // The bicos (protocol 39) left the DICT at 253 entries (0..252): 253 is the last one-byte index.
+  assert.ok(DICT.length>=253);
+  for(let i=0;i<254;i++)assert.deepEqual([...dictIndexWire.encode(i)],[i],`index ${i} is the byte it always was`);
+  const sizes:Record<number,number>={0:1,1:1,127:1,128:1,253:1,254:2,255:2,300:2,381:2,382:3,1000:3,16_637:3,16_638:4};
+  for(const [i,size] of Object.entries(sizes).map(([k,v])=>[Number(k),v])){
+    const bytes=dictIndexWire.encode(i);
+    assert.equal(bytes.length,size,`index ${i} in ${size} bytes`);
+    assert.deepEqual(dictIndexWire.decode(bytes),{index:i,length:size},`index ${i} round-trips`);
+    if(i>=254)assert.equal(bytes[0],254,`index ${i} starts with the escape`);
+  }
+  // 255 alone is the inline string, not dictionary index 255 (that one is 254, 1).
+  assert.deepEqual(dictIndexWire.decode(Uint8Array.of(255)),{index:-1,length:1});
+  assert.deepEqual([...dictIndexWire.encode(255)],[254,1]);
+  assert.throws(()=>dictIndexWire.decode(Uint8Array.of(254)),FrameError,'the escape needs its uvar');
+  // A frame naming an index past this DICT's end is refused, not read as some other string.
+  const frameWith=(kind:string)=>{
+    const v=busyWorld(new Rng(4),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;
+    return new FrameEncoder().encode(v);
+  };
+  const last=frameWith('expulso'),other=frameWith('saiu'),at=last.findIndex((b,i)=>b!==other[i]);
+  assert.equal(last.length,other.length);assert.equal(last[at],252,'the last DICT entry, one byte');
+  const r=new FrameDecoder().decode(last);assert.ok(r.ok);assert.equal(r.view.enemies[0].kind,'expulso');
+  const past=new Uint8Array([...last.subarray(0,at),254,DICT.length-254+5,...last.subarray(at+1)]);
+  assert.equal(new FrameDecoder().decode(past).ok,false);
 });
 
 test('the server world descriptor rebuilds the same terrain on the client, island and endless',async()=>{
@@ -1779,11 +1805,9 @@ test('20x: a client gets at most AWAKE_PER_VIEWER awake enemies, the nearest (ti
 });
 
 test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventory and on the ground, their strings appended after the vehicles',()=>{
-  // The barraca's kit travels inline (the DICT is full): NEW-20261025-ORQ-dict-protocolo-cheio.
-  const KIT_WIRE=KIT_IDS.filter(s=>s!=='kit:barraca');
   const from=DICT.indexOf('largou')+1;
-  assert.deepEqual(DICT.slice(from,from+KIT_WIRE.length),[...KIT_WIRE],'at the end, every older index unchanged');
-  for(const s of KIT_WIRE)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.deepEqual(DICT.slice(from,from+KIT_IDS.length),[...KIT_IDS],'at the end, every older index unchanged');
+  for(const s of KIT_IDS)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
   const w=busyWorld(new Rng(4),10),v=w.view;
   v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'kit:morteiro',level:1},{id:'kit:muro',level:6}],passives:[],hand:0});
@@ -1809,6 +1833,27 @@ test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, 
     projectiles:view.projectiles.map(({andar:_,...p})=>p)};
   const d=dec.decode(enc.encode(down));assert.ok(d.ok,!d.ok?d.error:'');
   assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
+});
+
+// ---------- Card NEW-20261025-ORQ-heroi-empurra-inimigos: a solid body's radius on the enemies ----------
+test('heroi-empurra-inimigos: the radius of a solid body round-trips in thousandths, absent stays absent, and stays on the next frame',()=>{
+  const view=busyWorld(new Rng(11),10).view;
+  view.enemies[0]={...view.enemies[0],radius:.3681};
+  view.enemies[1]={...view.enemies[1],radius:1.035};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const first=enc.encode(view);
+  const r=dec.decode(first);assert.ok(r.ok,!r.ok?r.error:'');
+  const by=new Map(r.view.enemies.map(e=>[e.x.toFixed(1)+','+e.y.toFixed(1),e]));
+  const at=(e:{x:number;y:number})=>by.get(e.x.toFixed(1)+','+e.y.toFixed(1))!;
+  assert.equal(at(view.enemies[0]).radius,.368);
+  assert.equal(at(view.enemies[1]).radius,1.035);
+  assert.equal(r.view.enemies.filter(e=>e.radius!==undefined).length,2,'the rest walk through (no radius)');
+  enc.ack(r.seq,r.ack.event);
+  // The next frame (same bodies, same radii): the radius costs nothing more, and the phone keeps it.
+  const again={...view,tick:view.tick+2};
+  const plain={...again,enemies:again.enemies.map(({radius:_,...e},i)=>i<2?{...e,radius:view.enemies[i]!.radius}:e)};
+  const d=dec.decode(enc.encode(plain));assert.ok(d.ok,!d.ok?d.error:'');
+  assert.equal(d.view.enemies.filter(e=>e.radius!==undefined).length,2);
 });
 
 test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{

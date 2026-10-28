@@ -305,6 +305,16 @@ export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
   if(queued&&!scene.load.isLoading())scene.load.start();
   return queued;
 }
+/**
+ * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
+ * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
+ */
+export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  let removed=false;
+  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  return removed;
+}
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
 function bakeFrame(scene:Phaser.Scene,from:string,cell:[number,number],key:string,[w,h]:readonly [number,number],fit:'contain'|'fill'){
   if(scene.textures.exists(key)||!scene.textures.exists(from))return;
@@ -652,11 +662,19 @@ interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.Ga
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
   cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
-  ratio:number}
+  ratio:number;
+  /** Feet-to-head height of the figure drawn (world px before the scene's body scale; figurePx): the bar sits on it. */
+  head:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,head:0,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
+/**
+ * Feet-to-head height (world px before the body scale) of the imported figure on `image`, undefined when the art is
+ * off: the measured figure (the role's target height), not the cell, whose empty top would float the bar (card
+ * vida-inimigos-estilo-clash: the bar sits right on the head, like Clash Royale's).
+ */
+export const enemyArtHead=(image:object)=>{const s=states.get(image);return s&&s.on&&s.head>0?s.head:undefined;};
 /**
  * Scale of art `id`'s file `file` for an enemy of `kind`: the drawn height (drawnHeight) to the role's target once
  * measured; until then (or unmeasurable) today's cell rule (enemyDrawScale).
@@ -736,7 +754,7 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
   const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
   return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -790,15 +808,19 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}
     if(copy&&costumeFrame){copyMid=city.variant(costumeFrame.key,scale);if(!same(copyMid))copy=copyTop=copyMid=undefined;}
   }
-  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,scale,scale);
+  // Card inimigos-variedade: the critter's own size (render/enemy-variety.ts) on the drawn image only; the city copy is
+  // the kind's (built for `scale`), so a varied horde builds no extra copies.
+  const drawn=scale*(actor.vary??1);
+  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,drawn,drawn);
   else{
     if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
-    image.setOrigin(ox,oy).setScale(scale);
+    image.setOrigin(ox,oy).setScale(drawn);
   }
   image.setFlipX(false).setRotation(0);
   s.on=true;
   const art=ENEMY_ART[actor.kind];
-  s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.ratio=drawn/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.head=figurePx(textures,id,piece,actor.kind,file,actor.elite);
   if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
   if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;

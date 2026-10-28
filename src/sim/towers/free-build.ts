@@ -17,15 +17,11 @@
  *   open anyway). A piece is only blamed for a lock it makes: when the city was already shut without it, it passes.
  * - Barricade: an enemy whose centre is on it walks at FREE_PIECE_DEFS.barricada.drag × its speed (enemy-ai `drag`);
  *   the siege groups bash it like a tower (a non-blocking target).
- * - Barraca (NEW-20261023-ORQ-barracas-no-caminho): a SOFT wall (rules FREE_PIECE_DEFS soft): its blocker disc stops
- *   the enemies' bodies but not their flow field (maps CityTerrain soft blockers), so a body on its way to the car walks
- *   into it and bashes it, always (`bashedAlways`); it shuts nothing for the tranca check or the moto. A hero on one
- *   walks at BARRACA_HERO_SLOW (`heroSlow`).
  * - State: JSON-safe, in TowersState.pieces (created on the first piece); a fallen piece leaves the list.
  */
 import {RADIUS,walkable,CITY_BUILD_CELL,type CellRect,type CityTerrain,type FlowGrid,type Point,type Rect,type TerrainField} from '../../maps/index.ts';
 import {ticks,type FreePiece} from '../../contract/index.ts';
-import {BARRACA_HERO_SLOW,DEFENSES,FREE_PIECE_DEFS,UNO_ALERT_CELLS,UNO_ALERT_SECONDS,pieceCells,type BuildPiece} from '../../rules/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,UNO_ALERT_CELLS,UNO_ALERT_SECONDS,pieceCells,type BuildPiece} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {blockingCity} from '../stonewards/barricades.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
@@ -50,6 +46,8 @@ export interface FreeBuildHooks {
   moto?(tick:number):Point|undefined;
   /** Living nests (D-051): no piece within CAR_NEST_KEEP_OUT of one. */
   nests?(tick:number):readonly Point[];
+  /** The banks' places (barracas-no-caminho: the feirinhas keep off their lots). */
+  banks?(tick:number):readonly Point[];
 }
 
 /** The build grid's cell (u). */
@@ -66,6 +64,29 @@ export const MURO_BLOCK_R=.85*FREE_CELL;
  * is shut as tightly as a row of 1-cell muros (the same geometry, twice the size).
  */
 export const blockDisc=(cell:{c:number;r:number},w:number,h:number)=>({x:(cell.c+w/2)*FREE_CELL,y:(cell.r+h/2)*FREE_CELL,r:MURO_BLOCK_R*Math.max(w,h)});
+/**
+ * barricada-tocar-no-mapa (user, 25/10: the collision as big as the drawing): a barricada's blocker is BARRICADA_DISCS
+ * discs of BARRICADA_BLOCK_R along its long axis, BARRICADA_DISC_STEP apart (centre one on the piece's centre), not
+ * one disc 3 u wide. Sized so that, with a hero-size probe (RADIUS), the band the discs shut is wider than a 1.496 u flow
+ * cell everywhere along a row of barricadas end to end (between two discs of a piece and across the joint of two
+ * pieces, 2 cells apart): the flow grid sees the row shut (no gap, not even for the smallest body), and each piece
+ * spans about its 2 cells (1.76 u, ±0.27 u past each end) and 1.2 u across (the art's wall and its rows: muralha.ts).
+ */
+export const BARRICADA_BLOCK_R=.6,BARRICADA_DISC_STEP=.545,BARRICADA_DISCS=3;
+/** The blocker discs of a w×h piece at `cell` (the muro's one disc; a barricada's row along its long side). */
+export function blockDiscs(piece:string,cell:{c:number;r:number},w:number,h:number):{x:number;y:number;r:number}[]{
+  if(piece!=='barricada')return [blockDisc(cell,w,h)];
+  const x=(cell.c+w/2)*FREE_CELL,y=(cell.r+h/2)*FREE_CELL,alongX=w>=h,out:{x:number;y:number;r:number}[]=[];
+  for(let i=0;i<BARRICADA_DISCS;i++){
+    const t=(i-(BARRICADA_DISCS-1)/2)*BARRICADA_DISC_STEP;
+    out.push({x:alongX?x+t:x,y:alongX?y:y+t,r:BARRICADA_BLOCK_R});
+  }
+  return out;
+}
+/** How far (u) a piece's blocker reaches from its centre (its siege target's radius). */
+export function blockReach(piece:string,w:number,h:number):number{
+  return piece==='barricada'?(BARRICADA_DISCS-1)/2*BARRICADA_DISC_STEP+BARRICADA_BLOCK_R:MURO_BLOCK_R*Math.max(w,h);
+}
 
 export const pieceRect=(cell:{c:number;r:number},w:number,h:number):Rect=>({x:cell.c*FREE_CELL,y:cell.r*FREE_CELL,w:w*FREE_CELL,h:h*FREE_CELL});
 /** The cells a piece covers. */
@@ -99,34 +120,31 @@ export function onGround(city:CityTerrain,o:{c:number;r:number},w:number,h:numbe
 }
 
 export const piecesOf=(state:StonewardsState):readonly PieceState[]=>state.defenses?.pieces??[];
-/** The team's standing pieces of a kind (the map's own tralha, owner 'mapa', never counts against the limit). */
-export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind&&p.owner!=='mapa').length;
+/** The team's standing pieces of a kind (the map's own: the tralha, owner 'mapa', the feirinhas, 'feira'; never counted against the limit). */
+export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind&&p.owner!=='mapa'&&p.owner!=='feira').length;
 
 /** NEW-20261021-ORQ-barricada-construir: the pieces that are walls to the enemies (rules FREE_PIECE_DEFS blocks: muro, barricada). */
 export const blocksEnemies=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].blocks;
-/** A soft wall (the barraca): stops the bodies, not the flow field. */
-export const softPiece=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].soft===true;
-/** The standing blocking pieces (the moto rides around them, the tranca check counts them); the soft ones (barracas) not. */
-export const blockingPieces=(state:StonewardsState)=>piecesOf(state).filter(p=>blocksEnemies(p.kind)&&!softPiece(p.kind));
-/** The barraca `id` (a soft wall): every body pressed against it bashes it, cut off from the car or not. */
-export const bashedAlways=(state:StonewardsState,id:string)=>piecesOf(state).some(p=>p.id===id&&softPiece(p.kind));
+/** The standing blocking pieces (the moto rides around them, the tranca check counts them). */
+export const blockingPieces=(state:StonewardsState)=>piecesOf(state).filter(p=>blocksEnemies(p.kind));
 /** A blocking piece's blocker disc (blockDisc of its footprint: a muro its cell's centre, MURO_BLOCK_R). */
-const muroDisc=(p:PieceState)=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDisc(p.cell,w,h);};
+const muroDiscs=(p:PieceState)=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,w,h);};
+/** The terrain's blocker id of a piece's i-th disc (the first keeps the piece's own id). */
+const discId=(p:PieceState,i:number)=>i?`${p.id}~${i}`:p.id;
 /** Flow-grid cells (asset.unitsPerCell, inclusive) a muro's blocker decides, one cell of margin. */
 function muroCells(city:CityTerrain,p:PieceState):CellRect{
-  const cs=city.asset.unitsPerCell,d=muroDisc(p),reach=d.r+RADIUS;
-  return {x0:Math.floor((d.x-reach)/cs)-1,y0:Math.floor((d.y-reach)/cs)-1,x1:Math.floor((d.x+reach)/cs)+1,y1:Math.floor((d.y+reach)/cs)+1};
+  const cs=city.asset.unitsPerCell,ds=muroDiscs(p);
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const d of ds){const reach=d.r+RADIUS;x0=Math.min(x0,d.x-reach);y0=Math.min(y0,d.y-reach);x1=Math.max(x1,d.x+reach);y1=Math.max(y1,d.y+reach);}
+  return {x0:Math.floor(x0/cs)-1,y0:Math.floor(y0/cs)-1,x1:Math.floor(x1/cs)+1,y1:Math.floor(y1/cs)+1};
 }
-/**
- * Raises (or with `gone` removes) a muro's blocker and reports the flow cells when it changed. A soft one (the barraca)
- * changes no flow cell, so it reports none.
- */
+/** Raises (or with `gone` removes) a muro's blocker and reports the flow cells when it changed. */
 export function setMuro(terrain:TerrainField|undefined,p:PieceState,gone:boolean,onTerrainChanged?:(rect:CellRect)=>void){
   const city=blockingCity(terrain);
   if(!city||!blocksEnemies(p.kind))return;
-  const before=city.blockerVersion,soft=softPiece(p.kind);
-  city.setBlocker(p.id,gone?undefined:soft?{...muroDisc(p),soft}:muroDisc(p));
-  if(city.blockerVersion!==before&&!soft)onTerrainChanged?.(muroCells(city,p));
+  const before=city.blockerVersion;
+  muroDiscs(p).forEach((d,i)=>city.setBlocker(discId(p,i),gone?undefined:d));
+  if(city.blockerVersion!==before)onTerrainChanged?.(muroCells(city,p));
 }
 /** Makes the terrain hold a blocker for every standing muro (a system created from a checkpoint); returns the changed cells. */
 export function syncPieces(terrain:TerrainField|undefined,state:StonewardsState):CellRect[]{
@@ -147,26 +165,18 @@ export function damagePiece(terrain:TerrainField|undefined,state:StonewardsState
   if(!list||i<0)return false;
   if(state.wallDown||!(amount>0))return true;
   const p=list[i];
+  // barracas-no-caminho: the feirinhas' barracas are scenery (towers/barracas.ts), never hurt.
+  if(p.kind==='barraca')return true;
   p.hp=Math.max(0,p.hp-amount);
   if(p.hp<=0){list.splice(i,1);setMuro(terrain,p,true,onTerrainChanged);}
   return true;
 }
 export const isPiece=(state:StonewardsState,id:string)=>piecesOf(state).some(p=>p.id===id);
-/** A piece's blocker disc (blockDisc of its footprint). */
-export const pieceDisc=(p:PieceState)=>muroDisc(p);
 
 /** Siege targets: a muro blocks (any body pressed against it bashes it), a barricade is a non-blocking target like a tower. */
 export function pieceTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
-  return piecesOf(state).map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:muroDisc(p).r,blocking:true as const}
+  return piecesOf(state).filter(p=>p.kind!=='barraca').map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:blockReach(p.kind,...pieceCells(p.kind,p.rot??0)),blocking:true as const}
     :{id:p.id,x:p.x,y:p.y,radius:Math.max(...pieceCells(p.kind,p.rot??0))*FREE_CELL/2});
-}
-
-/** The step multiplier of a hero at `p`: BARRACA_HERO_SLOW while its body (RADIUS) overlaps a barraca, else 1. */
-export function heroSlow(state:StonewardsState,p:Point):number{
-  const list=state.defenses?.pieces;
-  if(!list?.length)return 1;
-  for(const q of list)if(softPiece(q.kind)&&discHits(pieceRectOf(q),p.x,p.y,RADIUS))return BARRACA_HERO_SLOW;
-  return 1;
 }
 
 /** An enemy's speed multiplier from the barricades it stands on (1 off them; the lowest when on several). */
@@ -207,35 +217,7 @@ function seedCell(open:Uint8Array,w:number,h:number,cs:number,p:Point){
   }
   return best;
 }
-/**
- * NEW-20261023-ORQ-barracas-no-caminho: a shortest walk from `from` to `to` on the city's flow cells (hero rule, no
- * blockers, 4-connected, the flow field's moves), as the cell centres from `from`'s cell to `to`'s; [] when cut off.
- * Ties go by the fixed STEPS order (deterministic).
- */
-export function wayCells(city:CityTerrain,from:Point,to:Point):Point[]{
-  const a=city.asset,w=a.cells.w,h=a.cells.h,cs=a.unitsPerCell,open=ground(city);
-  const start=seedCell(open,w,h,cs,to),goal=seedCell(open,w,h,cs,from);
-  if(start<0||goal<0)return [];
-  const next=new Int32Array(w*h).fill(-1),queue=new Int32Array(w*h);
-  let head=0,tail=0;
-  queue[tail++]=start;next[start]=start;
-  while(head<tail&&next[goal]<0){
-    const u=queue[head++],ux=u%w,uy=(u-ux)/w;
-    for(const [dx,dy] of STEPS){
-      const vx=ux+dx,vy=uy+dy;
-      if(vx<0||vy<0||vx>=w||vy>=h)continue;
-      const v=vx+vy*w;
-      if(next[v]>=0||!open[v])continue;
-      next[v]=u;queue[tail++]=v;
-    }
-  }
-  if(next[goal]<0)return [];
-  const out:Point[]=[];
-  for(let u=goal;;u=next[u]){const x=u%w;out.push({x:(x+.5)*cs,y:((u-x)/w+.5)*cs});if(u===start)break;}
-  return out;
-}
 /** Whether, with these blocker discs shutting cells, the car still reaches every spawn and the moto. */
-export function reachesAll(city:CityTerrain,muros:readonly {x:number;y:number;r:number}[],car:Point,moto:Point|undefined):boolean{return connected(city,muros,car,moto);}
 function connected(city:CityTerrain,muros:readonly {x:number;y:number;r:number}[],car:Point,moto:Point|undefined):boolean{
   const a=city.asset,w=a.cells.w,h=a.cells.h,cs=a.unitsPerCell,open=ground(city).slice();
   for(const m of muros){
@@ -272,12 +254,12 @@ function connected(city:CityTerrain,muros:readonly {x:number;y:number;r:number}[
 /**
  * True when a blocking piece of w×h cells (a muro: 1×1) at `cell` would lock the chaveiro: the city stays open without
  * it and is shut with it (the car's cell cut off from a spawn's or the moto's). Without a car (the wall mode) the wall's
- * spot stands in for it. `also`: more discs counted as walls (the barracas' rows, which the hard list leaves out).
+ * spot stands in for it.
  */
-export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:number},car:Point,moto:Point|undefined,w=1,h=1,also:readonly {x:number;y:number;r:number}[]=[]):boolean{
-  const muros=[...blockingPieces(state).map(muroDisc),...also];
-  const extra=blockDisc(cell,w,h);
-  if(connected(city,[...muros,extra],car,moto))return false;
+export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:number},car:Point,moto:Point|undefined,w=1,h=1,piece='muro'):boolean{
+  const muros=blockingPieces(state).flatMap(muroDiscs);
+  const extra=blockDiscs(piece,cell,w,h);
+  if(connected(city,[...muros,...extra],car,moto))return false;
   return connected(city,muros,car,moto);
 }
 

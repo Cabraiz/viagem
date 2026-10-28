@@ -63,8 +63,12 @@ test('blackout alpha: fades in and out, never a cut; reduced motion is lighter a
 });
 
 test('copy: every event has a banner, the kill-cam names who closed the round, every moment has a sentence', ()=>{
+  // The retired flash sale has no banner any more (sem-coxinha-no-chao); the others keep theirs.
+  assert.equal(HAPPENING_COPY.promo,undefined);
   for(const kind of HAPPENING_KINDS){
     const c=HAPPENING_COPY[kind];
+    if(kind==='promo')continue;
+    assert.ok(c,kind);
     assert.ok(c.title.length<=22&&c.subtitle.length<=36,kind);
     assert.doesNotMatch(c.title+c.subtitle,/·|→|—/);
     assert.notEqual(c.title,c.title.toUpperCase());

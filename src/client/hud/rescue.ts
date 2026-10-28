@@ -39,6 +39,7 @@ import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
+import {crateExtras} from './crate-extras.ts';
 import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
@@ -110,8 +111,16 @@ export class RescueBoard {
   private cityAt=-Infinity;private cityPeople:CityPerson[]=[];private cityEnemies:EnemyPoint[]=[];private cityTargets:CityEdgeTarget[]=[];
   /** The heroes' footsteps and the boss's (audio/footsteps.ts), counted every frame. */
   private stepper?:{steps:Footsteps;figures:StepFigure[]};
+  /** The scene's cédulas caught on screen at the last frame (BUG-20261025-ORQ-ima-dinheiro-demora): one more clinks now. */
+  private caught=0;
+  /** Those cédulas' R$ at the last frame: a change repaints the top bar's R$ now (its full render waits for the hero's spot). */
+  private pending=0;
   constructor(options:RescueOptions){
-    this.net=options.net;this.hud=options.hud;this.scene=options.scene;
+    this.net=options.net;this.hud=options.hud;
+    // A scene already torn down (a defeat closing the island, a stop) is no scene: its cameras are gone (BUG resgate-hud-apos-derrota).
+    this.scene=()=>{const scene=options.scene();return scene?.live===false?undefined:scene;};
+    // The cédulas the hero caught on screen count in the top bar at once (render/cedula-catch.ts), until the room pays them.
+    this.hud.setGranaPending(()=>this.scene()?.pendingGrana()??0);
     const b=this.button=document.createElement('button');b.type='button';b.id='coop-sos';b.hidden=true;
     b.setAttribute('aria-label','Me salva: chama a turma até você');
     b.innerHTML=`<svg class="sos-ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" pathLength="100"/></svg>${icon('boia',{size:40})}<span>Me salva</span>`;
@@ -120,7 +129,7 @@ export class RescueBoard {
     b.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)this.ask();});
     options.actions.append(b);
     this.net.onSos=ping=>this.ping(ping);
-    const loop=()=>{this.tick();this.frame=requestAnimationFrame(loop);};this.frame=requestAnimationFrame(loop);
+    const loop=()=>{if(this.dead)return;this.tick();if(!this.dead)this.frame=requestAnimationFrame(loop);};this.frame=requestAnimationFrame(loop);
   }
   /** The local caído asks for help: the room checks the fall and the 3 s gate again and relays the position. */
   ask(now=performance.now()){
@@ -148,9 +157,13 @@ export class RescueBoard {
   }
   /** Each authoritative view (after the HUD took it): spawn warnings, fall and rescue lines, the rescuer's buzz. */
   view(view:RunView){
+    if(this.dead)return;
     this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
     // The match's sounds (audio/events.ts): the local hero's hits, shots, kills and pickups, and the team's moments.
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events,this.net.id);
+    // The local hero's shots already heard on the press are not played again (net/attack-predict.ts).
+    const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
+    // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e));
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -168,6 +181,7 @@ export class RescueBoard {
       if(e.type==='downed'){
         // What got you (UX-voce-e-dano f) left the banner: it is the caído's first line over the body.
         const kind=this.hud.tally.causes.last.get(e.player),line=kind?causeCopy(kind).line:undefined;
+        if(e.player===this.net.id)this.scene()?.fallenFrom(kind);
         if(line)this.scene()?.say(e.player,line);else this.say(e.player,'down',e.eventId);
       }else if(e.type==='revived'){
         this.pings.forget(e.player);
@@ -226,6 +240,12 @@ export class RescueBoard {
     const now=performance.now(),me=net.feed.players.get(net.id);
     this.footsteps(scene,now);
     this.alarm(now);
+    // The cédula the hero walked into clinks the moment it flies into him (render/cedula-catch.ts), not at the room's word.
+    const caught=scene?.cedulasCaught()??0;
+    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema');}
+    this.caught=caught;
+    const pending=scene?.pendingGrana()??0;
+    if(pending!==this.pending){this.pending=pending;hud.granaMoved();}
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){
@@ -273,7 +293,7 @@ export class RescueBoard {
       selfId:net.id,self:scene.ghosting()?.at??net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
       corners:screenCorners(locate,focus,viewportSize()),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
-      extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
+      extras:[...crateExtras(this.last?.pickups),...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
@@ -342,5 +362,7 @@ export class RescueBoard {
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
-  destroy(){this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
+  /** Destroyed: a late room view or a frame already queued draws nothing (the island may be gone). */
+  private dead=false;
+  destroy(){this.dead=true;this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

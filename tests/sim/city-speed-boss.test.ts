@@ -171,7 +171,8 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25).
+  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25), one
+  // player (vida-inimigos-estilo-clash: clashBodies(1) = 1, the stream of before the Clash table).
   const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
@@ -471,7 +472,10 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both re-recorded for balanco-pos-1-7's enemy radius × ENEMY_RADIUS_SCALE 1.15 (the boss's, every body's and the
 // enemy-ai's neighbour reach, which is the boss's radius; were
 // ilha 75a2225f4fc40291, infinito e2d8811cc8c12ed9), the one change allowed to move them.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'251d5c145e1bf470',infinito:'dba3b8b9445b3997'};
+// Both again for heroi-empurra-inimigos (heroes and critters solid to each other; were ilha 251d5c145e1bf470,
+// infinito dba3b8b9445b3997).
+// Both again for vida-inimigos-estilo-clash: role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'f2cdd64acf0330fc',infinito:'9d8dabc1887c3e50'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import type {Point} from '../../src/maps/world.ts';
+import {RADIUS,type Point} from '../../src/maps/world.ts';
 import {NEST_COUNT,type NestPlan} from '../../src/maps/nests.ts';
 import {BASE_STATS,ticks,type EnemyState,type SimPlayer,type StampedEvent} from '../../src/contract/index.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
@@ -370,8 +370,9 @@ test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and 
     const at={x:e.x,y:e.y};
     stepRun(a,ticks(10));
     assert.deepEqual({x:e.x,y:e.y},at,'it never walks to the hero 3 u away');
-    // A hero in its reach takes its hits, the body still in place.
-    p.x=e.x+e.radius;p.y=e.y;const hp=p.hp;
+    // A hero in its reach takes its hits, the body still in place (at contact: since heroi-empurra-inimigos a hero put
+    // inside a body pushes it off).
+    p.x=e.x+e.radius+RADIUS;p.y=e.y;const hp=p.hp;
     stepRun(a,ticks(5));
     assert.ok(p.hp<hp||a.world.enemies.get(loose.id)===undefined,'it hits standing');
     assert.deepEqual({x:e.x,y:e.y},at);

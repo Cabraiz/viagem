@@ -5,7 +5,7 @@
  *   and red already mean ally and enemy) and the two circles COLETAR / DESTRUIR over it; the car's red alert glow wins;
  * - the requests sent and the room's answers in words, and the coleta's bar (until, in sim ticks).
  */
-import {BARRICADA_CELLS,COLETAR_SECONDS,DESTRUIR_PIX} from '../../../rules/index.ts';
+import {COLETAR_SECONDS,DESTRUIR_PIX,pieceCells} from '../../../rules/index.ts';
 import {SIM_HZ} from '../../../contract/index.ts';
 import type {FortStructure} from '../../render/fortify-rules.ts';
 import type {TralhaAnswer} from '../../net/client.ts';
@@ -16,15 +16,17 @@ export const INTERATIVO_COR=0xffd23f,INTERATIVO_CSS='var(--c-amarelo)';
 export interface TralhaNet {tralha(kind:'destruir'|'coletar',id:string):number|undefined}
 export type TralhaSquare=FortStructure&{untilTick?:number};
 
-/** The map pieces a hero collects or destroys: the barricada de tralha and the barraca (NEW-20261023-ORQ-barracas-no-caminho). */
-export const isTralhaKind=(kind:string)=>kind==='barricada'||kind==='barraca';
 /**
- * The standing barricada square or barraca covering the cell under world point p (undefined: none); both are
- * BARRICADA_CELLS × BARRICADA_CELLS (the barraca's footprint is the same 2×2).
+ * The standing barricada covering the cell under world point p (undefined: none); a piece is BARRICADA_CELLS long and 1
+ * thick, along its rot (barricada-tocar-no-mapa).
  */
 export function squareAt(structures:readonly TralhaSquare[],p:{x:number;y:number},cell:number):TralhaSquare|undefined{
-  const c=Math.floor(p.x/cell),r=Math.floor(p.y/cell),n=BARRICADA_CELLS;
-  return structures.find(s=>isTralhaKind(s.kind)&&s.hp>0&&s.c!==undefined&&s.r!==undefined&&s.c<=c&&c<s.c+n&&s.r<=r&&r<s.r+n);
+  const c=Math.floor(p.x/cell),r=Math.floor(p.y/cell);
+  return structures.find(s=>{
+    if(s.kind!=='barricada'||s.hp<=0||s.c===undefined||s.r===undefined)return false;
+    const [w,h]=pieceCells('barricada',s.rot===1?1:0);
+    return s.c<=c&&c<s.c+w&&s.r<=r&&r<s.r+h;
+  });
 }
 
 const REFUSALS:Readonly<Record<string,string>>={
@@ -47,14 +49,12 @@ export class TralhaPick {
   hover?:string;
   /** The coleta under way: its request and the sim tick it ends. */
   coleta?:{req:number;id:string;until:number;start:number};
-  /** The kind of the tapped piece ('barricada' or 'barraca'), for the answer's words. */
-  private selectedKind?:string;
-  private sent=new Map<number,{kind:'destruir'|'coletar';id:string;piece?:string}>();
+  private sent=new Map<number,{kind:'destruir'|'coletar';id:string}>();
 
   /** A tap on the map: selects the square under it (true: the tap was ours) or clears the selection. */
   tap(structures:readonly TralhaSquare[],p:{x:number;y:number},cell:number):boolean{
     const s=squareAt(structures,p,cell);
-    this.selected=s?.id;this.selectedKind=s?.kind;
+    this.selected=s?.id;
     return !!s;
   }
   /** The mouse over the map: the hovered square (the cursor turns into a hand there). */
@@ -80,7 +80,7 @@ export class TralhaPick {
     if(id===undefined)return 'none';
     const req=net.tralha(kind,id);
     if(req===undefined)return 'offline';
-    this.sent.set(req,{kind,id,piece:this.selectedKind});
+    this.sent.set(req,{kind,id});
     if(kind==='coletar')this.coleta={req,id,until:tick+COLETAR_SECONDS*SIM_HZ,start:tick};
     this.selected=undefined;
     return 'sent';
@@ -95,7 +95,7 @@ export class TralhaPick {
     if(a.t==='coleta'){
       if(a.ok&&a.until!==undefined&&this.coleta?.req===a.req)this.coleta.until=a.until;
       if(ended&&this.coleta?.req===a.req)this.coleta=undefined;
-      if(a.done)return r.piece==='barraca'?'Barraca na mão! Monta onde quiser':'Tralha na mão! Monta onde quiser';
+      if(a.done)return 'Tralha na mão! Monta onde quiser';
     }
     if(!a.ok)return tralhaRefusalText(a.reason);
     if(a.t==='destruiu')return `+R$ ${a.pix??DESTRUIR_PIX}: virou sucata`;

@@ -2,14 +2,14 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,type CarPlace,type FloorPoint} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,EnemyView,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
+import {AttackPredictor} from './attack-predict.ts';
 import {ObraHold} from './obra-hold.ts';
-import {barracaSlow} from './barraca-slow.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
@@ -56,6 +56,29 @@ export const AWAY_CLOSE=4010;
 export const KEEPALIVE_MS=4000;
 /** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
 const MAX_PENDING=40;
+/**
+ * Card heroi-empurra-inimigos: the solid bodies the prediction copies, within this of the hero (u): the pending steps'
+ * walk (MAX_PENDING × the fastest ride) plus the largest body (maps BODY_REACH) fit well inside.
+ */
+export const BODY_COPY_REACH=12;
+/**
+ * Copies of the frame's solid bodies near `at` (EnemyView with a radius, awake), into `out` (reused objects). The
+ * replay pushes the copies, never the feed's enemies.
+ */
+export function nearBodies(enemies:readonly EnemyView[],at:{x:number;y:number},out:Body[]=[]):Body[]{
+  let n=0;
+  for(const e of enemies){
+    if(!(e.radius!==undefined&&e.radius>0)||e.asleep||Math.abs(e.x-at.x)>BODY_COPY_REACH||Math.abs(e.y-at.y)>BODY_COPY_REACH)continue;
+    const b=out[n]??(out[n]={x:0,y:0});
+    b.x=e.x;b.y=e.y;b.radius=e.radius;
+    if(e.elite)b.elite=true;else delete b.elite;
+    if(e.boss)b.boss=true;else delete b.boss;
+    if(e.andar===1)b.andar=1;else delete b.andar;
+    n++;
+  }
+  out.length=n;
+  return out;
+}
 /** The room closes a connection whose character went to a newer one (another tab or network) with this code: never retried. */
 export const REPLACED_CLOSE=4009;
 /**
@@ -203,10 +226,13 @@ export class CoopClient {
   private downUntil=-Infinity;
   /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
   stepCap:number|undefined;
-  /** NEW-20261023-ORQ-barracas-no-caminho: the barracas' slow from where a step starts (latest frame's barracas), else undefined. */
-  stepSlow:((at:Point)=>number)|undefined;
   /** Card uno-bloqueio-corpo: the chaveiro's car of the last frame, whose body the replay keeps the hero out of (as the room). */
   private carBody:CarPlace|undefined;
+  /**
+   * Card heroi-empurra-inimigos: copies of the solid enemies near this hero in the last frame; the replay and the next
+   * predicted steps push them as the room does (maps bodies.ts), so walking into a crowd does not snap back.
+   */
+  private bodies:Body[]=[];
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
   /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
@@ -219,6 +245,8 @@ export class CoopClient {
   get seq(){return this.batcher.seq;}
   /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
   readonly feed=new FrameRunFeed();
+  /** The local hero's attack drawn on the press, the room's copy skipped (tiro-delay-1s-predicao). */
+  readonly attackPredict=new AttackPredictor();
   /** How far behind the room this page handles frames, ms (N27, slow phone): the scene stops drawing to catch up. */
   readonly backlog=new Backlog();
   /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */
@@ -781,11 +809,13 @@ export class CoopClient {
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).
     const car=view.objective?.car;
-    this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.stepSlow=barracaSlow(view.structures);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
+    this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     this.carBody=car&&{x:car.x,y:car.y,...(car.heading!==undefined?{heading:car.heading}:{})};
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,slow:this.stepSlow}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);
+      this.bodies=nearBodies(view.enemies,self,this.bodies);
+      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -833,7 +863,7 @@ export class CoopClient {
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim,work);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.stepSlow);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies);}
     this.flushInput();
   }
   /**

@@ -69,8 +69,7 @@ test('rules: rarity = tier, the wall pieces are verde, no Gustavão; every kit i
   assert.equal(kitRarity('muro'),1);assert.equal(kitRarity('morteiro'),3);assert.equal(kitRarity('obuseiro'),5);
   assert.equal(kitPiece(kitId('morteiro')),'morteiro');assert.equal(kitPiece('pistola'),undefined);assert.equal(isKitId('kit:gustavao'),false);
   assert.deepEqual(kitItem('muro'),{id:'kit:muro',level:KIT_CHARGES.muro});assert.deepEqual(kitItem('holofote'),{id:'kit:holofote',level:1});
-  // The barraca's kit came after the DICT filled up (254): inline until NEW-20261025-ORQ-dict-protocolo-cheio.
-  for(const id of KIT_IDS)if(id!=='kit:barraca')assert.ok(DICT.includes(id),`${id} in the DICT`);
+  for(const id of KIT_IDS)assert.ok(DICT.includes(id),`${id} in the DICT`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
 

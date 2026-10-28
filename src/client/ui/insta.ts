@@ -48,7 +48,7 @@ export const INSTA_PERFIS:readonly InstaPerfil[]=Object.freeze([
     chips:chips('Social amassada','Hora extra','Em reunião'),
     posts:posts('rh_oficial',['Reunião que podia ser um e-mail.','41','há 3 horas'],
       ['Ônibus lotado: meu cardio diário.','58','há 9 horas'],['Tudo sob controle. (Não está.)','27','há 2 dias'])},
-  {id:'gato-nada-pra-comer',nome:'GATO',handle:'@GATO',letreiro:'Gato da raça Nada para comer em casa',seguidores:'12,4 mil',seguindo:'3',bio:'Sete vidas.\nZero boletos.',
+  {id:'gato-nada-pra-comer',nome:'GATITO',handle:'@GATITO',letreiro:'Gatito da raça Nada para comer em casa',seguidores:'12,4 mil',seguindo:'3',bio:'Sete vidas.\nZero boletos.',
     chips:chips('Roupão rosa','Miado de fome','Comeu há 5 min'),
     posts:posts('vizinho_do_sache',['Geladeira cheia. Meu pote: vazio.','3.415','há 1 hora'],
       ['Comi há 5 minutos. Faz 84 anos.','2.980','há 6 horas'],['Miei pra lua. Ela também não deu sachê.','5.112','há 1 dia'])},

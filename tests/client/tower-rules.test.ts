@@ -134,6 +134,18 @@ test('4. shake envelope: peak at the impact, decays to 0, none with reduced moti
   assert.equal(shakeAt(CALIBRE.fuzil,0,false),0);
   const o=shakeOffset(10,123);assert.ok(Math.abs(o.x)<=10&&Math.abs(o.y)<=6);
   assert.deepEqual(shakeOffset(10,123),o,'deterministic');
+  // torres-polimento: a fine tremor — within the bounds at every ms, the impact slams down first, no regular circle.
+  for(let ms=0;ms<=1000;ms+=7){const p=shakeOffset(10,ms);assert.ok(Math.abs(p.x)<=10+1e-9&&Math.abs(p.y)<=6+1e-9,`${ms}`);}
+  assert.equal(shakeOffset(10,0).y,6,'the slam: all the way down at the impact');
+  const radii=new Set<number>();for(let ms=200;ms<=800;ms+=50){const p=shakeOffset(10,ms);radii.add(Math.round(Math.hypot(p.x,p.y/.6)));}
+  assert.ok(radii.size>3,'two frequencies per axis: the offset is not a fixed-radius wobble');
+});
+
+test('4. effects by calibre: the long guns trace white, the flak red, the rest yellow',()=>{
+  assert.equal(CALIBRE.sniper.core,'branco');assert.equal(CALIBRE.antimaterial.core,'branco');
+  assert.equal(CALIBRE.antiaerea.core,'vermelho');
+  for(const id of ['pistola','fuzil','metralhadora','rotativa'] as const)assert.equal(CALIBRE[id].core,undefined,id);
+  for(const c of Object.values(CALIBRE))if(c.core)assert.equal(c.shot,'tracer');
 });
 
 test('5. towerArt: the manifest piece (base sheet, idle sheet, mount), else procedural',()=>{
@@ -212,7 +224,7 @@ test('6b. TowerFeed: volleys from an aim change and, at the catalog cadence, fro
   assert.equal(at(100+7*cd,0,east,{startTick:100+7*cd,readyTick:100+9*cd}),false,'in obra: no volley');
   // Aim steps under half a wire step are the same aim; the wrap is handled.
   assert.equal(aimMoved(.5,.5+.4/255),false);assert.equal(aimMoved(.5,.5+.6/255),true);assert.equal(aimMoved(.0005,.9995),false,'across the wrap');
-  // The rule itself: the arame's aura fires on any enemy in reach; a radar never (no aim).
+  // The rule itself: the arame's aura fires on any enemy in reach; a radar (it pulses since torres-animacao-idle-tiro) only along an aim.
   assert.equal(volleyNow('arame-e-sirene','pronta',.5,false,cd*2,0,0,{n:1,xs:[0],ys:[2],air:[0]}),true);
   assert.equal(volleyNow('posto-de-radar','pronta',undefined,false,1e6,0,0,east),false);
   assert.equal(volleyNow(kind,'danificada',0,false,cd,10,20,east),true,"a damaged defense still fires (the sim's canFire)");
@@ -225,8 +237,10 @@ test('6d. scene: the defenses renderer is lazy (built on the first snapshot with
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   assert.equal((scene.match(/new TowerRenderer\(/g)??[]).length,1,'built in one place');
   assert.match(scene,/private makeTowers\(\)\{\s*return this\.towers=new TowerRenderer\(/);
-  // The only caller of makeTowers runs after the no-defense early return (nothing built, no enemy walked).
-  assert.equal((scene.match(/this\.makeTowers\(\)/g)??[]).length,1);
+  // makeTowers runs after the no-defense early return (nothing built, no enemy walked), or for a kit de torre's ghost
+  // (barricada-tocar-no-mapa: the ghost is the tower's art), never otherwise.
+  assert.equal((scene.match(/this\.makeTowers\(\)/g)??[]).length,2);
+  assert.match(scene,/towerGhost:g=>g\?\(this\.towers\?\?this\.makeTowers\(\)\)\.setGhost\(/);
   assert.match(scene,/if\(!this\.towers&&!hasTowers\(view\.structures\)\)return;[^\n]*\n\s*const towers=this\.towers\?\?this\.makeTowers\(\);/);
   assert.match(scene,/towersInWorld\(\):boolean\{return !!this\.towers&&this\.towerFeed\.count>0;\}/);
   // Elsewhere the scene only reaches it through optional chaining or a local after a guard.

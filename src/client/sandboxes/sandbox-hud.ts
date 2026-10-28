@@ -161,8 +161,20 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 }
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
+/**
+ * The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts): `perfis=1..12` gives that many matches (the flame
+ * and its counter; `perfil=<id>,<id>` picks the kinds), `perfis-abre=1` opens the last one (the compact card; frozen: it
+ * stays), and the result scene shows them as stickers. Off in every other scene.
+ */
+const PERFIS_KINDS=['tio-pave','pombos','boleto-vivo','bebado','sogra-tita','coach','agiota','influencer','motoboy','chefe-pizza','cunhado-sabe-tudo','pombo-rei'];
+const perfis=Math.max(0,Math.min(12,Number(params.get('perfis'))||0));
+const PERFIS_SANDBOX=(params.get('perfil')?.split(',')??PERFIS_KINDS).slice(0,perfis);
+/** Fixed distances and leans: the prints never change between loads. */
+const PERFIS_DIST=[12,7,1240,31,4,88,15,260,9,43,3,560],PERFIS_TILT=[-3,2.5,-1.5,3.5,-2.5,1,-4,2,-1,3,-3.5,1.5];
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas||cidade||!!pausa,
+  profiles:perfis>0,
+  ...(perfis&&frozen?{profileClock:()=>0}:{}),
   // The pause's frozen scenes (modo foto): its clock stands still, so the seconds and the bar print the same every time.
   ...(pausa&&frozen?{pauseClock:()=>0}:{}),
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
@@ -319,6 +331,8 @@ function load(next:HudScenario){
     if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'chinelo-lendario'}];
   }
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
+  PERFIS_SANDBOX.forEach((kind,i)=>hud.profiles.add({kind,distance:PERFIS_DIST[i]??10,tilt:PERFIS_TILT[i]??0}));
+  if(perfis&&params.has('perfis-abre')){(hud.profiles.el.querySelector('.rh-matches') as HTMLButtonElement|null)?.click();hud.update(view);}
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).
@@ -346,7 +360,7 @@ function load(next:HudScenario){
   else document.body.dataset.hudReady='1';
   // Combat with the compact panel open: D-050's level-up pause (the room's RunState.pause), 9 s of 12 left, the whole
   // team still picking. Every other scenario runs unpaused.
-  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
+  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'||scenario==='offer-sem-xp'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
   // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.

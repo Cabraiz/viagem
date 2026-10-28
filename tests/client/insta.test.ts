@@ -55,7 +55,7 @@ test('a released hero shows exactly 3 photos; a locked one shows none (a private
 test('the rings are every hero with a profile, the chosen one too; a locked one has the lock over his face',()=>{
   const ids=INSTA_PERFIS.map(p=>p.id);
   // BUG-20261024-ORQ-aneis-herois-carrossel-infinito: the chosen one stays in the row (marked), see insta-aneis.test.ts.
-  assert.deepEqual(aneisOf([...ids,'feirante']).map(p=>p.nome),['VICIADO','CLT','GATO','MAROMBA','VENDEDOR','APOSENTADO']);
+  assert.deepEqual(aneisOf([...ids,'feirante']).map(p=>p.nome),['VICIADO','CLT','GATITO','MAROMBA','VENDEDOR','APOSENTADO']);
   assert.deepEqual(aneisOf(['viciado-em-bet','maromba']).map(p=>p.id),['viciado-em-bet','maromba'],'only heroes this build has');
   const maromba=instaPerfil('maromba')!;
   assert.match(storyHtml(maromba,false),/data-bloqueado[^>]*aria-label="MAROMBA \(em breve\)"/);
@@ -65,7 +65,7 @@ test('the rings are every hero with a profile, the chosen one too; a locked one 
 
 test('the profile: badge, followers | following, bio, the three chips; the handle never wraps',()=>{
   const gato=instaPerfil('gato-nada-pra-comer')!,html=perfilHtml(gato);
-  for(const piece of ['@GATO','12,4 mil','seguidores','3','seguindo','Sete vidas.\nZero boletos.','icone-verificado'])assert.ok(html.includes(piece),piece);
+  for(const piece of ['@GATITO','12,4 mil','seguidores','3','seguindo','Sete vidas.\nZero boletos.','icone-verificado'])assert.ok(html.includes(piece),piece);
   assert.match(css,/\.insta-bio \{[^}]*white-space: pre-line;/,'the bio breaks at its line feed');
   assert.equal(chipsHtml(gato).match(/class="insta-chip"/g)?.length,3);
   // The chips' icons in the reference's flat dark grey (the user, 23/10): a mask in --insta-icone, never the colour drawing.
@@ -73,7 +73,7 @@ test('the profile: badge, followers | following, bio, the three chips; the handl
   assert.deepEqual([...chipsHtml(gato).matchAll(/data-icone="(\w+)"/g)].map(m=>m[1]),['oculos','coroa','pata']);
   assert.match(css,/\.insta-chip-icone \{[^}]*background: var\(--insta-icone\); mask: var\(--icone\)/);
   for(const icone of ['oculos','coroa','pata'])assert.ok(css.includes(`[data-icone="${icone}"] { --icone: url('${INSTA_ART}icone-${icone}.webp'); }`),icone);
-  assert.equal(handleFit('@GATO'),1);
+  assert.ok(handleFit('@GATITO')>.99,'@GATITO still at full size');
   assert.ok(handleFit('@MAROMBA')<1&&handleFit('@MAROMBA')>.8);
   assert.match(barraHtml(),/class="insta-menu" aria-label="Configurações"/);
   assert.match(barraHtml(),/<img class="insta-logo" alt=""/);

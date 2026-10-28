@@ -35,16 +35,17 @@ import {BACK_ONLINE_ROW_MS,BackOnlineWatch,createGameMenu,menuBack,menuFocus,typ
 import type {RunState,RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
-import {heldReach} from './hud/weapon-reach.ts';
+import {heldReach,heldWeapon} from './hud/weapon-reach.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {FortifyHud} from './hud/fortify/fortify.ts';
-import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
+import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState,towFace} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
-import {KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
+import {KIT_TAP_HINT,KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
+import {KitGesture} from './hud/kit-place/gesture.ts';
 import {WorkLatch,workShop,workingIn} from './hud/bicos.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
 import {TralhaHud} from './hud/tralha/tralha.ts';
@@ -74,11 +75,15 @@ import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} fr
 import {HUD_SWITCH} from './hud/arrows.ts';
 import {adBreakThen,soloRoom} from './ads/ads.ts';
 import {CenaClock} from './render/chefao-cena.ts';
+import type {Match} from './hud/perfis.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
 /** Center banner while the socket stays down past RECONNECT_BANNER_MS (the client retries on its own). */
 const RECONNECTING='Reconectando à turma…';
+/** ?matches=sempre|demo → the HUD's dice and starting matches (hud/perfis.ts); anything else: the real ones. */
+const matchesFlag=(flag:string|null):{profileRng?:()=>number;profileDemo?:readonly Match[]}=>
+  flag==='sempre'?{profileRng:()=>0}:flag==='demo'?{profileRng:()=>0,profileDemo:[{kind:'bebado',distance:12,tilt:-3},{kind:'pombos',distance:7,tilt:2.5},{kind:'tio-pave',distance:31,tilt:-1.5}]}:{};
 
 let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
@@ -128,10 +133,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   /** D-052 slice 3: the car's rope (Puxar) and the free build (Construir, the ghost, the wall counter). */
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
   /**
-   * Kits de torre (torre-pela-caixa, construir-no-botao): a tap on the kit's slot selects it, the ghost walks ahead of
-   * the hero and the attack button says Construir (buildNow); the kit again or a weapon goes back to Atacar.
+   * Kits de torre and barricadas (torre-pela-caixa, barricada-tocar-no-mapa): a tap on the kit's slot selects it, a press
+   * on the map puts the ghost there, the drag turns it and letting go builds (kitGesture → placeNow); the kit again, a
+   * weapon or Esc lets it go. The attack button stays Atacar.
    */
-  const kitPlace=new KitPlace();let buildNow:()=>void=()=>undefined,kitShown=false;
+  const kitPlace=new KitPlace();let placeNow:()=>void=()=>undefined,refreshKitGhost:()=>void=()=>undefined,kitShown=false,kitGesture:KitGesture|undefined;
+  /** torre-limite-rebocar-sem-arma: the action button on the Uno's rope ("Rebocar"/"Soltar", skill.towing) sends {t:'puxar'}. */
+  let towTap:()=>void=()=>undefined;
   /** Bicos (hud/bicos.ts): in an open shop's ring the attack button is Trabalhar; a tap clocks in, moving clocks out. */
   const workLatch=new WorkLatch();
   let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
@@ -168,7 +176,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
+    // ?matches=sempre: every kill of the hero is a match (hud/perfis.ts MatchBook); ?matches=demo (gravar-partida's matches
+    // roteiro): the same, and the run starts with three, so the flame and its card show with no kill (round 1 has no weapon).
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,...matchesFlag(new URLSearchParams(location.search).get('matches')),onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
       // waits on this player's vote (a room of friends never waits on someone's ad). Off or blocked = runs at once.
       onRematch:()=>{if(net&&soloRoom(net.run?.members,net.id))adBreakThen('revanche',()=>net?.rematch());else net?.rematch();},
       onExit:()=>adBreakThen('sair',()=>close()),critterIcon:kind=>controller?.scene.critterIcon(kind),
@@ -189,7 +199,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         }
         if(kitPlace.active&&kitPlace.kit?.slot===command.slot){kitPlace.cancel();return true;}
         const id=me?.weapons[command.slot]?.id;
-        return !!id&&kitPlace.start(command.slot,id,net.predicted,buildPlanFor(net.terrain).cell);
+        if(!id||!kitPlace.start(command.slot,id))return false;
+        obraSay(KIT_TAP_HINT);
+        return true;
       },
       kitSlot:()=>kitPlace.kit?.slot,
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
@@ -219,6 +231,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);
       };
       net.onPulled=answer=>{if(!answer.ok)obraSay(pullRefusalText(answer.reason));};
+      towTap=()=>{const face=skill?.towing;if(face&&net.pull(face==='rebocar')===undefined)obraSay('Agora não dá');};
       const cell=()=>buildPlanFor(net.terrain).cell;
       const send=(r:string)=>{if(r==='offline')obraSay('Agora não dá');};
       fort=new FortifyHud(host.el,{
@@ -230,12 +243,24 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
         onAimEnd:()=>fortBuild.endDrag(),
         canvas:()=>controller?.game.canvas});
-      // Construir (the attack button with a kit selected): the ghost's cell to the room; a red ghost says why instead.
-      buildNow=()=>{
+      // barricada-tocar-no-mapa: the press let go on the map: the ghost's cell to the room; a red ghost says why instead.
+      placeNow=()=>{
         if(!kitPlace.active||!kitShown)return;
+        // The colour of the ghost the finger saw, recomputed for its last place (the drag may have turned it).
         if(kitPlace.blocked){obraSay(kitRefusalText(kitPlace.blocked));return;}
         const r=kitPlace.confirm(net);if(r!=='none')send(r);
       };
+      refreshKitGhost=()=>{
+        const scene=controller?.scene,view=hud?.view;
+        if(!scene||!kitPlace.active)return;
+        const car=view&&objectiveOf(view)?.car;
+        scene.setBuildGhost(kitPlace.ghost({cell:cell(),...(car?{car}:{}),structures:view?.structures??[],ground:kitGround(net.terrain),
+          bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]},net.predicted),[]);
+      };
+      kitGesture=new KitGesture({active:()=>kitPlace.active&&kitShown,canvas:()=>controller?.game.canvas,
+        onPress:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p){pause(false);kitPlace.press(p,cell());refreshKitGhost();}},
+        onMove:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p){kitPlace.move(p,cell());refreshKitGhost();}},
+        onRelease:cancelled=>{if(kitPlace.release()&&!cancelled)placeNow();}});
       // barricada-construir part 2: tap a barricada de tralha → COLETAR / DESTRUIR; the mouse over it → outline + hand.
       const squares=()=>hud?.view?.structures??[];
       tralhaHud=new TralhaHud(host.el,{
@@ -291,7 +316,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
       // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
       reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
-      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2});
+      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,
+      // tiro-delay-1s-predicao: the press shows at once (swing, flash, sound); the room's copy is skipped.
+      pressed:()=>{if(sceneReady)controller?.scene.predictAttack();}});
     net.onCast=result=>skill?.answer(result,performance.now());
   }
   // Only controls overlay the map. All secondary information lives in a native
@@ -374,7 +401,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -498,27 +525,32 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(hotkey.kind==='skill'){
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill. A kit selected: Construir.
       if(skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled)workLatch.tap(performance.now());return;}
-      if(kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}
+      if(skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}
       if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
     if(emotes&&!emotes.root.hidden)emotes.setOpen(!emotes.open);
   },{signal});
-  // construir-no-botao: with a kit selected the attack button builds (before AttackButton's own listeners see the press);
-  // Esc lets the kit go (back to Atacar).
+  // Trabalhar and Rebocar on the attack button (before AttackButton's own listeners see the press). With a kit selected
+  // (barricada-tocar-no-mapa) Esc lets it go and R turns the barricade.
   if(net){
     const onBuild=(e:Event)=>{
       const button=(e.target as Element|null)?.closest?.('#coop-attack') as HTMLButtonElement|null;
-      const work=!!skill?.working;
-      if(!(work||kitPlace.active)||!button||button.disabled)return;
+      const work=!!skill?.working,tow=!!skill?.towing;
+      if(!(work||tow)||!button||button.disabled)return;
       if(e.type==='pointerdown'&&(e as PointerEvent).button!==0)return;
       if(e.type==='click'&&(e as MouseEvent).detail!==0){e.stopImmediatePropagation();return;}
       e.stopImmediatePropagation();e.preventDefault();pause(false);
-      if(work)workLatch.tap(performance.now());else buildNow();
+      if(work)workLatch.tap(performance.now());else towTap();
     };
     window.addEventListener('pointerdown',onBuild,{capture:true,signal});
     window.addEventListener('click',onBuild,{capture:true,signal});
-    document.addEventListener('keydown',e=>{if(!closed&&kitPlace.active&&e.key==='Escape'&&!settings.open){e.preventDefault();kitPlace.cancel();}},{signal});
+    document.addEventListener('keydown',e=>{
+      if(closed||!kitPlace.active||settings.open)return;
+      if(e.key==='Escape'){e.preventDefault();kitPlace.cancel();}
+      // barricada-tocar-no-mapa: R turns the barricade (the drag does it on the phone).
+      else if((e.key==='r'||e.key==='R')&&!e.repeat&&!(e.target instanceof HTMLInputElement)){e.preventDefault();kitPlace.turn(buildPlanFor(net.terrain).cell);refreshKitGhost();}
+    },{signal});
   }
   // A focused button is pressed by Space on its keyup: never, when Space is the skill hotkey (Phaser does the same), so a
   // focused skill button casts once (the keydown above), not twice.
@@ -611,9 +643,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
-      aimStick:()=>attackBtn?.aim(),
+      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
@@ -644,7 +676,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           // D-050: the level-up pause zeroes the attack like the rest of the input (a press there is not kept for later).
           if(net.run?.pause)attackBtn?.clear();
           // D-052: pushing or pulling the car the hands are busy (net.handsBusy): the button dims and a held press lets go.
-          const busy=manual&&net.handsBusy,attackEl=find<HTMLButtonElement>('#coop-attack');
+          // torre-limite-rebocar-sem-arma: on the rope the button is Soltar (skill.towing), never dimmed.
+          const busy=manual&&net.handsBusy&&!skill?.towing,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
@@ -679,6 +712,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               const back=backOnline.frame(net.connected,now,run);
               if(back){backRow.querySelector('strong')!.textContent=back;hud.queueRow(backRow,BACK_ONLINE_ROW_MS);}
               hud.avoidHero(controller?.scene.heroScreenRect());
+              hud.guardProfiles(controller?.scene.guardScreenRects());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
               const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
               let bearing:number|undefined;
@@ -725,26 +759,28 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
                 // The level-up pause or the offer only hide it: the kit stays selected for after the card (construir-no-botao).
                 const shown=kitShown=!run.pause&&!hud.el.hidden&&!hud.offerShown;
-                kitPlace.hero(net.predicted,scene.heroIntent);
                 if(run.phase!=='combat')kitPlace.reset();
                 else if(!available)kitPlace.cancel();
                 kitPlace.sync(me?.weapons);
-                if(kitPlace.active&&shown){
-                  // The ghost walks KIT_AHEAD in front of the hero: that is where Construir puts it.
-                  const car=view&&objectiveOf(view)?.car,cell=buildPlanFor(net.terrain).cell;
-                  kitPlace.follow(net.predicted,cell);
-                  scene.setBuildGhost(kitPlace.ghost({cell,...(car?{car}:{}),structures:view?.structures??[],ground:kitGround(net.terrain),
-                    bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]},net.predicted),[]);
-                }else if(!fortBuild.open)scene.setBuildGhost(null);
-                skill?.setBuild(kitPlace.kit?.id,!shown||!!kitPlace.blocked);
-                // Bicos: standing in an open shop's ring (or inside it) the button is Trabalhar; a kit selected keeps Construir.
+                // The ghost stands where the map was pressed (or the mouse hovers): its colour follows the room each frame.
+                if(kitPlace.active&&shown)refreshKitGhost();
+                else if(!fortBuild.open)scene.setBuildGhost(null);
+                skill?.setBuild(undefined);
+                // Bicos: standing in an open shop's ring (or inside it) the button is Trabalhar.
                 const banks=view?.banks,inside=workingIn(banks,net.id),shop=inside??workShop(banks,net.predicted);
                 // The level-up pause or the offer only hide it (the shift goes on after the card).
-                const offered=available&&!kitPlace.active&&!!shop;
+                const offered=available&&!!shop;
                 workLatch.view(!!inside,offered,performance.now());
                 const face=offered&&shown&&!run.pause&&shop?{bico:shop.bico,inside:!!inside||workLatch.asked}:undefined;
                 skill?.setWork(face);
                 if(face&&attackBtn?.press.held)attackBtn.clear();
+                // torre-limite-rebocar-sem-arma: at the Uno's rope end Atacar turns Rebocar (on the rope: Soltar); Construir
+                // and Trabalhar win; an enemy close by keeps Atacar while the hand holds a weapon (towFace).
+                const towCar=view&&objectiveOf(view)?.car;
+                const tow=available&&shown&&!face?towFace(towCar,net.id,net.predicted,{bot:id=>!!view?.players.find(p=>p.id===id)?.bot,
+                  armed:!!me&&!!heldWeapon(me),enemies:net.feed.enemies.values()}):undefined;
+                skill?.setTow(tow);
+                if(tow&&attackBtn?.press.held)attackBtn.clear();
               }
               // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
               if(tralhaHud&&controller){

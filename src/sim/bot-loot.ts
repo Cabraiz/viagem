@@ -12,7 +12,6 @@
  */
 import type {OwnedItem,PickupState,PickupView,PlayerRunView,RunView,VehicleKind} from '../contract/index.ts';
 import {BASE_STATS} from '../contract/index.ts';
-import {kitId} from '../rules/index.ts';
 import {getWeapon,resolveWeapon} from './weapons/catalog.ts';
 import {OPEN_REACH} from './crates.ts';
 import {INVENTORY_SLOTS,TAKE_REACH,isKitItem} from './inventory.ts';
@@ -23,7 +22,7 @@ import type {Point} from '../maps/index.ts';
  * 1.7× city, 23 since mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
 export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=23;
-const VERDE_PISTOL={id:'pistola',level:1},BARRACA_KIT=kitId('barraca');
+const VERDE_PISTOL={id:'pistola',level:1};
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;
 
@@ -49,6 +48,16 @@ export interface LootPlan {
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
+/**
+ * NEW-20261025-ORQ-uno-caminho-caixas-vender (c): a bot leaves a crate to a person (online, on the map, not a bot) who
+ * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it.
+ */
+export const BOT_LEAVES_CRATE=40;
+export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number})[],crate:Pick<PickupState,'x'|'y'|'hiddenFor'>,me:string):boolean{
+  return players.some(p=>p.id!==me&&!p.bot&&p.online&&!p.spectator&&!p.eliminated&&!crate.hiddenFor?.includes(p.id)
+    &&p.x!==undefined&&p.y!==undefined&&Math.hypot(p.x-crate.x,p.y-crate.y)<BOT_LEAVES_CRATE);
+}
+
 export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS):LootPlan{
   const plan:LootPlan={};
   const inv=me.weapons,hand=me.hand??0;
@@ -64,8 +73,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   // 3. Loot only in a lull.
   if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return plan;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return plan;
-  // The kit:barraca goes near the Uno instead (bot-barracas.ts).
-  const kit=inv.findIndex(i=>isKitItem(i)&&i.id!==BARRACA_KIT);
+  const kit=inv.findIndex(isKitItem);
   if(kit>=0&&!plan.command)plan.command={t:'kit',slot:kit};
   const handScore=Math.max(...inv.map(i=>weaponScore(i)),0),armed=handScore>=weaponScore(VERDE_PISTOL);
   const pickups=view.pickups as readonly (PickupState|RunView['pickups'][number])[];
@@ -73,8 +81,8 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
-    else if(k.kind==='item'&&k.resource&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;
   plan.goal=goal;

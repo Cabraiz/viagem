@@ -4,7 +4,7 @@
  * eats a consumable; holding (or dragging it off the bar) drops the item. With the 6 slots full, an item on the ground
  * within reach shows "Trocar" (it takes the place of the weapon in the hand). The room's refusals become a short line.
  * A kit de torre (torre-pela-caixa) wears its tier's rarity; a tap selects it ({t:'kit'}: the host's hud/kit-place,
- * nothing goes to the room yet) and the attack button becomes Construir (construir-no-botao). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
+ * nothing goes to the room yet) and a tap on the map places it (barricada-tocar-no-mapa). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
  * the automatic weapons have no inventory and the bar stays hidden.
  *
  * inventorySlots, swapCandidate, inventoryRefusalText and inventoryKeyOf are pure (tests); createInventory paints .rh-inv.
@@ -56,7 +56,7 @@ export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undef
 }
 /** The slot's accessible name: "Pistola (azul), na mão", "Coxinha, 2". */
 export function slotLabel(slot:InventorySlot):string{
-  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', na mão: Construir põe à sua frente':': tocar para construir'}, segurar para largar`;
+  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', escolhido: toque no mapa para pôr':': tocar para construir'}, segurar para largar`;
   if(slot.kind==='consumable')return `${slot.name}${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para usar, segurar para largar`;
   return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${slot.hand?', na mão':': tocar para equipar'}, segurar para largar`;
 }
@@ -87,6 +87,7 @@ const REFUSALS:Readonly<Record<string,string>>={
   slot:'Esse espaço tá vazio',
   player:'Agora não dá',
   pickup:'O item sumiu',
+  owned:'Você já tem esse',
 };
 export const inventoryRefusalText=(reason:string|undefined)=>REFUSALS[reason??'']??'Não deu';
 

@@ -49,6 +49,8 @@ import {GROUPS} from './art-v2/spec.mjs';
 import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
+import {HD_ENEMIES} from '../src/client/art/manifest.ts';
+import {WAVE_BOSS} from '../src/rules/index.ts';
 import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../src/contract/offscreen.ts';
 import {cityLiteFiles} from '../src/client/render/city/art-plan.ts';
 
@@ -90,13 +92,13 @@ const CITY_GROUPS=['predios','base','props','cenario'];
 const KINDS=['trees','sprites','enemies','enemies-pc','menu','towers','city'];
 const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 /**
- * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base and the
- * weapon's idle), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
+ * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base, the
+ * weapon's idle and its fire, torres-animacao-idle-tiro), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
  * order, `views` or `frames` columns), every cell scaled by TOWER_LITE_SCALE; `liteCell` goes to the file in
  * public/art/towers/manifest.json and the index. The delivered art is drawn at the city scenery's scale
  * (tower-rules towerArtScale), ~0.57 CSS px per art px on a phone at the closest zoom (see TOWER_LITE_SCALE).
  */
-const TOWER_LITE_FILES=['base','idle'];
+const TOWER_LITE_FILES=['base','idle','fire'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 /**
@@ -173,11 +175,15 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
     fig={source,cell:file.cell,drawn};
   }
   figures[id]=fig;
-  const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
+  // The 1st wave's chefão (manifest.ts HD_ENEMIES) is drawn × WAVE_BOSS.drawScale from his approved cell: his computer
+  // copy keeps that cell (horde-art enemyFileUrl loads it on both screens, ~half the bytes), and the phone copy no screen
+  // loads stays at his role's size (BUG-20261025-ORQ-art-lite-chefoes-velho: at × 3 it would be the full sheet).
+  const boss=HD_ENEMIES.has(id),height=artTargetHeight(id)/(boss?WAVE_BOSS.drawScale:1);
+  const need=height*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
   const scale=fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*need/fig.drawn)/file.cell[1]):1;
   if(scale>=1)continue;
-  const needPc=artTargetHeight(id)*PC_HERO_SCREEN_PX/HERO_FIGURE_PX*LITE_TEXELS;
-  const pcScale=fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*needPc/fig.drawn)/file.cell[1]):1;
+  const needPc=height*PC_HERO_SCREEN_PX/HERO_FIGURE_PX*LITE_TEXELS;
+  const pcScale=boss?1:fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*needPc/fig.drawn)/file.cell[1]):1;
   for(const [name,f] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue; // the rest rows no match downloads (the nests' card) keep their cell
     const cell=[Math.ceil(f.cell[0]*scale),Math.ceil(f.cell[1]*scale)],pc=[Math.ceil(f.cell[0]*pcScale),Math.ceil(f.cell[1]*pcScale)];

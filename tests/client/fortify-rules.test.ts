@@ -9,10 +9,10 @@ import {freeBarricadeSpan,isFreeBarricade} from '../../src/client/render/stonewa
 
 const cell=CITY_BUILD_CELL;
 
-test('footprints: wall 1×1, barricade 2×2 (barricada-2x), the root from the catalog, unknown 1×1', ()=>{
+test('footprints: wall 1×1, barricade 2×1 turned by rot (barricada-tocar-no-mapa), the root from the catalog, unknown 1×1', ()=>{
   assert.deepEqual(footprintCells('muro'),[1,1]);
-  assert.deepEqual(footprintCells('barricada'),[2,2]);
-  assert.deepEqual(footprintCells('barricada',1),[2,2]);
+  assert.deepEqual(footprintCells('barricada'),[2,1]);
+  assert.deepEqual(footprintCells('barricada',1),[1,2]);
   assert.deepEqual(footprintCells('vigia-do-predio'),[2,2]);
   assert.deepEqual(footprintCells('xyz'),[1,1]);
   assert.equal(isGridPiece('muro'),true);assert.equal(isGridPiece('ninho'),false);assert.equal(isGridPiece('muralha'),false);
@@ -37,12 +37,15 @@ test('ghost: red near the car, near a living nest and over a standing piece; gre
   const wall={id:'m',kind:'muro',x:0,y:0,hp:250,c:20,r:20};
   assert.equal(ghostRefusal(r,{cell,structures:[wall]}),'ocupado');
   assert.equal(ghostRefusal(cellRect(21,20,1,1,cell),{cell,structures:[wall]}),undefined);
-  // A barricade square takes its 2×2 cells (barricada-2x) and no more.
+  // A barricade takes its 2×1 cells (barricada-tocar-no-mapa: 2 long, 1 thick, along its rot) and no more.
   const bar={id:'b',kind:'barricada',x:0,y:0,hp:200,c:30,r:30};
   assert.equal(ghostRefusal(cellRect(30,30,1,1,cell),{cell,structures:[bar]}),'ocupado');
-  assert.equal(ghostRefusal(cellRect(31,31,1,1,cell),{cell,structures:[bar]}),'ocupado');
+  assert.equal(ghostRefusal(cellRect(31,30,1,1,cell),{cell,structures:[bar]}),'ocupado');
+  assert.equal(ghostRefusal(cellRect(30,31,1,1,cell),{cell,structures:[bar]}),undefined,'1 cell thick');
   assert.equal(ghostRefusal(cellRect(32,30,1,1,cell),{cell,structures:[bar]}),undefined);
-  assert.equal(ghostRefusal(cellRect(30,32,1,1,cell),{cell,structures:[bar]}),undefined);
+  const turned={...bar,rot:1};
+  assert.equal(ghostRefusal(cellRect(30,31,1,1,cell),{cell,structures:[turned]}),'ocupado','turned: along y');
+  assert.equal(ghostRefusal(cellRect(31,30,1,1,cell),{cell,structures:[turned]}),undefined);
 });
 
 test('a tower without c/r (an older room) is placed by its centre', ()=>{

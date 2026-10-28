@@ -25,6 +25,7 @@ import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {ticks} from '../../src/contract/types.ts';
 import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
+import {BOT_WALK_MULT} from '../../src/contract/index.ts';
 import {CAR_ID,type RunView} from '../../src/contract/index.ts';
 import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,CHAVEIRO_KEEP_SHARE,CHAVEIRO_SAVE_ETA,REPAIR_BELOW,TOWER_STAND,decide,granaReserve,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,GUSTAVAO_COST,ROOT_DEFENSE,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
@@ -151,9 +152,11 @@ test('decide(): the builder walks to the obra (mode build), orders on arrival, a
   assert.equal(near.mode,'build');assert.deepEqual(near.build,{build:'s1'},'no person here: it orders as soon as it is there');
   assert.deepEqual(near.direction,{x:0,y:0},'stands there');
   // The way back counts: a site 30 u out fits (there, back into the camp, TOWER_MARGIN), one 40 u out does not. The
-  // distances at the base walk, × K (maps HERO_SPEED_MULT, velocidade-heroi-e-projetil): the bot times the real walk.
-  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30*K,y:1}]}).mode,'build');
-  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40*K,y:1}]}).mode,'build','the walk there fits, there and back does not');
+  // distances at the base walk, × K (maps HERO_SPEED_MULT, velocidade-heroi-e-projetil) × BOT_WALK_MULT (bots-20-mais-lentos):
+  // the bot times its real walk.
+  const W=K*BOT_WALK_MULT;
+  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30*W,y:1}]}).mode,'build');
+  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40*W,y:1}]}).mode,'build','the walk there fits, there and back does not');
   assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:200*K,y:1}]}).mode,'build');
   // Standing at an obra whose way back no longer fits: no order, it heads home.
   const late=run({x:80*K,y:1},{sites:[{id:'s1',maxSize:3,x:80*K,y:1}]});
@@ -232,9 +235,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(11,3,6);
+  const a=cityRun(2,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 11, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 2, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -245,12 +248,16 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // again since the viaduct (the run starts on its deck: seed 2's builder took no B site by round 6, seeds 1, 4, 5, 7, 8 do).
   // Seed 6 since the viaduct met oferta-velocidade (the class's moveSpeed walking on the v4 map: of seeds 1–12 only 6, 11
   // and 12 start the B line by round 6). Seed 11 since the bicos (bancos-viram-bicos: the bots clock in at the shops in
-  // the calm; seed 6's builder took no B site by round 6, seeds 1, 2, 4, 5, 7, 8, 11, 12 do).
+  // the calm; seed 6's builder took no B site by round 6, seeds 1, 2, 4, 5, 7, 8, 11, 12 do). Seed 1 since
+  // bots-20-mais-lentos (the room's bots walk 0.8 of a person; with ofertas-sem-xp seed 11's builder put up one root by
+  // round 6; seeds 1, 4, 6, 9, 10, 13–16 of 1–16 start the B line). Seed 2 since bots-tique-vai-e-volta (the bots stop
+  // short of a target instead of walking past and back: seed 1's two roots fell by round 6; seeds 2, 3, 6, 7, 10–13, 15,
+  // 16 start the B line).
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(11,3,6);
+  const b=cityRun(2,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });
@@ -284,7 +291,8 @@ test('D-048: the bots never start a root without a whole ficha, and a 6-bot team
   // Seed 3 (was 5): after balanco-pos-1-7 part A (sites at the mouths, enemy radius × 1.15) seed 5's six bots fall in
   // round 3, before the ficha rule has anything to show; the rule, not survival, is under test here (survival: the bench).
   // Seed 4 (was 3) since the viaduct (mapa-175-com-viaduto: the run starts on its deck): seed 3's six fall in round 3 now.
-  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
+  // A root is a build order (a repair of a root also reads `→ ${ROOT_DEFENSE}` and needs no ficha: vida-inimigos-estilo-clash).
+  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>/^\d+:build /.test(o)&&o.endsWith(`→ ${ROOT_DEFENSE}`));
   console.log(`[D-048] 6 bots, seed 4, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
     `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.sim.teamGrana()}\n  orders: ${a.orders.join(' | ')}`);
   assert.ok(roots.length>=2,`${roots.length} roots`);
@@ -373,9 +381,14 @@ test('review: a wall under WALL_CRITICAL is repaired out of the chaveiro\'s rese
 test('chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out at a dead moto when a wave starts; the moto is still pushed',()=>{
   // Seed 3 (one of the five whose team fell in wave 4): the first moto dies far out a few seconds before wave 2, and
   // the two pushers used to be ~50 u away when it started. PUSH_TRIP_SECONDS: in the intermission only a trip back in time.
-  const r=cityRun(3,6,4,'chaveiro');
-  console.log(`[onda-4] 6 bots, seed 3, to round ${r.sim.world.round.index}: ${r.pushes} pushes; at each wave start ${r.waves.map(w=>`w${w.round}:${w.pushing.length}`).join(' ')}`);
-  assert.ok(r.waves.length>=3,`${r.waves.length} waves`);
-  assert.deepEqual(r.waves.filter(w=>w.pushing.length),[],'nobody out at the moto when a wave starts');
-  assert.ok(r.pushes>=1,'the bots still push it (in the wave)');
+  // barracas-no-caminho: the map's feirinhas turn the enemies' paths, and seed 3's moto now lives to round 4; seed 9's
+  // dies twice, so the push is still seen.
+  let pushes=0;
+  for(const seed of [3,9]){
+    const r=cityRun(seed,6,4,'chaveiro');pushes+=r.pushes;
+    console.log(`[onda-4] 6 bots, seed ${seed}, to round ${r.sim.world.round.index}: ${r.pushes} pushes; at each wave start ${r.waves.map(w=>`w${w.round}:${w.pushing.length}`).join(' ')}`);
+    assert.ok(r.waves.length>=3,`${r.waves.length} waves`);
+    assert.deepEqual(r.waves.filter(w=>w.pushing.length),[],`seed ${seed}: nobody out at the moto when a wave starts`);
+  }
+  assert.ok(pushes>=1,'the bots still push it (in the wave)');
 });

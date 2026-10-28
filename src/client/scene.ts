@@ -24,6 +24,9 @@ import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normali
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
+import {buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
+import {workFacing} from './sprites/work-facing.ts';
+import {hasWork16} from './sprites/movement128.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -32,7 +35,8 @@ import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {heldHand} from './sprites/hand-points.ts';
-import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
+import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt,releaseEnemyArt} from './art/horde-art.ts';
+import {ChefaoArtPlan,chefaoDeferred} from './art/chefao-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -60,6 +64,7 @@ import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
@@ -74,6 +79,9 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
+import {heldWeapon,heldCooldownMs} from './hud/weapon-reach.ts';
+import {weaponSound} from './audio/events.ts';
+import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -113,6 +121,10 @@ export interface SceneHooks {
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
    */
   attacking?:()=>boolean;
+  /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
+  attackHeld?:()=>boolean;
+  /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
+  aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
   working?:(direction:Point)=>boolean;
   /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
@@ -168,6 +180,8 @@ export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   /** The last {t:'elenco'} list whose art was queued (horde-art.ts queueEnemyArt). */
   private elenco?:readonly string[];
+  /** The HD chefões' sheets on demand (art/chefao-art.ts): not at the opening, freed once they fall. */
+  private readonly chefaoArt=new ChefaoArtPlan();
   private view=0;
   private landscape?:TerrainLayer;
   /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
@@ -334,6 +348,8 @@ export class IslandScene extends Phaser.Scene {
    */
   private fortify?:FortifyRenderer;
   private readonly towerFeed=new TowerFeed();
+  /** The defenses going up now (card animacao-construir-6): a hero standing by one plays its build16, facing it. */
+  private obras:ObraSpot[]=[];
   /** The live enemies the weapons aim at (parallel arrays, grown as needed) and the world's build plan (cell, rail). */
   private towerAim={n:0,xs:new Float32Array(64),ys:new Float32Array(64),air:new Uint8Array(64)};
   private buildPlan?:ReturnType<typeof buildPlanFor>;
@@ -359,6 +375,8 @@ export class IslandScene extends Phaser.Scene {
   private facing=Math.PI/2;
   /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
   private intent:Point={x:0,y:0};
+  /** The last way the hero walked (a predicted shot without any aim goes there). */
+  private lastIntent:Point={x:1,y:0};
   /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
   private inputAt=-Infinity;
   /** Who cheers now (danca-no-jogo etapa 2): fed by the run's events, read by the dance cues. */
@@ -370,6 +388,9 @@ export class IslandScene extends Phaser.Scene {
   private zueira?:ZueiraFx;
   /** The local caído's own ficha ("Você, 18 s") under its body: the counter left the top banner. */
   private selfLabel?:MapLabel;
+  /** "Te derrubou: X" under the own caído ficha (render/enemy-name-rules.ts), and its ficha. */
+  private fallenBy?:string;
+  private fallenLabel?:MapLabel;
   /**
    * Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates: the edge arrows
    * ride its rim; the follow camera centres the hero on it only beside a panel (framing.ts framesBeside).
@@ -425,7 +446,7 @@ export class IslandScene extends Phaser.Scene {
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
   private needTowerArt(kind:TowerKind){
     for(const l of towerLoads(kind)){
-      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key))continue;
+      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key)||this.loaderTakes(l.key))continue;
       this.towerArtAsked.add(l.key);
       if(bitmapsAvailable()){
         void fetchBitmap(l.url,'high').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
@@ -437,6 +458,18 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
       }
     }
+  }
+  /**
+   * The late queue's own copy of a sheet (queueLateArt): already fetched or being added → it lands soon (true); still
+   * waiting its turn → taken out of the loader (false), fetched now instead. Both adding one key made Phaser log
+   * 'Texture key already in use' (art:torres:vigia-do-predio:idle, the T1 built before the late queue reached it).
+   */
+  private loaderTakes(key:string){
+    const load=this.load as unknown as {list:Phaser.Structs.Set<Phaser.Loader.File>;inflight:Phaser.Structs.Set<Phaser.Loader.File>;queue:Phaser.Structs.Set<Phaser.Loader.File>};
+    if(load.inflight?.entries.some(f=>f.key===key)||load.queue?.entries.some(f=>f.key===key))return true;
+    // Safe: the loader completes on its sets' sizes (LoaderPlugin.fileProcessComplete), only `progress` counts it.
+    for(const f of [...load.list?.entries??[]])if(f.key===key)load.list.delete(f);
+    return false;
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -468,7 +501,11 @@ export class IslandScene extends Phaser.Scene {
     if(!this.load.isLoading())this.load.start();
   }
   private iconsAsked=new Set<string>();
+  /** False once the scene is stopped or destroyed (its cameras and sprites are gone): the DOM HUD's frames skip it. */
+  live=false;
   create(){
+    this.live=true;
+    const gone=()=>{this.live=false;};this.events.once('shutdown',gone);this.events.once('destroy',gone);
     // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): Phaser's logic step and its render, charged to each frame.
     if(perf.on){
       const ev=Phaser.Core.Events,game=this.game.events;let t=0;
@@ -576,6 +613,8 @@ export class IslandScene extends Phaser.Scene {
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
+        // The local hero's shots already drawn on the press are not drawn again (net/attack-predict.ts).
+        ownFire:(event,eventId,tick)=>net.attackPredict.fire(eventId,event.weapon,tick,performance.now()),onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround()??this.stickGround(),
@@ -601,7 +640,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;this.fallenLabel?.destroy();this.fallenLabel=undefined;this.fallenBy=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -863,13 +902,16 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Where a world point is across the camera: -1 its left edge, 0 the centre, 1 the right (a sound's pan). */
   screenSide(p:Point){
-    const view=this.cameras.main.worldView,q=this.project(p);
+    const view=this.cameras?.main?.worldView;if(!view)return 0;
+    const q=this.project(p);
     return view.width>0?Math.max(-1,Math.min(1,(q.x-view.centerX)/(view.width/2))):0;
   }
   /** What the camera follows (world units): the hero, or the teammate watched while out. Distances count from here. */
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
+  /** The kind behind the local hero's latest fall (hud/cause.ts): its name goes under the caído ficha as "Te derrubou: X". */
+  fallenFrom(kind:string|undefined){this.fallenBy=fallenByText(kind);}
   /** D-051: the attack button's choice (a drag let go on an enemy), or undefined to go back to the auto aim. */
   /** The ground point (world u) under the mouse, or undefined for a finger or a mouse that never moved (the auto aim). */
   private mouseGround():Point|undefined{
@@ -880,6 +922,29 @@ export class IslandScene extends Phaser.Scene {
   private stickGround():Point|undefined{
     const d=this.hooks.aimStick?.();
     return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
+  }
+  /**
+   * BUG-20261027-ORQ-tiro-delay-1s-predicao: the attack button was pressed (hud/attack-button.ts `pressed`). When the
+   * room would take that press (manual combat, a weapon in the hand, nothing holding the hands), the swing, the shot's
+   * flash and its sound show now, aimed like the room aims: the mouse or the aim stick, the chosen target, the auto
+   * aim's pick, else the way the hero last walked. The room's copy of it is skipped (net/attack-predict.ts).
+   */
+  predictAttack(){
+    const net=this.hooks.net;
+    if(!net||!this.horde||!this.hooks.manual?.()||this.paused||net.run?.phase!=='combat'||net.run.pause||net.run.cena||net.handsBusy||this.isOut())return;
+    const me=net.feed.players.get(net.id),self=net.players.get(net.id);
+    if(!me||!self?.hp||me.downed||me.eliminated)return;
+    const held=heldWeapon(me),weapon=held?.id;
+    if(!weapon||!net.attackPredict.press(performance.now(),weapon,heldCooldownMs(held)))return;
+    const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
+    const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
+    const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
+    this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y);
+    const sound=weaponSound(weapon),audio=getAudio();
+    if(sound&&audio.unlocked)audio.play(sound);
+    // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).
+    const tiro=(window as {__tiro?:{local?:number[]}}).__tiro;
+    if(tiro?.local)requestAnimationFrame(()=>tiro.local!.push(performance.now()));
   }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
@@ -1141,6 +1206,18 @@ export class IslandScene extends Phaser.Scene {
     if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
     if(this.fpsWatch.frame(time-last))this.hooks.slow?.();
   }
+  private stepChefaoArt(){
+    const net=this.hooks.net;if(!net||!this.elenco)return;
+    const run=net.run,now=performance.now();
+    const {load,release}=this.chefaoArt.step({elenco:this.elenco,combat:run?.phase==='combat',nowMs:now,tick:net.tick,
+      ...(run?.minervaAteTick!==undefined?{minervaAteTick:run.minervaAteTick}:{}),...(run?.cena?{cenaWho:run.cena.who}:{})});
+    for(const id of load)queueEnemyArt(this,id);
+    for(const id of release){
+      // Another of his kind still stands (a mini-chefe of the same art): later.
+      if([...net.feed.enemies.values()].some(e=>e.kind===id&&e.hp>0))this.chefaoArt.killed(id,now);
+      else releaseEnemyArt(this,id);
+    }
+  }
   update(_time:number,delta:number){
     this.watchFrames(_time);
     if(this.rightHeld){const pointer=this.input.mousePointer;if(this.paused||!pointer?.rightButtonDown())this.rightAttack(false);}
@@ -1148,7 +1225,9 @@ export class IslandScene extends Phaser.Scene {
     // while the city's near art is held (~15 MB of enemies in Phaser's first-in first-out loader held the relief
     // albedo, and the bandwidth, behind them: partida-abre-com-P0). They come right after the cover goes, as before.
     const elenco=this.hooks.net?.elenco;
-    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
+    // The HD chefões (~390 MB each) wait for their moment instead (art/chefao-art.ts, BUG-20261025-ORQ-celular-travando).
+    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)if(!chefaoDeferred(id))queueEnemyArt(this,id);}
+    if(this.elenco)this.stepChefaoArt();
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
@@ -1165,9 +1244,11 @@ export class IslandScene extends Phaser.Scene {
     const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
-    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||this.hooks.attacking?.())this.inputAt=this.time.now;
+    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
     this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.());
+    // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
+    const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1221,7 +1302,9 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net;
     if(!this.fortify&&this.projector&&net)this.fortify=new FortifyRenderer(this,{projector:this.projector,reduced:this.reduced,
       cell:(this.buildPlan??=buildPlanFor(this.field)).cell,
-      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0});
+      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0,
+      // barricada-tocar-no-mapa: a kit de torre's ghost is the tower's art (the renderer is made for it if need be).
+      towerGhost:g=>g?(this.towers??this.makeTowers()).setGhost({...g,kind:g.kind as TowerKind}):(this.towers?.setGhost(null),false)});
     return this.fortify;
   }
   /**
@@ -1288,7 +1371,10 @@ export class IslandScene extends Phaser.Scene {
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
   }
-  /** Bicos: the players inside a shop now (RunView.banks workers): they went in through the door, nobody draws them. */
+  /**
+   * Bicos: the players on a shift now (RunView.banks workers). A class with a work16 (card animacao-trabalhar-6) stays in
+   * the ring playing it, facing the camera (workFacing); one without goes in through the door and nobody draws it.
+   */
   private readonly shopWorkers=new Set<string>();
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
@@ -1303,7 +1389,9 @@ export class IslandScene extends Phaser.Scene {
       a.xs[n]=e.x;a.ys[n]=e.y;a.air[n]=ENEMY_ART[enemyKind(e.kind)].hover>0?1:0;n++;
     }
     a.n=n;towers.setEnemies(n,a.xs,a.ys,a.air);
-    towers.push(view.tick,this.towerFeed.views(view.structures,view.tick,plan.cell,{railAxis:plan.rail?.axis,enemies:a}),time);
+    const views=this.towerFeed.views(view.structures,view.tick,plan.cell,{railAxis:plan.rail?.axis,enemies:a});
+    this.obras=views.filter(v=>isObraPhase(v.phase));
+    towers.push(view.tick,views,time);
   }
   /**
    * Every frame: the defenses turn, fire and fade over the figures, like the city layer: the hero, or while spectating
@@ -1376,6 +1464,12 @@ export class IslandScene extends Phaser.Scene {
     if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
     return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
   }
+  /** R$ of the cédulas the hero caught on screen that the room has not paid yet (render/cedula-catch.ts; the top bar shows them). */
+  pendingGrana(){return this.horde?.pendingGrana()??0;}
+  /** Cédulas the hero caught on screen so far: hud/rescue.ts clinks on each new one. */
+  cedulasCaught(){return this.horde?.caughtCount??0;}
+  /** The room's 'pickup' event of a cédula whose clink already played at the catch (it plays nothing). */
+  cedulaHeard(event:{type:string;pickup?:string;kind?:string}){return !!this.horde?.cedulaHeard(event);}
   /** Zueira FX state (dev probe). */
   zueiraState(){return this.zueira?{...this.zueira.last}:undefined;}
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
@@ -1386,6 +1480,18 @@ export class IslandScene extends Phaser.Scene {
     const classId=watched?this.hooks.net?.players.get(this.watchId!)?.classId:this.hooks.classId;
     const cam=this.cameras.main,b=this.figureWorldBox(watched?.image??this.actor,classId??this.hooks.classId);
     return {x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom};
+  }
+  /**
+   * What a floating HUD card must never cover (perfil-nao-cobre): the hero (or the one watched), the Uno and every ally
+   * drawn, CSS px like heroScreenRect.
+   */
+  guardScreenRects(){
+    const cam=this.cameras.main,out:{x:number;y:number;width:number;height:number}[]=[];
+    const screen=(b:{x:number;y:number;width:number;height:number})=>({x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom});
+    const hero=this.heroScreenRect();if(hero)out.push(hero);
+    const uno=this.chaveiro?.unoWorldBox();if(uno)out.push(screen(uno));
+    for(const [id,a] of this.remoteActors)if(a.image.visible)out.push(screen(this.figureWorldBox(a.image,this.hooks.net?.players.get(id)?.classId??this.hooks.classId)));
+    return out;
   }
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
   private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
@@ -1451,6 +1557,7 @@ export class IslandScene extends Phaser.Scene {
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
+      if(Math.hypot(this.intent.x,this.intent.y)>1e-6)this.lastIntent=this.intent;
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
       const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       // Bicos: Trabalhar rides the step too (moving lets it go: hud/bicos.ts WorkLatch).
@@ -1480,8 +1587,8 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
-    // Bicos: inside the shop the hero is gone through its door (the silhouette follows the body's alpha).
-    if(this.shopWorkers.has(net.id))this.actor.setAlpha(0);
+    // Bicos: without a work16 the hero is gone through the shop's door (the silhouette follows the body's alpha).
+    if(this.shopWorkers.has(net.id)&&!hasWork16(this.hooks.classId))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
@@ -1506,13 +1613,13 @@ export class IslandScene extends Phaser.Scene {
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
       this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp);
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras));
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      const inShop=this.shopWorkers.has(player.id);
+      const inShop=this.shopWorkers.has(player.id)&&!hasWork16(player.classId);
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
@@ -1535,6 +1642,12 @@ export class IslandScene extends Phaser.Scene {
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
+      // Who got you (card nome-inimigo-rede-social, etapa 7): the profile's name in a second ficha right under it.
+      if(this.fallenBy||this.fallenLabel){
+        const by=this.fallenLabel??=new MapLabel(this,'');
+        by.setCity(this.cityMode).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
+          .draw(this.cameras.main.zoom,selfDown&&!!this.fallenBy);
+      }
     }
     // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
     this.horde?.hands();

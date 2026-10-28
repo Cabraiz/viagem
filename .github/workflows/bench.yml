@@ -1,5 +1,5 @@
 # City run bench in parallel (NEW-20261014-ORQ-ci-github-shards-e-bench, D-049 item 5): one job per (seed, team size).
-# Started by `node tools/ci.mjs bench <branch> …`, which pushes a commit with .bench.json to bench/<branch>-<stamp>
+# Started by `node tools/bench-ci.mjs <branch> …` (= `node tools/ci.mjs bench <branch> …`), which pushes a commit with .bench.json to bench/<branch>-<stamp>
 # (params: world, seeds, players, objective, capMin, towers, target, sha = benched commit, base = merge-base with main),
 # or by hand with workflow_dispatch.
 #
@@ -21,6 +21,8 @@ on:
       seeds: {description: 'seeds, e.g. 1-16', default: '1-16'}
       players: {description: 'team sizes, e.g. 1,3,6', default: '1'}
       objective: {description: "'' or chaveiro", default: ''}
+      mode: {description: "'' or ninhos (needs objective chaveiro)", default: ''}
+      combat: {description: "'' or manual", default: ''}
       capMin: {description: 'cap in minutes (empty: script default)', default: ''}
       target: {description: 'early stop target k/n (empty: none)', default: ''}
       base: {description: 'base sha for before/after (optional)', default: ''}
@@ -157,6 +159,14 @@ jobs:
           node --experimental-strip-types scripts/bench-city-run.ts --merge runs --out merged/bench-result.json $before > summary.txt
           node tools/ci.mjs annotate-summary summary.txt merged/bench-result.json
           { echo '```'; cat summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # The JSON summary for `tools/bench-ci.mjs --out` (the local file's config + summary, compact runs), as annotations:
+      # the PC reads them without a token. One title per step (GitHub keeps 10 notices per step).
+      - name: JSON summary (bench-json)
+        continue-on-error: true
+        run: node tools/ci.mjs annotate-json merged/bench-result.json head
+      - name: JSON runs (bench-json-runs)
+        continue-on-error: true
+        run: node tools/ci.mjs annotate-json merged/bench-result.json runs
       # Complete benches only: a partial (early-stopped) one is no "before" for later branches.
       - if: steps.summary.outputs.complete == 'true'
         uses: actions/upload-artifact@v4

@@ -18,12 +18,13 @@ import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
-import {createCrates,type Crates,type CratesState} from './crates.ts';
+import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
+import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
-import {MURO_BLOCK_R,bashedAlways,blockingPieces,heroSlow,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
+import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
 import {holdsObra} from './towers/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
@@ -64,8 +65,18 @@ export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
   /** An offline player the room plays meanwhile (multiplayer autopilot, 3g-rede-sem-teleporte): still walks. */
   autopilot?:(playerId:string)=>boolean;
+  /**
+   * Card heroi-empurra-inimigos: a body moved this player's step or the player this tick (the room's confirmed check
+   * treats it like a D-036 effect: the owner's frames go live while it pushes, see multiplayer/simulation.ts).
+   */
+  onBodyBlock?:(playerId:string)=>void;
   /** D-052: a room bot (with the autopiloted players: who moves the chaveiro's car only along with a person). */
   bot?:(playerId:string)=>boolean;
+  /**
+   * Card bots-20-mais-lentos: a player's share of the walk (the players system: maps moveStep walkScale); the room
+   * passes BOT_WALK_MULT for its bots. Absent: everyone walks at 1.
+   */
+  walkScale?:(playerId:string)=>number;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
@@ -199,7 +210,8 @@ export function applyEliteExtras(ctx:SimContext){
 }
 
 /**
- * Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. A standing city
+ * Clearance of a prize from the wall's centre and from a tower (units). No event drops a prize since the flash sale was
+ * retired (NEW-20261025-ORQ-sem-coxinha-no-chao); the discs stay (tested) for the next one. A standing city
  * barricade keeps prizes off its disc plus PRIZE_BARRICADE_MARGIN (cidade-06).
  */
 export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2,PRIZE_BARRICADE_MARGIN=.3;
@@ -245,10 +257,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
-  let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
   // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
   const zueiraClock=!!cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos';
-  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures(),
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab,
     ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated||!!chefao?.up()}}:{})});
   // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
   if(cp)Object.assign(zueira.state,cp.zueira);
@@ -311,18 +322,17 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
     // of (the chaveiro and the nests, created below; the wall mode has none of them).
     // barricada-construir part 2: the map's barricadas, collected into the inventory's kit:barricada (manual combat).
-    // NEW-20261023-ORQ-barracas-no-caminho: a barraca gives a kit:barraca; the hands hold one of either (CARREGA_MAX).
     ...(objective&&manual?{tralha:{
-      carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')||w.id===kitId('barraca')?w.level:0),0),
-      give:(p:SimPlayer,kind:'barricada'|'barraca')=>{const id=kitId(kind),own=p.build.weapons.find(w=>w.id===id);if(own){own.level++;return true;}return addItem(p,{id,level:1});},
+      carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')?w.level:0),0),
+      give:(p:SimPlayer)=>{const own=p.build.weapons.find(w=>w.id===kitId('barricada'));if(own){own.level++;return true;}return addItem(p,{id:kitId('barricada'),level:1});},
     }}:{}),
     ...(cityWorld?{freeBuild:objective?{
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+      banks:()=>banks?.places??[],
     }:{}}:{}),
   },cp?.stonewards);
-  structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
@@ -355,8 +365,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     drag:e=>pieceDrag(stonewards.state,e),
     // NEW-20261021-ORQ-barricada-construir: a built piece is bashed only by a body cut off from the car (the wall's
     // spot without one); with a way around, the bodies walk it (the flow fields already route around the blockers).
-    // NEW-20261023-ORQ-barracas-no-caminho: a barraca is bashed by every body pressed against it (the field leads through).
-    ...(reach?{bashes:(e:EnemyState,id:string)=>!isPiece(stonewards.state,id)||bashedAlways(stonewards.state,id)||!reach(e,chaveiro?.targets().find(o=>o.id===CAR_ID)??stonewards.state.wall)}:{}),
+    ...(reach?{bashes:(e:EnemyState,id:string)=>!isPiece(stonewards.state,id)||!reach(e,chaveiro?.targets().find(o=>o.id===CAR_ID)??stonewards.state.wall)}:{}),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
@@ -369,7 +378,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   if(cp)enemyAi.restore(cp.enemyAi);
   // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. A crate
   // gives only a weapon or a kit de torre (bau-so-arma-ou-torre), straight into the opener's inventory.
-  const crates:Crates|undefined=manual?createCrates({seed:world.seed,
+  const crates:Crates|undefined=manual?createCrates({seed:world.seed,visibleFloor:VISIBLE_FLOOR,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
     // inicio-no-uno: in mode 'ninhos' the team spawns beside the Uno, so the first crates sit around it.
     startPoints:(nestMode?cityLoot(world.terrain)?.aroundUno:cityLoot(world.terrain)?.aroundStart)??[],
@@ -534,13 +543,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     buildKit:(ctx,p,piece,order,requestId)=>stonewards.buildKit(ctx,p.id,{piece,c:order.c,r:order.r,...(order.rot===1?{rot:1 as const}:{})},requestId)};
 
   world.clearSystems();
+  const bodyScratch:EnemyState[]=[];
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();work.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
       // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
-      // NEW-20261023-ORQ-barracas-no-caminho: and at half the step while on a barraca.
-      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car,
-        at=>heroSlow(stonewards.state,at))),
+      // Card heroi-empurra-inimigos: and pushes the enemies it walks into, never walking through one.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car,options.onBodyBlock??true,
+        options.walkScale)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     // Card boss-fim-onda-1: the chefão stops the time; while he stands the nests hold their clock (no wave, no drip).
@@ -551,7 +561,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     }} satisfies SimSystem,
     zueira,enemyAi,
     // Card boss-fim-onda-1: the chefão of the 1st wave steps in the boss's slot (no new system id).
-    chefao?{id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao!.step(ctx);}} satisfies SimSystem:boss,
+    // Card heroi-empurra-inimigos: once every enemy moved (same slot, no new system id), none stands inside a hero.
+    {id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao?.step(ctx);heroBodiesPass(ctx,options.autopilot,bodyScratch,options.onBodyBlock);}} satisfies SimSystem,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id),
       // BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack goes off toward the aim/facing even into the air; bots keep the target rule.
       free:(id:string)=>!options.bot?.(id)&&!options.autopilot?.(id)}}:{}),

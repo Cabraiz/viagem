@@ -13,78 +13,78 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4347,
+  "sheets": 4467,
   "failing": 0,
   "frames": 0
  },
  "files": {
   "enemies/agiota/death.webp": {
-   "sha": "38897f01776a044fac25bf9c4163169101a22728a5e70269416186be23411fc2",
+   "sha": "1a8664e06ab07d2d6c5bebc040560042e9ac832ab5be43ce331da5eaab7d8ef4",
    "ilhas": 0,
    "fails": []
   },
   "enemies/agiota/hit.webp": {
-   "sha": "8fd3e1df4dc94d70e864dddd0bdfcfb6370dc3d321aaebadab8f894b5d298307",
+   "sha": "f29d7b23a32da41714aead950328e20fe595ee5cacb0cb042ca00b360ec6c545",
    "ilhas": 0,
    "fails": []
   },
   "enemies/agiota/idle.webp": {
-   "sha": "2d8dbef9d6c7c2710ecf14e6e99849c08beda70357ef2cd091350df44262828f",
+   "sha": "a23249c12da111cc12a060d9af8cd86754a22e223a67b9e7c1e7e3c4624024c5",
    "ilhas": 0,
    "fails": []
   },
   "enemies/agiota/sleep.webp": {
-   "sha": "33c844e3137b0c3ec9bb2d890332a24e615fbb126c543e51e777527bede56424",
+   "sha": "1e32fef212d84311d52124363d39e96106695bb9e92b22aa012c7ed27e6b2914",
    "ilhas": 0,
    "fails": []
   },
   "enemies/agiota/throw.webp": {
-   "sha": "355d85fb731d1a8f8467ba64f9284dd04af2d577391f7c0a6d4bca463de096c1",
+   "sha": "2912da769e41fc725df6dffbacedb2ab273a446eadc66822e41f2a80212dc38b",
    "ilhas": 3,
    "fails": []
   },
   "enemies/agiota/wake.webp": {
-   "sha": "1e76f854c5050205f108fbb608ccdf6cda4e1396f397b09bfbd9fdd16c936726",
+   "sha": "22fce43daaca764855bf04db8ed245cfcd1ef94efe334fda3421be9088fc971e",
    "ilhas": 0,
    "fails": []
   },
   "enemies/agiota/walk.webp": {
-   "sha": "2dc61cb6e1efcbda70f6aee87a6c74d0a2fb4d60953dc9de55585bdb32450347",
+   "sha": "65d08e425bb41c3e303751b64507dcf308dc63cbf40f8064e1d8fae53efd9ae5",
    "ilhas": 0,
    "fails": []
   },
   "enemies/alambiqueiro/death.webp": {
-   "sha": "c9f3a89d1024fb986d122d20e567488cf8f7c0251594edc1b2a6b0bb2a12ec6b",
+   "sha": "06db08543d30905f27e1d970c06689d7b0b71051875a085bb9fbf9adbf246448",
    "ilhas": 12,
    "fails": []
   },
   "enemies/alambiqueiro/hit.webp": {
-   "sha": "bf0eeb0db206bf63d958f5f36c6c8de44705db0c8a143ad36bed79f3fcab22de",
+   "sha": "8d4e58b356bdd7f0983f8e10c4fcbfc3cb567c5fd756b0ef3ceb80d57825a60a",
    "ilhas": 0,
    "fails": []
   },
   "enemies/alambiqueiro/idle.webp": {
-   "sha": "c02d4a78fd978027ab534ad61f36231bf7ccd7027654d4dc1782acfa5a165827",
+   "sha": "41f102a76e94d7ec50e7ad5ad79ce25eaf6b87487d83be47f9d42ab45273b1db",
    "ilhas": 1,
    "fails": []
   },
   "enemies/alambiqueiro/sleep.webp": {
-   "sha": "4dfc986eb1c538e2cbf4e0d7fbe6b7f84adff6c117c09d265366baced37f13ac",
+   "sha": "c06f33e71ddb110b04fa6e0a55b31748d7d89557d3bf5b1437223c173f02d8bb",
    "ilhas": 0,
    "fails": []
   },
   "enemies/alambiqueiro/throw.webp": {
-   "sha": "aaafb0a3a964e110cbd7526a010034700a2622928279765b19aea2147b1cdf15",
+   "sha": "66f6ae866ec3281d67efca47b386d5dd765e407c8d9bb652a6880cc7c8582d79",
    "ilhas": 12,
    "fails": []
   },
   "enemies/alambiqueiro/wake.webp": {
-   "sha": "1625dd1645434a7c68284e6d56e83c6bf317c7b5d43021f54e2d0aa2d2f788d3",
+   "sha": "1614f940029f0bd5d5291a02e232b87e705a8568c937d6c2fdf0f5408c3c9bea",
    "ilhas": 0,
    "fails": []
   },
   "enemies/alambiqueiro/walk.webp": {
-   "sha": "2db6c9c3db8e21b13cc01a453e25074a12c2ac42f17c37677eece4627ecf1897",
+   "sha": "2b130159409508e1c5cc9d64a40ed193c088e899702c9f6a73e6b6a7b329c5bc",
    "ilhas": 0,
    "fails": []
   },
@@ -124,37 +124,37 @@
    "fails": []
   },
   "enemies/anao-molotov/death.webp": {
-   "sha": "14248d035c2a8531ca7ab985e7639c23243418ebb713022ab435453f5b203332",
+   "sha": "9dfce3c637af1e647bae3f6dd82b147be950ce22f83405c8cff590b044bb1667",
    "ilhas": 31,
    "fails": []
   },
   "enemies/anao-molotov/hit.webp": {
-   "sha": "11ac01c989062131577d1dbd5787f40aa5a4302ea337c6a0d4de26daf504fb98",
+   "sha": "4c218ee7561d722d7636206b70ea1e47625000f5b8c357075d0f18352f057b94",
    "ilhas": 0,
    "fails": []
   },
   "enemies/anao-molotov/idle.webp": {
-   "sha": "8bd9d1ddcd25406899c342741e728848e879be84ab83ee2378aee93557718a74",
+   "sha": "e0f2987605cf4d7ee26872ffab2fb790af778bb4b4a69a4fe974d59a88d49d69",
    "ilhas": 0,
    "fails": []
   },
   "enemies/anao-molotov/sleep.webp": {
-   "sha": "f5a57218b5d0f641e722cefa4882d14e77dda88ea60a6e7d9788ed6048a64dae",
+   "sha": "8d6681cc5b3d2cf25e369dff9b04c54905e8c63aa6cce32efc17815bf5a1acec",
    "ilhas": 0,
    "fails": []
   },
   "enemies/anao-molotov/throw.webp": {
-   "sha": "1820a4d388447599a00a6a68b1332802e546d618699cc38eadb08bf9c29ec406",
+   "sha": "2fa29a0a4cb6120001a93047cc7d243b7db2176e66c8fbaec44fc8ae533aed93",
    "ilhas": 14,
    "fails": []
   },
   "enemies/anao-molotov/wake.webp": {
-   "sha": "7dbe995962dcf511e13b7629338e56d85342f84dd532d6b7f621b9db4312424e",
+   "sha": "ecd7daffa0f144d58423fa55db93df0c3e88b588c22388f5aa83177261618ea9",
    "ilhas": 0,
    "fails": []
   },
   "enemies/anao-molotov/walk.webp": {
-   "sha": "a569f2c4387ea4e1e62813c556de761d9a787279e4c7aaace3e5aeb2d3dbf16f",
+   "sha": "36d4663b8b2fe8702c467d8eb7d4971f26a3716aef9fbe71566539fb789ccfc7",
    "ilhas": 2,
    "fails": []
   },
@@ -409,37 +409,37 @@
    "fails": []
   },
   "enemies/bebado/attack.webp": {
-   "sha": "1693a37e8457489257aa248933b3e2dd90e358ecb36d9daed69e924bf187762d",
+   "sha": "821d28c09da62ff7c49970d3cc9e875a64e3a0f348d6dd46f44d0f6db19b4750",
    "ilhas": 1,
    "fails": []
   },
   "enemies/bebado/death.webp": {
-   "sha": "5d18492f2103d59da9b341ee2190249ae7eaabac08837581a2b3ea737fbabafd",
+   "sha": "4e2dce1f8b6fe2847f390a273f1b0541823ae73e6bb5dbb2d0a5fdb861192518",
    "ilhas": 3,
    "fails": []
   },
   "enemies/bebado/hit.webp": {
-   "sha": "9efa66e5c2b02b6237aef902559e50f9285bfa036c652a51f3dba6133705d54e",
+   "sha": "7bc59252b196dc308057448b333a3b381bc6260772636be30f06f88d21e6a28c",
    "ilhas": 0,
    "fails": []
   },
   "enemies/bebado/idle.webp": {
-   "sha": "a24bde95574478214bfc4888a20ce145848049143c932180c5a2bccec5df2e6a",
+   "sha": "8b5785b683bc76722e8e1b6c74fb0b0521a24d32f5163ea8d5ae920db2f8a7ba",
    "ilhas": 0,
    "fails": []
   },
   "enemies/bebado/sleep.webp": {
-   "sha": "6a5ff713eac8bebc8af77731dbd42bb80185e7c66cb29aed5da4a179af998e9b",
+   "sha": "012072f7e28f84a5da847092aeeae872c0f7391ed278a203aa57df25684b1fed",
    "ilhas": 0,
    "fails": []
   },
   "enemies/bebado/wake.webp": {
-   "sha": "db88a01e515897a54b45dee2f53045746cfe234b778a26751f4854a13e98444d",
+   "sha": "a161617bba18605a7b95d1e85981a10ce5ae0b8151129033207a7aab3cf002c7",
    "ilhas": 0,
    "fails": []
   },
   "enemies/bebado/walk.webp": {
-   "sha": "6ed2ac2dee4f732f987a312087a1c2bf767cf7271cc32ddc352060af30688101",
+   "sha": "5d079b668f34a4050ea581162083a188e8da48b017a91746179ba85375345f9a",
    "ilhas": 0,
    "fails": []
   },
@@ -1024,32 +1024,32 @@
    "fails": []
   },
   "enemies/carrinho-da-vo/aim.webp": {
-   "sha": "b60b1fea67572cdd6e7c888a21125da9bf0ffdb38d0c70023e1870023a3386ce",
+   "sha": "a8165abab111ed58ce377dd4e4d706e0598c1f2fc34fcfe173897c0d6a002e2b",
    "ilhas": 6,
    "fails": []
   },
   "enemies/carrinho-da-vo/charge.webp": {
-   "sha": "c8c7cd25eded88e0e92a44c83f6c4da646d4eb1bb38197f38d8ff1bf1ba6074c",
+   "sha": "4541b5452ea6a19f7486ca227febe5b300ebe4ebe66496eac336f3913f22671a",
    "ilhas": 9,
    "fails": []
   },
   "enemies/carrinho-da-vo/crash.webp": {
-   "sha": "bb514ef6d955417c6d693b0a2f9bb9c43e4abe1657117dabc2f813ccae62aee7",
+   "sha": "a379b8cbe54858c2b85c36d9c84cd415989977f103adf320a60e55246f043c2c",
    "ilhas": 9,
    "fails": []
   },
   "enemies/carrinho-da-vo/idle.webp": {
-   "sha": "ddd456d6ceb45ca58fa194abd63cf67eced2b7511efb11c216e100579afd2e5a",
+   "sha": "4802facc1f2e25ca490db9c9a5a77a31f2923042c5eed607451ddfc866c76ab7",
    "ilhas": 0,
    "fails": []
   },
   "enemies/carrinho-da-vo/sleep.webp": {
-   "sha": "02d63950417f547069d07fbe35d15cc98b0f2e26348fe1ed3077fe6db1e9b3bf",
+   "sha": "800a15e651d7cb169f73a69fdc831174d3aba6abcd2d440b306b64ebd44b700d",
    "ilhas": 0,
    "fails": []
   },
   "enemies/carrinho-da-vo/wake.webp": {
-   "sha": "9b8895ea534c5b548d4610527f1ee480b13882177249e1ff0a0e5dcff7138d33",
+   "sha": "f5ba452147e2caa8eee7d8db1def1f9e9d811c3f2951e527159c61ac11dd3a4d",
    "ilhas": 0,
    "fails": []
   },
@@ -1094,57 +1094,57 @@
    "fails": []
   },
   "enemies/chefe/charge.webp": {
-   "sha": "9a23b2438d73954983b2fda561095a1ea509a2598ac1e5b9ea3fab03d4b10213",
+   "sha": "806233975de914200a6b7e1e9cf48635e209b3ceeb2248b1ba5da87e6b36f476",
    "ilhas": 1,
    "fails": []
   },
   "enemies/chefe/death-p1.webp": {
-   "sha": "bdac89e2ba4cea5d3f8135b6fcf7a1732b86c78f1c5964da1568fcbff0bf5003",
+   "sha": "cf19a8acd16787fdf1196fc15ff17af491fcd0d97038e2a8154648bff5aa5763",
    "ilhas": 27,
    "fails": []
   },
   "enemies/chefe/death-p2.webp": {
-   "sha": "6e96958ffa7cf412cc830a45e5d50d08b57715f86435ea80136fd4b6ee2de654",
+   "sha": "77eb831b1939034496be145b2dd1891a5bb1a6c0e88cf398eee709d2a84b8ab4",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/hit.webp": {
-   "sha": "065c7d5ad358cf93f90879b7398aff54d58aede91566d098ed776da708381cd2",
+   "sha": "158733cba01dcd28c9b191261a1d517b9d8c430fd28d4d480657dbedfa91bcef",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/idle.webp": {
-   "sha": "037140c3f690ef260ad63fdfd0df06603815c5bfeccf6a2ca1aa0e4ff145af2c",
+   "sha": "04191e1a76e91f629fb3ead2a9fce94c300ff3062978cc2cd492023d4cef9602",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/phase2-idle.webp": {
-   "sha": "703de8a106b7d8d569b6d647c2c7d5a09907fe3b9052d4a2d582d1a1148afc6a",
+   "sha": "48f6bdeb2b7213767d410b4e6307a53a2f67a739673956748d30535c185d3455",
    "ilhas": 1,
    "fails": []
   },
   "enemies/chefe/slam.webp": {
-   "sha": "9ac4396bda0898fe37e2a1cb12e1305933b5f1cab8b596d92665ca06909ec69b",
+   "sha": "e8ca46bef96e9030fdc78582884bf6047fc5adfb05e68eeaae06cb5fa5c87cf8",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/sleep.webp": {
-   "sha": "bb4fadaaf448f814b70f566f3cccbaa95f21cdd95c138a725e7f53f88686f2e6",
+   "sha": "7b8fd3bb1f2ff65f808f8dc7eeb6ffd0aa3a43e2831aeb6e440714fb9b49f8fb",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/summon.webp": {
-   "sha": "3f5eeaa34d99ff6973dc93acfc5ad5bdd615eef203a25a3beb75b24318dd332e",
+   "sha": "d09c7a5ebfbceb045ab8f42230ba9f5df7f86f35a92269c0a2186498b3c93544",
    "ilhas": 1,
    "fails": []
   },
   "enemies/chefe/wake.webp": {
-   "sha": "f9a7e203141854c6448f08df23be3664267c189f491408c0b51ec5afc260a6b4",
+   "sha": "33f0454e7f5bf9ab62e8098ba1355c86dfca345441ef730219b4339e40aa69af",
    "ilhas": 0,
    "fails": []
   },
   "enemies/chefe/walk.webp": {
-   "sha": "1201fa86500beaf106608bdba8a9b353723ae40eb17da67461b897c80e84f40c",
+   "sha": "ba258696d2a261ad41240a80e42f059070488eb50a227955a91573e45c1a69a1",
    "ilhas": 0,
    "fails": []
   },
@@ -1219,37 +1219,37 @@
    "fails": []
   },
   "enemies/coach/death.webp": {
-   "sha": "d2aaf04289f0fa8859cc2109c7fcde1e6101fb3e34b2b60b7c6d75dd8663617a",
+   "sha": "eca21de64e5cc1aa3d20557dcadb25294a93231403a242608c875c595920ab49",
    "ilhas": 4,
    "fails": []
   },
   "enemies/coach/hit.webp": {
-   "sha": "33b7283a973f40974922eb03cbbdecffb7841197e7e9b40ad137835b200d4f07",
+   "sha": "3d7342abc99cdb1b028e4e620e83eba98c752229a72f809bf89365e7e2d4f3e4",
    "ilhas": 0,
    "fails": []
   },
   "enemies/coach/idle.webp": {
-   "sha": "a6324ebfc363d472a84f07e1a877f01531966cd92c2f8c228eba9d31dad89041",
+   "sha": "047a85d85da442356501666e104c4e234fa8e78ec8d876897b0f3b214993afa5",
    "ilhas": 0,
    "fails": []
   },
   "enemies/coach/lecture.webp": {
-   "sha": "4144bc749ed6b064f27edf7cd8e984f4545eeae0b0c5b6fea2200fe0069a552f",
+   "sha": "63de969f8b6fc16267f143977445c40ae57f3993bde3358e70af83e85d2c444c",
    "ilhas": 12,
    "fails": []
   },
   "enemies/coach/sleep.webp": {
-   "sha": "c6d07ae469edebeeb8d9d336590f7c3780e8f2cb85adf729c81209d6f3805ad8",
+   "sha": "501e4e2ecaebbe06f8bd0df8951cffb40dc9faff4b34dc433da4710a02103a82",
    "ilhas": 0,
    "fails": []
   },
   "enemies/coach/wake.webp": {
-   "sha": "0f3277fd303c13ab959f5f6fb10ec4b44e5cf20944e49a8c536da8a73b09a556",
+   "sha": "d0fde3bdafc3deb50a5b2a491ab7a4fa4820057bcd86641f8967da836a1b08f1",
    "ilhas": 0,
    "fails": []
   },
   "enemies/coach/walk.webp": {
-   "sha": "a9b344fa8cb05aa78771e2cc6a031c69db7d65356e42942f3df054b33332bab6",
+   "sha": "17baef7b90bbf2222f131b05ea9eddebc8433ba05f1110ec70c9332a44ec5ed4",
    "ilhas": 0,
    "fails": []
   },
@@ -1289,37 +1289,37 @@
    "fails": []
   },
   "enemies/cobrador-fantasma/attack.webp": {
-   "sha": "193cdf8d2fd597284bbe6593ed30eec0b2a1641e6e5d132804c81bafd40f4f46",
+   "sha": "8f914d784dd8d828f9c63d8d0e68b8ffd3107f1f31b4ffc463b34cea20e7d388",
    "ilhas": 23,
    "fails": []
   },
   "enemies/cobrador-fantasma/death.webp": {
-   "sha": "0771544250c244fb06198cd1d5e46dcd6987b040e27d2f9e00b3675d3fc898e2",
+   "sha": "2ffe7780ee430199e8101556cdfe64fda592ea2cf9062bb8535b03ce67c3930a",
    "ilhas": 61,
    "fails": []
   },
   "enemies/cobrador-fantasma/hit.webp": {
-   "sha": "746333e2e804752767964ad9a2310ca8407ddafe016660bb14303b5614920972",
+   "sha": "77f68ac38408e40252020becd4bac327c124cd09a5ad5d53b921bd112c61d572",
    "ilhas": 7,
    "fails": []
   },
   "enemies/cobrador-fantasma/idle.webp": {
-   "sha": "e108059e2be2f25039d870b50227e4424f33444606bd8ffd098a03d8d5cfd451",
+   "sha": "1e7ab3724c9ae4ea7e7397ff35b1f440b1aae83830f039f0bff8dead91cd7a43",
    "ilhas": 1,
    "fails": []
   },
   "enemies/cobrador-fantasma/sleep.webp": {
-   "sha": "f81c068958484506d8bd72c57b8afdf8d1cb1a05faf8fd949cfa9b41800187b2",
+   "sha": "9064e26c36b522baf894eadc5c37a44d0bfdf200f06ac7e2e5d2c71ca23b9570",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cobrador-fantasma/wake.webp": {
-   "sha": "f52f37a0ff7127598b55ef6a63a1fe9bd0c8b547c46fcf0b92797a161492fde6",
+   "sha": "e5cc780b9e88b00c67cf93602a43d7ffc289c31c2c144baadc862b9b9024f5f9",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cobrador-fantasma/walk.webp": {
-   "sha": "14ae5def165fc785c13ab148834370965d38592152d5a4a6f4bef2513124add3",
+   "sha": "0f90abe0cf9749b8134a6d1e0f542917a6d1b6dff0214f45cd8dd95d1c870f16",
    "ilhas": 7,
    "fails": []
   },
@@ -1609,37 +1609,37 @@
    "fails": []
   },
   "enemies/cupim-mansao/death.webp": {
-   "sha": "354242c7d63d783911553f5124f4e3c7b2bdddfa06bd3d48d35d5bc1e84a45d3",
+   "sha": "e63a9f2649f819229f7a904924bcf70b830ad7790c36bbc5664b238e4c29e0aa",
    "ilhas": 3,
    "fails": []
   },
   "enemies/cupim-mansao/hit.webp": {
-   "sha": "2e6609602996f1ed123c1e92d80d3dd12636b62065f9074d0557ccb8d06666c7",
+   "sha": "968aec0e75ca77b38a748cce6f97e79d81961f0cc6e5961f62b9e1fe1a314dfe",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cupim-mansao/idle.webp": {
-   "sha": "d8d7231be44339c43b385751273af36a181aba6d50e3cb108149f94434d00e38",
+   "sha": "950445200052da0ec7f20b068d2e8d263c2692f28f2da677be02fda209ae059a",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cupim-mansao/shove.webp": {
-   "sha": "f9cc448ef5ba500eaf803350db5c8a393be67e08c314f0ab30d67961809d66d5",
+   "sha": "cf5d7340bb9670a7f3207c56a8eb0fe6475406ad9a422a1fed089c1150d2003f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cupim-mansao/sleep.webp": {
-   "sha": "59cb218181ccf876d9b3299b495bd28be4d2819dadf70f86cd05ae8204529c4b",
+   "sha": "a6132ae1b8f267307a36db7e72fbf5318b0f65faae29d716a9a4bcfa97effef2",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cupim-mansao/wake.webp": {
-   "sha": "c932521ff43089d339327d500d5de85a504905c15b0ac5d90872338e179993ec",
+   "sha": "b04c5cd887b11b3e8d0338969e80ba0ae6dec5c9f7d76bfe17f258c279f0686f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/cupim-mansao/walk.webp": {
-   "sha": "c0b5aa9290d8a808d790a5f760b8fd8559cbd3ce35db40006fe27c9607ed7342",
+   "sha": "9324233f5a6760b26f4b7c461065509cd4e2ef3f1138e90ab94a35c7182ae58c",
    "ilhas": 0,
    "fails": []
   },
@@ -2494,42 +2494,42 @@
    "fails": []
   },
   "enemies/fa-de-novela/death.webp": {
-   "sha": "6069583eca61c853fa54f9d319504c8fd452f7d3ac17f04c599bb76e7c13b53e",
+   "sha": "fdb00a314377ebba3340c5f02ce134c8914369205d6ec5d53634a18c0cfbe60d",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/hit.webp": {
-   "sha": "ab6af7b3c2ce8343bee38036948ee8fd54af2ad2736c667cf3cdd52c1f38aba7",
+   "sha": "af30c3373cd655913de58bf9dd33bf75431ba2e765123bc72884831ecb46cd14",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/idle.webp": {
-   "sha": "8dafe55e358569361ac8a96bfaf4713a8c95b807cc7549266a3309fc1c908c0e",
+   "sha": "d8af3bdb6d6a6259135262cbb2017ae5b2a98489577bf729e164ed2ca5eee1be",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/joke.webp": {
-   "sha": "461b31261d706d5428ad5c86df8af48f962a5eabc71b618c681ce0ec4885123a",
+   "sha": "0beb21fb788d876568f8e2c3e4c6cedbc91657962d87344207baba98ca16bdfd",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/shove.webp": {
-   "sha": "6c82570c3915e4b57137c1be7971926b09679449948f977e3023194b5b1afbf6",
+   "sha": "00b7888f33354c4f5e4d6b1d54f9c914b754b6a0febdc8e56626a3b6c42d3b66",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/sleep.webp": {
-   "sha": "2b607cdb33b7e3128576454d5ed0fe9271c9f01fafafb0717f532ccc6b2d5df8",
+   "sha": "3902697274cc07ad99d79e9149e2c2df185299abe83e2be0506d911aace439c2",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/wake.webp": {
-   "sha": "fd91303058f3e0d1725270bfce81ea68a857e702a6349a4b817dc73ba456cada",
+   "sha": "594e3e67df66f5f2284e078fe2b2e967e76b1812ac0007ecaac58b5e6bcffc30",
    "ilhas": 0,
    "fails": []
   },
   "enemies/fa-de-novela/walk.webp": {
-   "sha": "4284c3d0bff19f3d8746b20d7bc196769491e459f0429569d593d069e2bde97f",
+   "sha": "7ee3d30d78b2770547a90e6e11b92cfe255dce910264f8812ba2a3df7d1ac146",
    "ilhas": 0,
    "fails": []
   },
@@ -2609,37 +2609,37 @@
    "fails": []
   },
   "enemies/flanelinha-interdimensional/death.webp": {
-   "sha": "7f1accc927fae8736a5434cae85aef4e9756229b64e6f5d68f8f5d21a22fb399",
+   "sha": "5e53cebc82012fae88b371fdc87e3396cda47fd480a999fae3bcf1a6f1a3b932",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/hit.webp": {
-   "sha": "42ee6e8fe5c35ca80a9b85db0ffea900e24686f48bbe1bebe4820f376d605cbc",
+   "sha": "b60a7ef13abd20541bf09146582e5f4c7d7d2e1f2ce6064dc40b2ae98007da42",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/idle.webp": {
-   "sha": "bf657034f3df1ba516d09f465f77e1ea093b81b7b94efe01b4b98b81195ea82a",
+   "sha": "eef0f3afe666298b7ab00f8ecc2a52021117eb19167455c43f20bf9d82c7629b",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/sleep.webp": {
-   "sha": "655671007997b7c450c0f3a84916ff1f05e3bef894c9cde610fe1ac84b79cf9c",
+   "sha": "15144f12e0c442f1b415e950a302f2377a42c31c653132675a4865bd8de063dd",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/summon.webp": {
-   "sha": "f6b060f9a173a786120479decb86f8325d6cab2342ed8bf6f1667a7ec164f77c",
+   "sha": "67e9ea7789ffeae5a7f7a5489ffb97ee278a13b2bfe5027330b3f9a05649fb64",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/wake.webp": {
-   "sha": "ab9e55adb4e68dc2f2c036a87247966667bc77bd5658cb9ce827f64912902774",
+   "sha": "31ed11d50c91231dead625dd070c9a9f9317ea48c08272ccd10eabc2c8a23e6f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/flanelinha-interdimensional/walk.webp": {
-   "sha": "55aafef0db0dfcc4ddbbe8aa5a1923e8e60bb3d7996a7f96761b9e1524e76811",
+   "sha": "e771f28d2fb8fa6d5f49ea04dd225e97aa915aced42cef444ea3c816c5fcc3d1",
    "ilhas": 0,
    "fails": []
   },
@@ -2684,77 +2684,77 @@
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/death.webp": {
-   "sha": "df673e570b44a9ecb59a38229e4c5a9a894e0198b28fd7c94c35ed7e79d51d60",
+   "sha": "f65fb145480a469076ea21a6693b1e80537e60420e14e21e2628a3dcd538dffa",
    "ilhas": 91,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/hit.webp": {
-   "sha": "4aa923b11f9cb95899b57ac7fec1b58fc0601d0e555c14781b3b623d9b8ef1b1",
+   "sha": "0e2aba0eb024cc060a4e012ad6e4229a80b92995137ee11ea357d076c16b2668",
    "ilhas": 0,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/idle.webp": {
-   "sha": "9b94705c0cfa1ab7162f4354a7664b4822a7827e3c44997cadf85ec3657f2581",
+   "sha": "9cec66684847d00d856847dfcea0b72dfa99046af15cb1546375e476ce043fd1",
    "ilhas": 0,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/joke.webp": {
-   "sha": "f3d8a4955f116573302f1df1811dc30fe848cd424511ceb12ec15e0f152f3d11",
+   "sha": "2f7375cd3e8af5da65954465ef677d88f01b604d29975e8c70d67919520a551c",
    "ilhas": 1,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/shove.webp": {
-   "sha": "d9c513c34c4c1438d9633c35d4cda09f2d70c2bb527023b890027f6300c93cff",
+   "sha": "3f6c7c00b639750075abb02969da271d0702097c59eaf9cf7525361625b68e83",
    "ilhas": 35,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/sleep.webp": {
-   "sha": "99bd480f74657b39e85896e58b34a60ad8acfa7d736ed1a39cedeceacb452ded",
+   "sha": "60d5066b7b391fe781ca44ebf9c6f0d9b9071273fbe818f529277caacb0ee450",
    "ilhas": 0,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/wake.webp": {
-   "sha": "ab6c525857df2f3a1ac9357e69d5266fa8e715ac602a3a76699b618f2b510825",
+   "sha": "2934de2924e948e65220e285fd74b2b19a2e1d2a928cc95b8712d318d8015a89",
    "ilhas": 0,
    "fails": []
   },
   "enemies/forrozeiro-centrifugo/walk.webp": {
-   "sha": "2661360ffe34582a6b6001840ec009198a6c881821a1498ea717421b4c1f1f83",
+   "sha": "355d6597619e6cbf453ddc8e7cb11ddc417a974c35d303c22dd4d2f0a04090f1",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/attack.webp": {
-   "sha": "8baba5403ebb9e1efed9c723883b6ee50b76e11fcc226da719b1814149fa7d25",
+   "sha": "533721b701afb1e19b498424809aebc8619b8b873f53a1760af8aa664756cd30",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/death.webp": {
-   "sha": "9ae4ce6fa42db51e05dabaafe11bacecad84d8b0d980fe2eebf10e0c5ecc9a7b",
+   "sha": "5dde860e95e9c27a12352546b3b06514ff07a428b215cd965b4b45a01aacfab0",
    "ilhas": 4,
    "fails": []
   },
   "enemies/frango-de-academia/hit.webp": {
-   "sha": "73673c415f751e268974b2ccdf40dc943b3d26f5cf52cb25300b6d80ab01fdf8",
+   "sha": "4bb5be444afe24cf83a8afd136147b4f9001dfc55034a1c811a0fa8c1037ae0e",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/idle.webp": {
-   "sha": "8f1f7719ffd155f47701b2fd4f1a68092688f6b624368da6ee84d0adba1a6114",
+   "sha": "634c0fc05b3946c277093103fca4fa6e23ab28ab5ea4b7e9924f66ca5cdb4ba5",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/sleep.webp": {
-   "sha": "97c82b15ee9673b009a3eae0c65cf611c77fee5ac1d9f0a46d93e9a98f170af8",
+   "sha": "1df0e80ee0e806269e04894239cb3fe5c5e36b53c8917b6ac5aabfb13b89d48d",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/wake.webp": {
-   "sha": "a519a6614efd9a740f5396d8e15e901fd0acd46aed28eee69cd8dbdb6a3722aa",
+   "sha": "13dc4d3472a5a01da257ec877a49a3896dcafbf3f43b51739518b18bb35d9234",
    "ilhas": 0,
    "fails": []
   },
   "enemies/frango-de-academia/walk.webp": {
-   "sha": "b5c358bbc303a9108e6862f02af01cd0cd84ad64d94821ae258c1d95a32a0130",
+   "sha": "3a546a1b96e1e0f1d0eb28560153e7c06cdf369d8ee798a6226a9c367f7497ea",
    "ilhas": 0,
    "fails": []
   },
@@ -3864,32 +3864,32 @@
    "fails": []
   },
   "enemies/moco-do-gas/aim.webp": {
-   "sha": "1f53777f429210f72c8a847da13a60dc24eacff1d4f59d62290d72034a8b932e",
+   "sha": "b10123b18af801c8df3d3c11b20a4a1ccdf1a1ee867abe2d5ba0defc95a5f442",
    "ilhas": 0,
    "fails": []
   },
   "enemies/moco-do-gas/charge.webp": {
-   "sha": "da20e410821141627cd9366c0be208d5acedf349ea831275c7ecd6ee6abd048a",
+   "sha": "f8423dea5bd129a6b06cc42b1cc10344ab64117705205091c7ef700cc5baf45f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/moco-do-gas/crash.webp": {
-   "sha": "3f6e81c40ea1a72d27b0f2595f6a26dab02ba70e8934a55ec3330838c6cae73f",
+   "sha": "76664bf2ef3b33a61a53335f4506e9bb8190656e02eb219fbe96f9c7f0320522",
    "ilhas": 0,
    "fails": []
   },
   "enemies/moco-do-gas/idle.webp": {
-   "sha": "88583c65c6fa55d861f32498dd6a86051e82fb2d0a7b3db8e2919da260cef5fb",
+   "sha": "eda902892e6d2cc0d3cb122bddef3ed7e4a80d9665caf138deb37a7b8c7a1440",
    "ilhas": 0,
    "fails": []
   },
   "enemies/moco-do-gas/sleep.webp": {
-   "sha": "11b2ecfd02808dac059e0e95569e9cfb7c864c929283cc777815413a56d05300",
+   "sha": "8050cd043d93bb69e48314d70401707bb8b6eebf14f6d5d53aeb95e411ea69d5",
    "ilhas": 0,
    "fails": []
   },
   "enemies/moco-do-gas/wake.webp": {
-   "sha": "0e55ca9ff23c5fef7796b0538a1ae9968ee8bf9a9fc13b87cae2ff1dbb05b658",
+   "sha": "7c57aa20844c453cf57b2451a89a205a407166106adbf461071041d3b6f832b7",
    "ilhas": 0,
    "fails": []
   },
@@ -4119,42 +4119,42 @@
    "fails": []
   },
   "enemies/palhaco-de-aniversario/death.webp": {
-   "sha": "d677961f0859802fc298f90ef2cecd09815e13c35e4c32e9460003969cbe3315",
+   "sha": "497ff4dd8aa67577d5f151c2aae8e4b5fb8abd547441130ca2bd5a25bf5216ec",
    "ilhas": 15,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/hit.webp": {
-   "sha": "cc4994d7b0c46708846460419d13a83937a7f5aa98280d89944d8c10bca7891a",
+   "sha": "c2e327dcb6a1a8d94af6b2f949305dd3d24f8a7074e2846efc5f418d8406ddf3",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/idle.webp": {
-   "sha": "42ea9088cf078c8cca8cfc4f593b2b3783f16d90c5cbd7ad56699e2ad0d0c383",
+   "sha": "429100d8bd1eaa2945836c6958995346c230a7936490f71af024d540b4fe3490",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/joke.webp": {
-   "sha": "22443fed3fdbd7d051f933bb75034a508011790fa09aebf0fd9a9dda39eeedbc",
+   "sha": "d0a85001ae7195ea2a5c33183367d18dc6cf1cd521b1ec341e96620da3b41e92",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/shove.webp": {
-   "sha": "903811826ced4403900ebbf90f15242ca0584cb97cdb95f39975af2593543694",
+   "sha": "777608369a94b58a8fdf3781ec1d0bb7cd79e4157b3a752266eb2e48b80885ec",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/sleep.webp": {
-   "sha": "504fd3875782081be2c0be32532b5d16e22d529a458163f5304a12772a184434",
+   "sha": "94b3d77da42ac443e68da51d71300329074ee985e4130d514abb43fd19961b6d",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/wake.webp": {
-   "sha": "e0f4ff7e665c50919107cbbd552fffcb287d7198e4d01011d115de1788a0a0c8",
+   "sha": "2a76539554badd45dd1070766ab37e1125df9329256a3e898d9f8fd99485324a",
    "ilhas": 0,
    "fails": []
   },
   "enemies/palhaco-de-aniversario/walk.webp": {
-   "sha": "d7bfab481b356a7be236d9bab08432ed5a2d0954a871e05cd9496e705d8563ba",
+   "sha": "df451052a0330367302d84517097d14e3da389b169cf176d300dd7019adddd41",
    "ilhas": 0,
    "fails": []
   },
@@ -4544,77 +4544,77 @@
    "fails": []
   },
   "enemies/primo-do-violao/death.webp": {
-   "sha": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+   "sha": "b9add378d6e3335f7775896cbf2e6c46ba8f4e1ea5e563aa1211f198f6289978",
    "ilhas": 43,
    "fails": []
   },
   "enemies/primo-do-violao/hit.webp": {
-   "sha": "eb0a454a1c80e1fa11d80a50f5e2c44df2afcfb54c7d5c27a5554029f3def428",
+   "sha": "277a017b2594bf2b99becf04b5c4e73eca01bf87c8f1015233c60c52450483ce",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/idle.webp": {
-   "sha": "74bb5d743d9a3c754773db754dbff9376a273277456ccf43e96d8d38dddc6773",
+   "sha": "841d88943fa8f0b4d80c72a03fac25410664620225a5b027177f5321b2b0631f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/joke.webp": {
-   "sha": "f7a459dc34db796db1619a34d44f8606e1a421f64362377a3a22453ed0bd55f7",
+   "sha": "186e8b9b167ed3b9a7a28f8561da40d4a31662461848e4ebe7da96bb323412e9",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/shove.webp": {
-   "sha": "1c24b28372b67d5aabf7547ba79a27386e50e0478726b22182a1f63613c852c7",
+   "sha": "ed57f5bd3bdd96e8304c4b7cf10218d263d5c9994625554dc672759649084abe",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/sleep.webp": {
-   "sha": "28e73c07ab41e3a1e60ebc07b776eb0e88f65092972c3597acc82b328d5aeb3d",
+   "sha": "cf6aead02886dc3df1163de8444d0b9ff2530a5d6f7565ca4c6ee0c3fc14159f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/wake.webp": {
-   "sha": "964cf1ce478632c7f26a3070c307d9913d9226ee19b63ef8842d67b7b6b4d03f",
+   "sha": "b5204e987689559e273d754dcc40623c1a844e35345b17be3d9889cebb7c2c90",
    "ilhas": 0,
    "fails": []
   },
   "enemies/primo-do-violao/walk.webp": {
-   "sha": "9e5c75750d3a5d61e9aeb2d7839fb93920cebee464eea5b84015bd91453fb73c",
+   "sha": "91e1f46643e4ff1863642d1b23064e6ed148241cfd09f8776ddfe48870546d3e",
    "ilhas": 0,
    "fails": []
   },
   "enemies/promotor-infinito/death.webp": {
-   "sha": "6eb6ad8944cb1310d42628a08e433fab53a3df4ce62e54dbe22430c218728734",
+   "sha": "b1baba289d27e0a5decd3ba59efd25516c70ec3a4fef2fc66f5a8c4d91d0a75e",
    "ilhas": 51,
    "fails": []
   },
   "enemies/promotor-infinito/hit.webp": {
-   "sha": "319326a9ed975a34f31272f17071a6a97779dd60f14f1d8216b8df45c825adfe",
+   "sha": "d2db9f21dacf4feee646958eb29b42078b8d1833630769686a9165d023dc8fd2",
    "ilhas": 5,
    "fails": []
   },
   "enemies/promotor-infinito/idle.webp": {
-   "sha": "4831dc50eea1dfaed5449a92a9dcfde31a6a61ce6d63cae547474f8213de6983",
+   "sha": "06fedf366b658a2bfe475ac5ffe038cf76684afd3b477e7d6bab5ae270f54bc9",
    "ilhas": 0,
    "fails": []
   },
   "enemies/promotor-infinito/lecture.webp": {
-   "sha": "3edc7557711c9212f7d2c1be3b9ffaf262ec1d96ef4c9473fc59d0dc20d47e1a",
+   "sha": "83da5729e05ace135e648e1a8f02d82893cab22d94a523fd5c65d29735dc3e41",
    "ilhas": 2,
    "fails": []
   },
   "enemies/promotor-infinito/sleep.webp": {
-   "sha": "f088b28afec434fbc2adf7a95b01918a368b56c246396114891978e6ee85b699",
+   "sha": "2c9833417e7141d20847c9738b3483e412f49e2606befc14dc6f73b7f2ea4ad2",
    "ilhas": 0,
    "fails": []
   },
   "enemies/promotor-infinito/wake.webp": {
-   "sha": "54df38e3470fd70d0fcf37d1abdb10c36ced178127c2fa2bedc4e34f81c1ad36",
+   "sha": "bf76c1c60df3768ab94764729e8465dc4700f01e06543f415764eb0b245583e7",
    "ilhas": 0,
    "fails": []
   },
   "enemies/promotor-infinito/walk.webp": {
-   "sha": "87ecc3cfb3e535a385783e11ff7ac175fe219f512a68d1b6ac66a9a20b9d242e",
+   "sha": "be63274bdd64570371fd375bc28781e7926f2fab5735331d9381c5062c7e7c7f",
    "ilhas": 0,
    "fails": []
   },
@@ -5354,42 +5354,42 @@
    "fails": []
   },
   "enemies/sommelier-de-ipa/death.webp": {
-   "sha": "076bcbc09ecaec028d0bbf603596377752cd43be3c5f4aae66956821bdac9b6a",
+   "sha": "5aa5c9b74c65f69f852aaed3da67ec62d53fcefa45f276d0cb8b97cfd272d9d6",
    "ilhas": 106,
    "fails": []
   },
   "enemies/sommelier-de-ipa/hit.webp": {
-   "sha": "45fb2fcbe69f6f95a2f2c67f3d950bcad57cba8b83e45f661a7db585f1961f0d",
+   "sha": "2e2eeb22cd5e00dad02a1c1b7cd6f69547c65b14c4e65bcc031bddc8b62d045b",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/idle.webp": {
-   "sha": "2d76d8a18437117b66487f174b008955506e1dbe3359b42fabf75c89c3fcc405",
+   "sha": "15b9bd355fa4f8b62c06544b07acca7b53a9b58a25c327ac389215d137e71468",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/joke.webp": {
-   "sha": "b6d34f2b9c3be5f88509fc08626b655b04abe965ddda17c4133ecf274e11a225",
+   "sha": "5580c97932383cd0af02b02aa7c3350d299aa1b853d8ee3e90ff89b6349b7777",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/shove.webp": {
-   "sha": "2da51fc61a11b1fce7676093cceb79192bcc8911093a8b005d75027eb85361ed",
+   "sha": "51b336d034f9c42c628a4e0441d8eda08a7cba61e5ebaae1e141145f96b3317f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/sleep.webp": {
-   "sha": "bf5d9422603b7f4c946f06fe9edc844a58b85b990c23c511aee1f0edb7b7e901",
+   "sha": "a6f6c1a5090aaa54663a01cacfed502528bed016ec63acc4692094bf93762ad9",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/wake.webp": {
-   "sha": "4739af9584afdc0a508aa87300005197cf1ef59f4cb8a84d5734494241893ee3",
+   "sha": "ee58d755d75d1c8b1dcdddc65633ed4ebf8c197d45eea19a2dda1b8dcffdfc56",
    "ilhas": 0,
    "fails": []
   },
   "enemies/sommelier-de-ipa/walk.webp": {
-   "sha": "c6ca3e80b88b5ec79e8dffb334ba5b9ac7675635dca7b314d2e40e2a04aeaf8b",
+   "sha": "7805a0599ab1d0e0d795468a57875fe0c7a8d3b4b6ca5bd0169f4a7d139556bf",
    "ilhas": 0,
    "fails": []
   },
@@ -5504,42 +5504,42 @@
    "fails": []
   },
   "enemies/tia-do-pudim/charge.webp": {
-   "sha": "a0cb47633f4b5230731b3166ac5759a4b797f66bb6e2f34134db321e9ee7a2d4",
+   "sha": "596796105587f58dcdfc8aa32128a73d820e733e591bb26c2920bcc8d515c814",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tia-do-pudim/death.webp": {
-   "sha": "2b932e16f544957d8c46970f4f00f8d4c0e4bf91564b8a073ec6457cba170e98",
+   "sha": "0ed56919ccbe08f2a3044345e7536ca642f058527bd1d3ebc9c9ed16ce2a6942",
    "ilhas": 72,
    "fails": []
   },
   "enemies/tia-do-pudim/hit.webp": {
-   "sha": "9ffedaf56780ed8759959ab0df5fab95906286622e63f4e50d7513ef67bc0aae",
+   "sha": "537669d158d0a028662ed6b76999a1f2080ad98579035d6aaab5836dadf8c0c6",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tia-do-pudim/idle.webp": {
-   "sha": "ad41161284e0020a4cd9a2f01997e08502e13096ea9c1c4d7f5e5012219a2f62",
+   "sha": "86d5033c6ca9412bd07c34efacc1869796f2ec5be3d4dba3d191770c7db239f7",
    "ilhas": 1,
    "fails": []
   },
   "enemies/tia-do-pudim/slam.webp": {
-   "sha": "3e743ced363355eeab1e43aa4e5d289c59a8d19219062eb3af5613dd863b332d",
+   "sha": "4df17b0330fa9908b6a31d901b6c1a8c5b76099ff0eef77f79bab22b0292017e",
    "ilhas": 4,
    "fails": []
   },
   "enemies/tia-do-pudim/sleep.webp": {
-   "sha": "dc6cf5cfbe6ac1fdea86a5748a3e0f9d84729cee8e3ee2d2e2bc4d09bad2a282",
+   "sha": "4469c2de3f0007579c1cb983b1531b3cce012aa76dc656d801b534cbfb317ddc",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tia-do-pudim/wake.webp": {
-   "sha": "7987115b493c314e8f15c0e6ac456dea16a83e74e25cf49a51aada5ea32ecd01",
+   "sha": "a69e50f02ce989ad10cd03f10312225572416a809a308b094104f3760bbf12f2",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tia-do-pudim/walk.webp": {
-   "sha": "1577146b996da4f78a919f3a01b5c088550e1994c8727a71a0bba9e58eb41af9",
+   "sha": "960c2ed7342104b7105f70dec2a8a167060f752dbd6f9178b7ca2970a36f3622",
    "ilhas": 0,
    "fails": []
   },
@@ -5649,42 +5649,42 @@
    "fails": []
   },
   "enemies/tio-pave/death.webp": {
-   "sha": "805294da0c432b52091fe67ec5290cbf6db9d7f2728346757a8b7e60c2252b85",
+   "sha": "d5e01b6118e1f0b377f160c75d3b00c463d16011cadbb472ca1c32a117983530",
    "ilhas": 115,
    "fails": []
   },
   "enemies/tio-pave/hit.webp": {
-   "sha": "afb3f97484b9bfc24cb630a4d98d0651a5380d3e9c6c60f42e735d94666ff37a",
+   "sha": "ed82b1eb372d147038694b30293c969f152d0928d06ad2cb278e288538f557ef",
    "ilhas": 1,
    "fails": []
   },
   "enemies/tio-pave/idle.webp": {
-   "sha": "5b8daa9c8525e0a7060b94419d7405b33610f1ad2df601717768081ffac19426",
+   "sha": "a1b11c6b9038fa591703c76205113617fc067ffe5a454820bb3c8a480ad94b50",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tio-pave/joke.webp": {
-   "sha": "27807e866788f3cc72e6059566990aa2de6853d6a49621c37930a0863a47a223",
+   "sha": "e0eff6728bd13a1d1de7629b21668be0b743ba27e5ef11aa635fad214f94e510",
    "ilhas": 29,
    "fails": []
   },
   "enemies/tio-pave/shove.webp": {
-   "sha": "3298d78566b4298f8b4ca3e293d81ba7b53ed727f226c2c7def26637c15f9729",
+   "sha": "d9a8c97665f1efa7908892069625591bec2658df2b3657ef71b5a9f051d5251e",
    "ilhas": 8,
    "fails": []
   },
   "enemies/tio-pave/sleep.webp": {
-   "sha": "594debf14f3584f8cfdb08cafbf21143d3a2ae8b7c76e050aa73fd0a07ef6391",
+   "sha": "4329a756fbc002299dddbb802a5543af030e29d836655bb29fc8f2604c4f8890",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tio-pave/wake.webp": {
-   "sha": "6e792d23d945b09b483a3ac1a313e91ccc54f5f065d0c3065de2c0b97d5afa1e",
+   "sha": "f0977e158f56a8377beb2c4139bc960aa548384bf8920c178e9183d587916654",
    "ilhas": 0,
    "fails": []
   },
   "enemies/tio-pave/walk.webp": {
-   "sha": "9eb2936488f339a30fb9cb4cfc8a3a717c02c3120ed20543d9c4d19d321cd5bb",
+   "sha": "8f4dd118c7afeb6e857476f83d4a99ed7606f1a59aad555d9932102561605dec",
    "ilhas": 19,
    "fails": []
   },
@@ -5729,62 +5729,62 @@
    "fails": []
   },
   "enemies/torcedor-fanatico/death.webp": {
-   "sha": "ba497b277fbbef4778978b6fb278d2478de6c64a634a77f309b8bd8ed32ffa01",
+   "sha": "4bbc27fb5a4f1353c1c4cabd066073a87cacd7f7f3bb8440009f079dbcb59d3f",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/hit.webp": {
-   "sha": "d86d72c309df3d296c7dd94101e696cfca8aeb03bfae0af78c0384fe5307e754",
+   "sha": "f3a227fb5580c78133592df1cb4f86e0a53d3c7578360cac786d493224fd4e21",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/idle.webp": {
-   "sha": "f1eb3331af9157582060769b591c4422e181f94e4b6bc037eaa09d500e70efcb",
+   "sha": "995e18cdd69884dd5a5e8730886716edf929db911db81816415ee18cac9619d4",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/shove.webp": {
-   "sha": "cd70b4c9c5f2a23c55b7283d70bb326df175a5300c07d7d490ada7a774a8ccae",
+   "sha": "8e93e065cf0cadfc6cd0de10120f96a81401fb29062dc83596503572c67e1db0",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/sleep.webp": {
-   "sha": "f17fc40f845d00a89279a2257710a02794d79f453fab63bacbc14b7a15e4428d",
+   "sha": "5e731bbdebaa20c3fd21f17996a280603a3b7b68139cfd7b06a74c2760a8adb4",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/wake.webp": {
-   "sha": "a4279808fdbf36f00e94199fe9ae0d17e6490290f8d15e9453c385a64dbc4ba7",
+   "sha": "981af9390bc48a5ae017b2c661c89813004940950cfcaa1ab53f026001e7e4fa",
    "ilhas": 0,
    "fails": []
   },
   "enemies/torcedor-fanatico/walk.webp": {
-   "sha": "1dccc0e1ccf609c2e567f960294827ec1a8cc6dcd61990e3fe89f2ed5e92311a",
+   "sha": "1f92a43a0de094397d50b10c7ba6ea83564c9026296a6af5a55f5ab36e5eb067",
    "ilhas": 0,
    "fails": []
   },
   "enemies/trenzinho-da-festa/attack.webp": {
-   "sha": "16433851203210fe7d51b1e355dc6d5b5d436e54b4c2b2d218647d7bbfb7c629",
+   "sha": "6a293609eb35890d932ffb602a3713d65acd5ad61b5d9f6bf32e8c3c3c6c1e2b",
    "ilhas": 0,
    "fails": []
   },
   "enemies/trenzinho-da-festa/death.webp": {
-   "sha": "975749038626a63f9aae1b6be445b85c1ff88871fc636a03d06b8dfddf6ffe4b",
+   "sha": "f316b5c9ab5aa31e4a4f97533fa301a8e55468629fc57549fe0fc47e2da7db49",
    "ilhas": 8,
    "fails": []
   },
   "enemies/trenzinho-da-festa/sleep.webp": {
-   "sha": "9b3e4ebead4862a4373b67eacdd06b4226406f97d76bdc97cdd89b5536fd70d2",
+   "sha": "dce2e80d73ffd8c728723abd2f7fb14ba044fa30d805372af4debecad9adef4b",
    "ilhas": 0,
    "fails": []
   },
   "enemies/trenzinho-da-festa/wake.webp": {
-   "sha": "958603e46d3097a666a91d6ea45bcacfe3a952e9b385b49214af9c93dcf8cae2",
+   "sha": "098e59d1ce9456ddea6d2089b14b7d9e428f79d4a61eb97dea52b6a60cf78d5a",
    "ilhas": 0,
    "fails": []
   },
   "enemies/trenzinho-da-festa/walk.webp": {
-   "sha": "0ac1bcca71768f963998d5d0c2bb6e37a7007a7e92d026f2e106b40959dfc958",
+   "sha": "73fe4d62e81ca9054f19c2fcaac97ecedb4e86f55b4abff18e4f5de40693ea8a",
    "ilhas": 0,
    "fails": []
   },
@@ -6114,52 +6114,52 @@
    "fails": []
   },
   "lite/enemies-pc/agiota/death.webp": {
-   "sha": "6e622f7f4ba20a14412f749fd025c9fa41162b639d16fb86d69ef9866cc6296e",
+   "sha": "eae3e2b209b3c195c68a34d5441e8c7279ace51d17c28d37a8edb0f9d464ed5c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/agiota/hit.webp": {
-   "sha": "0ea08d090fb5d3499cde2a63b9c19475338ff8401b816913781ba29e3ce157a0",
+   "sha": "c3285e93d98b6a2e88df4612c4b74ac8db430789b6c55fae57044bb10b6fe8fb",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/agiota/idle.webp": {
-   "sha": "f24ebf4106792a57f7c4c94ae7beb2ce4f9e1859bb5226ac91776bdd32eb3bbb",
+   "sha": "431622d87144645c51552b9b108cec00072d1ecdc13cfc6196ae4bcaa16b8fb9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/agiota/throw.webp": {
-   "sha": "776335c7fecad2fdda0b9a9bb678dc2cea69d7362edcd10dbd258175a5d0fe2a",
+   "sha": "a4b66e2fa9da38af4c9afa59e13284377c4ff53ca4758cd101ed0a6b60a334ff",
    "ilhas": 3,
    "fails": []
   },
   "lite/enemies-pc/agiota/walk.webp": {
-   "sha": "1468597d937fedbc9098760357baa4daed430e696c771e6551f05487e72b261e",
+   "sha": "308a6f1680c43196d624e525b294b478cfbb9d22eff9e50c6490426467f8f347",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/alambiqueiro/death.webp": {
-   "sha": "3e93a76ec11e1c20969770967c8ea1be3648ee2d4b79174b802b27328c4f9e8a",
+   "sha": "c3ccdfb8dfc0aa76e67a7c2aad8026bcd578bb3eaef9637be1e3ec1a13cbaf63",
    "ilhas": 12,
    "fails": []
   },
   "lite/enemies-pc/alambiqueiro/hit.webp": {
-   "sha": "9de5bdc00a34271f76f1f822393d63bd6f6596650dfdfa9158e36945540e7b3f",
+   "sha": "7eec5cd8554f4e041dfbc1fa5d03192cf3c3ed81998c87243c74466f49bb6911",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/alambiqueiro/idle.webp": {
-   "sha": "06ace14572ea662d1328097ea40e1249fa7544e8077c78413d6107516e1affe2",
+   "sha": "a800b8c1b0538329dfd9ecffee17a6f130518922cc8e90c279b8db6a0c1fa5c8",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/alambiqueiro/throw.webp": {
-   "sha": "48e89ace7a95b8e218d840b0ed0a93a229f49fb02283dd105638115bfd65c65a",
+   "sha": "d1d369b8d14ce318e95435ea5396b7aad96be099b1db1cbad445a99a70c292f7",
    "ilhas": 12,
    "fails": []
   },
   "lite/enemies-pc/alambiqueiro/walk.webp": {
-   "sha": "6be541d0244eb493eae83343b38420d8de1dc736cfff97566b49f53b1abfb36b",
+   "sha": "10620cdd2dd72e3a4ec9d83d0e6328d8cef3c038267383c487bd77fac5486e1f",
    "ilhas": 0,
    "fails": []
   },
@@ -6189,27 +6189,27 @@
    "fails": []
   },
   "lite/enemies-pc/anao-molotov/death.webp": {
-   "sha": "ba431212980d101faaa8ce63ba50bd54b9b39f05a94e55c32b084439c565a53e",
+   "sha": "fabc22b67418740aeabeecc66e31e1193e9aedb8b324a80a97da0dfe1193b02a",
    "ilhas": 31,
    "fails": []
   },
   "lite/enemies-pc/anao-molotov/hit.webp": {
-   "sha": "252bfb072c41d56a1047ec2c88cf55b86182e8b29c3bc8eb72248b79b57844df",
+   "sha": "b2390b41c88e0c50881ca3175c2b82cd7261067fdbbdf6735b3eaedcbde81c6b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/anao-molotov/idle.webp": {
-   "sha": "277a9002e94995bda0f284938c9a31fe7ffcd1d79ba54433f05f76a61b4a3fea",
+   "sha": "14d5e29561011147dd25e7d1012aeacdfc1a7760cc17164d00c5e4bf0407105a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/anao-molotov/throw.webp": {
-   "sha": "8c86095d296180ad9bf6995f31c1ef8b2605f7a38ce4affb71c36caf13c1545d",
+   "sha": "fd3ac2befcd5a80989674b94d33c4900046da035acc53aa2d53b0fcae8babbaf",
    "ilhas": 14,
    "fails": []
   },
   "lite/enemies-pc/anao-molotov/walk.webp": {
-   "sha": "0035e8603a92d7cbcf675a9caf41567e7ee6cd77fb2d26c29fbf279907207e78",
+   "sha": "3b8f939b09b603c16b3a728201217719f553588ac3a26b7504c3bb918e2c4532",
    "ilhas": 2,
    "fails": []
   },
@@ -6394,27 +6394,27 @@
    "fails": []
   },
   "lite/enemies-pc/bebado/attack.webp": {
-   "sha": "2eb059af3f2082c62ca9f79f36aca99712371d866200c69eb5d63591829a3d9c",
+   "sha": "040515636b88aae6cd6f398a54f8587f1cbb7ff0c612b37573a65ecc0ad4031b",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/bebado/death.webp": {
-   "sha": "1f216b1717b0e94a263a5a2edd1985fb1fe43d0486a960612e47c757c894a095",
+   "sha": "652acc6a158d5ee319374ec2259bb452e45cc42c8b7295dcf8b590456606bf69",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies-pc/bebado/hit.webp": {
-   "sha": "fddad5560fc7bdad86f099ad523c45039e2e3048edd7cd85c6f2a3a1b6dba671",
+   "sha": "fa91693526966fb3897193596d77abe1d40c39d2bb24abc9fccfcb6ea200676b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/bebado/idle.webp": {
-   "sha": "6672d2f1dd494a4af9863800c292f6d5707fb935cd883cc210af0b01483041e0",
+   "sha": "512c1dc08ec42243e7f6a98aa9550cda0950ec60033eca23dbabdbec0bd90252",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/bebado/walk.webp": {
-   "sha": "80cf8070aa05114390ca22ad381f056779ea35f0dc29e054cc8d3f980131f575",
+   "sha": "ca05d210ef8e6e5211796fdf739525a342a8adc2fa5be58789e1107092112b3f",
    "ilhas": 0,
    "fails": []
   },
@@ -6829,22 +6829,22 @@
    "fails": []
   },
   "lite/enemies-pc/carrinho-da-vo/aim.webp": {
-   "sha": "5ad8f7862fcc1d0b301b54a48ed17b267a4c97c6b38753d82e740b89cbb4b724",
+   "sha": "291d3f621f389c23989128ff4c6773b8d4fa98db138a1b42d47ccab9e7518c2c",
    "ilhas": 6,
    "fails": []
   },
   "lite/enemies-pc/carrinho-da-vo/charge.webp": {
-   "sha": "b827cfc7ae3f8382fac01a2dc87a014cfdf12852f3ed29d2c98f32183fef6c84",
+   "sha": "3985e0bba6d6d0f6b843aada9339176c620fdb87a2d06c757e377a0f71051a4b",
    "ilhas": 9,
    "fails": []
   },
   "lite/enemies-pc/carrinho-da-vo/crash.webp": {
-   "sha": "595d79d13921be2e3b637e1b2adc60c1f73d44ea9ec255adfb8f977a762c8870",
+   "sha": "5fb631670407cf462b1c7d6e522a5d6aaa352aac712694edb2e63cb52d3dc9e6",
    "ilhas": 8,
    "fails": []
   },
   "lite/enemies-pc/carrinho-da-vo/idle.webp": {
-   "sha": "cf008707aa1fb8ca56d721c37403574af025d9bebb4e7e3c7e0e7e7cf56a8751",
+   "sha": "e47e3923ea71c596559c52876f540dacd112bd431c9c3159801e4299e5b9b30c",
    "ilhas": 0,
    "fails": []
   },
@@ -6879,47 +6879,47 @@
    "fails": []
   },
   "lite/enemies-pc/chefe/charge.webp": {
-   "sha": "bcd1c6da58ece50e09d1e0edf1ee03915c81ac155699c4fd9b57c03e5e212e57",
+   "sha": "08cc75f35735a686836b0f25b1b606a5a4ed1c7d82a1ddbfc1b63fcecbe233ee",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/chefe/death-p1.webp": {
-   "sha": "5cbde389d44c6b6127d1304b8590b721af96c2722c21d7771625939b29f45127",
+   "sha": "894758e57c4467d1845ddfbcd9badb7225a5b8c02b57eeff725b5b157a42aeb6",
    "ilhas": 27,
    "fails": []
   },
   "lite/enemies-pc/chefe/death-p2.webp": {
-   "sha": "dc6b612822f0e01a4edc8fe80c65f724cf9afb290bfaa619b2261fb495a97d80",
+   "sha": "b07894de1546b46d684bea3f4f9c8e9d4b3ddc074515357d80664a2e4936b5e3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/chefe/hit.webp": {
-   "sha": "c4dceb8ecd8f6fde648d636e636f25e7a35f2100155bde2cf47a36677ef8c862",
+   "sha": "cb90dd1244c1b885b985f6e27dde017cfb115326eb7ec7a72c1030455e298e2b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/chefe/idle.webp": {
-   "sha": "255ef394f39e9a9f3c17dad30f08acec8afede7d5202e68c718bc6de47020bce",
+   "sha": "a869dfd5f7f61c2b459497db537dfb91a5ca50945c5e8ae156df6c694ca27961",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/chefe/phase2-idle.webp": {
-   "sha": "26349324ded633de97cd2b5948799c805f95107d66a0affdb7a3c581e188239d",
+   "sha": "11213eaaf34c7b2a2c82044712fb615f8cd3030d607f2a493a154e12dadecb39",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/chefe/slam.webp": {
-   "sha": "4ff3057ea343f7913aeca531c063821055934bfb96837fa8a0ab9fc4fdd64ecd",
+   "sha": "14a9226effc45338c402cd1096635d64855ee4dd9569483275212a308487654c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/chefe/summon.webp": {
-   "sha": "756bdf8142e1cc54c54d41b0f12a64d571e3264aa3146f0d0ca75860bc88e9ae",
+   "sha": "4b5cb05dc4da34a9256099d30e71b048bd5f3608a7e1c49768305e71c016e15c",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/chefe/walk.webp": {
-   "sha": "a1ea8f660bd494c9ca8f87dca287f6d33ae274293a09410330dd6298c0f8a0eb",
+   "sha": "069b0deb8c1dab9587985b1ac3711901f6fc2685831aad48fbd020a94e0ab0ab",
    "ilhas": 0,
    "fails": []
   },
@@ -6974,27 +6974,27 @@
    "fails": []
   },
   "lite/enemies-pc/coach/death.webp": {
-   "sha": "645ef35c566271943c942a4abd1da30b50b083b3d5f4055ce03605edcc6e969a",
+   "sha": "2e5bbf27b2fe1e1ca8bcbbf36c61d20edb569cf9c2a1c3b8fce0df8a619539dc",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies-pc/coach/hit.webp": {
-   "sha": "72a85ae8da9b0ff9ae9a4f427f728e3532570e0aa87fb5d1f7a6c0ca50f17b3a",
+   "sha": "d40be30f6a37d073d005bc3066af34246a44b2c156f6dc8765e173a66b210f71",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/coach/idle.webp": {
-   "sha": "2ca9f41f35a1231509e11d20a17f8986f66902b2d788aae3618eb68456a0270d",
+   "sha": "1e0d5716c73323dd4bc4a0b3ebfb6dbc117eee574c804030e7cd583425ff93f2",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/coach/lecture.webp": {
-   "sha": "4d54ecadb75b0956a15d0aed43f60d301216837c57d1b42c784714128c3d80b9",
+   "sha": "3e073bf47f656b0b585ac858227974b846e562baaadc2dbf24819bfa60683f3b",
    "ilhas": 12,
    "fails": []
   },
   "lite/enemies-pc/coach/walk.webp": {
-   "sha": "e62be279403a4cbfc7e385235eeaa6f9344cce1f604d9d072de3decbc3495f94",
+   "sha": "83df28820fa9eceb3f456836f89605865ae7eae4dd02e732118ffea31e44a09b",
    "ilhas": 0,
    "fails": []
   },
@@ -7024,27 +7024,27 @@
    "fails": []
   },
   "lite/enemies-pc/cobrador-fantasma/attack.webp": {
-   "sha": "4472e2011feb1903c7be31a5ed51d695cfc482f6c4fe46b21077abb50e37a900",
+   "sha": "d1c67fe4f401fa8af3ebf2b5219c8e9ef339cd467c54b52cc6fe8701d145583b",
    "ilhas": 23,
    "fails": []
   },
   "lite/enemies-pc/cobrador-fantasma/death.webp": {
-   "sha": "ec05ffeb8f827d94b21b85eb50e236f186b271db0b75bbf9d205203759a09cad",
+   "sha": "f34d9e125129e039107b43ed7f7ed503d19b383da8ec66c18fc2f1a1a369b3cd",
    "ilhas": 50,
    "fails": []
   },
   "lite/enemies-pc/cobrador-fantasma/hit.webp": {
-   "sha": "4f7f5e82f6704f766136e2815da121784b22528b45f4ed0bdc5cdb44c1f30e54",
+   "sha": "c2f0e6f0946b6d9b8b0600ff07cb282a08259958c6f1e974a4b6b8f5f5cd9595",
    "ilhas": 7,
    "fails": []
   },
   "lite/enemies-pc/cobrador-fantasma/idle.webp": {
-   "sha": "92fedbfe4373144ccd6c9414b82dd7968f9b5be39fe254fb2099c5bfb84a6cb0",
+   "sha": "267cbefe50a2c6ef58dc59f0b449e61138707edbd3237441bb0aec3b1c67d5f7",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/cobrador-fantasma/walk.webp": {
-   "sha": "8eada13322ded40c6556467d1c9af7c30f6dfde3cbda600954172a5cda42a1db",
+   "sha": "e9553c0f500b4d89efa600f2264ef253d63ccc5e4afe39c338bfa813d0558335",
    "ilhas": 6,
    "fails": []
   },
@@ -7254,27 +7254,27 @@
    "fails": []
   },
   "lite/enemies-pc/cupim-mansao/death.webp": {
-   "sha": "e3f29b428fd6922e8d8b8b340512880706f62dc904379e7b33a1dfad9276a19d",
+   "sha": "a4918225c188f76c6d3c0cf06003b7296fadf2a26c336bf2433952138a704841",
    "ilhas": 2,
    "fails": []
   },
   "lite/enemies-pc/cupim-mansao/hit.webp": {
-   "sha": "884a30d7824720a2a8c4979ede5c4d3476b7c99873601f98adc36df57f0c368e",
+   "sha": "ba495e3d267af6a7dccd3501cbf6cbfaedc2f8cdf26928851d3b493decbba0d7",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/cupim-mansao/idle.webp": {
-   "sha": "0ee496cbdc52c8b54a0e5b7955f661bea25f107c2b6b8324b6e639096ed1a5e7",
+   "sha": "045d93ac6804f710a0789df6c86808a793515e6b690cc826ec1426dc1f530dd8",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/cupim-mansao/shove.webp": {
-   "sha": "7e7a1483c77761c0d24cf54f82fa9b709101f2aeded514a40a629e26a573d3c8",
+   "sha": "9f5a9123d2e8489736da0c47089c87e6ecb1ae3f977260fdece352b5bcd49391",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/cupim-mansao/walk.webp": {
-   "sha": "b70499cd7b23ce98c36f68b7968f97e9e0756ee31982c52f3b76f88d38a6d2ed",
+   "sha": "e94df49265ab3356fcd202d5f9613634db5301973211cad27c1ec0f80e6d0d9f",
    "ilhas": 0,
    "fails": []
   },
@@ -7889,32 +7889,32 @@
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/death.webp": {
-   "sha": "78a31484236912fd898b5a192704c00104fef5f5cf45e1e35e70bccdb8e0795a",
+   "sha": "481d4d9b0cd596339c6ab53959ba591c2b51b5b36f06a45e539f736593ac1971",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/hit.webp": {
-   "sha": "0008c56fa1777d839167e83a709d7faeb938883601a150b9f2343d7f4a9c40d2",
+   "sha": "23f355893dadc60b7bc273859894573c501d8410241a8ff44e29823beeafbcc5",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/idle.webp": {
-   "sha": "11f8e0c51d2216684f4e02c03673b45ada21050ed4640b07a06483c0fd023f61",
+   "sha": "56405ba034b7a076dad71d5a04daad9c807dfe41f1dbe8b6408dda0b03ee8f4f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/joke.webp": {
-   "sha": "5fd7c2db0e6f85f70e6f94d105b8341c976d39cf7a571a22605074475eab122d",
+   "sha": "8dfbb13f7fb9d33771f6fefebea0befd5b87c1b3428b4c569fd1a7b1f6ca3d86",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/shove.webp": {
-   "sha": "0b9352a9642bd07e0708aea3a26bbd1ad6e436881276dce0089f6ccb679d22e3",
+   "sha": "73bcc1bdf44689df49b41d9e1a73f703c06e088f9461f8fb2af652a534ea18aa",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/fa-de-novela/walk.webp": {
-   "sha": "7463c5badad7eaeb87263d872840c3aa44c9be5e2dbb431a891abdc36c3e2d22",
+   "sha": "fc9f44d592122b70822a60da8fa49df762a9484c1000793c5dfdf5f910077e57",
    "ilhas": 0,
    "fails": []
   },
@@ -7974,27 +7974,27 @@
    "fails": []
   },
   "lite/enemies-pc/flanelinha-interdimensional/death.webp": {
-   "sha": "528c38243784e6cef2f97b2299dff2e57b0f6001feeeb7b8642eae24fbe6ed16",
+   "sha": "36f8146b1d807d3983e102567116961e4bb68d776bebf45611008ba9203f8a04",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/flanelinha-interdimensional/hit.webp": {
-   "sha": "15f9850c306eafb42d56a34bfaebed8494845d74fe6fd0d92044a2d71404929d",
+   "sha": "0ce47f55c01cc7c9bbd96fff7c77f3ef0c9dfb9ceb1cff64aca309ba31595bea",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/flanelinha-interdimensional/idle.webp": {
-   "sha": "8120ccd2d52dc68c0808edb8cda2ea3b78e45fcca6279476925d4a7933fa32b3",
+   "sha": "04cc1ab8ceed3e11c64bacda9ad48f83f71ebedb390884bd9ba18e4a8f6b0ca5",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/flanelinha-interdimensional/summon.webp": {
-   "sha": "ef87f4e0cfcb95c61bbdd99b3471943f1490b03324fe89967e6220b4fc3d99b2",
+   "sha": "d3dbfdac5ef7aa2fc83bee01f848ba613b36fd5e4d416652c155f421b3074119",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/flanelinha-interdimensional/walk.webp": {
-   "sha": "e16db6d7d1fa8faeca11a00cfa292ee9981ac25c0defcbcc26b3ba543afb1c25",
+   "sha": "e658112f040b5bc6bd3f6cd7255d9ddcf6838146aec97f3b785dd318a4561af0",
    "ilhas": 0,
    "fails": []
   },
@@ -8029,57 +8029,57 @@
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/death.webp": {
-   "sha": "c9441a7d6647364c61a21e3e943cad6c7c991f305329f24d60dab24993761729",
+   "sha": "dd827f10604b2a224d7c066f759c9c5cd021d596e30f02c165daa04c6ccdedc2",
    "ilhas": 75,
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/hit.webp": {
-   "sha": "5f406e2a0c41d2efe6049247b9ced376a1c4eb529f64d177b6082a1affe6f310",
+   "sha": "bf6ac0af33a6eaf51427168c639ab99037a22d3e7ae74c247a226821570eecee",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/idle.webp": {
-   "sha": "e4b3fe8bfe598eef2eb19588f7a13fa2fa08b4d9b2d10d6ec9533abcd7b77211",
+   "sha": "669b404a8870d53918407fa4e22fe203dcd32a8c12bb4d6221f2afb23879eb2d",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/joke.webp": {
-   "sha": "8700d1824fd1c035718e3e4d0e1a2f87c2560d5889e336bc5118af4ad78480da",
+   "sha": "c1624f1aca3f87647d174cdaea01dcfa090254e46155b4067f145a6f2b885003",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/shove.webp": {
-   "sha": "08e1890d32b9c00744a18041031c082257ee7656fa5097b8ab999e897f827974",
+   "sha": "5e67e4a3af7c4ff46ca6db1b9e6b98fe5ff835ada96d4ddf697ba3ce010ce544",
    "ilhas": 31,
    "fails": []
   },
   "lite/enemies-pc/forrozeiro-centrifugo/walk.webp": {
-   "sha": "889b552082ef65d42971aeddc46b728163a57fce60e874b92cfbfb523f7fd860",
+   "sha": "67290eafba2c3e6878759f6f0b977c85ad0c906147c88dcd9aea661bcd7059f9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/frango-de-academia/attack.webp": {
-   "sha": "ce1a9bef2267e2449bdc046766f9eab555c2f96d63014cc1b9d9d8b4265f3fbc",
+   "sha": "4319947b881c4e12e6b01d3830af7721dcd231d770ffe8bb16aaef2fa50b01fc",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/frango-de-academia/death.webp": {
-   "sha": "eb5d7b8bd8a90d2af1e09752979eb8d2d4c91edcba767b03ada7d87c669aa0f0",
+   "sha": "9e9305c74ad2ee03fe51c68072b40fbccd5978d679392581a9b37df6fa81af19",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies-pc/frango-de-academia/hit.webp": {
-   "sha": "e57ae1a36032ed64003b039a18f74a4b31e1df538523971c9597c22fafbbfe5e",
+   "sha": "a70f6fe997517670bb7fbeb57bc41ebb833aa7d14cfe9b7df701c48fdce758fa",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/frango-de-academia/idle.webp": {
-   "sha": "4cf66fa05278a0041668132a022327d8cb9fe1415413324599b545f06a1db741",
+   "sha": "ee8e6b29a49fa2d5b63cec8e49de26f0f314aba6e981b94b19a0359a9eca9dab",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/frango-de-academia/walk.webp": {
-   "sha": "a6fba655c8d0b950c35999fd7fa659552e6a953fa401e92cb38a26db0fe355a9",
+   "sha": "f9064711ef85d7e3bfb1309a72c25c9012a72f2d03705cd78af3c36d14519148",
    "ilhas": 0,
    "fails": []
   },
@@ -8879,22 +8879,22 @@
    "fails": []
   },
   "lite/enemies-pc/moco-do-gas/aim.webp": {
-   "sha": "0d346f71f0f6857e78b1266744274214097918a89623a1bf997d3d41804e8205",
+   "sha": "2f247e02000df1ce4bd9e9d944fa2630209395be612caf9298fe25fb274dbb12",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/moco-do-gas/charge.webp": {
-   "sha": "6f8bd8aef38b6ee82795dd48136e6b960221239bd0358ba186ebb17e05f2fc4c",
+   "sha": "f3f6287faae914f3009f279c80f83089e1be5ee753de732d9be3899000d6d3ae",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/moco-do-gas/crash.webp": {
-   "sha": "4f9f5725b71dd8f796e2165860aad435f74468074dd2e48a9cff078e263206aa",
+   "sha": "8641684411f0a85fc01ea8bb4a15be34ca6abe050646fbfdda16c57ade39e7af",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/moco-do-gas/idle.webp": {
-   "sha": "12440ca3ccfa18637024ade48c78b2b515a176c5ce022301c5d5856fca386709",
+   "sha": "be6f2ce2d785b2b1c3dabe6161e2708cc4ad044e94d45c9870ca0d351bf25b2b",
    "ilhas": 0,
    "fails": []
   },
@@ -9064,32 +9064,32 @@
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/death.webp": {
-   "sha": "2e8530830b60db239f0a7c1cba68565f7e08da98d675f478da5adde24d409806",
+   "sha": "1d0718bff7959e99c6ae1dd9d5299ed2e1c1030716467b785e13f5bf1b7c453e",
    "ilhas": 17,
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/hit.webp": {
-   "sha": "af9d09290740ac5c416dc093b6e6ed5e73df264d7125a87fed797f7fbf008316",
+   "sha": "5921b8bdf34e33e285760843eb15ba2e85dec9b3ed2022090f9ad0865c4613f7",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/idle.webp": {
-   "sha": "73ea495edb83ebad4e425228e37f6b7144854fa9c67b14168c7164a5903bbb4e",
+   "sha": "18eb0431c05a14ac0a5f95b73aa77b5f821d7c5bf1992aeabf0d390501790dc3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/joke.webp": {
-   "sha": "ac4dfba2159f1598ec3ceff2b949a8d780a93aeda915139d8cde8eb4cf54d830",
+   "sha": "5071e4e87494daba14d5a133b1a147e99a8f1fb548e20fec7c92753ac70ee233",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/shove.webp": {
-   "sha": "9f3700f55404f4f0e090471524d96d7873d2f14ff396deed20946782c9fc5b55",
+   "sha": "be72b16c8bb8a3d13b981044f8ca184c56065b71360c007c54e66ab4459f1a01",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/palhaco-de-aniversario/walk.webp": {
-   "sha": "81c121246a0a96ca0d2e73ee79955238575712d414ca69f5630384caa63d776a",
+   "sha": "ac9dd35dc2d042ae67061a04720939ee2a3caee19691e0771ca7c5cd71e13d37",
    "ilhas": 0,
    "fails": []
   },
@@ -9369,57 +9369,57 @@
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/death.webp": {
-   "sha": "a6d9b423b3bd37e667f7e51c8e42d7a99f23442c5f28ce9882da020c447d1b91",
+   "sha": "fef32a982587755edf93c89dc872cfac7b137a5139ff9320568a7a276d99231e",
    "ilhas": 43,
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/hit.webp": {
-   "sha": "8ec4b6decdcc89b43e8dbbe0220cf54aeded669af249d635fefa6ea5b69d921f",
+   "sha": "fce6dd1f114e7dcc0d4ef08ffae2633845e5a06e640d3e07919cf9d9413b78c8",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/idle.webp": {
-   "sha": "f67bd00b110fff82d19f86df05cb98b7940d796ebba2b7eba24507036ab31c65",
+   "sha": "fa344780550dfbc0404655681ebdc13da3349d7333b9575d23573ba0d6d4128f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/joke.webp": {
-   "sha": "27e3f07803b74a0bf0cddc822196098d4ca38dc2dd5d0a94adb48a6bdb1c0ae1",
+   "sha": "95210103fd69509c0f5ba68179c665f47b3e27d7d2522af5948c5ac42eed3a66",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/shove.webp": {
-   "sha": "8047979faf93ade96f2b01c4eb74022c7e194425b7b5e5d1f042a60c3ec64d4a",
+   "sha": "42d8ac8251bcbe1b9816e724adca45526f31fe2b1d5d29c201c3f3a3e16351c9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/primo-do-violao/walk.webp": {
-   "sha": "544871d6f4cf261766059571cf79954072573b54bba383911ac1714450d5eade",
+   "sha": "e73a3d7603e3215ddb430af311c9aa43da2c06d1be4b6a7252e39c2c3f4b964e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/promotor-infinito/death.webp": {
-   "sha": "528db58d2876c5e7eb1d58b1e35f46798e23b49e6ea18b9730b8b727f44025a8",
+   "sha": "e978741c806602b6de1334e87b877db5459a32ca9b2a1892c7169a0cc32d0a6c",
    "ilhas": 52,
    "fails": []
   },
   "lite/enemies-pc/promotor-infinito/hit.webp": {
-   "sha": "469ac7a845f827cc8f36b6992da5294f926e38354dad5c515eff158d57a2ab5b",
+   "sha": "e18c626661ee3699ca11813fee6cd2e4d0a76be1208dc35c54b2aa288553f803",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies-pc/promotor-infinito/idle.webp": {
-   "sha": "ce6437a2af81e749979ba9edbd80d0331dbb3a4529b8e35f047f2483b980767e",
+   "sha": "a4d19faf5a54a66746bd5f838d322556b10108333a9a5654d49d467a9a9f321e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/promotor-infinito/lecture.webp": {
-   "sha": "e7dca6a195d3ab81632a304ce42f70c6dcbcef2697d297c7e22b1bfe576e4997",
+   "sha": "93ad572e358cf55e3ecdc17cc44229709ba4d2bb1df3c0998eeb36856f6d0df5",
    "ilhas": 2,
    "fails": []
   },
   "lite/enemies-pc/promotor-infinito/walk.webp": {
-   "sha": "7675f4eb10cb49b50d57289edf9cde7e64650e8b5d47c055b2fb319384c1fc60",
+   "sha": "a1d48c2d6eee87553f0295fe7ef60dc63b0d9e50a64dc9d28adbaf4d045c0785",
    "ilhas": 0,
    "fails": []
   },
@@ -9944,32 +9944,32 @@
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/death.webp": {
-   "sha": "274a409d4679fb6ca55c2112eb341198aa742c728f1a481ae9b0c540148aaa98",
+   "sha": "b98a63a179740b84014fd2c9bc7519b14fff818134aefdab9a7a536ac7b86357",
    "ilhas": 100,
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/hit.webp": {
-   "sha": "2662d4445b158dfa696c225c16dd710fa3844e482a37d83bdacd5a9a207c5d73",
+   "sha": "7d2d8fabbcbed620879cb34d7d4ff0c959dd91343224bbb4b4a285da2878106a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/idle.webp": {
-   "sha": "051362a6611e34ae956e2d5c6ce8c8ce88fdfca4395b438becfaa9cb580c3b49",
+   "sha": "41f5d8d2044642f076b3372c70b233ff385b2153eed8966ff71241d9b730c151",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/joke.webp": {
-   "sha": "c81784263059c70bf122c6a5d0f7ed7ac7f50ecb68d12b0154d6a287fc21f894",
+   "sha": "0f17c20fe11295b8d5918ededf6a2583a8f7a1f20bc4a787ae5eaa3f9bd29d83",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/shove.webp": {
-   "sha": "ceb26cc0f6a4963d15080880b4dfdc39e28d9ef69fcec6e01a0f5df624e2cc1f",
+   "sha": "83a4aeafd0933903c0499d6957b6168f0878337877131c2cf848ef63a5e23163",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/sommelier-de-ipa/walk.webp": {
-   "sha": "f0b31c282afe1df7607d5814cc9bd22a59d74448a5bc239e630d40da20a24a33",
+   "sha": "f4f45b2cdc9a638f8bc24b3a680d57d9a66ff4622a8a48e94cdf77b3ea34fbf6",
    "ilhas": 0,
    "fails": []
   },
@@ -10054,32 +10054,32 @@
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/charge.webp": {
-   "sha": "0e4d7cec7bce6e6dd8ada70e363cd96d22be065289bc04b89d08b7ef23b92c74",
+   "sha": "10eafa813e05afca7e188466ab65073adb173beb9d653b91b7897ba1702162ed",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/death.webp": {
-   "sha": "a000b2d4c73050897c3764d36c4df667e48b0a4ca96ae6e342e5b349755b8a73",
+   "sha": "8c160c1d24eede04c03ffceb7020f51c3f6f87d5f52fddfa6f32d4b677162a98",
    "ilhas": 72,
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/hit.webp": {
-   "sha": "8239a95cbd55b26ed9f9a43d097a4ea8b01ea8c82751baa3d0d4d69038fe764a",
+   "sha": "7aff9684cbbc8e057181342ec0724f17d279941380580aa252dfc727d1dc2129",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/idle.webp": {
-   "sha": "44fc773a722637fbed73dd8d446e9cce60391ee65ee4e95eb92740b955bd55c3",
+   "sha": "7095140c5f7a587c07dd8ed32b3fd7e8833a4f7ba921a59355ec476ab815e4c6",
    "ilhas": 2,
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/slam.webp": {
-   "sha": "295543fe1bb87d4a1b775bca31721a9818e7940f6ef0488cadd5291ea2868509",
+   "sha": "4b9d74490d50eb9e18f9cc0efd74c124a32b1fbb17713436787316b9f001e328",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies-pc/tia-do-pudim/walk.webp": {
-   "sha": "3ea46b6ffdaaa34015a8d17656e4952189119998d4dc1e83c25ce7e19a3f1b40",
+   "sha": "d712c106574887f469e91d14b8e5cc8fe6e51ed092dbd64cec7692183e12e3d1",
    "ilhas": 0,
    "fails": []
   },
@@ -10159,32 +10159,32 @@
    "fails": []
   },
   "lite/enemies-pc/tio-pave/death.webp": {
-   "sha": "aa3d1e32aca7760b53219b1c4471bfe9ea51c4c96d0ee7076cfc0c8f411b8f31",
+   "sha": "0eab411586500403421a823eefa4b1dd0a1746d8d726015e53398920beb14b7a",
    "ilhas": 115,
    "fails": []
   },
   "lite/enemies-pc/tio-pave/hit.webp": {
-   "sha": "844277dd8f310727394d33be67c63da50f47e9c32e90f271970db01eb3769d00",
+   "sha": "b49a6523f1cbf1d27de4bb8fedc8f83ced84fe373b803eaf921354c47faf3035",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies-pc/tio-pave/idle.webp": {
-   "sha": "a12043419d46344db0256b674e6c06f467ed9a4701a2269627c9ca679f57005d",
+   "sha": "4ec16edbd75d5a847ceebfd8d9a0fd6af3153d927bc92b18452df3012e57c03f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/tio-pave/joke.webp": {
-   "sha": "95381ceda9eb53cce79b376c67618b752cca628967fe97e01e7544e14bd4acd6",
+   "sha": "d9e1967534cf8e0541114e631ebb096efacee759ed454e07b9208318193a5094",
    "ilhas": 29,
    "fails": []
   },
   "lite/enemies-pc/tio-pave/shove.webp": {
-   "sha": "25a34fbcb626965072fb09a965dc66565f7f47ff7aab136a3a98e2b082f4d653",
+   "sha": "839d0bc264b524ea8fb209c73d87abb09cd3b8824d86f52bb3d762b4b616630b",
    "ilhas": 8,
    "fails": []
   },
   "lite/enemies-pc/tio-pave/walk.webp": {
-   "sha": "499899675766cf626cf20d891ee1c6f288ff1047846e1cbcc1960bdfa1d3d273",
+   "sha": "702d8ae3ce705a14c98523af99aff3bf9b510ebd76ad193a92779d07cc3a8ed3",
    "ilhas": 19,
    "fails": []
   },
@@ -10219,42 +10219,42 @@
    "fails": []
   },
   "lite/enemies-pc/torcedor-fanatico/death.webp": {
-   "sha": "669d1b890e08da395a6f418b2fb65bb8c97de4c159698a5cecf889e028298502",
+   "sha": "1dc329dfb962a543e642848ce3bab60ec2b3991a25bc84d63e7c13e1045993fe",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/torcedor-fanatico/hit.webp": {
-   "sha": "81da5f486cb61a4b1f6d24f9a21658932284ec79f864493f9bc9e843498eecd3",
+   "sha": "84cbcf4a855d7fedb383244fbabe68e7fedda160ce22394d0d0dc88d05e1ec0f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/torcedor-fanatico/idle.webp": {
-   "sha": "80bf9c442222a88791b6e1e3eeb2e41bebf40c9f2830f71078d2879482bb7c39",
+   "sha": "cf6e57f3f169b1968bd698275fc0498fb880807e71b5266ecff927214564f92b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/torcedor-fanatico/shove.webp": {
-   "sha": "424a150a4dd0e82a98edbac31f63cd633461ede684bafb1b0e85c9c4c7f8f9f7",
+   "sha": "602ebd0bcfb4ade0e4c88912d48e2db92c8d1b57f84f29f2b2ad3f68714b8fbe",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/torcedor-fanatico/walk.webp": {
-   "sha": "db83a541a9265d562a9b28953889daf4251305944d6b2eaa65d741de1a91a2a6",
+   "sha": "a8e593a4ea186d7d8292e3e88ab256105af9698597823eaf94c96a7d83851ba4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/trenzinho-da-festa/attack.webp": {
-   "sha": "d2832af316ab44131dd28db134f4456b9a1c793038b5c7d125a20c0262edcea5",
+   "sha": "c355ced79c09c82adc61be0c7d0e8a169816e279f9c6f78ccf8377381f0e9da4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/trenzinho-da-festa/death.webp": {
-   "sha": "8b52dc2de522f2d85c4f6dc6aea11d5e0b57e31af9cd89e7c80806f90b531c0b",
+   "sha": "67ae8e917936cb598fc72f80a5991cf8cb31ee38de3bd652662b3434950fabf7",
    "ilhas": 8,
    "fails": []
   },
   "lite/enemies-pc/trenzinho-da-festa/walk.webp": {
-   "sha": "2615bc36fdfd1622948e27afca69d1d7b257c5eecf2c9c290f9d8d49bb1178a8",
+   "sha": "a675ded6c0599a9e65c2216fee5434c22f9209d4a57f81ccdbb89886844cdcf8",
    "ilhas": 0,
    "fails": []
   },
@@ -10494,72 +10494,72 @@
    "fails": []
   },
   "lite/enemies/agiota/death.webp": {
-   "sha": "18ac660aa3e08b3a75b95f0964c7598a8a1d006e56df737e742459f54f84aa48",
+   "sha": "ec668fa75ba6f050814fa70254d96073ec4d2586d334fa91df6e67cb4e3017e3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/agiota/hit.webp": {
-   "sha": "8bc26d94c6692e8c0b1821df7dc0fa7fe3ded84611810dd429f03ae001a66637",
+   "sha": "e8d826030d2f7f293d6650c588a8b4f700d0e426d7f79b35c506abd805f3cabc",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/agiota/idle.webp": {
-   "sha": "cca02723779624e5b90d84491e6c35d53e422309294c509c5c0565d5565c18d3",
+   "sha": "0225e7b211b2c9fa024397dc91512bb252b55c39216827d104186a44c6b269ba",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/agiota/sleep.webp": {
-   "sha": "aafb2c15d13dafc9468c84e0153270811463294f6f50afdea346740d69116c42",
+   "sha": "57b9c80bb4508b32f6f6c42b195e99a6d3619ec8993abfe8980950f1fd2d190e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/agiota/throw.webp": {
-   "sha": "b0366958926bf6bced2a0f32ca1bf7e2deed0db90221688bb0c5d1ab4c6eab3b",
+   "sha": "65523681f715263ab52ffae2020ad79f05bc2fa39d8d661655d491326ae179b2",
    "ilhas": 3,
    "fails": []
   },
   "lite/enemies/agiota/wake.webp": {
-   "sha": "d124b2340292740d8687b91409e77699f13c3ceeaf14eab6c7f7a06b2bf29725",
+   "sha": "4e656217740561c065e76cbf2c8a8b75a3efe288fd1424533d5178ae417211d2",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/agiota/walk.webp": {
-   "sha": "389f0e1fd8433ed3c3f1b80493115e54e2b84201582a2951c759a1ea62fea2b5",
+   "sha": "78b04f24b16e407798e235b40adf5f20a4b776fefaea32ea0a42448de391306d",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/alambiqueiro/death.webp": {
-   "sha": "6ff6ac3f0f5eb4dada46197adc9fa1ba018865714e425f48eac1891f7434db92",
+   "sha": "9dd7275c3c4ca58ead4b06bfc5c1fb1d1be4077eca863644938e4ff1f069f074",
    "ilhas": 12,
    "fails": []
   },
   "lite/enemies/alambiqueiro/hit.webp": {
-   "sha": "dd6500623b8b9dc4374b8fcc90154d5c04cd9a5920f755c3f6b23109d665dbc9",
+   "sha": "5979c77387b89826ee07b4b8e2474ecef17b3920ad8cc32903eaddf9eb8e25b0",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/alambiqueiro/idle.webp": {
-   "sha": "b8954bae126c469f7f6047f8ab0b9885e23c3be6f4750e776fe51d6209491d54",
+   "sha": "62f0b952cd703bc32a59a9723d259e3ddc1b9a0ed7608ba71a7d4b1c714fd096",
    "ilhas": 2,
    "fails": []
   },
   "lite/enemies/alambiqueiro/sleep.webp": {
-   "sha": "d566305f32186209e27d094476321f92e78d98bca688aa93b592fab50ffb9851",
+   "sha": "b1b26754b3dd3547823dbc953de5297a9e11fb61f1ada4dc5bcac5df981e1dc3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/alambiqueiro/throw.webp": {
-   "sha": "00a137d5aecc817e3f3e82f38681f7aa07ec93f4aae98afe02de159c176eaa0a",
+   "sha": "c6029ee289d8c5b28dacae04e1c2179e741400e982a64f8f9e7f1bc8d761b9a6",
    "ilhas": 12,
    "fails": []
   },
   "lite/enemies/alambiqueiro/wake.webp": {
-   "sha": "dea0960aa45ec7e6ca7ec292df6742fd483d52a9a43178ae1085ce682362565f",
+   "sha": "97af4f278e6bf07d8b0a856a8b9d70138af569f046a61fc8909ecd2299c5e639",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/alambiqueiro/walk.webp": {
-   "sha": "3726b7fdd49e70276a38ece2da9101f1a65cc36fcfafc99aaf75148812a2ca24",
+   "sha": "63c61fa98c8466d59f0c183473bae01ed53359a106886f796e3df24ae05be1fa",
    "ilhas": 0,
    "fails": []
   },
@@ -10599,37 +10599,37 @@
    "fails": []
   },
   "lite/enemies/anao-molotov/death.webp": {
-   "sha": "e7887c90331e817753bd1f6c280bab7b9c4a92031166548a6de80f6acfb6e58c",
+   "sha": "66a7da7b367e5ff06e1d8491aed67f39a87896c2754e802ea22de3278813113e",
    "ilhas": 28,
    "fails": []
   },
   "lite/enemies/anao-molotov/hit.webp": {
-   "sha": "3c901c99bf2be6a017505110a8d1b41cae2f220069f3dedca3041631a4251ef7",
+   "sha": "35bdf482644e49694b4d2bd8fc82ef0b6488f7aa2d6fdfc26d2eabfe6e9f8cb7",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/anao-molotov/idle.webp": {
-   "sha": "cfe7029c8956048d67bc166f8d4d6d34fbd41fb1749ce022570516519f2d82f2",
+   "sha": "5c85f45661e9f2b3f4f934a2bffec35c08c2f4ee259f7919125bfd1d4fd84969",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/anao-molotov/sleep.webp": {
-   "sha": "31a94c3cc1f21993112f37b3db2eab91fda0adf91e852e5b7c9470d1c9dafaa3",
+   "sha": "4ebe2e755d93be69a9c9345054ab05b74e6d105b1d4e1f016f3b46df356e5b36",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/anao-molotov/throw.webp": {
-   "sha": "6b4a9626b23c0849d4270ab2d94b56ce00123791256f468d8ee1c9a3a71bb1bb",
+   "sha": "6e666575b3d01c73cb4a386bbc7d84d602ba4e218ca495a275df34f60929217a",
    "ilhas": 14,
    "fails": []
   },
   "lite/enemies/anao-molotov/wake.webp": {
-   "sha": "64345d38b24c33e5f1c485938f1a94e9cea194502dff7b00979d61c09ba74d19",
+   "sha": "c0da85dc8fa68b4a5bddb46dacbc4d34a20cdcc59ad8dd78eda8cf46a7de10f0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/anao-molotov/walk.webp": {
-   "sha": "dbf1e17df494c995b6fce96ca18e5ff301f9941bfa58eba9b0baa61546f72dd3",
+   "sha": "ba585d7cba11ef92d775b13052b993eca300b50f1eaf18ccc31b8e1f288f0e05",
    "ilhas": 2,
    "fails": []
   },
@@ -10884,37 +10884,37 @@
    "fails": []
   },
   "lite/enemies/bebado/attack.webp": {
-   "sha": "2167cf4427313f227f0d3fba593a74cfff7224a2711f1741ced29766b07a3e27",
+   "sha": "1c3643c357a5cd9637aa6d7ecea9ad898b59da434f6e49b16a515f322194cc5f",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/bebado/death.webp": {
-   "sha": "1b60b31ac2239ac952da078a37b95d3808306f71c8cf99d14dbedec45037bb29",
+   "sha": "c3dc7844c7adb3a06674c830fd1fb9948fc648bfe97e8221169c59e359965ee7",
    "ilhas": 3,
    "fails": []
   },
   "lite/enemies/bebado/hit.webp": {
-   "sha": "32c78453516ad8efc24940667a8baddbcb34a080a0b5efcfbdf4a5b6274c0b12",
+   "sha": "ca1bc348fee9317eae36478a6b06dab53547febb2ff2f349bebfbcb3051563d3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/bebado/idle.webp": {
-   "sha": "c539c0cd1fd37e86a3d522cf35464b19a20de7349b9a679b69a9c4801ccecf8b",
+   "sha": "1f585ab86dbb9161a357b6793d649628b128846e428c61a2d8aeecf8324742e9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/bebado/sleep.webp": {
-   "sha": "36b4b96a70cb7ca800b8e13f96ce344c0c6f3c56a5dd139c25bcada57e09eb62",
+   "sha": "fc29ed114fc370a349f73c6ba6af04e2a225e70dd9ba0dc56703b93447d34fa9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/bebado/wake.webp": {
-   "sha": "0c573160d5c77a1efbe1b78220232f622b87a971c24645659722a9e31ce9d682",
+   "sha": "21a6188d56b0c3a6bb669db45a444dd7b2360bbb726d52ef55cc583144d24528",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/bebado/walk.webp": {
-   "sha": "a3cbd157960d2b09ef365d5e65e32e3e58fcc61fad78aadb6b9796a1a2357dff",
+   "sha": "fb45f248619419fa6ef56bce451f46c4d1f9182f991e1641624e3446f6731240",
    "ilhas": 0,
    "fails": []
   },
@@ -11499,32 +11499,32 @@
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/aim.webp": {
-   "sha": "2b0e18a67dca7ff5b7ae90a73f38c4245423b292363304d54d0c3b422a8af40f",
+   "sha": "697263b6141cd3d37f3bf2b4ae0c7f8f987036327331b3628734b8ae24d5f78d",
    "ilhas": 6,
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/charge.webp": {
-   "sha": "7f4f4294520a8161fbff4b4b709290d5e20257019576372a59676b8227f87604",
+   "sha": "1ef31137d1ebea4a3fe5c2a0bb692619c1ebe7e914ae02049588bf3db0050e7b",
    "ilhas": 9,
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/crash.webp": {
-   "sha": "b122f284dc29ae8864eb229db248fe5457150bb2af50cac237aca20d7870a3f0",
+   "sha": "c4b2041b94456a2353444b5ee2e24b1a7d9757128438fabedb4d375f1ff49c01",
    "ilhas": 8,
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/idle.webp": {
-   "sha": "c1dc410d4128340011d7b048411afed08a51c592e8c4fc4c0d8be37213eea386",
+   "sha": "e36286905473ff981d58b5a2edabad67fb50e56e0e9b7cf3b263c3482173e807",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/sleep.webp": {
-   "sha": "818295372b29f4f4a24f4c1d0626d7649f398d5a85ab6eb69970726434f0b20e",
+   "sha": "cbaac20dca53e5a1f5f3c7e3029b553a0ab02ce4b72283c704fb0e9a300353e1",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/carrinho-da-vo/wake.webp": {
-   "sha": "203a499adfaf07731f30bbbc02d7a112c3e5c6e051dc82ba95d39a59233909d1",
+   "sha": "216283fb83ac0d44d1e470e68c6c88b8a4478ef6ccf96ca8138c1afec4eb9173",
    "ilhas": 0,
    "fails": []
   },
@@ -11569,57 +11569,57 @@
    "fails": []
   },
   "lite/enemies/chefe/charge.webp": {
-   "sha": "35518906d05365b53fd62e4e63267f0699efe9346ae633c93c42e0eb1e9e58d6",
+   "sha": "98808ab76f3bae685cf34db0f6dd8611fa43af0b4aa4497972d32c10f1dd3e09",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/chefe/death-p1.webp": {
-   "sha": "3baa0a854137ee785d3adc2ef83c17c24cf775943d9c4b79317c4cc6f2c29600",
+   "sha": "c9ba080bff229a1e6f21b3d1afb634a63cdc2a73fbb5de7a637541519a62d7bb",
    "ilhas": 27,
    "fails": []
   },
   "lite/enemies/chefe/death-p2.webp": {
-   "sha": "c4740d173ca07711ae0e76560ceb5469dd402f632271ea5d528ae59fa83db301",
+   "sha": "36a3ea41ca4ad9d42cc926c7d2d2715dae2ff3fdf7f41fc73a046dd8438e859c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/hit.webp": {
-   "sha": "fc38adc93555286e256a4910e4e2a935ce12b19f205aab9288f9798282eba781",
+   "sha": "fa67e2bfaf67facc7bf1c8d7ead46f6b348a7292434a9e1feb3c69daf1a0c2c0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/idle.webp": {
-   "sha": "698f810a9c9535f7fe1379ab30e8fb6e789a9bd0b3fc9f008b77fc43cff6bb85",
+   "sha": "375b66c016224167bc6ba8afc400ea3baa2326100c637600fbd8231e7d8ade68",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/phase2-idle.webp": {
-   "sha": "691e3d747fea9249b529c55353e7ca9e4de0186f7fc5d479d703b9bb2dffde1e",
+   "sha": "d16f9b60a87374d25449e5a40d3c1a3b64f866e94aa3b58d4d83b88dd0ec7b5c",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/chefe/slam.webp": {
-   "sha": "36dcffa01ce229a9205a06ba1401dc3ebea8cdc3914fac1d7d9683774e5dbec6",
+   "sha": "b90a80b4081ef44b4f06e8c1c51c5ec6e5bc85e096ccd5143f9892c58d4dbcac",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/sleep.webp": {
-   "sha": "595e79ebbd3554f1901b8eb82f1370e73f72065b12836af6de1bdcb12cda478a",
+   "sha": "f239d916bab823d0088c49b237962a939d367671d62472d5fa6469315e1399a4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/summon.webp": {
-   "sha": "765be410a8f8e523f3af88e3945062e9283e2a4147887e8e1aff6c51c8f0a504",
+   "sha": "76c4ba7ac089bef75aedf300e6c9dadc7035e70730ebfff5f114196b52e7bdfa",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/chefe/wake.webp": {
-   "sha": "0102cefcbddd70c44a3395b3c669eaf76a39cc217a823343d7a04415fb73b42f",
+   "sha": "d96aa402a6760b927d5002901e425a7d056d37dc0f0b8116940387466856205f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/chefe/walk.webp": {
-   "sha": "cc0b0d76b1712dfb5f5fc489bbe875ff4cfac39f0ea45a3434161e0bc61657a6",
+   "sha": "206214ac88e9e8c8e3ab394b7b3c526c919afa581c176a6b9e22aeb7d9c0a746",
    "ilhas": 0,
    "fails": []
   },
@@ -11694,37 +11694,37 @@
    "fails": []
   },
   "lite/enemies/coach/death.webp": {
-   "sha": "0d9489a35a82570df65e01d7f0c39219f6a81a2731340b3f554b7ff8cb0e49ba",
+   "sha": "a380d491c667cbd7004744954a258b43ca2f1b319b3e4b6d467c5669e38f075a",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies/coach/hit.webp": {
-   "sha": "4a05f44d5348a21f676dd0d72a665552775f75478c83bf385835f4fca05a1c60",
+   "sha": "338de18cc02d9569b46cc0d40b3d1a08ffcb656465630d8e354bd83192c12453",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/coach/idle.webp": {
-   "sha": "b3d10cbaadcdd0f9ef15fced334ddf1865d9c5775e9c7ad7da894d08b3503e35",
+   "sha": "68dbecd8cd1983645635c8fceb4d25152eecd3006e18ba5d946ec977afa95a47",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/coach/lecture.webp": {
-   "sha": "98971064edf2bb7f994247c02f798b408d274bfabc8043095a2ab02421096f00",
+   "sha": "e35f6a8d923aae81fb5d6a7992dc63314208e1766e09ff1bf36f778294ee01c8",
    "ilhas": 10,
    "fails": []
   },
   "lite/enemies/coach/sleep.webp": {
-   "sha": "e7af455cf57f17499492e1bda0b202b44cf7d12ba9bd7a09e482f4dc9788f7f0",
+   "sha": "a0f169433deef762a65dd55a382a50c1b38bfc03e98bed72c40306201d8003a4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/coach/wake.webp": {
-   "sha": "700cc663314b4d847defe6a6ba1bcd76c4eec6c66de3e9d876967a21ce12e0ef",
+   "sha": "b4ab687dc391981d704f79b6ec89020d92bc0fa3eb87b075b5d686141ac2413f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/coach/walk.webp": {
-   "sha": "fa10733849ef03c786b42e5f63984e1788235cc76219519003299c7c4b431ba5",
+   "sha": "9683b5ad759df7d2be30ebd4888ff10b96c0b84a7ce564de9ae6b5d63d74b21e",
    "ilhas": 0,
    "fails": []
   },
@@ -11764,37 +11764,37 @@
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/attack.webp": {
-   "sha": "dec91d554c5184312764ef03525be3058b2cae10caa88d09ca79c81bf44411aa",
+   "sha": "3eaf91a0c53328f8970511486642ad205704ed3f7865791722e24bff44ff9e9c",
    "ilhas": 23,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/death.webp": {
-   "sha": "4b2fa78e4cd93b15a9981e54fa8cc467da42b298c7eccf80aa8e33aa7261e658",
+   "sha": "1b10e0db8d6bed79771661ea465a2a4e8b46463b44339aa7d901984f43c2b3fc",
    "ilhas": 28,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/hit.webp": {
-   "sha": "851953618004f3bbaf9e4b858b30296bd4f65b8a09f0381671eb037b5f8ee33a",
+   "sha": "dafc67533ee97adcf2cafc35f9a2c6fecc31e545a13446ab5b00459af89a5d32",
    "ilhas": 7,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/idle.webp": {
-   "sha": "1decf36ea7e8cb87a99b8e9ed5a1a81e69b039f530b5cf23a5eaeafbc0af6978",
+   "sha": "d47e970958f0a78f35f234673a000816ee27e7f3d03517a27d3c0060de70d6b9",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/sleep.webp": {
-   "sha": "61040704cda7168f049ac9a65a042e9aebff82f0c2d59d48cbd75e996324fdcc",
+   "sha": "fa4235e413adc70a38c7456c07b8e60683f54b78aa3899eff84365e7af3a1a25",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/wake.webp": {
-   "sha": "80e2ae5c62b953623b775235ab2c480e0a74a288c83fd80d78aec86a2e293f2d",
+   "sha": "d7d198713a7c94c8cf156c33a1f8adc5218917a67db3e2b1cdf14df6bc74e527",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/walk.webp": {
-   "sha": "bdf18387f18fb99cfceb58a59de4e6824fb2e4549d102744e5e0c6b81f836b11",
+   "sha": "ac72eb9460151844e71cc528f2f09b6d355bcace9cea4e3f5bb260c84507d5ad",
    "ilhas": 7,
    "fails": []
   },
@@ -12084,37 +12084,37 @@
    "fails": []
   },
   "lite/enemies/cupim-mansao/death.webp": {
-   "sha": "e24e774b7d7fe6c8ce2695f472472b297f09db3670f51c4b0b27df1a5d01fb2b",
+   "sha": "b2b3617e9b0de1ef06e7f9d8a74f217a192f23d2e9e412a4c0a77e808da1f136",
    "ilhas": 3,
    "fails": []
   },
   "lite/enemies/cupim-mansao/hit.webp": {
-   "sha": "29be9dc4966ba88db578460d9e0319baabbd010756edda0471d3e4de6148433d",
+   "sha": "350714fcdff7701d83f7a299b23b42115157d94cc53e0e9e2b0dc10d9081cba6",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cupim-mansao/idle.webp": {
-   "sha": "ab0ec1a63e5f39e4fd807f61e42acd47e406a81972544292ce1874be16b78389",
+   "sha": "c49065cb87fbbb650ed76ff7c612fad376c66ee53fe47d472c894c7309e54ad2",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cupim-mansao/shove.webp": {
-   "sha": "13c311c0884ea7ea3bd85fe9c6facd585b4609b12d185faba17ede665345fe09",
+   "sha": "1babdcda4b912c8af6e2dc66e226382418a9d5b73b3a4a6fe209f127475b39ad",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cupim-mansao/sleep.webp": {
-   "sha": "3d4d25556e0bbf5e863c0f290bfabc5483be6c33dc992b03e7d5717161c1546e",
+   "sha": "7022fd7319e6fb4e646292e767115e36783a9530b23f1c21f6f5129bdbad52b6",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cupim-mansao/wake.webp": {
-   "sha": "0fa1c62d7ba657651b15491531f8e79752793a31442c4b7f0be39dd9b60830e2",
+   "sha": "15271f743678e5065075741eff92e61d6d961ea59ef98857041c8ad58d4edbc0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/cupim-mansao/walk.webp": {
-   "sha": "528f54b4ea13b0816e57ff8828fd373e24f0e8de5cf2354e9bc0d92b3cf1ca57",
+   "sha": "226691c58fa8af7f453ff077c47bbb0cc1aa4d2208a5bb725c2dd7fe0111f0d3",
    "ilhas": 0,
    "fails": []
   },
@@ -12969,42 +12969,42 @@
    "fails": []
   },
   "lite/enemies/fa-de-novela/death.webp": {
-   "sha": "87b34e04bf4d1322f32a138a44aa60511f3655e15e1d356e5c19dd1e1120cdb6",
+   "sha": "43ec6d45645fa43cbf80539e4928714c911b252e45ab7e53ca78ce5150583eac",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/hit.webp": {
-   "sha": "cffa68973c952491b706c8e1127cce4057f2d8359b3a3ca7c2b0341a3b499387",
+   "sha": "5eb8bf264bfaf556ca11db09248868ec2e781392500569bd1c705f6030fff817",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/idle.webp": {
-   "sha": "2e9e3674da82effd763e2009bd61d9d4b2437e01c0be48a2dbeef523eb0149fc",
+   "sha": "9ffbfaa1cc24aeed79407fc141809713fbbce3c5acfb3f5c99e56d68d5c128d8",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/joke.webp": {
-   "sha": "44d5ba303e23dacc4e5434aae1428238b94cd759ca385e2c04e10e6255d10cd5",
+   "sha": "4603d3d4446f32c19eaba9c6c5c7435cc63b6feb04ab2ade804eefd246e77eae",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/shove.webp": {
-   "sha": "2497f249fbcf60001c7144622787b7b07dc0d75302a81c4b7f589341edf2e4c1",
+   "sha": "9564912671a2c2e70b785ed24b87a7ad961e1bd6ca8c224109ca7258e5281ca4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/sleep.webp": {
-   "sha": "48684ca87d215d91003779168a99de676595d1289d5d81b9ef673aea7bd34679",
+   "sha": "0310bbcd1f8265fefa65b82aa9fadb5f75d02c1a575e9a636d458abe474e0f52",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/wake.webp": {
-   "sha": "052f4801473bcbc1b8192dd7a28b86c69e08045ee557e1f0ec834a7373e319ba",
+   "sha": "7ea291ddd321e60d9fa3c3bcf008e531bb3695b155e69ecba47dba287db2a3a6",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/fa-de-novela/walk.webp": {
-   "sha": "ab553b6f4affab94b3e402162779f686caf8af57031fe2dc8fad23e1731278a4",
+   "sha": "4e5b1f6f3617d26cad108fe4d83ce4a47304b10eb0000c4aa950f52cdb84977d",
    "ilhas": 0,
    "fails": []
   },
@@ -13084,37 +13084,37 @@
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/death.webp": {
-   "sha": "76e659066a77848d8ebfb9d16bdfba4b8efde069fcf7c3dd8154e4d0a98be7de",
+   "sha": "c50de1081be48e38f7eeb4ced59e93786f2f5437e125c3b1613454525a54247b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/hit.webp": {
-   "sha": "3fff38ffa96d26b4f411ab1acec7008f7f32844ddbdbde30e5ecd16e0fd1038b",
+   "sha": "c8f1c3412f959e955815bb0bd361759fe495225c3828ad319fed3480b20dfe40",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/idle.webp": {
-   "sha": "b163d328e6d0df9cabdd1c2649d05ad899f288a2704e9f76ea02e4f0d0e7c7ed",
+   "sha": "4087c403d98354ced4edb23c15462736771b2539854937a4f7f89da3d403cf50",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/sleep.webp": {
-   "sha": "46780a0fc770ba18cb02f056f84a16b1e0411c4aeed86efef7f4dff40de1e255",
+   "sha": "a916acff1516ca5c6bbe97b38184f588f4ad86113d92fe055ad71451a5d6234a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/summon.webp": {
-   "sha": "1d39deacefe551c17625f0298df49f1a3895290c345a6f422944e56d7d6b6c4b",
+   "sha": "40b8967594e1e84fae7879062fcd0098195eb97a67c7c91a5d6ba03310fdb783",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/wake.webp": {
-   "sha": "0a6f05c292f30471a2c87825ff78ef254d54d18f55222565a2a6844ac923c3cd",
+   "sha": "588e0947d6f58826b4adfb0e2b90eb8131ddbaf61c93248ec60d9d254739d73a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/flanelinha-interdimensional/walk.webp": {
-   "sha": "f56ee49867bb7ad5de50d0d95ee49f9b00a8671b32f76f4a69c35ab90a772e2f",
+   "sha": "940579f4c9eadfd0fe46d815efad8127825c5638fe5e3aa52ab90d8ffa64599f",
    "ilhas": 0,
    "fails": []
   },
@@ -13159,77 +13159,77 @@
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/death.webp": {
-   "sha": "37b37d3ace2d3a847d4cde0abe56a6b14f25fd21746893fd16a33d9a669946d3",
+   "sha": "c2f57aa3e88821adf9974b86aa988bb36e773d7e37da7d1043014fabd8b8f9bb",
    "ilhas": 55,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/hit.webp": {
-   "sha": "73aed3f4297b2cc63193da1e449b182102f2ab090bf0e51b9018cf41146a0389",
+   "sha": "1f013bad69a41f301c4f4bc830fb60b8114dbe4fdf854ab3a8cd2e1e86f2dc06",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/idle.webp": {
-   "sha": "4d037dae487f4d390e252666d4e10222631a1b77705efeaae75034eeb7fb1b38",
+   "sha": "5294bdb29f0be8b3163b01c3e171565aea1b3cb44b99d841b99c795ade365046",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/joke.webp": {
-   "sha": "a831ee42c7bffef7896bd35e6471e015603386c297e7a22ef3866648c0036a29",
+   "sha": "41bd935b4b26381633ecefecc57e1a763aa32f9d0f9cf79669ebc8e9e7841d80",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/shove.webp": {
-   "sha": "e57230ba8f2a80b6063dd4fd8be27bc37b501c2961ffd119eabcd1ea52de9a64",
+   "sha": "9336c35ff30259f5d84d75c3ea2a4a231ad9a53c456d08d186246c27543f8fc0",
    "ilhas": 19,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/sleep.webp": {
-   "sha": "93142abb22cbb1b964a4a2e00224f1211aeac17ba07f539166ab8062358f8ffe",
+   "sha": "715019e28f31d69e43d4dbcb3dce162f6479887dd2d5822ab5a9734fc896605c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/wake.webp": {
-   "sha": "f0b05c59057aa0358a50c6784d990fc1188b8e78691b8ebd7319312b8401e138",
+   "sha": "23a9319722af25a37d6b8b0bdf6f57caa91ead004a5429f96185cab3e640ab6c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/forrozeiro-centrifugo/walk.webp": {
-   "sha": "036804c4315fba92784c30782d8b649f3671070aef954f0d11534d8744b11a44",
+   "sha": "11680bb7e987b43a4e4b6d9977b930038cdb88d23bc9402e1a155d8dfe81ff3e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/attack.webp": {
-   "sha": "2c03c78c4cb5fc00f728949c5b9d33b79e2b287d2cd475525fb84a6037931fc8",
+   "sha": "72c2e4e38b91a782e3491f04946840cc1312485730c822cb30c7320dc6b0e6a0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/death.webp": {
-   "sha": "1488f6b6721d40b80dcf3671acc5e03e07f1d51ddaf1fdfe963324dcdcd08aed",
+   "sha": "c7ce25f96b115e4d98f78f6d4f63915170457c5d206983c6bb64e1d9ff2af596",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies/frango-de-academia/hit.webp": {
-   "sha": "1bde376619f28b8d28a7d6045c0d9746c1d8e6f60c83b10dae87aa339bef5962",
+   "sha": "c734bdda4ed82f2e37202f9aeea3be64286271552ef518977c7fff72a155da3a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/idle.webp": {
-   "sha": "00fc92adfbd0233a42b1653e53cddabc8c1037b3024ae47bac40b6195ac42fec",
+   "sha": "e669a845043d9b79f6be1c56bfa7fd192ce9ff66c34448b02fe4d559963caac2",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/sleep.webp": {
-   "sha": "9207f1af97153fbe18dbaebf20ffc3550800160bd3953db710b3931397891e58",
+   "sha": "63d0833394c9e2dac4a71f6c8165d141d3bf454b695364fda7b16690847dd338",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/wake.webp": {
-   "sha": "345056f62ad58fa4e32e2023de0da46c49eb28da7ab7ab742f31a97b6642757b",
+   "sha": "833ef32ffdc9552143eff825aca9d562487343df55a8ffdb371a3235535da814",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/frango-de-academia/walk.webp": {
-   "sha": "3ce1275f8228ab780e22a6a94b7d7d4364bbc10ef6b9e43ddc9b89149615f994",
+   "sha": "057b528e9dbf70aeba170fade5f164faf362796839122050f9b709795ee0e924",
    "ilhas": 0,
    "fails": []
   },
@@ -14339,32 +14339,32 @@
    "fails": []
   },
   "lite/enemies/moco-do-gas/aim.webp": {
-   "sha": "18d4f1ddbc4134ee0a563e2cfae25a5f3fb656a7847327e203b6d879d1dcf168",
+   "sha": "6a16c3bc831632192acec7f5b026f4d61bf25fc55e8d42fba8960a49cd17ba34",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/moco-do-gas/charge.webp": {
-   "sha": "30a8bf44b31f685f676fc72bd5f3d2ad0bafd52aeff08ca000add228d3af8ec5",
+   "sha": "20d981e3e8ae644c8d2359c0fce59ad09dd00e81b57757ed60ae6fc3f04848e3",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/moco-do-gas/crash.webp": {
-   "sha": "04e89cfdafc7e08153e40e82aa840eff32800a6d2998c0989f5dab3be1f732fd",
+   "sha": "e3c1fe2a7dac0100bda0ce18f045699218333e12a33f00345f8b59d16c1681d6",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/moco-do-gas/idle.webp": {
-   "sha": "163d38e2a36bb48858d2bee5448748f57d14414d06816d8a40614d59400f4939",
+   "sha": "9b441322ac4d42faba3719235a46065ddb4a695353446172c6cc0eb876cb27ab",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/moco-do-gas/sleep.webp": {
-   "sha": "16bcbfece9c7edd12c7122f1e17d323a2cec834a616bdebdf82d9916f65b0415",
+   "sha": "6771e40cdb4abbf8dd93bbb032e14c28b17415896f397b1238ff92e6235be918",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/moco-do-gas/wake.webp": {
-   "sha": "379c5b45ae7ec00d8ebc3042c1bc7b5915dd65e31145abea876e91212e9f4ed7",
+   "sha": "b1b05a63e3bd8017e08a68088ed23877cbe86886e4dfea5a53219ea2ddec92c1",
    "ilhas": 0,
    "fails": []
   },
@@ -14594,42 +14594,42 @@
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/death.webp": {
-   "sha": "8931cef274c6c6980f2909b0b87ae4d035933803ee24fb349c8984065efed21d",
+   "sha": "2a4981e45ce990b4b19bcd94e1ea680bab23186713e3329288d20e2e94b4e11a",
    "ilhas": 15,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/hit.webp": {
-   "sha": "19e83209ca85327aad5b7a9b86fcab7c9ec7d71adbd5f9a382add99d4733587e",
+   "sha": "911392cf75969f41295e978f2f83754b4eec07c6cdf34168bac9de065900710b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/idle.webp": {
-   "sha": "cbd68ff90cb7ea753f5a85186593d7a8bbd24be0cd30d34f83f8b35e1363d7ae",
+   "sha": "352a71d451402b257b8eab2fd123e7f5d13959102df2feca430138065de8c5f9",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/joke.webp": {
-   "sha": "4c1c2257eb77bebacfd5ba9b61f1293690e9e148c95e3939dd7ed78fbe68891d",
+   "sha": "bab404a5611a8286691c7a052acaeb70c46481bdffe301c4c26f4f23ce5d603c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/shove.webp": {
-   "sha": "442c16ebdc9e3cd258f70c9c1bbae54579a7ddd529ebbbf4633f780b75b6958f",
+   "sha": "3c459b001992b5f54176455a362a50e6b834d3f34ef8cdbf00fbdf3929dd24f1",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/sleep.webp": {
-   "sha": "8ba058f6353b979fa8e7dbe4d167284ea74eeb73b1f8c9c4aa5bea7a8e7c79e6",
+   "sha": "09813610c3b90d79aed37af7ce00a1b334f88c9e06b572f543c1ef584b309031",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/wake.webp": {
-   "sha": "b73277c362f54c553cd0b438e6448bca658a03d8b492f0b17d4a5b90c1cc49e5",
+   "sha": "f3007e2f2be92f42e0d92059d801af404895b2155a56b28f41c35d000caa1c2e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/palhaco-de-aniversario/walk.webp": {
-   "sha": "9d575533549fc1bdfccd9e525d0cae56ab5029791537ba6734e758bac746d70d",
+   "sha": "a4e5ab752f0f4d89445a6a8ed9ee72db7b9fe8fae15c674291e05d79eda2bd2c",
    "ilhas": 0,
    "fails": []
   },
@@ -15019,77 +15019,77 @@
    "fails": []
   },
   "lite/enemies/primo-do-violao/death.webp": {
-   "sha": "ef8f1131a5216ba149dc179e9b79dab814552d8b44da277fd0fb51c214d6be6b",
+   "sha": "88ab16d31fe2158190da11de57f339bf83b59dcb1bd3af1802add5199420f47d",
    "ilhas": 43,
    "fails": []
   },
   "lite/enemies/primo-do-violao/hit.webp": {
-   "sha": "60107848c05a34ebcee890a27405ce2b83da29ecc369e37e541de5aa293d31e9",
+   "sha": "30287bfd26f756d9bfd02c4cad240e9d74a2ad3945d1938d5b2bb9373e6d4d88",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/idle.webp": {
-   "sha": "6d5c223c85d0ac10b78e0283282103cccf86478e466f184dfe6ae9a4e5b75ac1",
+   "sha": "c16e0666837e0008fd85fb2ce2f21de77b995f028728ea5a0edb74ceb937957b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/joke.webp": {
-   "sha": "88d14cb69f2cad328a4eef3c856c01f4c6c5efc5caffda7ed5a1bc3a4ffcd29f",
+   "sha": "2dfed76d5f1983eeb197d2a39dd19291b417c6b7a96775374f9ef773085cbed8",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/shove.webp": {
-   "sha": "dfccf513ba233044ee5b4544dc0f08b2bcd3499b96ed707a9d2daa339c39cfe0",
+   "sha": "f7f060ee9d3aa5e1e782ee1c8507976cb2ebd00ed416db47f040be4c60db7e4c",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/sleep.webp": {
-   "sha": "20e838a757b03be2134feb1b1c30e29ba00de18e843750c8f2318144bb9fed85",
+   "sha": "dbf675d5617b4d2c9fe075c7852625f87897dc0afdef8feb27a4ba4c87c3ccf1",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/wake.webp": {
-   "sha": "cd002be5962880d5993988af690cff11762a1ba5fa553e002ac89c9f8a6d5c08",
+   "sha": "7ff7ee70b57e85d036ba25d8b3ed199e5911cff598caa23cb41823b50bfc8850",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/primo-do-violao/walk.webp": {
-   "sha": "1bc813b926857c724d73033447ae396b78c9ee4b8ef2527a9d9117b84b3759b3",
+   "sha": "0388e0224062f1a6d2ca0ab2e47d2dcba039aef1cfa8ba04a8b0c416eeb45d39",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/promotor-infinito/death.webp": {
-   "sha": "9a58a3233a66990d1df373eed231321f1446b3b16c2333cc59e7d9dbdcf205b4",
+   "sha": "53223efd78d9496c3291fe457197ded6e0879e13614eef829198f3908333f698",
    "ilhas": 50,
    "fails": []
   },
   "lite/enemies/promotor-infinito/hit.webp": {
-   "sha": "288b67cd679feb44a219f02bff5a0d70466d559b6a4dd5c6c6316bf2cd967b9f",
+   "sha": "0f3b500e1a34e25d7ce9378264d96e407840f8298429a1e04b818cf58bff3ba2",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies/promotor-infinito/idle.webp": {
-   "sha": "548248fecfa2e4a114cef989602fe5b5ca3b3bf12da6cb3a9e5c6a27cf83508e",
+   "sha": "1bb67aa2a06a04ab3c8a8214fe8d19b9167af43dbf8795e667d6bf837673d67a",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/promotor-infinito/lecture.webp": {
-   "sha": "a1425e8ddd09ffbaa69153126ead4198692de7ef5741eced8052e5361652ad23",
+   "sha": "60845d0c05c74eed890ad78098c5afad54aa0e123f99e5617c9ff906664ebb7d",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/promotor-infinito/sleep.webp": {
-   "sha": "49320bd9c620dd1f346e25c910fb465ee29148f8a47c5d98b2e144257ce22a4f",
+   "sha": "b6008c25f0f26622cb0e518490c192cccf6dec9aae70ad4c56c70a7197dcabcd",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/promotor-infinito/wake.webp": {
-   "sha": "012258839175e6489007e5f498594cb7565665f3b36cc9f4271e21abbd87a8e5",
+   "sha": "1bc77ba20e7ceac4438d13e32fd0d8b6e1bba54fdd14c9e321effb84c9335971",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/promotor-infinito/walk.webp": {
-   "sha": "72ceff89aa77c34b6c91665d3741bd6c6053ea5902434be70b521f03a570577b",
+   "sha": "35b5b5ce3b3b11ac633ebc3e6061982017bbc3631a75ddef07401a66e14e4884",
    "ilhas": 0,
    "fails": []
   },
@@ -15829,42 +15829,42 @@
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/death.webp": {
-   "sha": "9d4822984a234574a2acff99d08a93c24a4e87acd3c7fc365716de11199be5dc",
+   "sha": "a1fd283365a6e03e1b73707f9530a1d68f7baa02c2055b867d39a010826fce51",
    "ilhas": 92,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/hit.webp": {
-   "sha": "873eea35bb6f999f4ed58c279d11089cd22f8f417e3fe622f99759e8e5482d7f",
+   "sha": "372eae41c7801da94729c5adda269516bbf04db7933bc91a57c99ad4cd30ea34",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/idle.webp": {
-   "sha": "d02a22e031d892fda5f2c62df819c5c49dc2a4a3c9d9a0eda1d352b74cf68c86",
+   "sha": "d56acce434bd480ab050bcfe3602ebe74a81db720b1ddb93f5d31c04a0640a66",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/joke.webp": {
-   "sha": "d90f90ab991b04ae8956b9b75943da2294174bb410844acfc11e578d66bff0da",
+   "sha": "51ea279b9605cd49458d410e5ad204976f5017c3645686e2311c4f0bff694399",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/shove.webp": {
-   "sha": "a68701adffd9d7060aa2c0848be15574410c9bb634639c0a64a28095df2bb79b",
+   "sha": "4b00be69a1d63b45cb1b8d824e5e7510ca0a380446fa2d6151589fa74ffc633d",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/sleep.webp": {
-   "sha": "28c4952fdb99bc8110dad0c9a5f53b11d788430ac17bd8514e6791e371f55f0f",
+   "sha": "f82056d5550e336e88c0668af9d30d6475809553c571d3b8aa3bfe602218ac96",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/wake.webp": {
-   "sha": "0ecc929774a10fafb3c9736ed268002bf0e778ddd9b97e5fd3bc76901807bc5b",
+   "sha": "92f141b2dd4b96fa6fae6ad2d826fdaa01321f1b97160dedd71ea061b2d88eef",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sommelier-de-ipa/walk.webp": {
-   "sha": "44718d2b694e39fa63c0742308579cb22dbb87d4e8ca01636b32635d764cb88f",
+   "sha": "d242727b5a2f55d8de892fbae2286d1934c0d03cd2be6cb0e16c5f5b32cc4280",
    "ilhas": 0,
    "fails": []
   },
@@ -15979,42 +15979,42 @@
    "fails": []
   },
   "lite/enemies/tia-do-pudim/charge.webp": {
-   "sha": "d38c7611c39657b3d1f7a23f4f6044ef12b9c6d11c89cb3141d741e6f39d05df",
+   "sha": "abe6d9cf5b0916b030e45a31477d5d325bdb1898c23bd404fae766c37c4f5b73",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/death.webp": {
-   "sha": "3710c7f8adb04e6cbee7002403101411ffa5b8d6b0f3a911365f9617913d8305",
+   "sha": "97072726361c044b82f4382ff0063ad10492b2effda9eeff54154726266a411d",
    "ilhas": 71,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/hit.webp": {
-   "sha": "92b53fe4d5d1f93edaf387888372cfa7fde61632fc8105a579a899406cb5e4de",
+   "sha": "628940ba5b692457aa27c33ca4a85b3209c063d451fe9daa946aa0a0e5d0cebd",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/idle.webp": {
-   "sha": "13ddff24822d8f9677248b842bed1c8328536f6b9f21f7c336d8098bb5aafeec",
+   "sha": "29ed246dfd544571a2bc90beeb5352b6cfd798890412d3b79e1155bfd4012119",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/slam.webp": {
-   "sha": "d3357fe6d58344ed1dd7c9b2d3ab63466417090f5d4c92eac01e46e8a7517d0f",
+   "sha": "dd42b80990e18806d0760c73019d0641bd5452b84c67c821903bfbadd869eba3",
    "ilhas": 4,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/sleep.webp": {
-   "sha": "53cd6a62633f79a7a655625f19679ac589f4ff1883373e4ab23c6565dbcc35b5",
+   "sha": "32aec15fc0b0d5608936b37ad4980c5fa0733e4f830ef4dce631df49f3deefb5",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/wake.webp": {
-   "sha": "0c7ad19c17b3794edf197b4435ff70ecb78a1cd3fec35b0750fcf03ba6c4057d",
+   "sha": "353d93e1a4e2c805fa480176d22c9458b2ab05b2577a0af8db4a016dfc7394a4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tia-do-pudim/walk.webp": {
-   "sha": "0a52930b732472ec4bf3916591f48501928ff54e55f5b35e11a67a53ee77f429",
+   "sha": "41612c4960cc84eb0906f89f7deeb5efa7e064253dd05e3961a2ba6e46a5c2bd",
    "ilhas": 0,
    "fails": []
   },
@@ -16124,42 +16124,42 @@
    "fails": []
   },
   "lite/enemies/tio-pave/death.webp": {
-   "sha": "fb4fab439f0a306997fd27109f80c6354a448d360b48fae5a7dd1565039a5400",
+   "sha": "0fa694849605ccdd19e1f84fcf6b40423586baefdfc4b173cb7f3f0f62d22abc",
    "ilhas": 112,
    "fails": []
   },
   "lite/enemies/tio-pave/hit.webp": {
-   "sha": "98149cea2218a2e0bfc60dcc8facccc9736958ccc32e302b6c58aebd127b1f19",
+   "sha": "4ee0c6ddf6b378af0f88c0f28c6a2b79bdb70f907f8f937ff62c75321fcac12a",
    "ilhas": 1,
    "fails": []
   },
   "lite/enemies/tio-pave/idle.webp": {
-   "sha": "cfa79d54a7d169286c3533f4ffcf9d388a26a354e73c47347d1bce5a8938a476",
+   "sha": "1e19e068f4450425503fc4d4e433d385f4e656ab5ad969bbfe617ec6f17107aa",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tio-pave/joke.webp": {
-   "sha": "51f8d2299417c0a151dd8275c9a0b82a4ec05123e23c25660867af0e85eaa5d3",
+   "sha": "792c4d9ed35ab0f4ae6c2736202e72904bd97500c08b8424a5b714b0e12f245b",
    "ilhas": 29,
    "fails": []
   },
   "lite/enemies/tio-pave/shove.webp": {
-   "sha": "80c82fac98cbc4fa9c28340629235127274dc8c26579149e56ad7443d2bbae77",
+   "sha": "9daf2356434138af06cbb3fbb80a4ee7a3127258d3cd19b43cd94af3044b1c5d",
    "ilhas": 8,
    "fails": []
   },
   "lite/enemies/tio-pave/sleep.webp": {
-   "sha": "3bd9c2d8b6f0b8d0a93254b896509c650771210347cefbe9c5bfbe6d80b46e21",
+   "sha": "edc1d62db50016f14647e9bc255370ed46ecd6522e465fa6ae8d53930f380f7f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tio-pave/wake.webp": {
-   "sha": "e418dda0de1c0d3195ebbd0be8f0ee4449aedea15bb41ece286ad4c118248c52",
+   "sha": "b359fc6682860fd33ce7de785cdccef8d117e1cd9923b6dc2f6c2606a898cb0f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/tio-pave/walk.webp": {
-   "sha": "c857cfbd355d86f9f963f8a7900ff7224f9240d478537732dea388a34ccadded",
+   "sha": "0dc9e7a2d9bdd284d347e047faad8e20df6f0aeda31033c67bbdf43146ffaf94",
    "ilhas": 19,
    "fails": []
   },
@@ -16204,62 +16204,62 @@
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/death.webp": {
-   "sha": "be27c1a203e4bf8c4e2e1ce321434fa85f663d46b517eaf2875556414ba013d7",
+   "sha": "3baa54af6708fa5cba1fd2f2d6f9a6ec81357c2b90c5bd08fe3e74282dd4acaa",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/hit.webp": {
-   "sha": "83c99389163bd013ad5daa7eb619a4f5fca661c22c3a4686d488b039b0640be1",
+   "sha": "561aae22d4f6a36011f066a33f23cad6ba7b930a6901a234c87e1d3828a269bf",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/idle.webp": {
-   "sha": "b8f8c3c5ccddd2ffd6715b55e03b626c7d1ff448fd444846ea51d797669fdb2a",
+   "sha": "59dd9f3f894a484c6d1ae69989e2f177171ebbca628321c6d89398b242d5633b",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/shove.webp": {
-   "sha": "72d97f6ff16bae232519742d348cc49ee735391672642c1a7652a8b5d3ada2a1",
+   "sha": "0f5c5f889b6e487fd4703cbf46e8845bcf3771cd026044344485281056e93fc4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/sleep.webp": {
-   "sha": "63f4648aeb08b8558b77004abd7331f1a361135c175d3af530b096efacd20e66",
+   "sha": "89f736960fc8d741835da57cc87fdb38ec736ca6d00a31002c35e7703bd6ebf7",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/wake.webp": {
-   "sha": "3d3aed215aa15926f9c4c7b039a02de8fc2c4a7deac6095ecfface0311f5ffc3",
+   "sha": "ade53a77ce50d1dcf68393f16c369130d6d83aef6fc92e174c44ee10c63fa991",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/torcedor-fanatico/walk.webp": {
-   "sha": "430175471e9e897b25e28654e069a9a5a8218d923ac311de76ad4100ae3bea0f",
+   "sha": "7a3c32b9c043f987e417316f654180ebb7f2245257b43a5fccafbb9b1a1edca4",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/trenzinho-da-festa/attack.webp": {
-   "sha": "6d7914219a7bdb2270e65d89dece3cae8de925e290779173d6723d86143f030f",
+   "sha": "a84c88c83bb5fc6f7f69bd3aae1a0ddde39bd9ca55b56a4016b63a4f1477c5c7",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/trenzinho-da-festa/death.webp": {
-   "sha": "cb9481e9d857d70e0b84ad8140b614580977fc088d4ac197d4bdb5b3a6b19a11",
+   "sha": "902f3eeb4112eea448ae76ec02349534943a54cb0b5b8a3cc4630d9733b3ab16",
    "ilhas": 6,
    "fails": []
   },
   "lite/enemies/trenzinho-da-festa/sleep.webp": {
-   "sha": "734c91a9cacfc36bf887fac566659b64b3ad9482d7fcfd5b7d8330233c923d61",
+   "sha": "fd8a15972e388ddd4f008b264a6e37d859b0c934c5bda4a257ff548baa96713f",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/trenzinho-da-festa/wake.webp": {
-   "sha": "ab9fc81fbb7677251d94ca1cfa14f3a6afda503abc6d15ddd2a3814b4467e35e",
+   "sha": "56da5c7658682163f08d3abb1479643add06d745b955d530afe2991e2289334e",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/trenzinho-da-festa/walk.webp": {
-   "sha": "4cd2d247be4a4a27b63d674b9d595083ba1d3d92511839403084f0345a240606",
+   "sha": "64959f1411fc57e419e1884adf7554d56eaf7072270d956f5292ddf7756e15a8",
    "ilhas": 0,
    "fails": []
   },
@@ -16613,6 +16613,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/aposentado.build16-n.7fa3ec9f0495.webp": {
+   "sha": "6a1c814790058e6105d45f40674957ed0fb026d0d83da3bccc089e565ae14bc7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.build16-nw.e8284ba65be6.webp": {
+   "sha": "a0b699d2bb23493f1647ddc3f7562fb767ea3e9c7792eef8911652cb9b709b3c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.build16-s.db781f0a4e5f.webp": {
+   "sha": "74550d1c35ebd866c0ca4664590a3e8532e94c51adfe4e8907e355956f4d49ce",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.build16-se.32139291ea1b.webp": {
+   "sha": "7b085f94f5dbcfdab6ca12ca8b9c858e5bed1073aa1817389f3fa211ccd58886",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.build16-w.bf3f185c69c2.webp": {
+   "sha": "e75ca531c2792558f3e208cf054874794c0431df5a476d730de5655da54ca8d1",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/aposentado.dance128.b2d18b849abb.webp": {
    "sha": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
    "ilhas": 0,
@@ -16678,8 +16703,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/aposentado.pull16-n.f86d2a03069a.webp": {
-   "sha": "fb4e7c6660151965f612c00c47b25b0c662597261718a3d03f83b7547ed6255f",
+  "lite/sprites/aposentado.pull16-n.437ec276c005.webp": {
+   "sha": "85754863b5469c3a80210d6aa533c77d9846729e715dd42b3738bc4a7a8b3e09",
    "ilhas": 0,
    "fails": []
   },
@@ -16688,8 +16713,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/aposentado.pull16-s.2ea61d40ab73.webp": {
-   "sha": "c0a138edd3f71136152e21c8d4f377826a4e9c56f943f62573fa6aa586cc7231",
+  "lite/sprites/aposentado.pull16-s.f7b7862398bd.webp": {
+   "sha": "5e0636f36f0eac20efa590c04501171332cfd61ce4f7f6ea11ecac6257286c7d",
    "ilhas": 0,
    "fails": []
   },
@@ -16703,8 +16728,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/aposentado.push16-n.9592e9d1b0fb.webp": {
-   "sha": "6577256429c82d4f6fdb4376ba4bc20953682bf785d869c220c0962d8b67bd97",
+  "lite/sprites/aposentado.push16-n.a9faad5d4075.webp": {
+   "sha": "eb18b8ef8f229886917c810bfb895c81dd78cdac204775681ad97b9b86018206",
    "ilhas": 0,
    "fails": []
   },
@@ -16778,6 +16803,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/aposentado.work16-n.117460100ffb.webp": {
+   "sha": "aede40f41aef9670d96e1acdcff4479c820accd23228aa28694b91bc351ff45d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.work16-nw.1afcfb66d5c8.webp": {
+   "sha": "baf5bf92da84305d5cc3ad4d625b533af0d7c3edeeaa793ec7a28afac18b2c1b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.work16-s.affd3fe94001.webp": {
+   "sha": "5e7d5d7e7d9eb1567c06e17d1f56f1e44aed7dbe72eeff452852e54a9386e8f8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.work16-se.7b280b34ecbe.webp": {
+   "sha": "fe2922444a1d307f38069931a468094cdb9f40402434a95396822e746bf7f6f3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.work16-w.c0cd2502af22.webp": {
+   "sha": "1bdcdc273428c966b10d797e0441303b8f1b3984625dd083e9bf74a58267e352",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/astrologa.dance128.7b131d77fb3f.webp": {
    "sha": "3e7b4d1410d39d3b3ad88c214f5cd017ae1c087612551ffd0484a4e04fa7b92a",
    "ilhas": 0,
@@ -16845,6 +16895,31 @@
   },
   "lite/sprites/clt-cansado.attack128-w.c37f96f0c1b6.webp": {
    "sha": "0dae1093744ead27c416c87ec8b897b28db49f2ce31c23ddc92d0a58983d077a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.build16-n.e3c1caf4e82e.webp": {
+   "sha": "7f36e58350f8ba33f83ba81fb48e11eb17f776e4773a5de55e20cf7704a1588d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.build16-nw.15165c6a57cf.webp": {
+   "sha": "0309dff90645c3e2bf6717394c948cc6576576ffb1faaf3fb0662480b0fd2554",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.build16-s.342fec64e6dd.webp": {
+   "sha": "61645d4ddf1ce36d02bdf307ba7086128a2225371c2013934f4e754b635948c1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.build16-se.c0a1f8317662.webp": {
+   "sha": "4a1e41b13f44070ca03550d6a6794018a0a514dcf040d73f224d5f63d2b09b36",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.build16-w.e5c08a051749.webp": {
+   "sha": "57304ffde6051895b557d6b808171751df4526e8592aa61d6982858700c96af5",
    "ilhas": 0,
    "fails": []
   },
@@ -17048,6 +17123,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/clt-cansado.work16-n.ec9a7e724e81.webp": {
+   "sha": "ff002142e0ae962f4c004ff737a29edc6ca76c707ae233fe3b8b37cefbeae78b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.work16-nw.3cbe70173a33.webp": {
+   "sha": "7924c11fde9b63e54542e9aedc19dd27f2e581c496255f2a0a791b576fde5c50",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.work16-s.bddb08b59b2f.webp": {
+   "sha": "d13b20c7f67c7bade784eed01a22f42e531390a2c992864bcbc7bdfc6081613e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.work16-se.015cda3cf65a.webp": {
+   "sha": "6270be2bed7a0ab6e7ef7ce06c43298e57902f49d1600e5f268d8a1c25bf95ab",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.work16-w.f2c9a88bb087.webp": {
+   "sha": "c58e53a63d157059fc3559a48541a92c5a6745cc29f31b89dc63066134402ade",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/coach.attack128-e.39f65fb4ba7e.webp": {
    "sha": "6f3dfb1bfe9f48b2ea50b46e702c9d7c4927c4208e61accf47e0dbaffb6eead9",
    "ilhas": 0,
@@ -17113,8 +17213,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/coach.walk128-n.d0a422a3b3c7.webp": {
-   "sha": "7b9a1495f37346d10388f1a2abf93b4f41f7d86575120525e4a26f702c67173f",
+  "lite/sprites/coach.walk128-n.1fa5e6765943.webp": {
+   "sha": "bf2df940fe5d950818df9029c4e24a20e10f52771659964e386fd74995c5c5f3",
    "ilhas": 0,
    "fails": []
   },
@@ -17128,8 +17228,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/coach.walk128-s.994c997b381e.webp": {
-   "sha": "677cb73a3053bbcce53b324b41fd957657f7289d07af68bc12524c558fa5502c",
+  "lite/sprites/coach.walk128-s.aa714783e7d6.webp": {
+   "sha": "e9041be6d746ca4a14244c3c93165058dc5223fc72a6460030a75dbf84d4ba65",
    "ilhas": 0,
    "fails": []
   },
@@ -17213,8 +17313,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/concurseira.walk128-n.732533151a16.webp": {
-   "sha": "9cbf050590942c6dcccd34b5cd5b4bfa1ba6594f30c73631b7373709f996a6e5",
+  "lite/sprites/concurseira.walk128-n.1f5f5b7e86ef.webp": {
+   "sha": "c388d8c1f4f1adfae4250544aa6411df963856173e470d6c404818c034c7e43c",
    "ilhas": 0,
    "fails": []
   },
@@ -17228,8 +17328,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/concurseira.walk128-s.aecd043711e2.webp": {
-   "sha": "56aa4c6a3b1fd45476ac7985208d3423412727e82b2a95ff5db5023ca2e2c47c",
+  "lite/sprites/concurseira.walk128-s.c8fffedb08c9.webp": {
+   "sha": "b5911260e237787ff0a210678d36645ce48039b194de00149badc0ca77eb7c5e",
    "ilhas": 0,
    "fails": []
   },
@@ -17313,8 +17413,8 @@
    "ilhas": 1,
    "fails": []
   },
-  "lite/sprites/faxineira.walk128-n.546d03393d5b.webp": {
-   "sha": "7cd910805f3dfd71739c4749a0186fc04787625e40cc73dac0cc0829b11fad77",
+  "lite/sprites/faxineira.walk128-n.8af40e52b6ce.webp": {
+   "sha": "48e8e65319c8f69b3154a8d59cb667eaa271b583bcd04ae771f4f584aecfcb3f",
    "ilhas": 0,
    "fails": []
   },
@@ -17328,8 +17428,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/faxineira.walk128-s.0c7b06c74b2f.webp": {
-   "sha": "9f87e68cf84b8ef946807677a0c37e03a866ac843203d9b5844063cf3eceacc1",
+  "lite/sprites/faxineira.walk128-s.9479b32afa88.webp": {
+   "sha": "8c66b7cc6ec97dfc41902a8a7c8c72916fccb35e8130c9dfc5dd52e0f466a2ed",
    "ilhas": 0,
    "fails": []
   },
@@ -17413,8 +17513,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/feirante.walk128-n.14b8e4268b16.webp": {
-   "sha": "ba5b90e6b317e31ac9bd87a43bbcc0b67b15fbd6eb662b4f3e488fa9e19c19ed",
+  "lite/sprites/feirante.walk128-n.85f1a9610ac2.webp": {
+   "sha": "6011b16112f23239506956b3972cc5f0c6bc7c6992fc7337d8d001cbf2d759d1",
    "ilhas": 0,
    "fails": []
   },
@@ -17428,8 +17528,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/feirante.walk128-s.83628c8e1765.webp": {
-   "sha": "b6eb1a8d404993a7bc0b1eca2b1b8f1432a4e5a736df5a7720688a69c09e76f3",
+  "lite/sprites/feirante.walk128-s.33c7ddfc4616.webp": {
+   "sha": "78e86a0397b593ffb29396007b01efd3e0bf5b3ccedb310924a76eb57a7c5ad6",
    "ilhas": 0,
    "fails": []
   },
@@ -17485,6 +17585,31 @@
   },
   "lite/sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
    "sha": "562e047ae6dfa720783ab7241effc46892a05660c2aa056b230a96e43225be7f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp": {
+   "sha": "e12d5a62f1e9ca3bc8a96ecbf5ad837fd884ffb20303170e41a6179fa87080ae",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-nw.45272cef3a9a.webp": {
+   "sha": "08f4b8a59814f78aaff5b2ce2be60df0968fe955de7bcd8bf6c413227e0aeeea",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp": {
+   "sha": "973692d9c1f393e3e9e00316ef87feea7243211c6b8ea85c34d133c2af939feb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-se.ecab793d5c0e.webp": {
+   "sha": "7fe08af9524c2e2e287ee82e2b22d15b67a0f2916b4fb3de97c9b0fffe8556eb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-w.1f8decd29f41.webp": {
+   "sha": "725dc7fb62f5c954596fff001437608b3df16395ac5a9baf296fcae54ea0ebb7",
    "ilhas": 0,
    "fails": []
   },
@@ -17643,6 +17768,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.work16-n.11bb8dd00c2b.webp": {
+   "sha": "4ecef9e27830477113191450d290b536579b753da45f838ad752bdce5136c9b3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.work16-nw.11ef71625ef1.webp": {
+   "sha": "7622fff061c14a22b1bd6d38b7f0bb8dd0ca67da32d0f11751d4f67704553985",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.work16-s.fdef47e0d280.webp": {
+   "sha": "a03ac72208da3e140c6f0790e391a08684bd0f6944c446511939723ba106260c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.work16-se.de20c3f79b1a.webp": {
+   "sha": "481a95aa007c61b6b69e4ca06ef20f3e837fcf67e0b2587a9f6f650daa73e773",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.work16-w.a340fd188c36.webp": {
+   "sha": "3f8551cc112a4ded04275d9cf1d1c6317442ece64cbe4d84f70285496597c505",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/mae-pet.dance128.8f0b47e68a7d.webp": {
    "sha": "d353fe0943fb3b00fb4f08f2f56d1dd43af7b795d8b1b29166092f9386169879",
    "ilhas": 0,
@@ -17720,6 +17870,31 @@
   },
   "lite/sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "d1b9cc008ed3e29e07e5a5a2aabf8f259fc99084e89d09b0e728222c79edcf08",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-n.b7f0316704ce.webp": {
+   "sha": "fa2bdc27b7d61034b48406e4d9b71bf9adffcc54b84faba183280ce6900b7124",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-nw.bd0e1eea28d1.webp": {
+   "sha": "f18d8a59be65277f7ddd7d7af73638fb5cf91db48c8e8ca36def4491a6cb94c4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-s.c2796a391240.webp": {
+   "sha": "d949a2debb245ce90caa0e8865eeaf1eaded07cf15dc77547fed5ace31fe7f65",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-se.8fd2fbb05152.webp": {
+   "sha": "dfe0b2bee280789c0b1e4772b74704e7dc4100dea6c06b9033e1572ca6ebc0c2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-w.a267a14232ca.webp": {
+   "sha": "c076697ff1752401eb3ab84c79e0830436ea408b6c886a43d09d24b5df14c5cf",
    "ilhas": 0,
    "fails": []
   },
@@ -17933,6 +18108,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/maromba.work16-n.16351d2f9aa7.webp": {
+   "sha": "8a5dbfb1cc66af7835127facbb8953fca4bba08d1e13d0c2d21fdec5c521dfe2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.work16-nw.7d45ea53f550.webp": {
+   "sha": "b54b744e0ea7dcecf13858f13961b7ef9d5e43138227205f21a57b1d63ab4319",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.work16-s.f3efd41c79ae.webp": {
+   "sha": "2ed58211497e89e4c771b4c0add264ada8b4cc59c373750b2df4aef574fdd00d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.work16-se.ffce70a5c5ba.webp": {
+   "sha": "74a571ffca44847f4c5c7c415d3f2117e9e42c323bf07beb17416c7b9c275650",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.work16-w.65ff30c99f53.webp": {
+   "sha": "f1f99e58b3282f3ea7f499ce8de4ba8ec709fe573279d070c797c25d9007fc07",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/mendigo.attack128-e.cb828d6683c9.webp": {
    "sha": "3154439158bb8541806c0e4c21557bbf474bb167cb00c26f3f8ee5f856120dae",
    "ilhas": 0,
@@ -17998,8 +18198,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/mendigo.walk128-n.ab6a0f186779.webp": {
-   "sha": "b80af30496b53a5cc17152febcb09643c20e698e08fa384e7232de7872c80779",
+  "lite/sprites/mendigo.walk128-n.96fea3bfac61.webp": {
+   "sha": "c1ae108637e835c52210082dcbe0244f8b401b2cabab9940507a1f6b54df20e8",
    "ilhas": 0,
    "fails": []
   },
@@ -18013,8 +18213,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/mendigo.walk128-s.691ec641646c.webp": {
-   "sha": "5f3e166f03865ac3c177ca951bc42f272f24e4fc4bac084666eb66e4936f3b3d",
+  "lite/sprites/mendigo.walk128-s.068b648fbed6.webp": {
+   "sha": "5f4734164b58416872f57cbeeedd98dc9e6c4e981ff544a5d57cb13a7b79a38d",
    "ilhas": 0,
    "fails": []
   },
@@ -18143,8 +18343,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/passageira.walk128-n.a61070729c8a.webp": {
-   "sha": "bcef7705628b76ab12a4a4e815dde40c9fdab114c17a552c0b63005d86f8be2b",
+  "lite/sprites/passageira.walk128-n.8ac19c7fdde1.webp": {
+   "sha": "c61f4ebc050b7d05254707f4782ecde99f3ba0d3c38174cee9b05bf1008cbe36",
    "ilhas": 0,
    "fails": []
   },
@@ -18158,8 +18358,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/passageira.walk128-s.7dcc26acaf2d.webp": {
-   "sha": "d61e8d00b600434d124fd61f06ecab97a7a291a3161a5a0902c49b18068fffbd",
+  "lite/sprites/passageira.walk128-s.1a7b3dcac25c.webp": {
+   "sha": "7834f25537057145120647de9db9af7d06dcc948ad0b605375aeec484bdd597b",
    "ilhas": 0,
    "fails": []
   },
@@ -18243,8 +18443,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/pedreiro.walk128-n.b49ff0ae03ae.webp": {
-   "sha": "b111a381e861244c2fdd7046b331cfcf2779065f844fd3091dd0bc619101f0e3",
+  "lite/sprites/pedreiro.walk128-n.8055d1f7a66b.webp": {
+   "sha": "3b51ed08560f094eea95c8de400c45df90f27419d0acc1136d350561fb58db2b",
    "ilhas": 0,
    "fails": []
   },
@@ -18258,8 +18458,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/pedreiro.walk128-s.8a333556893c.webp": {
-   "sha": "c943d3ab4f7de5ee6a6efbcf5ea8e22c3da7182e68536ab6537f38230c174612",
+  "lite/sprites/pedreiro.walk128-s.e28061df875b.webp": {
+   "sha": "5f2bd2d4e9e95473a8afac86c268f8f6041b3c99d27a88efe2f922c973d47ded",
    "ilhas": 0,
    "fails": []
   },
@@ -18388,8 +18588,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/streamer.walk128-n.e035802dbabd.webp": {
-   "sha": "8b46337878e37b59d26133ac46b101a63a626871ab52e1e38bdd2cfe922fd763",
+  "lite/sprites/streamer.walk128-n.9a8e97396bea.webp": {
+   "sha": "3bd6b4381bf0018debe53665be3a068e71ceda53dca5c0597c3d5a6f27bb9dd0",
    "ilhas": 0,
    "fails": []
   },
@@ -18403,8 +18603,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/streamer.walk128-s.b7cc00ca0b05.webp": {
-   "sha": "fe4ffb2b3c7b429142abba3b0e40b778519757d4963046aba5083b73bebade87",
+  "lite/sprites/streamer.walk128-s.debd2e8b88d6.webp": {
+   "sha": "8baecbfd15ab62507a0e254956977848f3a09e70d12b8bc010cf9a0f574a7351",
    "ilhas": 0,
    "fails": []
   },
@@ -18503,8 +18703,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/universitario.walk128-n.cb164ff44b0f.webp": {
-   "sha": "1bd752311deb8aa3c3c53ce32b3143c7607596d6e6b7790bcc8addbf18b97605",
+  "lite/sprites/universitario.walk128-n.548974805bf6.webp": {
+   "sha": "6263662204a7f1777b4ca177a66079a2eddc00b3096e56afa98be5207e3a232d",
    "ilhas": 0,
    "fails": []
   },
@@ -18518,8 +18718,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/universitario.walk128-s.ec07c448b62d.webp": {
-   "sha": "f2e70ed797f51b8704d1bf0ee073b8b7c794177400209c7ab1a020accda95495",
+  "lite/sprites/universitario.walk128-s.8f6282670203.webp": {
+   "sha": "120e4f88f6302fdf8c728a57f4e2070f447c0569248ade16874d2fab6059cea3",
    "ilhas": 0,
    "fails": []
   },
@@ -18560,6 +18760,31 @@
   },
   "lite/sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
    "sha": "bb95e44cf18aad5fc1259742bec45ee2f162f46e55badbc24fc4379b4a77c9fe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.build16-n.313e1cacf530.webp": {
+   "sha": "10c420fa90dbaaaa5e8ef48c3e48d4ab718a565bdaa41a5a82f64c02e93dc5bf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.build16-nw.9d436e295267.webp": {
+   "sha": "5d3e43cf9ff094d19f43f683aafc61ae0dcbfde149730af034ae83c9e85a9b86",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.build16-s.6acdee5e5c4c.webp": {
+   "sha": "e6aec51435a95d483bf9c666f724cc8cea6b7ec8c2526a3ccdeca5917bf4e432",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.build16-se.adb84091ab7f.webp": {
+   "sha": "d275faa1edff6a7c7c5fe6af62db475192c09b2bb77aa3ab6835ecad4974b251",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.build16-w.e75d2361973b.webp": {
+   "sha": "818d9d07e980cd2c2d173e453ede8a1c3ff55a9d523b1b6b2cbf6018c00960fe",
    "ilhas": 0,
    "fails": []
   },
@@ -18638,8 +18863,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
-   "sha": "d14e37bd48776d4428834e0b6429b9a2f86fd5592b9e2d7b55be21f8f6ea8d02",
+  "lite/sprites/vendedor-praia.pull16-s.06d2c0e5e442.webp": {
+   "sha": "da63e6c91b5738cad868a93e4edb6b4e91128303fb729dfffaca4046df934269",
    "ilhas": 0,
    "fails": []
   },
@@ -18653,8 +18878,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
-   "sha": "3c9de4a3317ef944367cb8459c1d58b3e31a18021cad0da3fee6f3bdf0fe4db3",
+  "lite/sprites/vendedor-praia.push16-n.779da9c3b85b.webp": {
+   "sha": "8c8c0abf2e23200e601aff7c4e79ca97e9b7f4847e08d54e38ab03b39a233f6a",
    "ilhas": 0,
    "fails": []
   },
@@ -18728,6 +18953,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/vendedor-praia.work16-n.4274923ebfbd.webp": {
+   "sha": "8abaa89ba5c6ce87a40e0c511b9c309c4d507d03e15f5e33a31c95b0199f9a46",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.work16-nw.50e035fd295a.webp": {
+   "sha": "ed6d9128fafc71684d96d056a6282fc1bad307ac0d7c669c70fa93a1701d8d1d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.work16-s.4b9b05d94741.webp": {
+   "sha": "87069de96961c87439d0ad2f730e0b5d89471231ccc508b15a5c637a36ac3ed3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.work16-se.b438d7c3aee4.webp": {
+   "sha": "a4ea99c61c0e2d9716e78bfe80b5b64f4fa9ee4304d52ec688115a9b720c7c0f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.work16-w.7f0e9fcc97ee.webp": {
+   "sha": "62c9255ab99ece3307ae7c530c87d8702896aaf37d406374f04b1c78d41ba575",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/viciado-em-bet.attack128-e.f7ca847fe155.webp": {
    "sha": "34c6678d5846c729a1670a2318a175598ac67f842bd313c35855e1e060dc6ff3",
    "ilhas": 0,
@@ -18790,6 +19040,31 @@
   },
   "lite/sprites/viciado-em-bet.attack16-w.cb017457bc71.webp": {
    "sha": "2d4df410fd351f60796c40ea0cfb6b4f905de8772b658ccbd824341db8e4b429",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.build16-n.c83b4b82c317.webp": {
+   "sha": "55212c5f4149f329377decaa0b6db03a6da787dabcb6ace5d407209ae3e597e6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.build16-nw.35d8773292c2.webp": {
+   "sha": "88e3d029f0934ee9a3f4b32287939d533e9360d48dba9583ec841bf93b0f888d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.build16-s.45f7916d6dae.webp": {
+   "sha": "06afde3f4aa4fc400b9da6d0c4535d6b3d2f501b112adb2c10196f902559d8b3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.build16-se.a84e8a9222c7.webp": {
+   "sha": "016f114eba182fa1daea9dc07c3e46cce0b63f22363233007dc2236ead251676",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.build16-w.c71b1a158063.webp": {
+   "sha": "397fc6366ec6225fdaffc403ed13dae39841f3db939790fd9c266e9f8c06791a",
    "ilhas": 0,
    "fails": []
   },
@@ -19003,6 +19278,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/viciado-em-bet.work16-n.d01b84e73a59.webp": {
+   "sha": "8369bb49f464fbe7f6343c5f64353e39d02f32caff7fc1d344dd6b3c77267713",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.work16-nw.a20c439e12e7.webp": {
+   "sha": "4800b3e73850e5e908932f65894512bca2592571281bf260dd4dabc1c02b7345",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.work16-s.39e9dde819be.webp": {
+   "sha": "f46357860f540818d9f440bf297660cf77c2958d5ec9a3f89b403165d7c6b1e3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.work16-se.35c005515091.webp": {
+   "sha": "96e578ec68b541e7d70e51af8a812d85f393055b86e4d7ace6413f3fb6b2680d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.work16-w.051f67a6c143.webp": {
+   "sha": "fd55f53e063b68e3055a6b4234eb44fadb7db9f2990a9bc3d7485e192357daa1",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/vizinha-fofoqueira.attack128-e.fbd7868fe2ed.webp": {
    "sha": "60a3ba8829d70372ac174de677265716cbd2385911aaab01c7db0d3c1020c41e",
    "ilhas": 0,
@@ -19068,8 +19368,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/vizinha-fofoqueira.walk128-n.cff27b4e3a9c.webp": {
-   "sha": "d3352ad1e6e0e50459fabfc85b83dd84e1d12d0679ad8e58dfe78bc375ec6e0e",
+  "lite/sprites/vizinha-fofoqueira.walk128-n.bdfdca128618.webp": {
+   "sha": "080a8b0c3be1b6f1ac523ae8eb440833b1f668a2e2224b3376391fb3be64f1e9",
    "ilhas": 0,
    "fails": []
   },
@@ -19083,8 +19383,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/vizinha-fofoqueira.walk128-s.19da2e2f4af5.webp": {
-   "sha": "17853e7e07edeb3edd8407746fed19d22fe39e31d4ddf6643a20bb899c72ed4e",
+  "lite/sprites/vizinha-fofoqueira.walk128-s.b808ee3cd182.webp": {
+   "sha": "a86b6213d400930310002b4a5c676fcbb0bb0ec66d220b5f8a845516b26ec0b3",
    "ilhas": 0,
    "fails": []
   },
@@ -19130,6 +19430,31 @@
   },
   "sprites/aposentado.attack16-w.d8d3f9e066e6.webp": {
    "sha": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.build16-n.7fa3ec9f0495.webp": {
+   "sha": "7fa3ec9f0495b9c8c6a193df3ae5d71a5ab812fa49e56264d2f3bd9a73925039",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.build16-nw.e8284ba65be6.webp": {
+   "sha": "e8284ba65be68c7f90780a8760f39b97feeaec5440c7280fd47065b06d3086ba",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.build16-s.db781f0a4e5f.webp": {
+   "sha": "db781f0a4e5f293187011ef70d88b63b63bb9b958bd34738b83722ebcc0b6634",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.build16-se.32139291ea1b.webp": {
+   "sha": "32139291ea1bca3f53baaa4c8a2443f70d6d6639907766d26c62ade7e06986d9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.build16-w.bf3f185c69c2.webp": {
+   "sha": "bf3f185c69c24e0d021b0bc1b3cb295455399a209ce630950bfbd32a64a5852f",
    "ilhas": 0,
    "fails": []
   },
@@ -19203,8 +19528,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/aposentado.pull16-n.f86d2a03069a.webp": {
-   "sha": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
+  "sprites/aposentado.pull16-n.437ec276c005.webp": {
+   "sha": "437ec276c0056a80b51a93c8232590097201b50277c26cd723df72a02eb4d977",
    "ilhas": 0,
    "fails": []
   },
@@ -19213,8 +19538,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/aposentado.pull16-s.2ea61d40ab73.webp": {
-   "sha": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc",
+  "sprites/aposentado.pull16-s.f7b7862398bd.webp": {
+   "sha": "f7b7862398bd485759baceddda82061d8ec2814e8dc6cfa6b27e7b521f66c7bb",
    "ilhas": 0,
    "fails": []
   },
@@ -19228,8 +19553,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/aposentado.push16-n.9592e9d1b0fb.webp": {
-   "sha": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f",
+  "sprites/aposentado.push16-n.a9faad5d4075.webp": {
+   "sha": "a9faad5d4075db93bcf5e3494279795172107d81b76b4acbd7b47a8ccccf015d",
    "ilhas": 0,
    "fails": []
   },
@@ -19300,6 +19625,31 @@
   },
   "sprites/aposentado.walk16-w.95d52ad4323c.webp": {
    "sha": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.work16-n.117460100ffb.webp": {
+   "sha": "117460100ffb5e31578f2304e5a3c4025fb9cb648b701773be6f205c1a534f8f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.work16-nw.1afcfb66d5c8.webp": {
+   "sha": "1afcfb66d5c8fb8159d43c7fc0339866e1f5933441a5f6a4011ec353f1983299",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.work16-s.affd3fe94001.webp": {
+   "sha": "affd3fe9400102b8b77602c0ada1462de2681ac1b6feb40d0cbbe9cd5a0fc7bb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.work16-se.7b280b34ecbe.webp": {
+   "sha": "7b280b34ecbea3d853efdcade6610c12554ac94b5603ff07b3259394d4523fd0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.work16-w.c0cd2502af22.webp": {
+   "sha": "c0cd2502af22e1f8a509b3944f035b46eafcad22db392900f51f08740f0bfef4",
    "ilhas": 0,
    "fails": []
   },
@@ -19380,6 +19730,31 @@
   },
   "sprites/clt-cansado.attack128-w.c37f96f0c1b6.webp": {
    "sha": "c37f96f0c1b68f604795b7f3207e71a6bde9c9a5ad76c681bedb26aacab2d46f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.build16-n.e3c1caf4e82e.webp": {
+   "sha": "e3c1caf4e82e255c65cac85ce4e68b89c1364fe0c09b6d6d76415598d19e855f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.build16-nw.15165c6a57cf.webp": {
+   "sha": "15165c6a57cf9f341b98da212985eba880546f816cfda01ddeac9db72f291a4e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.build16-s.342fec64e6dd.webp": {
+   "sha": "342fec64e6ddf657abfd8ab9417ba63ab0420a9d49a684abad20969b69e52e3b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.build16-se.c0a1f8317662.webp": {
+   "sha": "c0a1f83176620b2cb013b31db7033ec26204ed5b59d79063b3c5886138334136",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.build16-w.e5c08a051749.webp": {
+   "sha": "e5c08a05174965017efbb8fdc8da7a8bc7e5fbae5a158401cef9bfea8ba0244c",
    "ilhas": 0,
    "fails": []
   },
@@ -19588,6 +19963,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/clt-cansado.work16-n.ec9a7e724e81.webp": {
+   "sha": "ec9a7e724e815f6e5f1ad054cae4cc3dcfd95693f187485a6af80fcb336fc21b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.work16-nw.3cbe70173a33.webp": {
+   "sha": "3cbe70173a33c42267564a4f44c0ec5f65b8a9568b48f9e12a14e6f8ba48fa99",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.work16-s.bddb08b59b2f.webp": {
+   "sha": "bddb08b59b2f0a91b9ded1dcb79f1952cb1944367416fa0241d0a877d36cba44",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.work16-se.015cda3cf65a.webp": {
+   "sha": "015cda3cf65adf478a29dcc77c2fe76eecb8eab2815ad0857f5d81a40014150f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.work16-w.f2c9a88bb087.webp": {
+   "sha": "f2c9a88bb0874c4330ba27e2d182dc1a8bd3fce2408d49936d3b063c97b7355f",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/coach.attack128-e.39f65fb4ba7e.webp": {
    "sha": "39f65fb4ba7ecda669d666baa80a2d6a01ef1c7d2c589bb07896b848f0b5d8c6",
    "ilhas": 0,
@@ -19658,8 +20058,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/coach.walk128-n.d0a422a3b3c7.webp": {
-   "sha": "d0a422a3b3c7bfcd5d332b81c0d52b33c00f188e29c11a63c71bc079bb5e3dea",
+  "sprites/coach.walk128-n.1fa5e6765943.webp": {
+   "sha": "1fa5e6765943a93e35e04af8b5e482b1febb924c4fd231083c98695a8c710a90",
    "ilhas": 0,
    "fails": []
   },
@@ -19673,8 +20073,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/coach.walk128-s.994c997b381e.webp": {
-   "sha": "994c997b381eb5f8d17b00533dd2e38a8ebfadbfcd86c76fde77118e36355c3d",
+  "sprites/coach.walk128-s.aa714783e7d6.webp": {
+   "sha": "aa714783e7d6208c7e953f525dfa00cc426c519116c782913a07c73f1224ae84",
    "ilhas": 0,
    "fails": []
   },
@@ -19763,8 +20163,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/concurseira.walk128-n.732533151a16.webp": {
-   "sha": "732533151a160b3e14002f900feed33a77bea686294daa6dc2a337c6e8fd39f2",
+  "sprites/concurseira.walk128-n.1f5f5b7e86ef.webp": {
+   "sha": "1f5f5b7e86ef26ee1f1979823d0bc9e96e3933ae23dd872433d44d5bc2366b6e",
    "ilhas": 0,
    "fails": []
   },
@@ -19778,8 +20178,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/concurseira.walk128-s.aecd043711e2.webp": {
-   "sha": "aecd043711e2f8a35bcaf21513159845ed4ce4080a705659274de163594eb4a3",
+  "sprites/concurseira.walk128-s.c8fffedb08c9.webp": {
+   "sha": "c8fffedb08c9dc7c64d359f93dd189aa85ee776673ecd5f3ad7b45d44ee4b8e7",
    "ilhas": 0,
    "fails": []
   },
@@ -19868,8 +20268,8 @@
    "ilhas": 1,
    "fails": []
   },
-  "sprites/faxineira.walk128-n.546d03393d5b.webp": {
-   "sha": "546d03393d5bb316331e65e216b8580fad1e2553fea0331c7a63cf146c23a2b5",
+  "sprites/faxineira.walk128-n.8af40e52b6ce.webp": {
+   "sha": "8af40e52b6cee1e0c5bb483c323385541e9ccc1526d3cafb8db340fc37f59443",
    "ilhas": 0,
    "fails": []
   },
@@ -19883,8 +20283,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/faxineira.walk128-s.0c7b06c74b2f.webp": {
-   "sha": "0c7b06c74b2fe689d63a70b537382cd4644fff1f4b0345f4186fc87240339f50",
+  "sprites/faxineira.walk128-s.9479b32afa88.webp": {
+   "sha": "9479b32afa884dc523db29188816f44ea6a597a9f86949ad04d9595981743c19",
    "ilhas": 0,
    "fails": []
   },
@@ -19973,8 +20373,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/feirante.walk128-n.14b8e4268b16.webp": {
-   "sha": "14b8e4268b1601ae49bbf3184d815571a460bdc99a8357556ebea497c9260c76",
+  "sprites/feirante.walk128-n.85f1a9610ac2.webp": {
+   "sha": "85f1a9610ac2377b1dafb9ddd144ffbbf3f95ec0ebd53cbb411db8605bd7e21b",
    "ilhas": 0,
    "fails": []
   },
@@ -19988,8 +20388,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/feirante.walk128-s.83628c8e1765.webp": {
-   "sha": "83628c8e1765aa70ccd58df6575c5d2977848edb7083078f43d9d7409fd2991c",
+  "sprites/feirante.walk128-s.33c7ddfc4616.webp": {
+   "sha": "33c7ddfc46166e686df16e3ed2772ef5c1b4bafe0cb1f56f37f09973b14d22ed",
    "ilhas": 0,
    "fails": []
   },
@@ -20050,6 +20450,31 @@
   },
   "sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
    "sha": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp": {
+   "sha": "e9552d5a0b9b650759a53bda63f172618d926708cff572d8655b1bb44417f27d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-nw.45272cef3a9a.webp": {
+   "sha": "45272cef3a9a86672f97ae5febe20ec48fdc8c4bf8633fec56ed4592c985cbc5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp": {
+   "sha": "a1f4cffd53bbd7a39532e9a10be294c82be8de7c6eb3233d2cb2de157343d1ed",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-se.ecab793d5c0e.webp": {
+   "sha": "ecab793d5c0eef5203f19452c2c494cfd80792f4b4a8536000ae6948807fc12b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-w.1f8decd29f41.webp": {
+   "sha": "1f8decd29f41a1f477c95c7b4617ad45d8ec1b43d2f9dcd090f4d9464029d32e",
    "ilhas": 0,
    "fails": []
   },
@@ -20208,6 +20633,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gato-nada-pra-comer.work16-n.11bb8dd00c2b.webp": {
+   "sha": "11bb8dd00c2b94e2e709b745107085aa307bc11b1c9c1949719365117aa0a698",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.work16-nw.11ef71625ef1.webp": {
+   "sha": "11ef71625ef18c3710374d76dd1165e68cbaa9fb7c70f19169c586ba0c57ad0b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.work16-s.fdef47e0d280.webp": {
+   "sha": "fdef47e0d280bcf11bafa5e574e84b67c7fdb0eb17ea9823b2ca28351c753fc9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.work16-se.de20c3f79b1a.webp": {
+   "sha": "de20c3f79b1a88a7ed7b0a00848ebd9cc85fc7685a4c5e9d9fbecb3eafe98e0e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.work16-w.a340fd188c36.webp": {
+   "sha": "a340fd188c368902a83a2c228f7bcb85eabc674d3890b8906955fb9399b90677",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/mae-pet.dance128.8f0b47e68a7d.webp": {
    "sha": "8f0b47e68a7d30144b341cabab0a44143dba571a8d059a1ecbcb6c77922f702f",
    "ilhas": 0,
@@ -20290,6 +20740,31 @@
   },
   "sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-n.b7f0316704ce.webp": {
+   "sha": "b7f0316704ce4b94c23004f6d9a05a7bd4838caf2bce6db38ce69dc998059b15",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-nw.bd0e1eea28d1.webp": {
+   "sha": "bd0e1eea28d1fa0b63d385f0e9367998db9e23811f5aa1fafaa9b4097e85c0a0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-s.c2796a391240.webp": {
+   "sha": "c2796a391240ae7826ce8dadab9e8eed2e73c71224b184350ab2f0e4ae953f73",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-se.8fd2fbb05152.webp": {
+   "sha": "8fd2fbb051521343af6822d4dfc3c294a90da6861fae0af1ca12ea729422fa2d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-w.a267a14232ca.webp": {
+   "sha": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6",
    "ilhas": 0,
    "fails": []
   },
@@ -20508,6 +20983,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.work16-n.16351d2f9aa7.webp": {
+   "sha": "16351d2f9aa75646ef581efb2f9be2dce9bc84e91e599a7a785380f39dab6055",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.work16-nw.7d45ea53f550.webp": {
+   "sha": "7d45ea53f550a4802dbb0168bb6aaf511a99058d6e8e97d44e19b5c28da9e8e9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.work16-s.f3efd41c79ae.webp": {
+   "sha": "f3efd41c79ae3a5b74d823d12d13fedda0e22c2e3a85973ccab670ef26643569",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.work16-se.ffce70a5c5ba.webp": {
+   "sha": "ffce70a5c5bafbee2a2fead770e7a78339f49be6bc0546db4b2d888b2dff803e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.work16-w.65ff30c99f53.webp": {
+   "sha": "65ff30c99f533dd5c9d641ea5e1f6ed0f9d68172f93d8c2e9d87203d6a13c068",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/mendigo.attack128-e.cb828d6683c9.webp": {
    "sha": "cb828d6683c90f5524c53e143dbba5c97312239add745d514e4ee50db73fa2b5",
    "ilhas": 0,
@@ -20578,8 +21078,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/mendigo.walk128-n.ab6a0f186779.webp": {
-   "sha": "ab6a0f18677974b37a8b80921bf9fa676e0d006920807e3e7f1e78a634efeefb",
+  "sprites/mendigo.walk128-n.96fea3bfac61.webp": {
+   "sha": "96fea3bfac61607d8e67dc19da16412eddf269f6e6121c5572b5971fab86838a",
    "ilhas": 0,
    "fails": []
   },
@@ -20593,8 +21093,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/mendigo.walk128-s.691ec641646c.webp": {
-   "sha": "691ec641646c0902d90464f3df57940e9f340fe5fae4b74c0afb3adfd7080ca3",
+  "sprites/mendigo.walk128-s.068b648fbed6.webp": {
+   "sha": "068b648fbed640381933cdb29782e42e935b871364c9c7378d95d1684ac6db0b",
    "ilhas": 0,
    "fails": []
   },
@@ -20743,8 +21243,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/passageira.walk128-n.a61070729c8a.webp": {
-   "sha": "a61070729c8a600eb1659e9e226aeb7bc225331226520cc728386c739bb43205",
+  "sprites/passageira.walk128-n.8ac19c7fdde1.webp": {
+   "sha": "8ac19c7fdde1d5ce69a4d0ce1ebc1f5553bec097d0e740dda6a98d306ab866cf",
    "ilhas": 0,
    "fails": []
   },
@@ -20758,8 +21258,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/passageira.walk128-s.7dcc26acaf2d.webp": {
-   "sha": "7dcc26acaf2db0d84446781febe5e71106877f4553776855b41affc4a508553c",
+  "sprites/passageira.walk128-s.1a7b3dcac25c.webp": {
+   "sha": "1a7b3dcac25c63cefaa3d7a1d0142d4220930a330b4218b9523d5f9a36133db9",
    "ilhas": 0,
    "fails": []
   },
@@ -20848,8 +21348,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/pedreiro.walk128-n.b49ff0ae03ae.webp": {
-   "sha": "b49ff0ae03ae9c095227dc50c2d7ff829345b4acf3e3a890f488ab5355b1e995",
+  "sprites/pedreiro.walk128-n.8055d1f7a66b.webp": {
+   "sha": "8055d1f7a66b33b6609858c611e867b6a7694fa27e78d9c423f04d0aaa531f6f",
    "ilhas": 0,
    "fails": []
   },
@@ -20863,8 +21363,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/pedreiro.walk128-s.8a333556893c.webp": {
-   "sha": "8a333556893ce637d1e8fcbb4f4cdde8aa8dfe18e319d9b2f3080e9a58be0a9a",
+  "sprites/pedreiro.walk128-s.e28061df875b.webp": {
+   "sha": "e28061df875bd35779f1e524980a58817b2a97e59e428a7f4ffc64f1cbeb92d1",
    "ilhas": 0,
    "fails": []
   },
@@ -21013,8 +21513,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/streamer.walk128-n.e035802dbabd.webp": {
-   "sha": "e035802dbabd1186ae26898b0707023c8d7b546a961861a01c910a76242cd87b",
+  "sprites/streamer.walk128-n.9a8e97396bea.webp": {
+   "sha": "9a8e97396beaf7f4605ddb0a4ce272bff577451bc7d4ebbc2178815a65dab81a",
    "ilhas": 0,
    "fails": []
   },
@@ -21028,8 +21528,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/streamer.walk128-s.b7cc00ca0b05.webp": {
-   "sha": "b7cc00ca0b05124181d66d197cd4d07cf6e60dc5e56c2e88967260473cd6ab76",
+  "sprites/streamer.walk128-s.debd2e8b88d6.webp": {
+   "sha": "debd2e8b88d6e53379ef1da4f6a8753629a5c760bade15018cab0b41d62595d4",
    "ilhas": 0,
    "fails": []
   },
@@ -21138,8 +21638,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/universitario.walk128-n.cb164ff44b0f.webp": {
-   "sha": "cb164ff44b0f503c880fa195495413b3549a6a3adb3ab51ab0754b0d95c31186",
+  "sprites/universitario.walk128-n.548974805bf6.webp": {
+   "sha": "548974805bf6fdc0407bb1f35f8622c27f8dc9ea488411b8eb6736ae0c4e6284",
    "ilhas": 0,
    "fails": []
   },
@@ -21153,8 +21653,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/universitario.walk128-s.ec07c448b62d.webp": {
-   "sha": "ec07c448b62d4556ee9f0a9541db7673827beec593bfd74e35683457cf7d2b0a",
+  "sprites/universitario.walk128-s.8f6282670203.webp": {
+   "sha": "8f628267020315ef5e0fc55f6717eb102f3651c9330ff1eb09531302371dd42e",
    "ilhas": 0,
    "fails": []
   },
@@ -21195,6 +21695,31 @@
   },
   "sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
    "sha": "2c7a98219d03062f593a24d88f0cde2aa81cbd853a00bdb6d5af9852d4235301",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.build16-n.313e1cacf530.webp": {
+   "sha": "313e1cacf530d7381660be79024f5c5e331db7aeb7a928e30e097029e1c58791",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.build16-nw.9d436e295267.webp": {
+   "sha": "9d436e295267ab8cadfee1e8b9a788e0b1466c1a3c7ae14f5364edd186c205c8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.build16-s.6acdee5e5c4c.webp": {
+   "sha": "6acdee5e5c4ca7d3ae667d7f63d9cac59883cd8c1e6a14b53139a1058ec01712",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.build16-se.adb84091ab7f.webp": {
+   "sha": "adb84091ab7f8399b9312773e4af9133993689952db509287a46ab99146567c7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.build16-w.e75d2361973b.webp": {
+   "sha": "e75d2361973bdd493c18e7e38f182fd564d870b724b0c40997ae7cbc32c8ca9a",
    "ilhas": 0,
    "fails": []
   },
@@ -21278,8 +21803,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
-   "sha": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98",
+  "sprites/vendedor-praia.pull16-s.06d2c0e5e442.webp": {
+   "sha": "06d2c0e5e442cc066e919cad8d45d06a2dbb7b638fa81bd73b67da4f32e027c3",
    "ilhas": 0,
    "fails": []
   },
@@ -21293,8 +21818,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
-   "sha": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7",
+  "sprites/vendedor-praia.push16-n.779da9c3b85b.webp": {
+   "sha": "779da9c3b85b6f7094aa3b6d4b223b03f77e7f4868b27f94b86ba82fcba72491",
    "ilhas": 0,
    "fails": []
   },
@@ -21368,6 +21893,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/vendedor-praia.work16-n.4274923ebfbd.webp": {
+   "sha": "4274923ebfbd2baa135d4fc5a686aea5a0b8a2954838213469f5f5531f436d92",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.work16-nw.50e035fd295a.webp": {
+   "sha": "50e035fd295a0711d58ae3552cd0e5732c53160076912365d7e355df4da3f06b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.work16-s.4b9b05d94741.webp": {
+   "sha": "4b9b05d94741c57007f0c0bc4bf2d24e7d69a25a0b44b9d5b8832209e76bde65",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.work16-se.b438d7c3aee4.webp": {
+   "sha": "b438d7c3aee43cb7e3932c5662f90035e5e37194792f28b8d3f6617a4d1ccaed",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.work16-w.7f0e9fcc97ee.webp": {
+   "sha": "7f0e9fcc97ee3f8e38243aac98cba7f5245915e92046fb4c54b401776b5b1be5",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/viciado-em-bet.attack128-e.f7ca847fe155.webp": {
    "sha": "f7ca847fe155f25852e2137d40fd719bcf74202ca56f72394313ea02a8803fad",
    "ilhas": 0,
@@ -21430,6 +21980,31 @@
   },
   "sprites/viciado-em-bet.attack16-w.cb017457bc71.webp": {
    "sha": "cb017457bc71ea97c50e79115676c4638f811c4922a3b953f4e717d2efe67679",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.build16-n.c83b4b82c317.webp": {
+   "sha": "c83b4b82c3178beb3f18fd860bc52ebe4c6d11393aeb25830a415857ee8c12e8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.build16-nw.35d8773292c2.webp": {
+   "sha": "35d8773292c2e34af4b7ca9db78333026c013b59419217336561d97998c00a05",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.build16-s.45f7916d6dae.webp": {
+   "sha": "45f7916d6dae1595ab2fe48f53a823648155dbba8e4378358f41d0211c5c2967",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.build16-se.a84e8a9222c7.webp": {
+   "sha": "a84e8a9222c7745a485ed4a210c8c22807e4db8ce7df4bf8056e433a1b1d7a7b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.build16-w.c71b1a158063.webp": {
+   "sha": "c71b1a1580635b10247eb942561e26d8a8e33aaad2aecee874899ea1a92bafb3",
    "ilhas": 0,
    "fails": []
   },
@@ -21648,6 +22223,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/viciado-em-bet.work16-n.d01b84e73a59.webp": {
+   "sha": "d01b84e73a594b2e96701970ddef4dec5ad38ee09a8c0c91797156c1e8b56047",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.work16-nw.a20c439e12e7.webp": {
+   "sha": "a20c439e12e76f8b05a71074ad24a6d6f8aa389bd747cff60dd35d46c8942465",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.work16-s.39e9dde819be.webp": {
+   "sha": "39e9dde819bea0e8a7870be4bbef6ec67f8c7296dbd2b24884a9f4089aca918e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.work16-se.35c005515091.webp": {
+   "sha": "35c005515091154bbad587639b2559159505e4e2f779b4952453aab575d808f7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.work16-w.051f67a6c143.webp": {
+   "sha": "051f67a6c14382577c2a2540fc3f5ecaf52a320e5655ce35a8af0d9951aa45aa",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/vizinha-fofoqueira.attack128-e.fbd7868fe2ed.webp": {
    "sha": "fbd7868fe2ed8b748628dab472dc562e48d8b8b28e2c0c310ec36f0580500f7f",
    "ilhas": 0,
@@ -21718,8 +22318,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/vizinha-fofoqueira.walk128-n.cff27b4e3a9c.webp": {
-   "sha": "cff27b4e3a9c5c7fb2d8c1fea58ef50f9ea18ec8b6f9daa7b81ced286c4d48bc",
+  "sprites/vizinha-fofoqueira.walk128-n.bdfdca128618.webp": {
+   "sha": "bdfdca128618a4b2078bef532bbafd77a1eb82531e0f626757bdedc6f3c4ad78",
    "ilhas": 0,
    "fails": []
   },
@@ -21733,8 +22333,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/vizinha-fofoqueira.walk128-s.19da2e2f4af5.webp": {
-   "sha": "19da2e2f4af5bf03c133de140e1a80c7f554227824c22da624a6f5c9f5ba47bb",
+  "sprites/vizinha-fofoqueira.walk128-s.b808ee3cd182.webp": {
+   "sha": "b808ee3cd182908bddbf3a2de4470d6cc761352017e901e2bc4d6aed8c1c50ef",
    "ilhas": 0,
    "fails": []
   },

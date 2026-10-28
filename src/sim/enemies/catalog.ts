@@ -6,7 +6,7 @@ import type {Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
-import {PROJECTILE_SPEED_MULT,ROLE_PROFILES,entryLines,isLegacyKind,isRosterId,rosterEntry,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
+import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
  * Any roster id (rules/enemy-roster.ts, D-040): the nine hand-tuned kinds of D-033 and the P1 trio (LegacyKind, their
@@ -69,12 +69,14 @@ export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','
  * Lines are the D-033 joke pass (heavy tone, humor-reviewed). Every line is ≤ 30 characters and unique across the
  * catalog (the city's BARK_MAX). The bebado/anão/pombos/agiota reactionLines predate the pass (it wrote none for them).
  */
-const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
+/** The hp is the role's (rules ROLE_HITS, roleHp below); only the boss keeps its own. */
+type TunedDef=Omit<EnemyDef,'hp'>&{hp?:number};
+const TUNED:Readonly<Record<LegacyKind,TunedDef>>={
   // VGM-031 basic chaser numbers: hugs more than it hurts, 5 per second of contact (BUG round 1). The drunk wobble sways
   // on top of his walk (ai.ts stagger), so he still closes at 1.4 u/s.
   bebado:{
     id:'bebado',name:'Bêbado do Boteco',behavior:'stagger',
-    hp:20,speed:1.4,damage:5,radius:.32,xp:1,contactCooldown:ticks(1),color:0xf0d9a0,accent:0x8a5a2b,
+    speed:1.4,damage:5,radius:.32,xp:1,contactCooldown:ticks(1),color:0xf0d9a0,accent:0x8a5a2b,
     zigzag:{freq:.18,amp:.3},
     barks:['Eu te amo, cara. Sério. Hic!','Pendura aí que amanhã eu pago','Cê sabe com quem tá falando?','O chão tá vindo me pegar!','Bebi pra esquecer. Cê é quem?','Bêbado não. Tô em modo avião','Segura minha cerveja. BURP!','Pago essa! Cadê minha calça?','Saideira é a penúltima, sabia?','Chama minha ex que eu tô bem'],
     deathLines:['Abracei o poste. Valeu, poste.','Zzz... mãe, hoje não tem aula','Fígado venceu. GG, fígado.','Hoje não bebo mais. Mentira.','Diz pra minha mãe que era suco','Ressaca eterna, desgraça...','Garçom... a conta... no céu...'],
@@ -83,7 +85,7 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // New mid-range thrower: slow, medium hp, keeps MOLOTOV.minRange..maxRange and lobs molotovs; explodes on death.
   'anao-molotov':{
     id:'anao-molotov',name:'Anão do Molotov',behavior:'thrower',
-    hp:40,speed:1,damage:6,radius:.28,xp:3,contactCooldown:ticks(1),color:0xe8b48a,accent:0xd0502a,
+    speed:1,damage:6,radius:.28,xp:3,contactCooldown:ticks(1),color:0xe8b48a,accent:0xd0502a,
     barks:['Pedreiro raiz usa molotov','Uma pra mim, uma pro fogo!','Minha barba já pegou fogo 3x','Cachaça boa não se bebe. Taca!','Alguém tem fogo? EU TENHO!','Licença ambiental? Queimei!','Tô calmo! TÔ CALMO, PORRA!','Vizinho reclamou. Ex-vizinho.','Hoje o churrasco é de vocês','Pano, gargalo e fé!'],
     deathLines:['Ih, acendi a cinta errada...','Falei SEGURA, não ACENDE!','Acidente de trabalho, caralho!','Minha barba! MINHA BARBA!','Era pra explodir vocês, desgr—','Pelo menos foi com a cana boa','Perda total. Inclusive eu.'],
     reactionLines:['Lá vai o molotov!','Aquece aí, campeão!','Brinde! Na tua cara!','Arremesso de três!','Quem pediu bem passado?'],
@@ -91,16 +93,16 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // VGM-031 swarm numbers: fast and fragile swarm; drops telegraphed poop (POOP).
   pombos:{
     id:'pombos',name:'Pombos do Centro',behavior:'swarm',
-    hp:6,speed:2.7,damage:4,radius:.2,xp:1,contactCooldown:ticks(.6),color:0xc4c4d2,accent:0x5d6b7a,
+    speed:2.7,damage:4,radius:.2,xp:1,contactCooldown:ticks(.6),color:0xc4c4d2,accent:0x5d6b7a,
     zigzag:{freq:.45,amp:.9},flying:true,
     barks:['Cruu. Passa o pão. Cruu.','Estátua nova? Vamos inaugurar','Cagamos no seu carro novo','Comemos lixo e somos felizes','Pombo não paga aluguel, otário','Seu ombro é nosso banheiro','Rato com asa? Respeita, porra','Coxinha caiu? Coxinha é nossa','Sem pão, sem paz. CRUU!'],
     deathLines:['Cruu... volto na estátua...','Virei travesseiro, desgraça','Uma pena. Ou várias. Cruu.','Avisa a praça... cruu...','Morri e ainda caguei em você','Ressuscito no próximo milho'],
     reactionLines:['Bombardeio liberado!','Presente do alto!','Cocô de precisão!','Acertei! Vale 3 pontos, cruu!','Splat! Cruu!'],
   },
-  // Heavier than the VGM-031 tio (90 hp, 1 u/s, 14 dmg, 0.48 radius): more hp, size and push (TIO_JOKE shove/bump).
+  // Heavier than the VGM-031 tio (1 u/s, 14 dmg, 0.48 radius): more size and push (TIO_JOKE shove/bump).
   'tio-pave':{
     id:'tio-pave',name:'Tio do Pavê',behavior:'joker',
-    hp:100,speed:.95,damage:13,radius:.52,xp:6,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
+    speed:.95,damage:13,radius:.52,xp:6,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
     barks:['Sobrinho, e as namoradinha?','Essa corrente é ouro de praia','Botão de camisa é pra fraco','É pavê ou pa comê? HÁ HÁ HÁ','No meu tempo pavê era arma','Dieta: só carne e cerveja','Sobrinho, tu é CLT ainda?','Pavê é pa vê. Empurrão é pa tu','Peito aberto, coração também!','Viu meu bom dia no grupo?'],
     deathLines:['Engasguei no trocadilho...','Caí no isopor. Gelou o tio.','Morri de rir sozinho. Literal.','Me enterra com o espetinho','Ninguém riu? Nem no velório?','A corrente fica pra tia!','Pavê... pa... morrê...'],
     reactionLines:['Pavê ou porrada? Toma os dois!','Puxa meu dedo, sobrinho. PUXA!','Toc toc. Quem é? EMPURRÃO!','Pa vê se aprende! PÁ!','O que o boleto disse? Venci!','Olha o passarinho... PLAFT!','Ri, porra! A piada era boa!','No peito: ouro e colesterol!'],
@@ -108,7 +110,7 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // VGM-031 ranged numbers: ranged; boletos with interest mark the hit player as "devendo" (AGIOTA_SHOT, DEVENDO).
   agiota:{
     id:'agiota',name:'Agiota do Bairro',behavior:'ranged',
-    hp:30,speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0xb9d3a0,accent:0x2f3f2f,shotSource:'boleto-juros',marks:'devendo',
+    speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0xb9d3a0,accent:0x2f3f2f,shotSource:'boleto-juros',marks:'devendo',
     barks:['Juros de 40% ao dia, campeão','Aceito dinheiro, rim ou carro','Eu sei onde tua tia mora','Boleto ou joelho? Escolhe.','Sorria, você tá sendo cobrado','Fiado? Fiado é o caralho','Juros sobre juros é poesia','Quitou? Nunca quita, amigo.','Teu nome tá sujo, meu anjo','Taxa de cobrança: um dente'],
     deathLines:['O boleto... venceu... eu...','Prescreveu! PRESCREVEU!','Perdoo a dívida... MENTIRA','Minha pochete! Meu tudo!','Volto com correção monetária','Cobra no inferno, já tô indo','Me paga no enterro, à vista'],
     reactionLines:['Toma o boleto!','Vence hoje, hein!','Recibo? Te dou um roxo.','Boleto com multa e mora!','Parcelo teus dentes, quer?'],
@@ -117,7 +119,7 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // never hits in melee (enemy-ai skips his contact; `damage` is only the nominal catalog stat).
   coach:{
     id:'coach',name:'Coach Quântico',behavior:'coach',
-    hp:40,speed:1.25,damage:4,radius:.3,xp:3,contactCooldown:ticks(1),color:0xdfe6f2,accent:0x2a3f8f,
+    speed:1.25,damage:4,radius:.3,xp:3,contactCooldown:ticks(1),color:0xdfe6f2,accent:0x2a3f8f,
     barks:['Acordo 4h, banho gelado e ódio','Aula grátis. A surra é paga','Fracasso é só sucesso de ré','Quântico porque eu quis, porra','Teu maior inimigo é você. E eu','Morte é só crença limitante','Desenhei tua morte no quadro','Respira. Visualiza. Apanha.','Tua dor é falta de mentoria','Morre, mas morre escalável'],
     deathLines:['Reembolso? Só no outro plano','Não é morte, é pivotar...','Link do curso na lápide','Morri antes do upsell...','Visualizei isso. Não assim.','Gratidão... pela... porrada...','Imersão... a sete palmos...'],
     reactionLines:['Isso foi um feedback!','Toma meu PDF na cara!','Slide 47: tua derrota!','Pancada de alta performance!','Não fui eu, foi a vibração','Escala esse hematoma 10x!'],
@@ -125,7 +127,7 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // P1 kamikaze: walks fast-ish, then one warned straight charge at the peak cap (MOTOBOY) that ends in his own blast.
   motoboy:{
     id:'motoboy',name:'Motoboy Kamikaze',behavior:'kamikaze',
-    hp:18,speed:1.6,damage:5,radius:.32,xp:2,contactCooldown:ticks(1),color:0xe2c290,accent:0xc23b2a,
+    speed:1.6,damage:5,radius:.32,xp:2,contactCooldown:ticks(1),color:0xe2c290,accent:0xc23b2a,
     barks:['Freio é coisa de iniciante','Retrovisor? Arranquei. Pesava','Buzino, logo existo','Sinal vermelho é sugestão','Em 7 minutos ou te atropelo','Tô a 2 min. Desde terça.','Calçada também é avenida','Moto sem escapamento é ASMR','A marmita chega. Eu, talvez','Desce! Tô na porta... de quem?'],
     deathLines:['Avalia cinco estrelas... ai...','Pedido entregue: eu, no poste','Freio fez falta. Quem diria.','Marca como entregue, caralho!','O feijão chegou antes de mim','Me deixa na portaria...','Chegou seu pedido... voando'],
     reactionLines:['Sem contato! Só com a moto!','Assina aqui! No asfalto!','Passei por cima. Foi mal!','Corredor fechado? Abri!','Buzinei, então tá avisado!','Comprovante: tua marca de pneu'],
@@ -133,7 +135,7 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // P1 tank: slow and tough; every few seconds he poses (POSE) and reflects the friendly shots that hit him (REFLECT).
   influencer:{
     id:'influencer',name:'Influencer de Academia',behavior:'poser',
-    hp:80,speed:.85,damage:8,radius:.44,xp:5,contactCooldown:ticks(1),color:0xf0c8a8,accent:0xe0407a,
+    speed:.85,damage:8,radius:.44,xp:5,contactCooldown:ticks(1),color:0xf0c8a8,accent:0xe0407a,
     barks:['Bom dia, família! Tá pago!','Usa meu cupom: SHAPE10','Isso aqui é publi, tá?','Grava meu lado bom. O esquerdo','Perna? Faço semana que vem','Shape não se faz, se posta','Arrasta pra cima que eu bato','Treino em jejum de humildade','Não postei? Então não treinei','Segue lá: @eu_mesmo_monstro'],
     deathLines:['A panturrilha! Para de filmar!','Posta não! POSTA NÃO!','Distendi no meu melhor ângulo','Morri ao vivo. Engajou bem','Chama o fisio! E a ring light!','Chorei sem filtro, caralho...','Edita isso pra parecer pose...'],
     reactionLines:['Corta! Faz de novo pro vídeo!','Essa foi pro story!','Essa doeu? Isso é hipertrofia!','Marca eu nessa porrada!','Sente o pré-treino!','Bati e postei. Rendeu!'],
@@ -153,8 +155,13 @@ const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
  * elites (ELITE.radius multiplies it) grow together; the boss's own tuning (boss.ts BOSS_TUNING) takes it too.
  */
 export const ENEMY_RADIUS_SCALE=1.15;
+/**
+ * Base hp of a role (card NEW-20261024-ORQ-vida-inimigos-estilo-clash): ROLE_HITS of the faca verde at the ninhos run's
+ * start row (ROUNDS[0].hpNinhos), solo; the boss role has none (its own hp). Every kind and pack entry of a role shares it.
+ */
+export const roleHp=(role:EnemyRole,own=1)=>role==='chefe'?own:roleBaseHp(role,ROUNDS[0].hpNinhos??ROUNDS[0].hpScale);
 export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze(Object.fromEntries(Object.entries(TUNED).map(([id,def])=>
-  [id,{...def,radius:def.radius*ENEMY_RADIUS_SCALE}])) as Record<LegacyKind,EnemyDef>);
+  [id,{...def,hp:roleHp(LEGACY_ROLE[id as LegacyKind],def.hp),radius:def.radius*ENEMY_RADIUS_SCALE}])) as Record<LegacyKind,EnemyDef>);
 
 export const ELITE:EliteDef=Object.freeze({
   name:'Funcionário do Mês',hp:8,speed:.9,damage:1.5,radius:1.5,xp:10,accent:0xffd25e,
@@ -364,7 +371,7 @@ export const hazardKind=(owner:string):EnemyKind|undefined=>{
 export const isEnemyKind=(value:string):value is EnemyKind=>isRosterId(value);
 const ROSTER_DEFS=new Map<string,EnemyDef>();
 /**
- * Def of a pack entry: its role's profile on the role's base kind (hp, speed, damage, radius × cell / role cell, xp;
+ * Def of a pack entry: its role's hp (roleHp) and profile on the role's base kind (speed, damage, radius × cell / role cell, xp;
  * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).
  */
 function rosterDef(kind:string):EnemyDef|undefined{
@@ -374,7 +381,7 @@ function rosterDef(kind:string):EnemyDef|undefined{
   const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base];
   const def:EnemyDef=Object.freeze({
     id:entry.id,name:entry.name,behavior:role.behavior,
-    hp:Math.max(1,Math.round(base.hp*role.hp)),speed:base.speed*role.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
+    hp:roleHp(entry.role,base.hp),speed:base.speed*role.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
     radius:base.radius*role.radius*entry.cell/role.cell,xp:Math.max(1,Math.round(base.xp*role.xp)),
     contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,
     // The swarm's and the stagger's walk sway like their base's (pombos, bêbado).
@@ -421,7 +428,9 @@ export function createEnemy(ctx:SimContext,kind:EnemyKind,point:Point,scale=1,op
   const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)));
   const id=ctx.nextId('e');
   const enemy:EnemyState={
-    id,kind,x:point.x,y:point.y,hp:maxHp,maxHp,speed:def.speed,damage:def.damage,radius:def.radius,xp:def.xp,
+    id,kind,x:point.x,y:point.y,hp:maxHp,maxHp,speed:def.speed,damage:def.damage,radius:def.radius,
+    // Fewer, sturdier bodies (rules CLASH_XP, card vida-inimigos-estilo-clash): every body pays ×1.4 its def's XP.
+    xp:def.xp*CLASH_XP,
     spawnTick:ctx.tick,readyTick:ctx.tick+Math.max(0,options.readyIn??0),
     memory:{seed:hashUnit(id),state:0,until:0,hitReady:0,actReady:0},
   };

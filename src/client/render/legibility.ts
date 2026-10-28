@@ -8,6 +8,22 @@ export const DAMAGE_MERGE_MS=150;
 /** Health bars show for this long after a hit (elite, boss and the tapped target always show). */
 export const BAR_RECENT_MS=2500;
 
+/**
+ * Clash-style health bar (card vida-inimigos-estilo-clash): as wide as the body (the roster entry's sprite cell, 128 =
+ * today's 40 px), so a pombo's is short and a mini-chefe's long; the elite's body is ELITE_SCALE wider and so is its
+ * bar. Clamped so the smallest stays readable and the biggest does not cover the horde. The boss keeps its own.
+ */
+export const BAR_CELL=128,BAR_PLAIN_W=40,BAR_MIN_W=22,BAR_MAX_W=96,BAR_BOSS_W=170;
+export function enemyBarWidth(cell:number,elite:boolean,boss:boolean,eliteScale=1.35){
+  if(boss)return BAR_BOSS_W;
+  const c=Number.isFinite(cell)&&cell>0?cell:BAR_CELL;
+  return Math.round(Math.max(BAR_MIN_W,Math.min(BAR_MAX_W,BAR_PLAIN_W*c/BAR_CELL*(elite?eliteScale:1)))*10)/10;
+}
+/** World px from the figure's measured head to the bar's top (the bar hangs 13 below it): the tallest of the 8 views touches it, the others get a few px of air. */
+export const BAR_HEAD_GAP=10;
+/** The enemy side's fill (Clash: one colour per side, not by hp share); the boss keeps its purple. */
+export const ENEMY_BAR_FILL=0xff5f5f,BOSS_BAR_FILL=0xb48cff;
+
 export type EffectsProfile='full'|'reduced';
 export interface FxBudget {
   /** Damage numbers on screen at once. */

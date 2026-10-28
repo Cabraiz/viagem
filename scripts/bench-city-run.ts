@@ -73,7 +73,7 @@
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
  *     [--out evidence/NEW-20261012-ORQ-cidade-11-balanco-run/balanco.json] [--resume] [--cap-min 30]
- *     [--knobs <city-balance.json>] [--priority low|normal] [--no-vehicles] [--barraca-rows N]
+ *     [--knobs <city-balance.json>] [--priority low|normal] [--no-vehicles]
  *
  * Merge mode (CI, NEW-20261014-ORQ-ci-github-shards-e-bench): plays nothing; reads every run JSON (an --out file) under
  * <dir>, prints the per-run lines and the same summary as above (+ a before/after table with --before <file>) and
@@ -97,10 +97,9 @@ import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
 import {OPEN_SECONDS} from '../src/sim/crates.ts';
 import {CRATE_STAND} from '../src/sim/bot-loot.ts';
-import {BARRACA_ROWS,RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
-import {towersOf} from '../src/sim/towers/system.ts';
-import {piecesOf} from '../src/sim/towers/free-build.ts';
+import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
+import {BOT_WALK_MULT} from '../src/contract/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
@@ -220,12 +219,6 @@ export interface RunRecord {
    * (`acabou` ran out, `largou` a fall or the car) and the distinct `riders`. Absent in older JSON files.
    */
   vehicles?:VehicleRecord;
-  /**
-   * NEW-20261023-ORQ-barracas-no-caminho: the map's barracas laid at the start, the bots' coletas started and kits set
-   * near the Uno (RoomBots.coletas/.barracas), how many stand at the end and how many fell (laid + set − collected −
-   * standing: bashed by the critters or destroyed by a hero). Absent in older files.
-   */
-  barracas?:{rows:number;laid:number;coletas:number;placed:number;standing:number;fell:number};
   /** remover-gemas (D-054): the sim second each team level was reached (levels[i] = level i+2). Absent in older JSON files. */
   levels?:number[];
   /**
@@ -555,6 +548,8 @@ export class NavDriver {
   private boxesRound=-1;
   private readonly loot:NonNullable<ReturnType<typeof cityLoot>>;
   private readonly speed:number;
+  /** Card bots-20-mais-lentos: a bot's walk (u/s), BOT_WALK_MULT of a person's unless it is the person's seat (Simulation.personPace). */
+  private speedOf(id:string){return this.sim.personPace.has(id)?this.speed:this.speed*BOT_WALK_MULT;}
   readonly nav:CityNavigator;readonly sim:Simulation;readonly room:RoomBots;
   private readonly setStick:(id:string,d:Point)=>void;
   constructor(nav:CityNavigator,sim:Simulation,room:RoomBots,setStick:(id:string,d:Point)=>void){
@@ -590,16 +585,15 @@ export class NavDriver {
       // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
       // the walk to an ATM (bancos-e-veiculos, mode 'bank'), to a parked vehicle (part 2, mode 'veiculo') and leaning on
       // the car (D-052, mode 'carro').
-      // The walk with a barraca to the Uno or to a row (barracas-no-caminho, mode 'barraca') too.
-      else if(['push','clear','carro','bank','veiculo','barraca'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
+      else if(['push','clear','carro','bank','veiculo'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);
         const home=homeOf(view,p),toHome=dist(p,home),left=round.phaseEndsTick-tick;
         const recipe=forger===mind.id?pickRecipe(view,mind.memory.refused):undefined;
         const walk=this.loot.distanceToPlaza(p);
-        const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,this.speed)+4*HZ||
-          walk!==undefined&&left<=Math.ceil((walk/this.speed+HOME_MARGIN)*HZ);
+        const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,this.speedOf(mind.id))+4*HZ||
+          walk!==undefined&&left<=Math.ceil((walk/this.speedOf(mind.id)+HOME_MARGIN)*HZ);
         // D-051 (--combat manual): the arsenal's crates come before the gather nodes (a weapon beats a pile of bricks).
         const box=recipe||goHome?undefined:this.boxFor(mind.id,p,left);
         const node=recipe||goHome||box?undefined:this.crateFor(mind.id,p,inside,left)?.node;
@@ -649,7 +643,7 @@ export class NavDriver {
     const fits=(c:Crate)=>{
       const cost=this.nav.crateField(c.node.id,c.node).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;
-      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speed;
+      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speedOf(id);
       return (there+COLLECT_SECONDS+c.seconds+HOME_MARGIN)*HZ<=left;
     };
     const mine=this.targets.get(id);
@@ -677,8 +671,8 @@ export class NavDriver {
     const fits=(c:Point&{id:string})=>{
       const cost=this.nav.crateField(c.id,c).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;
-      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speed,back=this.loot.distanceToPlaza(c)??0;
-      return (there+OPEN_SECONDS[crates.state.crates[c.id].rarity-1]+back/this.speed+HOME_MARGIN)*HZ<=left;
+      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speedOf(id),back=this.loot.distanceToPlaza(c)??0;
+      return (there+OPEN_SECONDS[crates.state.crates[c.id].rarity-1]+back/this.speedOf(id)+HOME_MARGIN)*HZ<=left;
     };
     const mineId=this.boxes.get(id),mine=mineId?at(mineId):undefined;
     if(mine&&fits(mine))return mine;
@@ -750,7 +744,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;barracaRows?:number;objective?:'chaveiro';
+export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
   combat?:'manual';
   /** D-051 (--mode ninhos, with --objective chaveiro): the nests instead of the waves (Simulation mode). */
@@ -790,11 +784,11 @@ export function playRun(o:RunOptions):RunRecord{
   for(let i=0;i<o.players;i++){
     const id=`bot${i+1}`,classId=CLASS_ROTATION[i%CLASS_ROTATION.length];
     sim.addBot(id,botName(getClass(classId)?.name??id,new Set([...sim.players.values()].map(p=>p.name))),classId);room.add(id,i);ids.push(id);cls.push(classId);
+    // Card bots-20-mais-lentos: the first seat stands for the person (a person's walk); the others are the room's bots.
+    if(i===0)sim.personPace.add(id);
   }
   sim.botState=()=>room.state();
   sim.resetRun();room.reset();
-  // --barraca-rows N (barracas-no-caminho): the map lays N rows of barracas instead of BARRACA_ROWS (0: none).
-  if(o.barracaRows!==undefined)(towersOf(sim.run.stonewards.state).tralha??={}).rows=o.barracaRows;
   // Capture the brain's sticks (think → setBotInput) and the forge buys; the wrapper sets the final stick.
   const setStick=sim.setBotInput.bind(sim),forge=sim.forge.bind(sim);
   // D-051: the brain's attack button (manual combat) is held through the wrapper's re-aimed sticks.
@@ -837,7 +831,6 @@ export function playRun(o:RunOptions):RunRecord{
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
   const r1Arrival:Record<string,number|null>=Object.fromEntries(ids.map(id=>[id,null]));
   const st=()=>sim.run.stonewards.state;
-  let barracasLaid:number|undefined;
   const closeInter=(tick:number)=>{
     if(!curInter)return;
     // D-048: the forge is paid in Grana, so only the tower orders take units out of the pile.
@@ -907,7 +900,6 @@ export function playRun(o:RunOptions):RunRecord{
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
     // The bots spend in think (the wrappers above); in the step the kills pay in, anything else (Dona Cida) takes out.
     const grana0=sim.teamGrana(),events=sim.step();ticks++;
-    if(barracasLaid===undefined&&towersOf(st()).tralha?.barracas)barracasLaid=piecesOf(st()).filter(p=>p.kind==='barraca').length;
     {const d=sim.teamGrana()-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
     const w=sim.world,tick=w.tick;
     trackNests(tick);
@@ -994,13 +986,8 @@ export function playRun(o:RunOptions):RunRecord{
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
     vehicles,
-    barracas:barracaSummary(),
     levels:levelS,
   };
-  function barracaSummary(){
-    const standing=piecesOf(st()).filter(p=>p.kind==='barraca').length,laid=barracasLaid??0,collected=room.coletas;
-    return {rows:towersOf(st()).tralha?.rows??BARRACA_ROWS,laid,coletas:room.coletas,placed:room.barracas,standing,fell:Math.max(0,laid+room.barracas-collected-standing)};
-  }
   function nestSummary():NestRecord{
     const ns=sim.run.nests!.state,start=ns.startTick??0,sec=(t:number|null)=>t===null?null:r2((t-start)/HZ),sono=sim.run.sono();
     const life=sono?.state.life??[],count=(k:number)=>life.filter(l=>l[0]===k).length;
@@ -1032,7 +1019,7 @@ function args(argv:readonly string[]){
     seeds:parseSeeds(get('--seeds')??'1-16'),players:parsePlayers(get('--players')??'1,3,6'),
     out:path.resolve(get('--out')??path.join(ROOT,'evidence',CARD,'balanco.json')),
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
-    towers:!argv.includes('--no-towers'),vehicles:!argv.includes('--no-vehicles'),barracaRows:get('--barraca-rows')===undefined?undefined:Number(get('--barraca-rows')),
+    towers:!argv.includes('--no-towers'),vehicles:!argv.includes('--no-vehicles'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
@@ -1114,7 +1101,7 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,vehicles:a.vehicles,barracaRows:a.barracaRows,objective:a.objective,combat:a.combat,mode:a.mode});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,vehicles:a.vehicles,objective:a.objective,combat:a.combat,mode:a.mode});
     run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);

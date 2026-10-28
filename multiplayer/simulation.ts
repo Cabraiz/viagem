@@ -10,10 +10,10 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
-import {CALMA,FEAR_TICKS,refreshStats} from '../src/rules/index.ts';
+import {bodyRadius,resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {CALMA,FEAR_TICKS,kitItem,kitPiece,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
-import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
+import {BASE_STATS,BOT_WALK_MULT,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX,isVehicleKind,ticks} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult,type KitOrder,type PlaceResult} from '../src/sim/index.ts';
@@ -69,6 +69,10 @@ export const packPlayerExtra=(p:ServerPlayer,stats?:RunStats):PlayerExtraWire=>{
 /** Server player: protocol 3 wire fields plus the contract's combat state (build, stats, facing, weaponReady). */
 export type ServerPlayer = Player & RunPlayer & { spectator:boolean };
 export type SimOutcome=RunOutcomeKind;
+/** An offer command from the wire, queued for the next tick (Simulation.queueOffer); index only for a pick. */
+export interface OfferCommand {t:'choose'|'skip'|'reroll';id:string;offer:string;index?:number}
+/** An offer command as applied: the tick it landed on and whether the run took it. */
+export interface AppliedOffer extends OfferCommand {tick:number;ok:boolean}
 const runSeed=(seed:number,run:number)=>(seed^Math.imul(run+1,0x9e3779b9))>>>0;
 /** Ticks a dead enemy keeps being sent as a tombstone, and the event window of RunExtras. */
 const TOMBSTONE_TICKS=10;
@@ -164,6 +168,9 @@ function itemsOk(list:unknown,kind:'weapon'|'passive',max:number,repeats=false){
   if(!Array.isArray(list)||list.length>max)return false;
   const seen=new Set<string>();
   for(const item of list){
+    // A kit de torre (torre-pela-caixa) is no catalog item: its level is the charges left, 1..its kit's.
+    const piece=kind==='weapon'&&isObject(item)?kitPiece(item.id):undefined;
+    if(piece){if(!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>kitItem(piece).level)return false;continue;}
     const def=isObject(item)&&typeof item.id==='string'?ITEMS.get(item.id):undefined;
     if(!def||(kind==='passive')!==(def.kind==='passive')||!repeats&&seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
     seen.add(def.id);
@@ -330,6 +337,11 @@ export class Simulation {
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
   /**
+   * Card bots-20-mais-lentos: the bots walk at BOT_WALK_MULT of a person; the ones here walk at a person's pace anyway
+   * (the balance bench's first seat, which stands for the person: scripts/bench-city-run.ts). The room never adds any.
+   */
+  readonly personPace=new Set<string>();
+  /**
    * 3g-rede-sem-teleporte: people whose connection is gone; the room's light bot plays their hero (setBotInput) until
    * they are back, so a drop does not leave a statue in the horde.
    */
@@ -347,6 +359,10 @@ export class Simulation {
       },
       autopilot:id=>this.autopilot.has(id),
       bot:id=>this.bots.has(id),
+      walkScale:id=>this.bots.has(id)&&!this.personPace.has(id)?BOT_WALK_MULT:1,
+      // heroi-empurra-inimigos: a step a body changed counts as an effect up to the next tick (confirmed): the phone's
+      // replay starts from where the room has the bodies now, so while it pushes its frames go live.
+      onBodyBlock:id=>this.effectEnd.set(id,Math.max(this.effectEnd.get(id)??-Infinity,this.world.tick+1)),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
@@ -470,6 +486,7 @@ export class Simulation {
     // A state this build cannot run (a system throws on it): a fresh run instead, and the room falls back to the lobby.
     try{this.systems=this.assemble(cp.systems);}catch{this.resetRun();return false;}
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.shame.reset();this.botInputs.clear();this.effectEnd.clear();this.walkStat.clear();
+    this.offerQueue=[];this.offerLog=[];
     this.counters.clear();for(const [id,stats] of cp.stats)if(this.players.has(id))this.counters.set(id,{...emptyStats(),...stats});
     coastalSpawnPoints(this.terrain);
     let slot=0;
@@ -499,6 +516,7 @@ export class Simulation {
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();this.botInputs.clear();
+    this.offerQueue=[];this.offerLog=[];
     // D-036: the new run's clock starts over; an old effect end would hold the owner's frames live.
     this.effectEnd.clear();this.walkStat.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
@@ -539,7 +557,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.walkStat.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.walkStat.delete(id);this.bots.delete(id);this.personPace.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * The inheritance (NEW-20261014-ORQ-carteira-e-pix): the wallet of a player who leaves for good (remove) is split
    * among the seated players who stay (sim/wallet.ts splitAmong: equal parts, the remainder from the run's cursor).
@@ -712,6 +730,33 @@ export class Simulation {
     return {skips,rerolls};
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
+  /**
+   * N1-choose-no-tick: offer commands (pick, "Pular", "Rolar de novo") from the wire wait here for the room's next tick
+   * and are applied together, in arrival order, by applyOffers: what a pick does depends on the tick it lands on, never
+   * on where between two ticks its message came in. Skip and reroll share the queue so they never cut in on a pick.
+   */
+  private offerQueue:OfferCommand[]=[];
+  /**
+   * The accepted offer commands of this run (since its start or its checkpoint), with the tick they landed on: with
+   * the seed, the inputs and the seat ids, what a replay needs to play the same picks on the same ticks. Refused ones
+   * change nothing and are not kept (a forged-id flood cannot grow it).
+   */
+  offerLog:AppliedOffer[]=[];
+  queueOffer(command:OfferCommand){this.offerQueue.push(command);}
+  /** Commands queued but not applied yet (the room drops them outside combat). */
+  get queuedOffers():readonly OfferCommand[]{return this.offerQueue;}
+  clearOffers(){this.offerQueue=[];}
+  /** Applies the queued offer commands on this tick, before it steps; returns each with its result (the room answers them). */
+  applyOffers():AppliedOffer[]{
+    const queue=this.offerQueue,out:AppliedOffer[]=[];this.offerQueue=[];
+    for(const c of queue){
+      const ok=(c.t==='choose'?this.choose(c.id,c.offer,c.index??0):c.t==='skip'?this.skipOffer(c.id,c.offer):this.rerollOffer(c.id,c.offer)).ok;
+      const applied:AppliedOffer={...c,tick:this.tick,ok};
+      out.push(applied);
+      if(ok)this.offerLog.push(applied);
+    }
+    return out;
+  }
   /**
    * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
    * balance). `requestId` makes a resent tap apply once. `targetId` (cidade-06): what 'reparo' repairs, the wall when
@@ -999,7 +1044,9 @@ export class Simulation {
         downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p),
         // The ride too (bot-loot.ts vehicleGoal): without it a riding bot walked to a parked vehicle the sim never gives
         // a rider, and dithered on top of it (city-room-bots, mapa-175-com-viaduto).
-        ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{})})),
+        ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{}),
+        // uno-caminho-caixas-vender (c): the bots leave the people's crates (bot-loot.ts forAPerson).
+        ...(this.bots.has(p.id)?{bot:true}:{})})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],
@@ -1018,7 +1065,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews(playerId,false)],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{}),...bodyRadius(e)})),...this.sleeperViews(playerId,false)],
       // caixa-gamble: a crate this player no longer sees (PickupState.hiddenFor) is not in his view.
       pickups:[...w.pickups.values()].filter(p=>!p.hiddenFor?.includes(playerId)).map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),
@@ -1050,7 +1097,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews()],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{}),...bodyRadius(e)})),...this.sleeperViews()],
       // caixa-gamble: hiddenFor rides along (server-side only): the encoder leaves the crate out of those players' frames.
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource,...(p.hiddenFor?{hiddenFor:p.hiddenFor}:{})})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),

@@ -222,17 +222,23 @@ test('pending offers are pushed once per change on broadcast ticks',()=>{
 test('choose applies only the oldest real offer once; forged, repeated and out-of-order picks are refused',()=>{
   const {room,a,b,calls,offers}=offerRoom(),id=idOf(a),p=room.sim.players.get(id)!;
   const build=()=>JSON.stringify(p.build),initial=build();
+  // N1-choose-no-tick: a pick waits for the next tick (room.advance), where it is applied and answered.
+  let t=4300;const pick=(offer:string)=>{command(room,a,{t:'choose',round:1,offer,index:0},t);room.advance(t+=50);};
+  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},t);
+  assert.equal(calls(),0,'queued, not applied between ticks');
+  room.sim.clearOffers();
   // Another player's offer, a later offer and an unknown level reach the simulation and are refused there.
   for(const offer of [`lvl-2-${idOf(b)}`,`lvl-3-${id}`,`lvl-9-${id}`]){
-    command(room,a,{t:'choose',round:1,offer,index:0},4300);
+    pick(offer);
     assert.equal(offers(a).at(-1).offers.length,2);assert.equal(build(),initial);
   }
-  assert.equal(calls(),3);
-  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
+  assert.equal(calls(),3);assert.deepEqual(room.sim.offerLog,[],'refused picks are not logged');
+  const tick=room.sim.tick;pick(`lvl-2-${id}`);
+  assert.deepEqual(room.sim.offerLog,[{t:'choose',id,offer:`lvl-2-${id}`,index:0,tick,ok:true}],'the pick is logged with its tick');
   // The next card is lvl-3, re-rolled at once ("~tick") when the pick made it stale (D-050: no step() in a pause to do it).
   assert.equal(calls(),4);assert.deepEqual(offers(a).at(-1).offers.map((o:any)=>o.id.split('~')[0]),[`lvl-3-${id}`]);
   assert.notEqual(build(),initial);const afterPick=build();
-  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
+  pick(`lvl-2-${id}`);
   assert.equal(calls(),5);assert.equal(offers(a).at(-1).offers.length,1);assert.equal(build(),afterPick);
   assert.equal(room.sim.offers(idOf(b)).length,2);
 });

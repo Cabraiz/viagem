@@ -15,7 +15,7 @@
  * | duration  | 1    | -                            | 0.5 .. 3    |
  * | speed     | 1    | -                            | 0.5 .. 3    |
  * | luck      | 1    | bone +0.1 (+0.5)             | 0.5 .. 3    |
- * | growth    | 1    | cartao +0.08 (+0.4)          | 0.5 .. 3    |
+ * | growth    | 1    | - (class bonus only)         | 0.5 .. 3    |
  * | revive    | 1    | -                            | 0.5 .. 3    |
  * Order: base + class bonus + passives, then clamp. Multipliers are additive, not compounding.
  */

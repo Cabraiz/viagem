@@ -1408,6 +1408,33 @@
         ]
       }
     },
+    "corda": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "corda.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "corda.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1
+            }
+          ]
+        }
+      },
+      "meta": {
+        "replaces": [
+          "i-corda"
+        ]
+      }
+    },
     "corneta": {
       "kind": "icon",
       "files": {

@@ -157,7 +157,7 @@ test('trail crates: a hero who took verde gets them azul; verde and azul, roxa',
 
 test('the encoder leaves a crate out of the frames of the players it is hidden for (never on the wire); bots skip it',()=>{
   const players=['a','b'].map((id,i):PlayerRunView=>({id,name:id,classId:'turista',hp:100,maxHp:100,online:true,spectator:false,
-    weapons:[{id:'faca',level:1}],passives:[],x:i,y:0} as PlayerRunView));
+    weapons:[{id:'faca',level:1}],passives:[],x:i,y:0,bot:true} as PlayerRunView));
   const pickups:PickupView[]=[{id:'bau-1',kind:'chest',x:3,y:0,value:1,resource:'pistola',hiddenFor:['a']},{id:'bau-2',kind:'chest',x:9,y:0,value:1,resource:KIT1}];
   const view={tick:10,team:{xp:0,level:1,nextXp:10},round:{index:1,total:10,phase:'wave',phaseEndsTick:100,remaining:0},
     players:players.map(p=>({...p,ack:0})),enemies:[],projectiles:[],telegraphs:[],structures:[],pickups};

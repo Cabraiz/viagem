@@ -24,6 +24,7 @@
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
 import {heroSpeed,moveDirection,RADIUS,SPEED,walkable} from './world.ts';
 import {floorOf,floorOn,onFloor,type Floor} from './city/viaduct.ts';
+import {bodyBlock,shoveWhereWalkable,type Body} from './bodies.ts';
 import {BURPEE_TICKS,CART_TURN,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,RIDE_MULT,SIM_HZ,carPushOut,carSpeed} from '../contract/index.ts';
 import type {PlayerInput,Point,VehicleKind} from '../contract/index.ts';
 type Input=PlayerInput;
@@ -43,10 +44,13 @@ export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
  * `cap` (D-052, the car): the most this player may walk per tick while moving the car (carSpeed(movers)/SIM_HZ).
  */
 export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number;
-  /** NEW-20261023-ORQ-barracas-no-caminho: the step multiplier from where a step starts (the barracas: slowAmong). */
-  slow?:(at:Point)=>number;
   /** Card uno-bloqueio-corpo: the chaveiro's car in the frame (ObjectiveView.car): the steps stand clear of its body (carBlock). */
-  car?:CarPlace}
+  car?:CarPlace;
+  /**
+   * Card heroi-empurra-inimigos: copies of the solid bodies near the hero in the frame (EnemyView with its radius); the
+   * replay pushes them as the room pushes the enemies (bodies.ts bodyBlock), and keeps them pushed for the next steps.
+   */
+  bodies?:Body[]}
 /** The car's place as the room and the frame have it (heading absent = 0). */
 export interface CarPlace {x:number;y:number;heading?:number}
 /**
@@ -89,8 +93,10 @@ const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
  * One movement tick of a player at server tick `tick` (the room's players system and the phone's replay): a slide
  * while slipping (any direction that walks: the slide's own is taken), else a walk, slowed while slowed. A step without
  * a direction (the attack or the skill held in place) stands, slipping or not. Collision-safe like moveDirection.
+ * `walkScale` (card bots-20-mais-lentos, the room's bots: BOT_WALK_MULT) multiplies the walk, not the slide; the phone's
+ * replay (its own hero, a person) leaves it at 1.
  */
-export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
+export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain,walkScale=1):FloorPoint{
   if(isDown(effects,tick))return p;
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return p;
@@ -100,7 +106,7 @@ export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEf
   let q:Point;
   if(slide)q=moveDirection(p,slide,STEP,ground,PLAYER_SLIP_SPEED*walk/SPEED);
   else{
-    const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects);
+    const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects)*walkScale;
     const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
     q=moveDirection(p,turned,STEP,ground,speed);
   }
@@ -115,27 +121,6 @@ export function capStep(from:FloorPoint,to:FloorPoint,cap:number|undefined,terra
   if(cap===undefined||!(moved>cap))return to;
   const q={x:from.x+(to.x-from.x)*cap/moved,y:from.y+(to.y-from.y)*cap/moved},floor=floorOf(from);
   return walkable(q,onFloor(terrain,floor))?onto(q,floorOn(terrain,q.x,q.y,floor)):onto(from,floor);
-}
-/**
- * NEW-20261023-ORQ-barracas-no-caminho: a hero on a barraca walks `factor` (< 1) of the step from `from` to `to`, along
- * its own line (kept in place if that point is not walkable); 1 or more leaves it whole. The room's players system and
- * the phone's replay.
- */
-export function slowStep(from:FloorPoint,to:FloorPoint,factor:number,terrain:TerrainField=defaultTerrain):FloorPoint{
-  if(!(factor<1))return to;
-  const f=Math.max(0,factor),q={x:from.x+(to.x-from.x)*f,y:from.y+(to.y-from.y)*f},floor=floorOf(from);
-  return walkable(q,onFloor(terrain,floor))?onto(q,floorOn(terrain,q.x,q.y,floor)):onto(from,floor);
-}
-/**
- * NEW-20261023-ORQ-barracas-no-caminho: `factor` while a hero's body (radius `radius`) at `p` overlaps one of `rects`
- * (the barracas' footprints, u), else 1: the room's heroSlow (sim/towers/free-build.ts) on what the frames carry.
- */
-export function slowAmong(rects:readonly {x:number;y:number;w:number;h:number}[],p:Point,factor:number,radius:number):number{
-  for(const r of rects){
-    const dx=Math.max(r.x-p.x,0,p.x-(r.x+r.w)),dy=Math.max(r.y-p.y,0,p.y-(r.y+r.h));
-    if(dx*dx+dy*dy<radius*radius)return factor;
-  }
-  return 1;
 }
 /** D-052: the cap of a hero among the car's movers (the room's moverCap, chaveiro/car.ts), else undefined (free). */
 export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):number|undefined{
@@ -155,24 +140,25 @@ export function carBlock(from:FloorPoint,to:FloorPoint,car:CarPlace|undefined,te
   return carPushOut(car,from,RADIUS)===from?onto(from,floorOf(from)):to;
 }
 /**
- * One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep; `car` as
- * carBlock; `slow` (the barracas) as slowStep, from where the step starts, before the car.
+ * One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep;
+ * `bodies` (card heroi-empurra-inimigos) as bodyBlock, the phone's copies pushed where walkable; `car` as carBlock.
  */
-export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace,slow?:(at:Point)=>number):FloorPoint {
+export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace,bodies?:Body[]):FloorPoint {
   let to:FloorPoint;
   if(tick===undefined){
     const floor=floorOf(p),q=moveDirection(p,{x:input.x,y:input.y},STEP,onFloor(terrain,floor));
     to=onto(q,floorOn(terrain,q.x,q.y,floor));
   }else to=moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
-  const capped=capStep(p,to,cap,terrain);
-  return carBlock(p,slow?slowStep(p,capped,slow(p),terrain):capped,car,terrain);
+  to=capStep(p,to,cap,terrain);
+  if(bodies?.length)to=bodyBlock(p,to,bodies,terrain,shoveWhereWalkable(terrain));
+  return carBlock(p,to,car,terrain);
 }
 /**
  * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
  * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
  */
 export function reconcile(authoritative:FloorPoint,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):FloorPoint {
-  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car,clock?.slow),onto(authoritative,floorOf(authoritative)));
+  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car,clock?.bodies),onto(authoritative,floorOf(authoritative)));
 }
 
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

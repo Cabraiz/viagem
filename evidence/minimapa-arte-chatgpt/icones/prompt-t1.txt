@@ -1,0 +1,9 @@
+Use your image generation tool to create ONE image, 1536x1024, and save it as icones-t1.png in the current folder. Do not inspect files, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+
+The attached image is only a STYLE reference (flat cartoon, thick dark purple-black outline #1d1830, saturated flat colours, green background). Do not copy, edit or reuse any part of it.
+
+Make a sheet of 12 game MINIMAP ICONS in that exact style, 4 columns x 3 rows, one centered in each cell, each icon filling about 75% of its cell, seen slightly from above (3/4 top view), chunky and simple so each one reads when shrunk to 12 pixels:
+Row 1: (1) a wooden street barricade made of brown planks with an X brace; (2) a small defense tower: a wooden post topped with a giant blue flip-flop sandal; (3) a bank: a bright green square sign with a big bold dark "$"; (4) an enemy nest: a small shack with a bright red pointed roof.
+Row 2: (5) a small old boxy blue-grey hatchback car (Fiat Uno style), seen from the side-top; (6) a delivery scooter/motorbike in cream with a delivery box; (7) a delivery spot: a cream map pin with a key symbol; (8) a BOSS mark: a red round badge with a white angry face and a little crown.
+Row 3: (9) a fortress gate: a cream stone wall segment with a wooden gate; (10) a construction site: four wooden stakes with a rope and a small pile of bricks; (11) a small red angry blob monster; (12) a wooden treasure chest with gold trim.
+Background: flat pure green #00FF00 everywhere, no frames, no cells drawn, no shadows on the ground, no text except the "$".

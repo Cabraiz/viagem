@@ -9,11 +9,10 @@
  * (the hero holds still on it while it is an obra, sim towers/system.ts holdsObra). The piece type (a tower id or a FreePiece) is rules/towers.ts BuildPiece.
  */
 /**
- * The new pieces beside the tower root: a wall segment (1 cell) and a barricade (2×1, slows instead of blocking); the
- * barraca (NEW-20261023-ORQ-barracas-no-caminho) is the map's feira stall, collected and placed again from its kit.
+ * The new pieces beside the tower root: a wall segment (1 cell) and a barricade (2×1, slows instead of blocking). The
+ * barraca (NEW-20261023-ORQ-barracas-no-caminho) is the map's feira stall: laid by the sim, never built (not in FREE_PIECES).
  */
 export type FreePiece='muro'|'barricada'|'barraca';
-/** The D-052 pieces, in their DICT order (the barraca came later: protocol4 DICT's end). */
 export const FREE_PIECES:readonly FreePiece[]=Object.freeze(['muro','barricada']);
 export type BuildRot=0|1;
 /** A rot the room accepts: 0, 1 or absent. */

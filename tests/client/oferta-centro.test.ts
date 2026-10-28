@@ -36,8 +36,8 @@ test('one window over the whole screen (veil, title, fan, buttons) on every scre
   assert.match(css,/\.rh \.rh-offer\.rh-ofc\{[^}]*position:fixed;z-index:30;inset:0;[^}]*flex-direction:column;[^}]*background:var\(--px39-veu\)/);
   assert.doesNotMatch(css,/overflow(-y)?:(auto|scroll)/);
   // px39: the cards open as a fan (the default pick in the middle, turned sides), the same in landscape.
-  assert.match(css,/\.rh-card\[data-fan=l\]\{[^}]*--rot:-\d+deg/);
-  assert.match(css,/\.rh-card\[data-fan=r\]\{[^}]*--rot:\d+deg/);
+  assert.match(css,/\.rh-card\[data-fan=l\]\{[^}]*--rot:-[\d.]+deg/);
+  assert.match(css,/\.rh-card\[data-fan=r\]\{[^}]*--rot:[\d.]+deg/);
   assert.match(ts,/card\.dataset\.fan=slots\[index\]/);
   // Landscape: the same column (no grid of two columns), scaled to the height.
   assert.doesNotMatch(css,/grid-template-areas/);

@@ -62,6 +62,7 @@ import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type Hud
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {bankExtras} from '../hud/bancos.ts';
 import {RunHud} from '../hud/hud.ts';
+import {STAMP_HOLD_MS} from '../hud/offer.ts';
 import {SIM_HZ,type BankView,type RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
@@ -202,7 +203,8 @@ const hud=new RunHud(document.body,{
   },
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
-    view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
+    // esperando: that was your last offer (the queue's next would open over the waiting window).
+    view={...view,offers:pausa==='esperando'?[]:view.offers.filter(offer=>offer.id!==offerId)};
     hud.update(view);
   },
   // D-052: "Pular" closes the offer (no prize), "Rolar de novo" deals the cards again, each spending one of the local
@@ -381,7 +383,7 @@ void artReady().then(ok=>{
   if(ok)load(scenario);
   if(pausa==='esperando')setTimeout(()=>{
     (hud.el.querySelector('.rh-offer .rh-card-default') as HTMLButtonElement|null)?.click();
-    esperaPicked=true;requestAnimationFrame(()=>{document.body.dataset.hudReady='1';});
+    esperaPicked=true;setTimeout(()=>{document.body.dataset.hudReady='1';},STAMP_HOLD_MS+120); // past the stamp: the waiting window
   },450);
 });
 

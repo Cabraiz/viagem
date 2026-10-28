@@ -1,0 +1,22 @@
+{
+ "code": 0,
+ "url": null,
+ "build": null,
+ "results": [
+  {
+   "roteiro": "andando",
+   "tela": "celular",
+   "modo": "chaveiro",
+   "quadros": 223,
+   "duracaoMs": 81457,
+   "entrouMs": 7918,
+   "gifKB": 17053,
+   "escolhas": 0,
+   "voltas": 0,
+   "fpsJogo": 8,
+   "match": "",
+   "falha": "",
+   "erros": []
+  }
+ ]
+}

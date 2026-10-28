@@ -15,6 +15,7 @@ import {artLoads} from '../../src/client/art/horde-art.ts';
 import {baseLoads} from '../../src/client/art/base-art.ts';
 import {framesLoads} from '../../src/client/art/frames-art.ts';
 import {telegraphArtLoads} from '../../src/client/render/telegraph-art.ts';
+import {arsenalLoads} from '../../src/client/render/arsenal-rules.ts';
 import {buildCityArtPlan,cityArtOptions} from '../../src/client/render/city/art-plan.ts';
 import {liveSheets} from '../../src/client/render/city/live/art.ts';
 import {PASSIVE_IDS,classes} from '../../src/rules/index.ts';
@@ -50,7 +51,8 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
     ...heroMotionUrls(A), // own walk and attack clips only (preload-heroi-primeiro): the teammates' come on demand
     ...plan.sheets.filter(s=>s.key.startsWith('city:ground:')).map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
     ALBEDO_URL, // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
-    ...offerIconUrls()]; // the upgrade cards' stickers (ofertas-sem-xp-e-icones)
+    ...offerIconUrls(), // the upgrade cards' stickers (ofertas-sem-xp-e-icones)
+    ...arsenalLoads().filter(l=>!l.strip).map(l=>l.url)]; // the crates' item stickers (caixa-aparece-tarde)
   assert.deepEqual(new Set(all),new Set(wanted));
   for(const url of all)assert.ok(existsSync('public'+url),`${url} is served`);
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
@@ -81,6 +83,21 @@ test('real manifest: every upgrade card sticker is downloaded before the match (
     const list=assetsParaPartida({self:A,others:[],map});
     for(const url of icons)assert.equal(list.find(a=>a.url===url)?.priority,'P1',`${map}: ${url}`);
   }
+});
+
+test("real manifest: the crates' item stickers are P1 in the waiting room and queued by a manual room's scene preload",()=>{
+  real();
+  // caixa-aparece-tarde: the first crate's item (an estilingue) was drawn ~11 s into the match, queued behind the city.
+  const stickers=arsenalLoads().filter(l=>!l.strip);
+  assert.ok(stickers.length>=20,'the arsenal has its stickers');
+  assert.ok(stickers.some(l=>l.url.includes('estilingue')),'the estilingue of the print');
+  for(const map of ['cidade-nevada','infinito'] as const){
+    const list=assetsParaPartida({self:A,others:[],map});
+    for(const l of stickers)assert.equal(list.find(a=>a.url===l.url)?.priority,'P1',`${map}: ${l.url}`);
+  }
+  const scene=readFileSync('src/client/scene.ts','utf8');
+  const preload=scene.slice(scene.indexOf('  preload(){'),scene.indexOf('  private lateArtQueued'));
+  assert.match(preload,/if\(this\.hooks\.net\?\.combat==='manual'\)for\(const l of arsenalLoads\(\)\)if\(!l\.strip\)this\.load\.image\(l\.key,l\.url\);/);
 });
 
 test('real manifest, endless map: no city art; a class with no sheet adds nothing; sizes are carried',()=>{

@@ -28,6 +28,7 @@ import {AuraRings,auraRingRadius} from './aura-ring.ts';
 import {TriBand} from './city/tri-band.ts';
 import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
+import {HERO_DRAW_SCALE} from './draw-scale.ts';
 import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
@@ -37,12 +38,15 @@ import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RA
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
-/** Drawn sizes at the endless map's scale (CSS px, times the actor scale): crate width (3× since coleta-3x), item sticker, hand sticker. */
-const CRATE_PX=64*CRATE_SCALE,ITEM_PX=34,HAND_PX=36;
+/**
+ * Drawn sizes at the endless map's scale (CSS px, times the actor scale): crate width (3× since coleta-3x), item sticker,
+ * hand sticker (a hero with no measured hand: the default hold's size, NEW-20261028-ORQ-escala-heroi-uno-inimigo).
+ */
+const CRATE_PX=64*CRATE_SCALE,ITEM_PX=34,HAND_PX=DEFAULT_HOLD.px;
 /** The crate's rarity ring (its body on the ground, rules/crate-size.ts CRATE_BODY_RADIUS) and its opening arc, at body 1 (CSS px). */
 const CRATE_RING_W=58*CRATE_SCALE,CRATE_RING_H=24*CRATE_SCALE,CRATE_ARC_RX=36*CRATE_SCALE,CRATE_ARC_RY=15*CRATE_SCALE;
-/** Where the hand sticker sits from the hero's feet (CSS px): at the side, about hip height. */
-const HAND_DX=26,HAND_DY=-30;
+/** Where the hand sticker sits from the hero's feet (CSS px): at the side, about hip height (fractions of the drawn hero). */
+const HAND_DX=.34*96*HERO_DRAW_SCALE,HAND_DY=-.39*96*HERO_DRAW_SCALE;
 /**
  * Depths: rings on the ground (just over the horde's ground layer); the hand over the heroes (allies 96400, the local
  * one 96500); the shots over the hand (a flash at the barrel is beside the hero's body, under it it would not show), all

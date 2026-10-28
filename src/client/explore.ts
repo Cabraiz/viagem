@@ -31,7 +31,7 @@ import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
 import './hud/menu.css';
-import {BACK_ONLINE_ROW_MS,BackOnlineWatch,createGameMenu,menuBack,menuFocus,type GameMenu} from './hud/menu.ts';
+import {BACK_ONLINE_ROW_MS,BackOnlineWatch,SOLO_LINE,createGameMenu,menuBack,menuFocus,quietStatus,roomLine,type GameMenu} from './hud/menu.ts';
 import type {RunState,RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
@@ -164,7 +164,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // The island's little map (and its dot) has no meaning on the endless map: the HUD's minimap does that job.
     shell.querySelector('.explore-map')?.remove();
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
-    $('#coop-code').textContent=`Sala ${net.code}`;
+    $('#coop-code').textContent=roomLine(net.run?.members,net.id);
     // Weapons fire on their own: this slot is the class skill. One tap sends one {t:'cast'} (net.cast, input-10hz),
     // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
     $('.explore-actions').innerHTML=`${SKILL_HTML}<button class="explore-pause" aria-pressed="false">Pausar controles</button>`;
@@ -299,10 +299,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       (window as unknown as {__zones?:unknown}).__zones={measure:()=>measureZones(),audit:(hero?:Rect)=>auditBoxes(auditBoxesFromDom(),measureZones(),hero),
         overlay:async(on:boolean)=>{zoneOverlay=on;const debug=await import('./hud/zones-debug.ts');if(!on)debug.clearZoneOverlay();else debug.drawZoneOverlay(measureZones());}};
     }
-    net.onStatus=m=>{$('#coop-network').textContent=m;};
+    net.onStatus=m=>{const line=$('#coop-network');line.textContent=m;line.hidden=quietStatus(m,roomLine(net.run?.members,net.id)===SOLO_LINE);};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{$('#coop-network').hidden=false;try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=castSkill=()=>{if(skill?.attackMode)return;pause(false);skill?.tap(()=>net.cast(),performance.now());};
@@ -351,6 +351,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     menu.status.append($('#coop-code'),$('#coop-network'));menu.invite.append($('#coop-copy'));help?.remove();
     $('.explore-exit').hidden=true;
   }
+  // The menu's head line (auditoria-ui-menus 15): "Partida solo" or how many people are in, read each time the menu opens.
+  const syncRoomLine=(room:CoopClient)=>{
+    const line=roomLine(room.run?.members,room.id),status=$('#coop-network');
+    putText($('#coop-code'),line);status.hidden=quietStatus(status.textContent??'',line===SOLO_LINE);
+  };
   $('#explorer-name').textContent=name;
   // The settings' title picture (not the first <img> of the shell: with the imported art the view buttons' stickers are
   // <img> too, and the left one used to wear the hero's portrait, hud-mobile-minimo).
@@ -408,7 +413,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     setMusicScene('menu');
   };
   const pause=(value:boolean)=>{paused=value;if(value){reset();attackBtn?.clear();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
-  const openSettings=()=>{pause(true);shell.classList.add('settings-open');menu?.show('menu');settings.showModal();(menu?menuFocus(menu):$('.explore-settings-close')).focus();};
+  const openSettings=()=>{pause(true);if(net)syncRoomLine(net);shell.classList.add('settings-open');menu?.show('menu');settings.showModal();(menu?menuFocus(menu):$('.explore-settings-close')).focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.

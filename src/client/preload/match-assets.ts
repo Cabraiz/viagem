@@ -5,7 +5,7 @@
  * preloader's download is what Phaser then finds in the cache.
  *
  * Priorities: P0 = the map's ground and this player's hero with its walk clips (the match opens with them:
- * preload-heroi-primeiro); P1 = its attack clips first (cena-nasce-rapido), teammates' heroes, the upgrade cards' stickers, enemies and the base pieces; P2 = the city's pine, items,
+ * preload-heroi-primeiro); P1 = its attack clips first (cena-nasce-rapido), teammates' heroes, the upgrade cards' and the crates' item stickers, enemies and the base pieces; P2 = the city's pine, items,
  * effects and HUD art.
  * Not listed: the city's buildings, props, decor and live sheets (the scene, open behind the waiting room, streams them
  * itself nearest the camera first, render/city/art-stream.ts: fetched here in list order they took the bandwidth from
@@ -25,6 +25,7 @@ import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
 import {baseLoads} from '../art/base-art.ts';
 import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
+import {arsenalLoads} from '../render/arsenal-rules.ts';
 import {buildCityArtPlan,cityArtOptions} from '../render/city/art-plan.ts';
 import {ALBEDO_URL} from '../render/city/relevo/albedo-meta.ts';
 
@@ -98,8 +99,11 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   }
   // The level-up cards' stickers (hud/offer.ts: every passive, and the coxinha of a full build): the <img> of a card
   // asked for only when the window opens came in seconds late behind the city's stream, an empty frame (card
-  // ofertas-sem-xp-e-icones: Cartão Fidelidade, Café Coado na Meia). The arsenal's own ones the scene loads anyway.
+  // ofertas-sem-xp-e-icones: Cartão Fidelidade, Café Coado na Meia).
   for(const url of offerIconUrls())add(url,'P1','icon');
+  // The crates' floating items (caixa-aparece-tarde): every arsenal sticker, which the scene's preload asks for in a room
+  // (the map opens with crates of any item); fetched here, the first frame finds them in the cache.
+  for(const l of arsenalLoads())if(!l.strip)add(l.url,'P1','icon');
   // The loader requests the enemies' lite copies (liteEnemyUrl): the same URLs here.
   const enemyPrefix=index.groups.inimigos?liteEnemyUrl(`/${index.groups.inimigos.output.replace(/^public\//,'')}/`):undefined;
   const horde=artLoads();

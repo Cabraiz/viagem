@@ -34,7 +34,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
-import {isWeaponItem} from './render/arsenal-rules.ts';
+import {arsenalLoads,isWeaponItem} from './render/arsenal-rules.ts';
 import {heldHand} from './sprites/hand-points.ts';
 import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt,releaseEnemyArt} from './art/horde-art.ts';
 import {ChefaoArtPlan,chefaoDeferred} from './art/chefao-art.ts';
@@ -433,6 +433,10 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
+    // The crates' floating items (caixa-aparece-tarde): the map opens with crates of any item, so in the manual combat every
+    // item sticker (~750 KB, the waiting room already fetched them: match-assets P1) comes with the art around the hero,
+    // not ~11 s later behind the city's stream. The shot strips stay with the first manual view (render/arsenal-fx.ts).
+    if(this.hooks.net?.combat==='manual')for(const l of arsenalLoads())if(!l.strip)this.load.image(l.key,l.url);
     // The defenses' sheets are not preloaded (none stands at the opening): every kind's was ~8 MB of download and
     // ~134 MB of decoded textures on a phone (auditoria-desempenho-28-10). A kit's ghost or a defense asks for its own
     // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).

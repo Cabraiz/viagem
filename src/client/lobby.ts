@@ -16,7 +16,7 @@ import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
 import {holdMenuDownload} from './audio/menu-music.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
-import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
+import {objectiveFromSearch,soloMemory,soloNext,soloOneRetry,soloPlan,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -407,7 +407,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       else if(step.action==='bot')client.addBot?.();
       else if(step.action==='ready')client.ready(true);
     }
-    setText(readyButton,blocked??(view.selfReady?'Ops, peraí':'Tô pronto!'));
+    setText(readyButton,blocked??(!view.selfReady?'Tô pronto!':options.solo&&client.run?.phase==='countdown'?SOLO_STARTING:'Ops, peraí'));
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
     readyButton.classList.toggle('is-ready',view.selfReady);
     if(armed&&!view.members.some(m=>m.id===armed!.id&&!m.self))armed=undefined;
@@ -553,27 +553,60 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
 export const SOLO_MANIFEST_MS=8000;
 export const SOLO_TEXT={noRooms:'As partidas ainda não estão disponíveis neste endereço.',noCity:'A cidade não baixou. Tente novamente.'} as const;
 /**
+ * What "Jogar sozinho" downloads before the room (cena-nasce-rapido; auditoria-ui-menus 5: started when the choice
+ * popup opens, not on the tap, so the seconds the player spends looking at the popup are spent downloading): the game's
+ * code (explore, scene, Phaser ~1.2 MB), the city's manifest and map (~1 MB, the room's join waits for it: loadCity
+ * shares one download per hash), the rooms' address, and the own hero's first art (P0, the waiting room's gate). Once per
+ * page; a failed part is asked again by the next call.
+ */
+interface SoloWarm {code:Promise<unknown>;manifest:Promise<(MapRef&{bytes?:number})|undefined>;city:Promise<unknown>;endpoint:Promise<string|undefined>;art?:string;
+  /** The map's bytes so far (0..1) and who wants to know (the card's bar). */
+  cityFraction:number;onCity:Set<(fraction:number)=>void>}
+let soloWarm:SoloWarm|undefined;
+function startWarm():SoloWarm{
+  const manifest=import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined);
+  const onCity=new Set<(fraction:number)=>void>();
+  const warm:SoloWarm={
+    cityFraction:0,onCity,
+    code:Promise.all([import('./explore.ts'),import('./scene.ts'),import('./coop.css'),import('./net/client.ts')]),
+    manifest,
+    city:manifest.then(ref=>ref&&import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref,f=>{warm.cityFraction=f;for(const l of onCity)l(f);}))).catch(()=>undefined),
+    endpoint:fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined),
+  };
+  // A part that failed is not kept: the next call (the tap after an error) asks again.
+  const drop=()=>{if(soloWarm===warm)soloWarm=undefined;};
+  warm.code.catch(drop);
+  void Promise.all([manifest,warm.endpoint]).then(([m,e])=>{if(!m||!e)drop();});
+  return warm;
+}
+export function warmSolo(heroId?:string):SoloWarm{
+  const warm=soloWarm??=startWarm();
+  // The hero's P0 (sheet, walk, the city's ground): the waiting room's own preloader then finds them in the cache.
+  if(heroId&&warm.art!==heroId){
+    warm.art=heroId;
+    createPreloader().add(assetsParaPartida({self:heroId,others:[],map:SOLO_MAP,search:location.search}).filter(a=>a.priority==='P0'));
+  }
+  return warm;
+}
+/**
  * "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): creates a room, joins it with the city in join.maps and
  * opens the match shell with the waiting room driving itself (setMap city, the bots, ready). `onJoined` closes the
  * confirmation dialog only once the room is joined, so an error before that shows under its buttons (the caller
- * catches it). The room's own countdown starts the match.
+ * catches it). The room's own countdown starts the match. `onStep`: each step done (the card's bar, solo-plan.ts).
  */
-export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void}){
-  // cena-nasce-rapido: what the match needs next starts with the click, not after the room answers. The menu track
-  // yields (the waiting room takes its own hold); the game's code (explore, scene, Phaser ~1.2 MB) and the city's map
-  // (~1 MB, the room's join waits for it: loadCity shares one download per hash) download beside the room's creation.
+export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void;onStep?:(step:SoloStep,fraction:number)=>void}){
+  // The menu track yields (the waiting room takes its own hold) while the match's files come down.
   let menuHold:(()=>void)|undefined=holdMenuDownload();
   const releaseMenu=()=>{menuHold?.();menuHold=undefined;};
-  void import('./explore.ts').catch(()=>undefined);void import('./scene.ts').catch(()=>undefined);
-  const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
+  const warm=warmSolo(hero.id),step=(s:SoloStep,fraction=1)=>options.onStep?.(s,fraction);
+  void warm.code.then(()=>step('code'),()=>undefined);
+  const city=(f:number)=>step('city',f);warm.onCity.add(city);if(warm.cityFraction>0)city(warm.cityFraction);
+  void warm.city.then(()=>{warm.onCity.delete(city);step('city');});
+  const [{CoopClient}]=await Promise.all([import('./net/client.ts'),import('./coop.css')]);
   const loadManifest=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
-  const manifest=loadManifest().then(ref=>{
-    if(ref)void import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref)).catch(()=>undefined);
-    return ref;
-  }).catch(()=>undefined);
-  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
+  const endpoint=await warm.endpoint;
   if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
-  const cityRef=await within(manifest,SOLO_MANIFEST_MS);
+  const cityRef=await within(warm.manifest,SOLO_MANIFEST_MS);
   if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
   const plan=soloPlan(options.bots),nick=fitName(name)||'Capivara Veloz';
   let client:CoopClient|undefined;
@@ -581,12 +614,17 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a
     // room Worker from before reads none and opens the usual room, which the solo plan still switches to the city).
     const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};
-    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
-    if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
-    client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();
+    // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time.
+    const joined=await soloOneRetry(async()=>{
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
+      if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
+      step('room');
+      const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;await fresh.join();
+      return fresh;
+    },()=>{const fatal=!!client?.fatal;if(!fatal){client?.leave();client=undefined;}return !fatal;});
+    step('join');
     const {openExploration}=await import('./explore.ts');
     options.onJoined?.();
-    const joined=client;
     const opening=openExploration(hero,nick,joined);
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});

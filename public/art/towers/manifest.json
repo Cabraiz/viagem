@@ -463,16 +463,16 @@
         "fire": {
           "file": "equipe-antimaterial/fire.webp",
           "cell": [
-            192,
-            192
+            384,
+            256
           ],
           "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
-          "fps": 12,
+          "fps": 5,
           "pages": [
             {
               "file": "equipe-antimaterial/fire.webp",
@@ -480,71 +480,46 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 64,
-              "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e"
+              "sha256": "2ca9fa7a48c8c630426664c47bcc4c630149385ab3f8673826870518e73b36b0"
             }
           ],
-          "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e",
+          "sha256": "2ca9fa7a48c8c630426664c47bcc4c630149385ab3f8673826870518e73b36b0",
           "liteCell": [
-            96,
-            96
+            192,
+            128
           ]
         },
         "idle": {
           "file": "equipe-antimaterial/idle.webp",
           "cell": [
-            192,
-            192
+            384,
+            256
           ],
-          "frames": 4,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
           "fps": 4,
           "pages": [
             {
               "file": "equipe-antimaterial/idle.webp",
-              "columns": 4,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 32,
-              "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813"
+              "frameCount": 64,
+              "sha256": "acf868108417e0a1dda45034997128c94db03af864cfa84c2a1cbcd15d440c2c"
             }
           ],
-          "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813",
+          "sha256": "acf868108417e0a1dda45034997128c94db03af864cfa84c2a1cbcd15d440c2c",
           "liteCell": [
-            96,
-            96
-          ]
-        },
-        "reload": {
-          "file": "equipe-antimaterial/reload.webp",
-          "cell": [
             192,
-            192
-          ],
-          "frames": 12,
-          "directions": 8,
-          "anchor": [
-            0.5,
-            0.88
-          ],
-          "fps": 8,
-          "pages": [
-            {
-              "file": "equipe-antimaterial/reload.webp",
-              "columns": 12,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 96,
-              "sha256": "2de9a867f1e6f01227d0535fda0d253a99f6aefb6ee4c3848e22e9d57cdbe854"
-            }
-          ],
-          "sha256": "2de9a867f1e6f01227d0535fda0d253a99f6aefb6ee4c3848e22e9d57cdbe854"
+            128
+          ]
         }
       },
-      "sha256": "85e3056912f4cc472367e04c02894669d9acea67dbb58675273366a25abd375e",
+      "sha256": "ffffe61f9cfccef2f2b2342f21579ee26ee971e1ead865acac0d2e3d27285e0f",
       "meta": {
         "footprint": [
           2,
@@ -553,6 +528,40 @@
         "mount": [
           225,
           165
+        ],
+        "muzzle": [
+          [
+            0.46,
+            0.83
+          ],
+          [
+            0.33,
+            0.8
+          ],
+          [
+            0.25,
+            0.7
+          ],
+          [
+            0.32,
+            0.36
+          ],
+          [
+            0.42,
+            0.35
+          ],
+          [
+            0.68,
+            0.36
+          ],
+          [
+            0.75,
+            0.7
+          ],
+          [
+            0.67,
+            0.8
+          ]
         ]
       }
     },
@@ -1671,7 +1680,7 @@
           ]
         }
       },
-      "sha256": "6cce69905f5816bf0984a094af4b3cc798665aa201fd2ee903d60e0f6ff4102b",
+      "sha256": "8eee0ee6c75bfff7230e4139668df8cb24c2a9a3d93afca2e756e49728d614ef",
       "meta": {
         "footprint": [
           2,

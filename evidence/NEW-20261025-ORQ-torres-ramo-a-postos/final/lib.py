@@ -36,6 +36,24 @@ def grid(img, cols, rows):
     return [[img.crop((round(c * cw), round(r * ch), round((c + 1) * cw), round((r + 1) * ch))) for c in range(cols)] for r in range(rows)]
 
 
+def grid_gaps(img, cols, rows):
+    """Like grid, but each row band is split at the emptiest column near every nominal border: Codex sometimes draws a
+    wide crew off-centre, across the equal grid, with green still between the poses."""
+    w, h = img.size
+    cw, ch = w / cols, h / rows
+    a = np.asarray(key(img))[..., 3] > 200  # the drawing, not the soft shadows that may touch
+    out = []
+    for r in range(rows):
+        band = a[round(r * ch):round((r + 1) * ch)].sum(0)
+        xs = [0]
+        for c in range(1, cols):
+            lo, hi = round((c - 0.3) * cw), round((c + 0.3) * cw)
+            xs.append(lo + int(np.argmin(band[lo:hi])))
+        xs.append(w)
+        out.append([img.crop((xs[c], round(r * ch), xs[c + 1], round((r + 1) * ch))) for c in range(cols)])
+    return out
+
+
 def bounds(img, thr=200):
     """Bounding box of the opaque drawing (alpha > thr: the object, not its soft shadow)."""
     a = np.asarray(img)[..., 3]

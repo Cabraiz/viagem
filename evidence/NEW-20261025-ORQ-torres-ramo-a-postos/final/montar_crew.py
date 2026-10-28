@@ -8,7 +8,7 @@
 import sys, json, os
 import numpy as np
 from PIL import Image
-from lib import key, grid, bounds, clean_cell, clear_border, sheet_on_grey, HERO_PX
+from lib import key, grid, grid_gaps, bounds, clean_cell, clear_border, sheet_on_grey, HERO_PX
 
 ID, FPS_FIRE = sys.argv[1], int(sys.argv[2])
 HEIGHT = int(sys.argv[3]) if len(sys.argv) > 3 else HERO_PX
@@ -36,14 +36,17 @@ def feet(c):
 
 # chosen attempt per direction: escolha-<id>.json {"N": "t2"} (default: the first); a pose that breaks the loop is
 # replaced by a neighbour: {"pick": {"N": {"15": 13}}}; a lying crew (pose 0 height changes with the direction) takes
-# the S sheet's scale in every direction: {"escala": "S"}
+# the S sheet's scale in every direction: {"escala": "S"}; a sheet Codex drew facing the mirrored side (SW aiming
+# bottom-right) is flipped: {"espelhar": ["SW"]}; a sheet drawn across the equal grid is split at the gaps: {"vao": ["NW"]}
 escf = f'escolha-{ID}.json'
 ESC = json.load(open(escf)) if os.path.exists(escf) else {}
 
 
 def build(d, s=None):
-    g = grid(Image.open(f'anim-{ID}-{d}' + (f'-{ESC[d]}' if d in ESC and d not in ('pick', 'escala', 'pe') else '') + '/meio.png'), 4, 4)
+    g = (grid_gaps if d in ESC.get('vao', []) else grid)(Image.open(f'anim-{ID}-{d}' + (f'-{ESC[d]}' if d in ESC and d not in ('pick', 'escala', 'pe') else '') + '/meio.png'), 4, 4)
     cells = [clean_cell(key(c)) for r in g for c in r]
+    if d in ESC.get('espelhar', []):
+        cells = [c.transpose(Image.FLIP_LEFT_RIGHT) for c in cells]
     for i, j in ESC.get('pick', {}).get(d, {}).items():
         cells[int(i)] = cells[j]
     s = s or HEIGHT / feet(cells[0])[2]

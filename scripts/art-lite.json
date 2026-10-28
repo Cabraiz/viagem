@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3271,
-  "bytes": 2244543408,
-  "liteBytes": 786197674,
+  "bytes": 2247091500,
+  "liteBytes": 786521094,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -33614,28 +33614,28 @@
    "shownPsnr": 37.6
   },
   "towers/equipe-antimaterial/fire.webp": {
-   "source": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e",
-   "lite": "998897418f9da18a4fd6ce1cb5da1f132cdf0050ce377a0397dd7d8d837792fa",
-   "bytes": 837602,
-   "liteBytes": 145440,
+   "source": "2ca9fa7a48c8c630426664c47bcc4c630149385ab3f8673826870518e73b36b0",
+   "lite": "f5a19e004b73bc1acfc7ceda6d22c8c3d5612bfdd02628c0c713965b1a2d0795",
+   "bytes": 2028162,
+   "liteBytes": 284296,
    "liteCell": [
-    96,
-    96
+    192,
+    128
    ],
-   "psnr": 45.7,
-   "shownPsnr": 45.7
+   "psnr": 42.9,
+   "shownPsnr": 42.9
   },
   "towers/equipe-antimaterial/idle.webp": {
-   "source": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813",
-   "lite": "b61236d31a23e4e4c59af86ba90e8ed652c4289c84b3471e3c6ab171d1ab780d",
-   "bytes": 483104,
-   "liteBytes": 80890,
+   "source": "acf868108417e0a1dda45034997128c94db03af864cfa84c2a1cbcd15d440c2c",
+   "lite": "fdf5b926666be94d3be42a11d926b6d08ebcc60ba5d4e453437d0c6434c13f60",
+   "bytes": 1840636,
+   "liteBytes": 265454,
    "liteCell": [
-    96,
-    96
+    192,
+    128
    ],
-   "psnr": 45.2,
-   "shownPsnr": 45.2
+   "psnr": 42.7,
+   "shownPsnr": 42.7
   },
   "towers/guarnicao-do-predio/base.webp": {
    "source": "ef73293d18a4b2a761cd02cfc5b4196d868d2369e0e24ec5d5b12c66b2e6c97b",

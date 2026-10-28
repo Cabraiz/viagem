@@ -61,6 +61,10 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *    the first wave reaches it;
  *  - warm: for the first `warm` seconds the outside group is × warmScale and the waves play the round row `warmRow`
  *    (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
+ *  - warmEase: seconds after `warm` in which the outside group climbs linearly from warmScale to 1, still on warmRow
+ *    (balanco-1p-3p-carro: the step at `warm` was a ×2.5 wave that took the team and the Uno in the same minute); 0: the step;
+ *  - warmTrickle: × trickle while warming (warm + warmEase): the map share leaves slower, never smaller (6p: ~80 recruits
+ *    reached the Uno in 25 s at the first wave); 1: unchanged;
  *  - size: × the outside group (over playerScale's count);
  *  - mapShare: the quota, a share of the plan's bodies (the user: 1000 on the map → 100 a wave; fixed by the user,
  *    22/10: "calibra, mas sem diminuir número de inimigos": the quota, the population and the waves never shrink to
@@ -89,7 +93,7 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
 const CROWD={march:[1,1,1,1.083,1.167,1.25] as number[],hp:[1,1,1,1.333,1.667,2] as number[],damage:[1,1,1,1.1,1.2,1.3] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
-  warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,
+  warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
   // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
   size:[CLASH_BODIES[0],1.85*CLASH_BODIES[1]] as [number,number],mapShare:[.1*CLASH_BODIES[0],.1*CLASH_BODIES[1]] as [number,number],
   trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
@@ -238,7 +242,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   const random=()=>rng??=Object.assign(new Rng(0),{state:state.rng??0});
   const save=()=>{if(rng)state.rng=rng.state;};
   const elapsedF=(tick:number)=>state.startTick===null?0:(tick-state.startTick)/ticks(NEST_PACE.ramp);
-  const warming=(tick:number)=>state.startTick!==null&&tick-state.startTick<ticks(NEST_PACE.warm);
+  const warming=(tick:number)=>state.startTick!==null&&tick-state.startTick<ticks(NEST_PACE.warm+NEST_PACE.warmEase);
+  /** The outside group's × at `tick`: warmScale while warm, then up to 1 over warmEase. */
+  const warmScale=(tick:number)=>{
+    if(!warming(tick))return 1;
+    const past=(tick-(state.startTick??tick))/ticks(1)-NEST_PACE.warm;
+    return past<=0?NEST_PACE.warmScale:NEST_PACE.warmScale+(1-NEST_PACE.warmScale)*past/NEST_PACE.warmEase;
+  };
 
   function begin(ctx:SimContext){
     const counted=options.players?.(ctx)??[...ctx.players.values()].filter(p=>p.online&&!p.spectator).length;
@@ -318,7 +328,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const d=state.drip,door=d?options.entrances?.[d.door]:undefined;
     if(!d||!door||!options.recruit){if(d){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}return;}
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size);
-    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players))),room),tune);
+    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1))),room),tune);
     d.left-=Math.max(got,0);
     const entry=state.log?.find(l=>l.tick===d.tick);
     if(entry){entry.map+=got;entry.total+=got;}
@@ -331,7 +341,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   function sendWave(ctx:SimContext){
     const retry=()=>{state.nextWave=ctx.tick+ticks(RETRY_SECONDS);};
     if(ctx.enemies.size>=pace(NEST_PACE.alive,state.players)||ctx.enemies.size>=options.maxEnemies)return retry();
-    const f=elapsedF(ctx.tick),warm=warming(ctx.tick)?NEST_PACE.warmScale:1;
+    const f=elapsedF(ctx.tick),warm=warmScale(ctx.tick);
     const entrances=options.entrances??[],door=entrances.length?entrances[state.sent%entrances.length]:undefined;
     const dead=options.mapDead?.()??0,kills=Math.max(0,dead-(state.deadAt??0)),quota=state.quota??0;
     const [lo,hi]=outsideRange(f);

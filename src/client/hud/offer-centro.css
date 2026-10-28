@@ -1,126 +1,141 @@
 /* D-052 + px39 (card NEW-20261025-ORQ-popup-levelup-12-variacoes): the upgrade offer "Ofertas de melhoria" as the
-   user's var-39, 16-bit pixel art with snow, the same on the phone (portrait and landscape) and on the desktop.
-   Every piece is ChatGPT art (public/art/ui-extra/px39/*.webp, cut from the green); the CSS only places, sizes and turns
-   them: the title plaque, the cards opened as a fan (the default pick in the middle, gold frame and rays behind its
-   icon; the others purple, turned to the sides), the "Nova" and "Niv N" seals, the gain box (number big, words small),
-   the Pular / Rolar de novo buttons with their counter. The cards open spinning from the middle (px39-leque).
+   user's var-39, 16-bit pixel art with snow, the same composition on the phone (portrait and landscape) and on the
+   desktop: a dark veil over the game with the reference's snowflakes falling, the title plaque at the top, the cards
+   opened as a fan in the middle (the default pick bigger, gold frame and rays behind its icon; the others purple,
+   turned to the sides and a little behind it), the Pular / Rolar de novo buttons wide at the base.
+   Every piece is ChatGPT art or cut from the reference (public/art/ui-extra/px39/*.webp); the CSS only places, sizes
+   and turns them. The frames are 9-slice (border-image), so a card grows taller than its art without stretching the
+   corners, the snow or the icicles. No text under 12 px. The cards open spinning from the middle (px39-leque).
    The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc). Nothing in it scrolls. */
 .rh .rh-offer.rh-ofc{
-  /* --cw: a side card's width; the middle one is 1.18x. Narrow phones by the width, short screens by the height. */
-  --cw:min(29vw,150px,calc((100dvh - 165px) / 2));
-  --px-font:'Pixelify Sans',var(--f-cartaz);
-  --px-ink:#160f3c;
-  --px-line:1px 0 0 var(--px-ink),-1px 0 0 var(--px-ink),0 1px 0 var(--px-ink),0 -1px 0 var(--px-ink),
-    1px 1px 0 var(--px-ink),-1px 1px 0 var(--px-ink),1px -1px 0 var(--px-ink),-1px -1px 0 var(--px-ink),0 2px 0 #080320;
-  position:fixed;z-index:30;left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);
-  box-sizing:border-box;width:min(460px,calc(100vw - 8px));max-width:none;max-height:calc(100dvh - 8px);margin:0;padding:0 0 6px;
-  display:flex;flex-direction:column;align-items:center;gap:clamp(4px,2.4dvh,22px);
-  border:0;border-radius:0;background:none;box-shadow:none;
-  color:#f3e8d1;font-family:var(--px-font);text-align:center;overflow:visible;image-rendering:pixelated;
+  /* --mw / --sw: the middle and side cards' widest; their height comes from the fan's own height (cqh). */
+  --mw:min(44vw,230px);--sw:min(30vw,165px);--tall:2.3;--side-h:.86;--asp:.62;
+  --tw:min(92vw,440px);--bw:min(44vw,210px);--bh:calc(var(--bw) * 248 / 600);
+  --px-line:1px 0 0 var(--px39-tinta),-1px 0 0 var(--px39-tinta),0 1px 0 var(--px39-tinta),0 -1px 0 var(--px39-tinta),
+    1px 1px 0 var(--px39-tinta),-1px 1px 0 var(--px39-tinta),1px -1px 0 var(--px39-tinta),-1px -1px 0 var(--px39-tinta),
+    0 2px 0 var(--px39-tinta-funda);
+  /* The whole screen: the veil covers the game, the HUD and the pause's clock (z 2) while the offer is open. */
+  position:fixed;z-index:30;inset:0;transform:none;
+  box-sizing:border-box;width:auto;height:auto;max-width:none;max-height:none;margin:0;
+  padding:max(2dvh,env(safe-area-inset-top)) 2vw max(2.5dvh,env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:1.4dvh;
+  border:0;border-radius:0;background:var(--px39-veu);box-shadow:none;
+  color:var(--px39-texto);font-family:var(--f-pixel);text-align:center;overflow:hidden;image-rendering:pixelated;
+  animation:px39-veu .25s ease-out backwards;
 }
+@keyframes px39-veu{from{opacity:0}}
+/* The reference's snowflakes, two layers falling at two speeds (transform only: no repaint per frame). Not infinite
+   (design §2.5): they fall for about the offer's half minute and stop where they started, the tile repeating. */
+.rh .rh-ofc::before,.rh .rh-ofc::after{content:'';position:absolute;z-index:-1;left:0;right:0;pointer-events:none;
+  top:-260px;height:calc(100% + 260px);background:url('/art/ui-extra/px39/flocos.webp') 0 0/220px 260px repeat;
+  animation:px39-neve 11s linear 3}
+.rh .rh-ofc::after{top:-390px;height:calc(100% + 390px);background-size:330px 390px;background-position:110px 140px;
+  opacity:.8;animation-duration:8s;animation-iteration-count:4;--queda:390px}
+@keyframes px39-neve{to{transform:translateY(var(--queda,260px))}}
+@media (prefers-reduced-motion:reduce){.rh .rh-ofc,.rh .rh-ofc::before,.rh .rh-ofc::after,.rh .rh-ofc .rh-card{animation:none}}
 .rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:10%;right:10%;height:3px;border-radius:0}
-/* The title on its plaque (purple board, gold frame, snow and icicles). */
-.rh .rh-ofc .rh-offer-head{position:relative;margin:0;padding:0;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;
+/* The title on its plaque (purple board, gold frame, snow and icicles), wide at the top. */
+.rh .rh-ofc .rh-offer-head{position:relative;flex:0 0 auto;margin:0;padding:0;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;
   background:none;border:0}
 .rh .rh-ofc .rh-offer-title{flex:0 0 auto;box-sizing:border-box;display:grid;place-items:center;
-  width:min(360px,88vw);aspect-ratio:900/303;padding:7.5% 6% 6% 6%;
+  width:var(--tw);aspect-ratio:900/303;padding:calc(var(--tw) * .085) 6% calc(var(--tw) * .07);
   background:url('/art/ui-extra/px39/placa-titulo.webp') center/100% 100% no-repeat;
-  font:700 clamp(18px,6.6vw,30px)/1 var(--px-font);color:#fadb7d;text-shadow:var(--px-line);white-space:nowrap}
-.rh .rh-ofc :is(.rh-offer-queue,.rh-offer-time){font:700 var(--t-13)/1.2 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
+  font:700 calc(var(--tw) * .078)/1 var(--f-pixel);color:var(--px39-ouro);text-shadow:var(--px-line);white-space:nowrap}
+.rh .rh-ofc :is(.rh-offer-queue,.rh-offer-time){font:700 var(--t-13)/1.2 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-offer-later{min-height:24px;padding:0 8px}
 .rh .rh-ofc>.rh-window-fall{margin:0}
-/* The fan: one row, the cards overlap a little and turn around a point under them. */
-.rh .rh-ofc .rh-offer-cards{display:flex;flex-direction:row;justify-content:center;align-items:flex-end;gap:0;
-  padding:calc(var(--cw) * .08) 0 calc(var(--cw) * .12);min-height:0}
+/* The fan: takes the height left between the title and the buttons; the cards' height is a share of it. */
+.rh .rh-ofc .rh-offer-cards{flex:1 1 0;align-self:stretch;min-height:0;container-type:size;
+  display:flex;flex-direction:row;justify-content:center;align-items:center;gap:0;padding:0}
 .rh .rh-ofc .rh-card{
-  --w:var(--cw);--rot:0deg;--dy:0px;--fx:0px;
-  position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);aspect-ratio:480/805;min-height:0;
-  margin:0 calc(var(--cw) * -.04);padding:calc(var(--w) * .27) calc(var(--w) * .1) calc(var(--w) * .1);
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .035);
-  border:0;border-radius:0;background:url('/art/ui-extra/px39/cartao-lateral.webp') center/100% 100% no-repeat;
-  box-shadow:none;color:#f3e8d1;font-size:calc(var(--w) / 10);text-align:center;cursor:pointer;
-  transform-origin:50% 60%;transform:translateY(var(--dy)) rotate(var(--rot));
+  --h:calc(min(calc(var(--mw) * var(--tall)),100cqh) * var(--side-h));--w:min(var(--sw),calc(var(--h) * var(--asp)));
+  --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.2);
+  position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);height:var(--h);min-height:0;margin:0;
+  padding:0 calc(var(--w) * .03) calc(var(--w) * .04);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .03);
+  border:0 solid transparent;border-radius:0;background:none;box-shadow:none;
+  border-image:url('/art/ui-extra/px39/cartao-lateral.webp') 142 50 56 50 fill/
+    calc(var(--w) * 142 / 480) calc(var(--w) * 50 / 480) calc(var(--w) * 56 / 480)/0 stretch;
+  color:var(--px39-texto);font-size:max(12px,calc(var(--w) / 11));text-align:center;cursor:pointer;
+  transform-origin:50% 50%;transform:translateY(var(--dy)) rotate(var(--rot));
   animation:px39-leque .52s cubic-bezier(.2,1.25,.4,1) backwards;
 }
 .rh .rh-ofc .rh-card::before,.rh .rh-ofc .rh-card::after{display:none}
 @keyframes px39-leque{from{transform:translateX(var(--fx)) rotate(0deg) scale(.55);opacity:0}}
-@media (prefers-reduced-motion:reduce){.rh .rh-ofc .rh-card{animation:none}}
-.rh .rh-ofc .rh-card[data-fan=l]{order:1;--rot:-12deg;--dy:4%;--fx:calc(var(--cw) * .9)}
+.rh .rh-ofc .rh-card[data-fan=l]{order:1;margin-right:var(--in);--rot:-5deg;--dy:3%;--fx:calc(var(--w) * .9)}
 .rh .rh-ofc .rh-card[data-fan=m]{order:4;z-index:3}
-.rh .rh-ofc .rh-card[data-fan=r]{order:7;--rot:12deg;--dy:4%;--fx:calc(var(--cw) * -.9)}
-.rh .rh-ofc .rh-offer-cards[data-count='4']{--cw:min(24vw,128px,calc((100dvh - 165px) / 2.2))}
-.rh .rh-ofc .rh-card[data-fan=l2]{order:1;--rot:-22deg;--dy:9%;--fx:calc(var(--cw) * 1.5)}
-.rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;--rot:-6deg;--fx:calc(var(--cw) * .5)}
-.rh .rh-ofc .rh-card[data-fan=r1]{order:5;z-index:2;--rot:6deg;--fx:calc(var(--cw) * -.5)}
-.rh .rh-ofc .rh-card[data-fan=r2]{order:7;--rot:22deg;--dy:9%;--fx:calc(var(--cw) * -1.5)}
-.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card{margin:0 calc(var(--cw) * .02)}
-.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=l1]{--rot:-8deg}
-.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=r1]{--rot:8deg}
-/* The default pick: bigger, the gold frame on the dark teal, rays behind the icon. */
-.rh .rh-ofc .rh-card.rh-card-default{--w:calc(var(--cw) * 1.18);aspect-ratio:480/750;padding-top:calc(var(--w) * .2);
-  background-image:url('/art/ui-extra/px39/cartao-meio-dourado.webp')}
+.rh .rh-ofc .rh-card[data-fan=r]{order:7;margin-left:var(--in);--rot:5deg;--dy:3%;--fx:calc(var(--w) * -.9)}
+/* Four cards: all narrower; the default one stands second from the left. */
+.rh .rh-ofc .rh-offer-cards[data-count='4']{--mw:min(34vw,200px);--sw:min(24vw,150px)}
+.rh .rh-ofc .rh-card[data-fan=l2]{order:1;margin-right:var(--in);--rot:-9deg;--dy:5%;--fx:calc(var(--w) * 1.5)}
+.rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;--fx:calc(var(--w) * .5)}
+.rh .rh-ofc .rh-card[data-fan=r1]{order:5;z-index:2;margin-left:var(--in);--rot:4deg;--dy:3%;--fx:calc(var(--w) * -.5)}
+.rh .rh-ofc .rh-card[data-fan=r2]{order:7;margin-left:var(--in);--rot:9deg;--dy:5%;--fx:calc(var(--w) * -1.5)}
+.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=r1]{margin-left:calc(var(--w) * .04);--rot:5deg}
+.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=l1]{margin-right:calc(var(--w) * .04);--rot:-5deg}
+/* The default pick: the bigger, taller one, the gold frame on the dark teal, rays behind the icon. */
+.rh .rh-ofc .rh-card.rh-card-default{--h:min(calc(var(--mw) * var(--tall)),100cqh);--w:min(var(--mw),calc(var(--h) * var(--asp)));
+  --rot:0deg;--dy:0px;margin-left:0;margin-right:0;font-size:max(12px,calc(var(--w) / 12));
+  border-image:url('/art/ui-extra/px39/cartao-meio-dourado.webp') 170 50 86 50 fill/
+    calc(var(--w) * 170 / 480) calc(var(--w) * 50 / 480) calc(var(--w) * 86 / 480)/0 stretch}
 .rh .rh-ofc .rh-card:active{filter:brightness(1.15)}
-.rh .rh-ofc .rh-card:focus-visible{outline:3px solid #fadb7d;outline-offset:2px}
-/* "Nova" (the rarity) on the parchment seal over the top-left corner. */
-.rh .rh-ofc .rh-card-rarity{position:absolute;left:-2%;top:9%;z-index:2;box-sizing:border-box;min-width:42%;padding:.28em .5em .32em;
-  background:url('/art/ui-extra/px39/selo-nova.webp') center/100% 100% no-repeat;
-  font:700 1.05em/1 var(--px-font);color:#3a1d14;text-shadow:none;white-space:nowrap}
-.rh .rh-ofc .rh-card-default .rh-card-rarity{top:8%}
-.rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:0 0 auto;display:grid;place-items:center;width:5em;height:5em;
-  margin:0;border:0;border-radius:0;background:none}
-.rh .rh-ofc .rh-card-icon>.ic{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
-.rh .rh-ofc .rh-card-default .rh-card-icon{width:4.3em;height:4.3em}
-.rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-28%;z-index:-1;
+.rh .rh-ofc .rh-card:focus-visible{outline:3px solid var(--px39-ouro);outline-offset:2px}
+/* "Nova" (the rarity) on the parchment seal at the top-left corner, under the snow. */
+.rh .rh-ofc .rh-card-rarity{position:absolute;left:calc(var(--w) * -.05);top:calc(var(--w) * -.1);z-index:2;box-sizing:border-box;
+  min-width:44%;padding:.3em .55em .34em;background:url('/art/ui-extra/px39/selo-nova.webp') center/100% 100% no-repeat;
+  font:700 1em/1 var(--f-pixel);color:var(--px39-selo);text-shadow:none;white-space:nowrap}
+.rh .rh-ofc .rh-card-default .rh-card-rarity{top:calc(var(--w) * -.14)}
+/* The icon fills what the words leave; it rises a little into the frame's top, as in the reference. */
+.rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:1 1 0;display:grid;place-items:center;align-self:stretch;
+  min-height:0;margin:calc(var(--w) * -.06) 0 0;border:0;border-radius:0;background:none}
+.rh .rh-ofc .rh-card-icon>.ic{width:auto;height:auto;max-width:min(100%,calc(var(--w) * .8));max-height:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+.rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-6% 2%;z-index:-1;
   background:url('/art/ui-extra/px39/raios.webp') center/contain no-repeat}
-/* "Niv N" on the dark plate with the arrow tips, across the card. */
-.rh .rh-ofc .rh-card-level{position:static;flex:0 0 auto;box-sizing:border-box;width:112%;margin:0 -6%;padding:.32em 0 .38em;
-  background:url('/art/ui-extra/px39/selo-niv.webp') center/100% 100% no-repeat;
-  font:700 1.05em/1 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
-.rh .rh-ofc .rh-card-body{flex:1 1 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  gap:.3em;min-width:0;min-height:0;text-align:center}
+/* "Niv N" on the dark plate with the arrow tips, across the card under the icon. */
+.rh .rh-ofc .rh-card-level{position:static;flex:0 0 auto;box-sizing:border-box;display:grid;place-items:center;width:88%;aspect-ratio:360/90;
+  margin:0;padding:0;background:url('/art/ui-extra/px39/selo-niv.webp') center/100% 100% no-repeat;
+  font:700 1em/1 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line)}
+.rh .rh-ofc .rh-card-body{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:.35em;min-width:0;text-align:center}
 .rh .rh-ofc .rh-card-name{flex:0 0 auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;
-  font:700 1.18em/1.15 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow-wrap:anywhere;padding-bottom:2px}
-/* The gain box: the number big in mint, the words small in white. */
+  font:700 1.12em/1.12 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:normal;overflow-wrap:break-word;padding-bottom:2px}
+/* The gain box: the number big in green, the words under it (12 px at least). */
 .rh .rh-ofc :is(.rh-card-gain,.rh-card-value){box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  width:100%;min-height:2.9em;padding:.3em .35em;background:url('/art/ui-extra/px39/faixa-bonus-lateral.webp') center/100% 100% no-repeat;
-  font:700 .9em/1.05 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow:hidden}
-.rh .rh-ofc .rh-card-default :is(.rh-card-gain,.rh-card-value){background-image:url('/art/ui-extra/px39/faixa-bonus-meio.webp')}
-.rh .rh-ofc .rh-card-gain-big{font-size:1.55em;line-height:1;color:#77e48b}
-.rh .rh-ofc .rh-card-gain-small{font-size:.9em;line-height:1.05}
+  width:100%;padding:.35em .3em .4em;border:0 solid transparent;
+  border-image:url('/art/ui-extra/px39/faixa-bonus-lateral.webp') 14 fill/4px/0 stretch;
+  font:700 1em/1.05 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:normal;overflow:hidden}
+.rh .rh-ofc .rh-card-default :is(.rh-card-gain,.rh-card-value){border-image-source:url('/art/ui-extra/px39/faixa-bonus-meio.webp')}
+.rh .rh-ofc .rh-card-gain-big{font-size:1.45em;line-height:1;color:var(--px39-verde)}
+.rh .rh-ofc .rh-card-gain-small{font-size:1em;line-height:1.05}
 .rh .rh-ofc .rh-card-gain~.rh-card-value{display:none}
-.rh .rh-ofc .rh-card-value-new{color:#77e48b}
+.rh .rh-ofc .rh-card-value-new{color:var(--px39-verde)}
 /* The old tag's pieces stay in the DOM (labels, tests) but the card says it all. */
 .rh .rh-ofc :is(.rh-card-blurb,.rh-card-joke,.rh-card-price,.rh-card-star,.rh-card-tag,.rh-offer-joke){display:none}
 .rh .rh-ofc .rh-card-stamp{width:60%;z-index:4}
-.rh .rh-ofc .rh-card-chosen{filter:brightness(1.2) drop-shadow(0 0 6px #fadb7d)}
+.rh .rh-ofc .rh-card-chosen{filter:brightness(1.25)}
 .rh .rh-ofc.rh-offer-stamping .rh-card:not(.rh-card-chosen){filter:brightness(.6)}
-/* The foot: "levar os indicados" (two or more queued), the waiting line, Pular and Rolar de novo. */
-.rh .rh-ofc .rh-offer-foot{width:auto;margin:0}
-.rh .rh-ofc .rh-ofc-wait{margin:0;text-align:center;font:700 var(--t-13)/1.2 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
+/* The base: "levar os indicados" (two or more queued), the waiting line, Pular and Rolar de novo side by side. */
+.rh .rh-ofc .rh-offer-foot{flex:0 0 auto;width:auto;margin:0}
+.rh .rh-ofc .rh-ofc-wait{flex:0 0 auto;margin:0;text-align:center;font:700 var(--t-13)/1.2 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-ofc-wait[hidden]{display:none}
-.rh .rh-ofc .rh-ofc-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;width:100%}
-.rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:.4em;
-  width:min(46%,200px);aspect-ratio:600/248;min-height:44px;margin:0;padding:10.5% 7% 8% 8%;border:0;border-radius:0;
-  background:url('/art/ui-extra/px39/botao-pular.webp') center/100% 100% no-repeat;box-shadow:none;
-  font:700 clamp(14px,4.4vw,20px)/1 var(--px-font);color:#f4ecf3;text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
-.rh .rh-ofc .rh-ofc-reroll{background-image:url('/art/ui-extra/px39/botao-rolar.webp');padding-left:6%;padding-right:6%}
-.rh .rh-ofc .rh-offer-all{flex:1 0 100%;width:auto;max-width:300px;aspect-ratio:auto;padding:8px 14px 6px;background-image:url('/art/ui-extra/px39/botao-rolar.webp')}
+.rh .rh-ofc .rh-ofc-actions{flex:0 0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 3vw;width:100%}
+.rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:.35em;
+  width:var(--bw);height:var(--bh);min-height:44px;margin:0;padding:0;border:0 solid transparent;border-radius:0;background:none;box-shadow:none;
+  border-image:url('/art/ui-extra/px39/botao-pular.webp') 95 60 70 60 fill/
+    calc(var(--bh) * 95 / 248) calc(var(--bh) * 60 / 248) calc(var(--bh) * 70 / 248)/0 stretch;
+  font:700 calc(var(--bw) * .094)/1 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
+.rh .rh-ofc :is(.rh-ofc-reroll,.rh-offer-all){border-image-source:url('/art/ui-extra/px39/botao-rolar.webp')}
+.rh .rh-ofc .rh-offer-all{flex:1 0 100%;width:auto;max-width:300px}
 .rh .rh-ofc .rh-ofc-btn:disabled{opacity:1;filter:saturate(.55) brightness(.82);cursor:default}
 .rh .rh-ofc .rh-ofc-btn-count{display:grid;place-items:center;flex:0 0 auto;width:1.45em;height:1.45em;
-  background:url('/art/ui-extra/px39/contador.webp') center/100% 100% no-repeat;font:700 .85em/1 var(--px-font);color:#fff}
+  background:url('/art/ui-extra/px39/contador.webp') center/100% 100% no-repeat;font:700 .85em/1 var(--f-pixel);color:var(--px39-texto)}
 .rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
-/* Short screens (phone landscape): the plaque and the buttons in a column at the left, the fan at the right. */
+.rh .rh-ofc.rh-ofc-only-wait{justify-content:center}
+/* Short screens (phone landscape): the same composition, scaled to the height; the cards wider for their height. */
 @media (max-height:500px){
-  /* Bottom-anchored: the pause's clock ("Escolham! N s", pausa.ts) keeps its place above the window. */
-  .rh .rh-offer.rh-ofc{--cw:min(15vw,112px,calc((100dvh - 100px) / 2.2));width:max-content;max-width:calc(100vw - 16px);
-    top:auto;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);
-    display:grid;grid-template-columns:auto auto;grid-template-areas:'head cards' 'fall cards' 'wait cards' 'actions cards';
-    align-content:center;align-items:center;justify-items:center;gap:6px 28px}
-  .rh .rh-ofc .rh-offer-head{grid-area:head}
-  .rh .rh-ofc>.rh-window-fall{grid-area:fall}
-  .rh .rh-ofc .rh-ofc-wait{grid-area:wait}
-  .rh .rh-ofc .rh-ofc-actions{grid-area:actions;flex-direction:column;align-items:center;gap:6px}
-  .rh .rh-ofc .rh-offer-cards{grid-area:cards;padding-inline:calc(var(--cw) * .45)}
-  .rh .rh-ofc .rh-offer-title{width:min(300px,34vw);font-size:clamp(16px,2.6vw,24px)}
-  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){width:min(200px,24vw);font-size:clamp(13px,2vw,18px)}
+  .rh .rh-offer.rh-ofc{--asp:.8;--side-h:.9;--tw:min(60vw,calc(19dvh * 900 / 303));--bh:max(44px,12dvh);--bw:calc(var(--bh) * 3);
+    padding-top:max(1.5dvh,env(safe-area-inset-top));padding-bottom:max(1.5dvh,env(safe-area-inset-bottom));gap:1dvh}
+  .rh .rh-ofc .rh-card{font-size:max(12px,calc(var(--w) / 13))}
+  .rh .rh-ofc .rh-card.rh-card-default{font-size:max(12px,calc(var(--w) / 14))}
+  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(14px,calc(var(--bh) * .32))}
 }

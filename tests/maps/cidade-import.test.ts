@@ -57,8 +57,9 @@ const units=(px:number)=>px*STEP;
 // NEW-20261023-ORQ-mapa-175-com-viaduto: version 4 has the distances ÷ CITY_COMPACT on the same cell (scripts/
 // compactar-cidade.ts): 110 cells and 440 samples per side, 164.56 u.
 // NEW-20261025-ORQ-mapa-conexoes-sem-beco: version 5 opens its dead ends (scripts/becos-cidade.ts), same grid.
+// NEW-20261027-ORQ-uno-anda-mapa-todo: version 6 widens the streets the Uno did not get down (becos-cidade.ts alargarParaUno).
 test('asset header: 1 cell = 1.496 u (the D-026 scale × CITY_MAP_SCALE), the 192-cell city ÷ CITY_COMPACT = 110 cells ≈ 165 u',()=>{
-  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,5);assert.equal(asset.id,'cidade-nevada');
+  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,6);assert.equal(asset.id,'cidade-nevada');
   assert.equal(CITY_MAP_SCALE,1.7);assert.equal(CITY_COMPACT,1.75);
   assert.equal(asset.unitsPerCell,1.496);assert.equal(asset.cells.w,Math.round(192/CITY_COMPACT));assert.equal(asset.cells.h,110);
   assert.ok(Math.abs(asset.size.w-164.56)<1e-6&&Math.abs(asset.size.h-164.56)<1e-6);
@@ -136,7 +137,7 @@ test('asset stays small and carries no names or texts from the source map (D-026
 test('manifest carries id, version and the sha256 of the exact asset bytes',async()=>{
   const manifest=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
   const bytes=readFileSync(ASSET);
-  assert.deepEqual(manifest,{id:'cidade-nevada',version:5,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
+  assert.deepEqual(manifest,{id:'cidade-nevada',version:6,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
 });
 
 test('heights keep the source orientation: the hill is east, the flooded pit centre-north',()=>{

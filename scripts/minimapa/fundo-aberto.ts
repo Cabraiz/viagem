@@ -1,10 +1,10 @@
 /**
- * Fundo do minimapa da Cidade Nevada v5 (NEW-20261025-ORQ-mapa-conexoes-sem-beco): a pintura do ChatGPT da v4
- * (evidence/minimapa-arte-chatgpt/fundo/fundo-m1-t1.png, world-aligned, IoU 0,964) com o chão que a v5 abriu (passagens,
- * entulho tirado) repintado de neve: cada pixel de uma amostra aberta copia a cor do pixel de neve da v4 mais perto
- * (a mesma textura da pintura, sem chamar o ChatGPT de novo). Grava evidence/minimapa-arte-chatgpt/fundo/fundo-m2-v5.png,
- * que scripts/minimapa/atlas.mjs leva ao jogo.
- * Uso: node --experimental-strip-types scripts/minimapa/fundo-v5.ts
+ * Fundo do minimapa da Cidade Nevada v5+ (NEW-20261025-ORQ-mapa-conexoes-sem-beco; v6: uno-anda-mapa-todo): a pintura do
+ * ChatGPT da v4 (evidence/minimapa-arte-chatgpt/fundo/fundo-m1-t1.png, world-aligned, IoU 0,964) com o chão que o asset
+ * atual abriu (passagens, entulho tirado, ruas alargadas para o Uno) repintado de neve: cada pixel de uma amostra aberta
+ * copia a cor do pixel de neve da v4 mais perto (a mesma textura da pintura, sem chamar o ChatGPT de novo). Grava
+ * evidence/minimapa-arte-chatgpt/fundo/fundo-m2-v<versão>.png, que scripts/minimapa/atlas.mjs leva ao jogo.
+ * Uso: node --experimental-strip-types scripts/minimapa/fundo-aberto.ts
  */
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -17,7 +17,8 @@ const EV='evidence/minimapa-arte-chatgpt/fundo';
 const asset=(text:string):CityAsset=>{const d=decodeCityAsset(text);if(!d.ok)throw new Error(d.error);return d.asset;};
 const v4=asset(execFileSync('git',['show',`${V4_COMMIT}:public/maps/cidade-nevada.json`],{encoding:'utf8',maxBuffer:64<<20}));
 const v5=asset(readFileSync('public/maps/cidade-nevada.json','utf8'));
-if(v4.version!==4||v5.version!==5)throw new Error(`versions ${v4.version}, ${v5.version}`);
+if(v4.version!==4||v5.version<5)throw new Error(`versions ${v4.version}, ${v5.version}`);
+const OUT=`${EV}/fundo-m2-v${v5.version}.png`;
 
 const {data,info}=await sharp(`${EV}/fundo-m1-t1.png`).removeAlpha().raw().toBuffer({resolveWithObject:true});
 const W=info.width,H=info.height,{w:SW,h:SH}=v5.samples;
@@ -40,5 +41,5 @@ for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(!patch[x+y*W])continue;
   if(best<0)continue;
   for(let c=0;c<3;c++)out[(x+y*W)*3+c]=data[best*3+c];painted++;
 }
-await sharp(out,{raw:{width:W,height:H,channels:3}}).png().toFile(`${EV}/fundo-m2-v5.png`);
-console.log(JSON.stringify({painted,of:W*H,out:`${EV}/fundo-m2-v5.png`}));
+await sharp(out,{raw:{width:W,height:H,channels:3}}).png().toFile(OUT);
+console.log(JSON.stringify({painted,of:W*H,out:OUT}));

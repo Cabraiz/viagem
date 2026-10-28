@@ -181,15 +181,14 @@ export const CLIFF_STEP=1.6;
 export interface Passagem {readonly cells:readonly number[]; readonly from:number; readonly to:number; readonly save:number; readonly kinds:readonly string[]}
 
 /**
- * The holes to open, chosen greedily on `g` (which is not changed): each one 2 cells wide, straight (across or along),
- * through ≤ CUT_MAX_DEPTH cuttable solid cells between two city cells whose walk around is ≥ CUT_MIN_SAVE cells longer.
- * After each hole the walk is measured again (a hole near a chosen one saves less).
+ * Cells no hole goes into: the plaza ring (PLAZA_KEEP), a nest's yard + NEST_KEEP or its building, a safe place or a
+ * cell beside it, a viaduct's deck or ramp.
  */
-export function choosePassages(g:CityGraph,max=CUT_MAX):Passagem[]{
-  const {a,m,u}=g,P=a.points,ok=g.city.slice();
+export function passageBan(g:CityGraph):(t:number)=>boolean{
+  const {a,m,u}=g,P=a.points;
   const near=(t:number,p:CityPoint,r:number)=>Math.hypot((t%m+.5)*u-p.x,(Math.floor(t/m)+.5)*u-p.y)<r;
   const nestBlocks=new Set(CITY_NEST_POOL.filter(n=>n.block).map(n=>n.block));
-  const banned=(t:number)=>{
+  return (t:number)=>{
     if(near(t,P.praca,PLAZA_KEEP))return true;
     for(const n of CITY_NEST_POOL)if(near(t,n,NEST_YARD_RADIUS[n.maxSize]+NEST_KEEP))return true;
     const b=g.blockOf[t];if(b&&nestBlocks.has(b.id))return true;
@@ -200,6 +199,15 @@ export function choosePassages(g:CityGraph,max=CUT_MAX):Passagem[]{
     if(a.viaducts.some(v=>[-u,0,u].some(dx=>[-u,0,u].some(dy=>overDeck(v,u,x+dx,y+dy)||onRamp(v,u,x+dx,y+dy)))))return true;
     return false;
   };
+}
+
+/**
+ * The holes to open, chosen greedily on `g` (which is not changed): each one 2 cells wide, straight (across or along),
+ * through ≤ CUT_MAX_DEPTH cuttable solid cells between two city cells whose walk around is ≥ CUT_MIN_SAVE cells longer.
+ * After each hole the walk is measured again (a hole near a chosen one saves less).
+ */
+export function choosePassages(g:CityGraph,max=CUT_MAX):Passagem[]{
+  const {a,m,u}=g,ok=g.city.slice(),banned=passageBan(g);
   const cuttable=(t:number)=>!g.open[t]&&CUTTABLE.has(g.kind[t])&&!banned(t);
   // Every candidate: a start city cell, a direction, the solid run, the city cell after it; the 2nd lane beside it.
   type Cand={cells:number[];from:number;to:number;from2:number;to2:number};
@@ -451,6 +459,171 @@ export function abrirBecos(data:CityAssetData):{data:CityAssetData;passagens:Pas
   out.loot=loot;
   out.version=data.version+1;
   return {data:out,passagens,rubble,ruins,lootAdded:added,lootMoved:moved};
+}
+
+// ——— Streets wide enough for the Uno (NEW-20261027-ORQ-uno-anda-mapa-todo) ———
+
+/** A widened lane fits a disc this wide (u): the car's body with 0.1 u to spare on each side. */
+export const UNO_LANE_R=CAR_RADIUS+.1;
+/** The plaza, its mouths and the spawns: the Uno gets there with this much room (u, over its radius; the pushers' slack). */
+export const UNO_POINT_ROOM=.3;
+/** A loot point counts as reached when the car's centre gets this close (u, square: as scripts/diag-uno-caminho.ts). */
+export const UNO_LOOT_NEAR=3;
+/** Path cost of a probe that needs a cut, over one that does not: the way around wins up to this many probes longer. */
+const WIDEN_PENALTY=12;
+/** The same for a probe whose cut goes through a cliff. */
+const CLIFF_PENALTY=36;
+/** At most this many cells opened for one loot point (more: it moves to the street instead, see moveLootToUno). */
+export const WIDEN_MAX_CELLS=30;
+
+interface UnoField {GW:number;GH:number;reach:Uint8Array;near:(p:CityPoint)=>boolean}
+function unoField(a:CityAsset,r=CAR_RADIUS):UnoField{
+  const {w,h}=a.samples,W=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)W[x+y*w]=a.walkable(x,y)?1:0;
+  const reach=carReach(a,W,a.points.praca,r),GW=Math.ceil(a.size.w/PROBE),GH=Math.ceil(a.size.h/PROBE),d=Math.round(UNO_LOOT_NEAR/PROBE);
+  const near=(p:CityPoint)=>{for(let dy=-d;dy<=d;dy++)for(let dx=-d;dx<=d;dx++){const gx=Math.floor(p.x/PROBE)+dx,gy=Math.floor(p.y/PROBE)+dy;if(gx>=0&&gy>=0&&gx<GW&&gy<GH&&reach[gx+gy*GW])return true;}return false;};
+  return {GW,GH,reach,near};
+}
+/** The loot points the Uno, from the plaza, gets within UNO_LOOT_NEAR of. */
+export function unoLoot(a:CityAsset):{reached:number;total:number;out:CityPoint[]}{
+  const f=unoField(a),out=a.loot.filter(p=>!f.near(p));
+  return {reached:a.loot.length-out.length,total:a.loot.length,out};
+}
+
+/**
+ * The cells to open so the Uno reaches `target`: the cheapest way (probes the lane disc UNO_LANE_R fits, a probe that
+ * fits only once cuttable cells open costs WIDEN_PENALTY more) from the car's reach to within UNO_LOOT_NEAR of it; the
+ * cells under the lane disc of every probe on it that are still solid. Undefined: no way (a building, a nest, the plaza).
+ */
+function widenTo(a:CityAsset,g:CityGraph,allowed:(t:number)=>boolean,f:UnoField,target:CityPoint,lane=UNO_LANE_R):number[]|undefined{
+  const {w:SW,h:SH,step:S}=a.samples,{GW,GH}=f,m=g.m,K=SAMPLES_PER_CELL;
+  const W=new Uint8Array(SW*SH),Wopt=new Uint8Array(SW*SH);
+  for(let y=0;y<SH;y++)for(let x=0;x<SW;x++){const i=x+y*SW;W[i]=a.walkable(x,y)?1:0;Wopt[i]=W[i]||allowed(Math.floor(x/K)+Math.floor(y/K)*m)?1:0;}
+  const R=lane-1e-6,R2=R*R;
+  // The solid samples (of `Wx`) under the disc at probe i; -1 off the map.
+  const solidUnder=(Wx:Uint8Array,i:number,out?:number[])=>{const x=(i%GW+.5)*PROBE,y=(Math.floor(i/GW)+.5)*PROBE;
+    const sx0=Math.floor((x-R)/S),sx1=Math.floor((x+R)/S),sy0=Math.floor((y-R)/S),sy1=Math.floor((y+R)/S);
+    if(sx0<0||sy0<0||sx1>=SW||sy1>=SH)return -1;let n=0;
+    for(let sy=sy0;sy<=sy1;sy++){const dy=y<sy*S?sy*S-y:y>(sy+1)*S?y-(sy+1)*S:0;
+      for(let sx=sx0;sx<=sx1;sx++){const dx=x<sx*S?sx*S-x:x>(sx+1)*S?x-(sx+1)*S:0;if(dx*dx+dy*dy<R2&&!Wx[sx+sy*SW]){n++;out?.push(sx+sy*SW);}}}
+    return n;};
+  // Probes near the target; only the box around the car's reach and the target is searched.
+  const tx=Math.floor(target.x/PROBE),ty=Math.floor(target.y/PROBE),d=Math.round(UNO_LOOT_NEAR/PROBE);
+  const goal=(i:number)=>Math.abs(i%GW-tx)<=d&&Math.abs(Math.floor(i/GW)-ty)<=d;
+  const cost=new Float64Array(GW*GH).fill(Infinity),from=new Int32Array(GW*GH).fill(-1),fitsOpt=new Int8Array(GW*GH).fill(-1),cut=new Int8Array(GW*GH).fill(-1);
+  const okOpt=(i:number)=>{if(fitsOpt[i]<0)fitsOpt[i]=solidUnder(Wopt,i)===0?1:0;return fitsOpt[i]===1;};
+  // 0: the lane fits; 1: it cuts; 2: it cuts a cliff (a rock massif goes: the way through a wall wins, CLIFF_PENALTY).
+  const needs=(i:number)=>{if(cut[i]<0){const s:number[]=[];cut[i]=solidUnder(W,i,s)===0?0:s.some(k=>g.kind[Math.floor((k%SW)/K)+Math.floor(Math.floor(k/SW)/K)*m]==='cliff')?2:1;}return cut[i]>0;};
+  // Dijkstra (binary heap) from every probe of the car's reach.
+  const heap:number[]=[],less=(p:number,q:number)=>cost[heap[p]]<cost[heap[q]];
+  const push=(i:number)=>{heap.push(i);let k=heap.length-1;while(k>0){const p=(k-1)>>1;if(!less(k,p))break;[heap[p],heap[k]]=[heap[k],heap[p]];k=p;}};
+  const pop=()=>{const top=heap[0],last=heap.pop()!;if(heap.length){heap[0]=last;let k=0;for(;;){const l=2*k+1,r=l+1;let s=k;if(l<heap.length&&less(l,s))s=l;if(r<heap.length&&less(r,s))s=r;if(s===k)break;[heap[s],heap[k]]=[heap[k],heap[s]];k=s;}}return top;};
+  for(let i=0;i<GW*GH;i++)if(f.reach[i]&&okOpt(i)){cost[i]=0;push(i);}
+  let end=-1;
+  while(heap.length){const i=pop();if(goal(i)){end=i;break;}
+    const gx=i%GW,gy=(i-gx)/GW,c=cost[i];
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const X=gx+dx,Y=gy+dy;if(X<0||Y<0||X>=GW||Y>=GH)continue;const n=X+Y*GW;
+      if(!okOpt(n))continue;const nc=c+(dx&&dy?1.414:1)+(needs(n)?cut[n]===2?CLIFF_PENALTY:WIDEN_PENALTY:0);
+      if(nc<cost[n]){cost[n]=nc;from[n]=i;push(n);}}}
+  if(end<0)return undefined;
+  const cells=new Set<number>();
+  for(let i=end;i>=0&&cost[i]>0;i=from[i]){if(!needs(i))continue;const s:number[]=[];solidUnder(W,i,s);for(const k of s)cells.add(Math.floor((k%SW)/K)+Math.floor(Math.floor(k/SW)/K)*m);}
+  return [...cells];
+}
+
+/** The cells a widened lane may take: open ones, and cuttable ones off passageBan inside the playable area (see WIDEN_KINDS). */
+function allowedIn(a:CityAsset,g:CityGraph):(t:number)=>boolean{
+  const ban=passageBan(g),{m,u}=g;
+  const allowed=(t:number)=>{const cx=t%m,cy=(t-cx)/m,x=(cx+.5)*u,y=(cy+.5)*u,pl=a.playable;
+    if(g.open[t])return true;
+    if(ban(t)||!WIDEN_KINDS.has(g.kind[t])||x-u<pl.x||y-u<pl.y||x+u>pl.x+pl.w||y+u>pl.y+pl.h)return false;
+    return g.kind[t]!=='cliff'||gentle(t);};
+  // A cliff cell goes only between grounds at most CLIFF_STEP apart (one shelf: it reads as a ramp, as choosePassages).
+  const gentle=(t:number)=>{const cx=t%m,cy=(t-cx)/m;let lo=Infinity,hi=-Infinity;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const n=cx+dx+(cy+dy)*m;if(cx+dx<0||cy+dy<0||cx+dx>=m||cy+dy>=m||!g.open[n])continue;
+      const h=a.heightAt((cx+dx+.5)*u,(cy+dy+.5)*u);lo=Math.min(lo,h);hi=Math.max(hi,h);}
+    return hi-lo<=CLIFF_STEP;};
+  return allowed;
+}
+
+/**
+ * Widens the narrow streets the Uno does not get down (the user, 27/10: "é para podermos andar com o carro pelo jogo
+ * todo"): first to the plaza's mouths and the spawns (with UNO_POINT_ROOM to spare), then to the loot points, the cheapest
+ * first, at most WIDEN_MAX_CELLS for one. Only through cuttable cells (allowedIn: walls, rubble, the map's edge, a cliff
+ * of one shelf, a cell a prop shut; never a building, the plaza ring, a nest's yard, beside a safe place or a viaduct:
+ * passageBan) and never when that breaks the defence (a safe place changes, or a spawn's walk to the plaza gets
+ * shorter: the cut is undone). Then the rubble the lanes put in its way goes, and the loot the car still misses (inside a
+ * safe place, or behind a building) moves out to the nearest street it reaches (moveLootToUno). `data` changes in place.
+ */
+export function alargarParaUno(data:CityAssetData):{cells:number[];widened:number;moved:number;refused:number;rubble:string[];before:number;after:number;total:number}{
+  const decode=()=>{const d=decodeCityAsset(encodeCityAsset(data));if(!d.ok)throw new Error(d.error);return d.asset;};
+  let a=decode();const before=unoLoot(a).reached,opened:number[]=[];let widened=0,refused=0;
+  // The defence (tests/maps/mapa-becos.test.ts): the safe places stay as they are, the hordes walk as far to the plaza.
+  const defence=(x:CityAsset)=>{const g=cityGraph(x),P=x.points,cell=(p:CityPoint)=>Math.floor(p.x/g.u)+Math.floor(p.y/g.u)*g.m,d=walk(g.city,g.m,cell(P.praca));
+    return {safe:[...g.safe].sort((p,q)=>p-q).join(','),walks:[P.spawnN,P.spawnS,P.spawnL,P.spawnO].map(p=>d[cell(p)])};};
+  const kept=defence(a);
+  // Opens `cells` unless that breaks the defence (then `data` goes back as it was).
+  const tryOpen=(cells:readonly number[])=>{const was=structuredClone(data);openCells(data,cells);const next=decode(),now=defence(next);
+    if(now.safe!==kept.safe||now.walks.some((w,i)=>w<kept.walks[i]-1)){Object.assign(data,was);refused++;return false;}
+    a=next;opened.push(...cells);widened++;return true;};
+  const inSafe=(g:CityGraph,p:CityPoint)=>g.safe.has(Math.floor(p.x/g.u)+Math.floor(p.y/g.u)*g.m);
+  // 1. The plaza's mouths and the spawns, with room to spare (any length: the car must get there).
+  const B=a.points.bocas;
+  for(const p of [B.N,B.S,B.L,B.O,a.points.spawnN,a.points.spawnS,a.points.spawnL,a.points.spawnO]){
+    const f=unoField(a,CAR_RADIUS+UNO_POINT_ROOM);if(f.near(p))continue;
+    const g=cityGraph(a),cells=widenTo(a,g,allowedIn(a,g),f,p,CAR_RADIUS+UNO_POINT_ROOM);
+    if(process.env.ALARGAR_LOG)console.log('ponto',p.x.toFixed(0),p.y.toFixed(0),cells?.length??'sem caminho');
+    if(cells?.length)tryOpen(cells);
+  }
+  // 2. The loot, the cheapest first; never into a safe place (its crate moves out, below).
+  const skip=new Set<string>(),key=(p:CityPoint)=>`${p.x},${p.y}`;
+  for(let pass=0;pass<2*a.loot.length;pass++){
+    const g=cityGraph(a),allowed=allowedIn(a,g);
+    const f=unoField(a),out=a.loot.filter(p=>!f.near(p)&&!skip.has(key(p))&&!inSafe(g,p));
+    let best:{p:CityPoint;cells:number[]}|undefined;
+    for(const p of out){const cells=widenTo(a,g,allowed,f,p);
+      if(!cells||cells.length>WIDEN_MAX_CELLS){if(process.env.ALARGAR_LOG)console.log('skip',p.x.toFixed(0),p.y.toFixed(0),cells?.length??'sem caminho');skip.add(key(p));continue;}
+      if(!best||cells.length<best.cells.length)best={p,cells};}
+    if(!best)break;
+    const ok=tryOpen(best.cells);
+    if(process.env.ALARGAR_LOG)console.log(ok?'alarga':'recusa',best.p.x.toFixed(0),best.p.y.toFixed(0),best.cells.length);
+    if(!ok)skip.add(key(best.p));
+  }
+  // The lanes may put a heap in the Uno's way that was off it (as abrirBecos).
+  const rubble=rubbleForUno(data);
+  // The 1×1 rock pieces the cuts left beside the old ones: regrouped into big pieces together (rochas-grandes).
+  if(data.decor&&opened.length)data.decor=bigCliffRocks(data.decor,BIG_ROCKS,opened.length);
+  a=decode();
+  const moved=moveLootToUno(data,a);
+  a=decode();
+  return {cells:opened,widened,moved,refused,rubble,before,after:unoLoot(a).reached,total:a.loot.length};
+}
+/** Kinds a widened lane cuts (a cliff only as one shelf; a building never), '' a cell shut by a prop. */
+const WIDEN_KINDS=new Set(['wall','rubble','edge','cliff','']);
+
+/**
+ * The loot points the Uno still misses go to the nearest spot (≤ LOOT_MOVE_MAX u) that it reaches, where the crate has
+ * open ground around it (a hero opens it from any side) and keeps KEY_KEEP from the start and the spawns and LOOT_NEAR/2
+ * from the other loot. Returns how many moved.
+ */
+export const LOOT_MOVE_MAX=12;
+function moveLootToUno(data:CityAssetData,a:CityAsset):number{
+  const f=unoField(a),P=a.points,keys=[P.inicio,P.spawnN,P.spawnS,P.spawnL,P.spawnO],r3=(v:number)=>Math.round(v*1000)/1000;
+  const loot=[...data.loot];let moved=0;
+  const g=cityGraph(a),m=g.m,u=g.u,roomy=(x:number,y:number)=>{const t=Math.floor(x/u)+Math.floor(y/u)*m;return [0,1,-1,m,-m].every(k=>g.city[t+k]);};
+  for(let i=0;i<loot.length;i++){const p=loot[i];if(f.near(p))continue;
+    let best:CityPoint|undefined,bd=Infinity;
+    const R=Math.ceil(LOOT_MOVE_MAX/PROBE);
+    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
+      const gx=Math.floor(p.x/PROBE)+dx,gy=Math.floor(p.y/PROBE)+dy;if(gx<0||gy<0||gx>=f.GW||gy>=f.GH||!f.reach[gx+gy*f.GW])continue;
+      const q={x:r3((gx+.5)*PROBE),y:r3((gy+.5)*PROBE)},d=Math.hypot(q.x-p.x,q.y-p.y);
+      if(d>=bd||d>LOOT_MOVE_MAX||!roomy(q.x,q.y))continue;
+      if(Math.hypot(q.x-P.praca.x,q.y-P.praca.y)<PLAZA_KEEP||keys.some(k=>Math.hypot(q.x-k.x,q.y-k.y)<KEY_KEEP))continue;
+      if(loot.some((o,j)=>j!==i&&Math.hypot(o.x-q.x,o.y-q.y)<LOOT_NEAR/2))continue;
+      best=q;bd=d;}
+    if(best){loot[i]=best;moved++;}
+  }
+  data.loot=loot;
+  return moved;
 }
 
 // ——— Picture ———

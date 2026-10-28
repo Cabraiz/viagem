@@ -502,16 +502,20 @@ export async function sourceAsset():Promise<CityAsset>{
  * The asset this script writes: the compacted city with its scenery placed (cenario-cidade.ts decorate, version + 1),
  * then its dead ends opened (scripts/becos-cidade.ts abrirBecos, version + 1: mapa-conexoes-sem-beco). The passages come
  * after the scenery so the scenery stays where it was (placed anew on the opened ground, a place with life closed a
- * street the Uno drove down); the pieces on an opened cell go.
+ * street the Uno drove down); the pieces on an opened cell go. Last, the streets too narrow for the Uno widen
+ * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
   const {decorate}=await import('./cenario-cidade.ts');
-  const {abrirBecos}=await import('./becos-cidade.ts');
+  const {abrirBecos,alargarParaUno}=await import('./becos-cidade.ts');
   const {text,log}=await compactText();
   const decorated=decodeCityAsset(decorate(text));
   if(!decorated.ok)throw new Error(decorated.error);
   const opened=abrirBecos(cityAssetToData(decorated.asset));
   Object.assign(log,{passagens:opened.passagens.length,entulho:opened.rubble.length,ruinas:opened.ruins,caixasBeco:opened.lootAdded,caixasMovidas:opened.lootMoved});
+  // Then the narrow streets the Uno does not get down (version + 1: uno-anda-mapa-todo).
+  const wide=alargarParaUno(opened.data);opened.data.version++;
+  Object.assign(log,{celulasAlargadas:wide.cells.length,ruasAlargadas:wide.widened,alargarRecusado:wide.refused,entulhoUno:wide.rubble.length,caixasAoUno:wide.moved,caixasUno:`${wide.before}→${wide.after}/${wide.total}`});
   return {text:encodeCityAsset(opened.data),log};
 }
 

@@ -108,7 +108,7 @@ export interface SimPlayer extends Point {
   /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
   grana?:number;
   /**
-   * Fear (rules/fear.ts, sim/fear.ts): ticks of dark built up alone, 0..FEAR_TICKS; at FEAR_TICKS the hero falls.
+   * Fear (rules/fear.ts, sim/fear.ts): ticks of dark built up alone, 0..FEAR_TICKS (the darkest; nobody falls to it).
    * Absent = 0 (and in the runs without the fear system, so their digests stay).
    */
   fear?:number;

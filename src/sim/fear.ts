@@ -1,7 +1,8 @@
 /**
  * Fear (card NEW-20261023-ORQ-fear-escuridao-sozinho, numbers in rules/fear.ts): each hero on their feet with nobody
- * near builds one tick of dark per tick (SimPlayer.fear); with company it backs off FEAR_CALM_RATE times faster. At
- * FEAR_TICKS the dark consumes them: the normal fall (downPlayer, source FEAR_SOURCE), so an ally can still pick them up.
+ * near builds one tick of dark per tick (SimPlayer.fear); with company it backs off FEAR_CALM_RATE times faster. It
+ * stops at FEAR_TICKS (the darkest the client draws) and never takes anyone: the dark does not kill (the user, 28/10,
+ * card NEW-20261028-ORQ-escuridao-justa).
  * Company: another hero (or bot) on their feet within FEAR_ALLY_RADIUS, or the Uno / the base within FEAR_BASE_RADIUS.
  * Every phase counts (the user's choice (b), 24/10: the Minerva minute and the explore interval too).
  * Room bots never build fear (the solo with bots stays playable: they wander for loot); they are company all the same.
@@ -9,8 +10,8 @@
  */
 import type {Point,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_SOURCE,FEAR_TICKS} from '../rules/index.ts';
-import {downPlayer,isStanding} from './revive.ts';
+import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_TICKS} from '../rules/index.ts';
+import {isStanding} from './revive.ts';
 
 export interface FearOptions {
   /** The Uno (the chaveiro's car) or else the base: company within FEAR_BASE_RADIUS. Undefined: none. */
@@ -37,7 +38,7 @@ export function createFearSystem(options:FearOptions={}):SimSystem{
     step(ctx:SimContext){
       if(options.runEnded?.())return;
       const players=[...ctx.players.values()].sort(byId);
-      // Company is fixed for the tick: a hero the dark takes now still counted for the others this tick.
+      // Company: who is on their feet this tick.
       const bodies=players.filter(p=>!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0&&(p.online||!!options.autopilot?.(p.id)));
       const base=options.base?.();
       for(const p of players){
@@ -46,7 +47,6 @@ export function createFearSystem(options:FearOptions={}):SimSystem{
         if(!isStanding(p))continue;
         const company=(base!==undefined&&near(p,base,FEAR_BASE_RADIUS))||bodies.some(o=>o!==p&&near(p,o,FEAR_ALLY_RADIUS));
         const next=company?Math.max(0,(p.fear??0)-FEAR_CALM_RATE):Math.min(FEAR_TICKS,(p.fear??0)+1);
-        if(next>=FEAR_TICKS){delete p.fear;downPlayer(ctx,p,undefined,FEAR_SOURCE);continue;}
         if(next>0)p.fear=next;else if(p.fear!==undefined)delete p.fear;
       }
     },

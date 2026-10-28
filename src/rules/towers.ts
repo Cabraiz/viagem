@@ -174,6 +174,9 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
   // NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "o cubo laranja está maior do que a barricada"): the piece is
   // what the art is, a wall 2 cells long and 1 thick, turned by rot (0 along x, 1 along y).
   barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  // NEW-20261023-ORQ-barracas-no-caminho (user, 28/10): the feira's barraca, scenery the map lays in feirinhas
+  // (sim/towers/barracas.ts). Solid to the enemies, never built, bought, collected or hit (price/limit unused).
+  barraca:Object.freeze({id:'barraca',name:'Barraca',footprint:Object.freeze([2,2]) as readonly [number,number],price:0,hp:1,limit:0,buildSeconds:0,blocks:true,drag:1}),
 });
 /**
  * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
@@ -197,13 +200,29 @@ export const TRALHA_REACH=3;
  * footprint's edge, not BUILD_REACH. The nest keep-out (CAR_NEST_KEEP_OUT) still holds, so no nest is shut from afar.
  */
 export const KIT_PLACE_REACH=8;
+/** A piece a hero may build (the barraca is the map's own: never). */
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho (user, 28/10: "ponha essas barracas espalhadas em 4 a 5 lugares do mundo e bem
+ * distante uma das outras, talvez no futuro elas vendam algo"): FEIRA_COUNT feirinhas of FEIRA_BARRACAS barracas (2×2
+ * cells, FEIRA_STEP cells apart along one axis) are laid from the run's rng at the start, on open ground (a praça, a
+ * wide calçada: FEIRA_MARGIN free cells all around), at least FEIRA_GAP u from each other, FEIRA_SPAWN_GAP u from a
+ * spawn and FEIRA_CAR_GAP u from the car, never shutting the car off a spawn or the moto. Each keeps an id and a
+ * centre (TowersState.feirinhas) for the shop to come.
+ */
+export const FEIRA_COUNT:readonly [number,number]=Object.freeze([4,5]) as readonly [number,number];
+export const FEIRA_BARRACAS:readonly [number,number]=Object.freeze([2,4]) as readonly [number,number];
+export const FEIRA_STEP=3,FEIRA_MARGIN=2,FEIRA_GAP=45,FEIRA_SPAWN_GAP=18,FEIRA_CAR_GAP=14;
+/** A feirinha keeps this far (u) from a bank's place: the bank's lot (rules/bicos.ts lote) and room around it. */
+export const FEIRA_BANK_GAP=8;
+/** The lonas the art has (public/art/city/base/barraca.webp rows lona-1..3): a barraca's lona from its id. */
+export const BARRACA_LONAS=3;
 /** NEW-20261022-ORQ-barricada-2x: a barricada's length in build-grid cells (barricada-tocar-no-mapa: 1 cell thick). */
 export const BARRICADA_CELLS=FREE_PIECE_DEFS.barricada.footprint[0];
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{
-  if(isFreePiece(piece)){const [w,h]=FREE_PIECE_DEFS[piece].footprint;return rot?[h,w]:[w,h];}
-  const s=DEFENSES[piece].size??1;return [s,s];
+  if(Object.hasOwn(FREE_PIECE_DEFS,piece)){const [w,h]=FREE_PIECE_DEFS[piece as FreePiece].footprint;return rot?[h,w]:[w,h];}
+  const s=DEFENSES[piece as DefenseId].size??1;return [s,s];
 }
 /**
  * D-052: no piece within this of the car's body (u): room to push it and to defend it. Measured from the footprint's

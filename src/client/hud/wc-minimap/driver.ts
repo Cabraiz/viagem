@@ -87,7 +87,7 @@ export class WcMinimapDriver {
         const q=this.structures[s]??={x:0,y:0,kind:'nest'};s++;q.x=st.x;q.y=st.y;q.kind='nest';q.hit=undefined;
         q.size=st.size==='P'||st.size==='G'?st.size:'M';continue;
       }
-      const kind=st.kind==='muralha'?'base':st.kind==='barricade'||st.kind.startsWith('barricada')?'barricade':'tower';
+      const kind=st.kind==='muralha'?'base':st.kind==='barricade'||st.kind.startsWith('barricada')||st.kind==='barraca'?'barricade':'tower';
       const q=this.structures[s]??={x:0,y:0,kind:'tower'};s++;q.x=st.x;q.y=st.y;q.kind=kind;q.hit=kind==='base'&&hit||undefined;q.size=undefined;
     }
     this.structures.length=s;

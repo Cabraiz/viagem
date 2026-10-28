@@ -6,11 +6,25 @@ import type {NodeView,StructureView} from '../../contract/index.ts';
  * the wall 'muralha', a city barricade 'barricada' (cidade-06) or a forge tower 'torre-chinelo'. Any other kind is
  * not drawn (never as a tower: a barricade counted as a tower drew a sandal on every plaza mouth).
  */
-export type StructureRole='wall'|'barricade'|'tower';
-export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo';
+export type StructureRole='wall'|'barricade'|'tower'|'barraca';
+export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo',BARRACA_KIND='barraca';
 export function structureRole(kind:string):StructureRole|undefined{
-  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':undefined;
+  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':kind===BARRACA_KIND?'barraca':undefined;
 }
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho, a feirinha barraca's look (pure, tested). The art (public/art/city/base/barraca.webp)
+ * has BARRACA_LONAS lonas × inteira | danificada | quebrada, 2 views (the second mirrored: the other diagonal); the
+ * feirinhas' barracas are never hurt, so always inteira.
+ * - lona: from the id (every phone draws the same stall), 1..lonas;
+ * - column: the view's parity turned by the id, so a feirinha is not one stall copied and a camera turn flips them all.
+ */
+export function barracaHash(id:string){
+  let h=2166136261;
+  for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),16777619);
+  return h>>>0;
+}
+export const barracaLona=(id:string,lonas:number)=>`lona-${1+barracaHash(id)%Math.max(1,lonas)}`;
+export const barracaColumn=(view:number,id:string)=>((Math.round(view)+(barracaHash(id)>>>4))%2+2)%2;
 
 /** Life share under which the wall's bar turns Laranja Cone (and gains its notch). */
 export const WALL_LOW=.3;

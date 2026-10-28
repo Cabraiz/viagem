@@ -26,12 +26,12 @@ export interface CellRect {c:number;r:number;w:number;h:number;x0:number;y0:numb
 export interface FortStructure {id:string;kind:string;x:number;y:number;hp:number;c?:number;r?:number;rot?:number}
 
 const isDefense=(kind:string):kind is DefenseId=>Object.prototype.hasOwnProperty.call(DEFENSES,kind);
-/** A kind the free build places on the grid: a defense, a wall segment or a barricade. */
-export const isGridPiece=(kind:string)=>kind==='muro'||kind==='barricada'||isDefense(kind);
+/** A kind the free build places on the grid: a defense, a wall segment, a barricade or a feirinha's barraca. */
+export const isGridPiece=(kind:string)=>kind==='muro'||kind==='barricada'||kind==='barraca'||isDefense(kind);
 
 /** Footprint in cells [w,h] of a piece (rot 1 swaps them); unknown kinds take one cell. */
 export function footprintCells(piece:string,rot?:number):[number,number]{
-  const [w,h]=piece==='barricada'||piece==='muro'?FREE_PIECE_DEFS[piece].footprint:isDefense(piece)?DEFENSES[piece].footprint:[1,1];
+  const [w,h]=piece==='barricada'||piece==='muro'||piece==='barraca'?FREE_PIECE_DEFS[piece].footprint:isDefense(piece)?DEFENSES[piece].footprint:[1,1];
   return rot===1?[h,w]:[w,h];
 }
 /** The piece's rectangle from its top-left cell (world u). */

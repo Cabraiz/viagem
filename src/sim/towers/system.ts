@@ -49,6 +49,7 @@ import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiec
 import {RADIUS,floorOf} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import type {TralhaState} from './tralha.ts';
+import type {Feirinha} from './barracas.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
   type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
@@ -90,6 +91,8 @@ export interface TowersState {
   pieces?:PieceState[];
   /** barricada-construir part 2: the map's barricadas laid, the heroes' coletas (towers/tralha.ts). */
   tralha?:TralhaState;
+  /** barracas-no-caminho: the map's feirinhas, laid once (towers/barracas.ts; present: laid). */
+  feirinhas?:Feirinha[];
 }
 
 /** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */

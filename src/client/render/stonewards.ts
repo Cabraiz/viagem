@@ -14,12 +14,14 @@
  */
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
-import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS,pieceCells} from '../../rules/index.ts';
+import {BARRACA_LONAS,BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS,pieceCells} from '../../rules/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
+import {barracaColumn,barracaLona} from './stonewards-rules.ts';
 import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
+import {artPiece} from '../art/manifest.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
@@ -97,6 +99,8 @@ export class StonewardsRenderer {
   private marks=new Map<string,NodeMark>();
   private pops:Pop[]=[];
   private structures:StructureView[]=[];
+  /** barracas-no-caminho: a feirinha barraca's footprint drawn without the art (its art is an image in `images`). */
+  private barracaGround=new Map<string,Phaser.GameObjects.Graphics>();
   private prepare=false;
   /** D-047: the chaveiro objective runs: the Quadradão stands in the wall's place (render/chaveiro), the wall is not drawn. */
   private objective=false;
@@ -147,7 +151,7 @@ export class StonewardsRenderer {
     this.lastHp=new Map(this.structures.map(s=>[s.id,s.hp]));
     for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
     const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
-    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));
+    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));prune(this.barracaGround,of('barraca'));
     this.muralha.prune(of('barricade'));
     this.muralha.setSquares(this.structures.filter(s=>structureRole(s.kind)==='barricade'&&isFreeBarricade(s)));
     for(const id of [...this.pileKeys.keys()])if(!this.piles.has(id))this.pileKeys.delete(id);
@@ -168,6 +172,7 @@ export class StonewardsRenderer {
     for(const s of this.structures){
       const role=structureRole(s.kind);
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
+      else if(role==='barraca')this.drawBarraca(s,k,u);
     }
     this.wallGlow.flush(this.glow,k);
     this.drawPops(k);
@@ -178,6 +183,7 @@ export class StonewardsRenderer {
     this.ground.destroy();this.wall.destroy();
     for(const g of this.towers.values())g.destroy();this.towers.clear();
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
+    for(const g of this.barracaGround.values())g.destroy();this.barracaGround.clear();
     for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
     this.muralha.destroy();this.glow.destroy();
@@ -463,6 +469,27 @@ export class StonewardsRenderer {
   private pop(n:NodeView,amount:number){
     const text=this.scene.add.text(0,0,`+${amount}`,{...this.labelStyle,fontSize:'21px'}).setOrigin(.5,1).setDepth(96000);
     this.pops.push({text,x:n.x,y:n.y,born:this.now});
+  }
+  /**
+   * A feirinha's barraca (NEW-20261023-ORQ-barracas-no-caminho): the stall's art (its lona from the id, always inteira:
+   * scenery, never hurt), at its ground centre, scaled so one build cell of the sheet (meta.celula) spans one projected
+   * CITY_BUILD_CELL. Without the art: a Papel square on its 2×2 footprint.
+   */
+  private drawBarraca(s:StructureView,k:number,u:number){
+    const c=artPiece('base',BASE_ART.barraca)?.meta?.celula,celula=typeof c==='number'&&c>0?c:undefined;
+    const img=celula?this.art(s.id,BASE_ART.barraca,`${barracaLona(s.id,BARRACA_LONAS)}:inteira`,barracaColumn(this.options.projector.view,s.id),u):undefined;
+    const depth=this.options.projector.depth(s.x,s.y);
+    if(img&&celula){
+      this.barracaGround.get(s.id)?.clear();
+      const a=this.project(s.x,s.y),bx=this.project(s.x+CITY_BUILD_CELL,s.y).x,cx=this.project(s.x,s.y+CITY_BUILD_CELL).x;
+      img.setScale((Math.abs(bx-a.x)+Math.abs(cx-a.x))/2/celula).setPosition(a.x,a.y).setDepth(depth-BAR_OVER_ART).clearTint();
+      return;
+    }
+    let g=this.barracaGround.get(s.id);
+    if(!g){g=this.scene.add.graphics().setName('base-barraca');this.barracaGround.set(s.id,g);}
+    const side=CITY_BUILD_CELL*2,c0=s.c!==undefined?s.c*CITY_BUILD_CELL:s.x-side/2,r0=s.r!==undefined?s.r*CITY_BUILD_CELL:s.y-side/2;
+    const corners=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]].map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
+    g.clear().setDepth(depth).fillStyle(this.c.papel,.9).fillPoints(corners,true).lineStyle(2*k,this.c.breu,1).strokePoints(corners,true);
   }
   private drawPops(k:number){
     this.pops=this.pops.filter(p=>{

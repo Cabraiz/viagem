@@ -1168,6 +1168,9 @@ export class IslandScene extends Phaser.Scene {
     // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
     const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
     const frame=this.fearClock.step(raw,dt,time,this.reduced);
+    // Card heroi-fala-cade-amigos: the hero's own line over the last stretch, the cast's balloon over the head; drawn
+    // here only, so only this player sees it. A priority line: a recent "Segura aí" does not swallow it.
+    if(frame.say)this.horde?.speak(net.id,frame.say,undefined,true);
     const lit=frame.look.alpha>0||frame.alone;
     this.fearOn=lit||frame.seconds>0;
     const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);

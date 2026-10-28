@@ -5,8 +5,8 @@
  *   the dark thickens); over the last FEAR_FINAL_SECONDS only a small circle is left and it throbs with a heartbeat;
  * - the safe spots: the allies on their feet and the Uno keep a warm light in the dark (their company radius);
  * - the way back: an arrow by the hero to the nearest safe spot, the notice "Não se afaste do bando" the first time
- *   (right at the start too: a solo hero is born away from the Uno) and "Volte pro bando!" over the last stretch, and
- *   the allies' portraits dimmed while alone.
+ *   (right at the start too: a solo hero is born away from the Uno), the allies' portraits dimmed while alone and, over
+ *   the last stretch, the hero's own line in a balloon over the head (card heroi-fala-cade-amigos: no top notice then).
  * Pure (no Phaser, no DOM): node tests pin the curve, the beat, the company and the notices.
  */
 import {FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_FINAL_SECONDS,FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS} from '../../rules/index.ts';
@@ -34,7 +34,8 @@ export const FEAR_ARROW_SECONDS=1;
 /** The first notice stays this long (ms). */
 export const FEAR_WARN_MS=5000;
 export const FEAR_WARN_TEXT='Não se afaste do bando';
-export const FEAR_FINAL_TEXT='Volte pro bando!';
+/** The hero's own line over the last stretch (card heroi-fala-cade-amigos), once per stretch alone; short (≤ ~20). */
+export const FEAR_SAY_TEXT='Cadê meus amigos?';
 
 const clamp01=(v:number)=>v<0?0:v>1?1:v;
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -87,7 +88,7 @@ export function safeSpots(selfId:string,self:Pt,players:Iterable<FearBody>,uno?:
   return out.sort((a,b)=>a.gap-b.gap);
 }
 
-export interface FearNotice {text:string;final:boolean}
+export interface FearNotice {text:string}
 export interface FearFrame {
   /** Seconds alone as drawn (eased). */
   seconds:number;
@@ -99,11 +100,13 @@ export interface FearFrame {
   /** The dark is growing (alone): the arrow, the notice and the dimmed portraits show. */
   alone:boolean;
   notice?:FearNotice;
+  /** The hero says this over the head, this frame only: once each time the last stretch is reached alone. */
+  say?:string;
 }
 
 /**
  * The client's clock of the dark, one per run screen: eases the wire value, tells growing from backing off, runs the
- * heartbeat and the notices. `reset` for a new run (the first notice comes back).
+ * heartbeat, the notice and the hero's line. `reset` for a new run (the first notice comes back).
  */
 export class FearClock {
   private eased=0;
@@ -112,6 +115,8 @@ export class FearClock {
   private phase=0;
   private warnedAt=-Infinity;
   private warned=false;
+  /** The hero's line was said in this stretch alone: not again until company is found (the fear backs off). */
+  private said=false;
   /** One frame: `raw` the server's fear 0..1 (0 when not in combat, down or out), `dtMs` since the last frame. */
   step(raw:number,dtMs:number,nowMs:number,reduced=false):FearFrame{
     // Up to 2 s a frame: a slow phone (a few frames a second) still catches up with the wire within a frame or two.
@@ -133,10 +138,11 @@ export class FearClock {
     }else this.phase=0;
     const alone=this.rising&&value*FEAR_SECONDS>=FEAR_ARROW_SECONDS;
     if(alone&&!this.warned){this.warned=true;this.warnedAt=nowMs;}
-    let notice:FearNotice|undefined;
-    if(look.final>0&&this.rising)notice={text:FEAR_FINAL_TEXT,final:true};
-    else if(value>0&&nowMs-this.warnedAt<FEAR_WARN_MS)notice={text:FEAR_WARN_TEXT,final:false};
-    return {seconds,look,beat,thump,alone,...notice?{notice}:{}};
+    const notice:FearNotice|undefined=value>0&&nowMs-this.warnedAt<FEAR_WARN_MS?{text:FEAR_WARN_TEXT}:undefined;
+    if(!this.rising)this.said=false;
+    const say=look.final>0&&this.rising&&!this.said?FEAR_SAY_TEXT:undefined;
+    if(say)this.said=true;
+    return {seconds,look,beat,thump,alone,...notice?{notice}:{},...say?{say}:{}};
   }
-  reset(){this.eased=0;this.last=0;this.rising=false;this.phase=0;this.warned=false;this.warnedAt=-Infinity;}
+  reset(){this.eased=0;this.last=0;this.rising=false;this.phase=0;this.warned=false;this.warnedAt=-Infinity;this.said=false;}
 }

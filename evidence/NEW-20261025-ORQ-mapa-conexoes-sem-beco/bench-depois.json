@@ -1,0 +1,785 @@
+{
+ "card": "NEW-20261012-ORQ-cidade-11-balanco-run",
+ "version": 1,
+ "startedAt": "2026-10-27T21:57:44.993Z",
+ "updatedAt": "2026-10-27T22:00:19.005Z",
+ "config": {
+  "objective": null,
+  "combat": null,
+  "mode": null,
+  "nestPace": null,
+  "chaveiroPace": null,
+  "spread": null,
+  "alarm": null,
+  "nestCalm": null,
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "players": [
+   1
+  ],
+  "capMin": 30,
+  "knobs": null,
+  "knobsFile": null,
+  "knobRoute": "none",
+  "classes": [
+   "cidadao-comum",
+   "motogirl",
+   "maromba",
+   "coach",
+   "pagodeiro",
+   "porteiro"
+  ],
+  "nav": {
+   "READ_SECONDS": 4,
+   "HOME_MARGIN": 4,
+   "CRATE_NEAR": 2.5,
+   "FAR": 12,
+   "STUCK_TICKS": 30,
+   "STUCK_MOVE": 0.3,
+   "UNSTICK_TICKS": 16
+  }
+ },
+ "summary": {
+  "runs": 16,
+  "byPlayers": {
+   "1": {
+    "players": 1,
+    "runs": 16,
+    "wins": 5,
+    "winRate": 0.31,
+    "causes": {
+     "boss": 5,
+     "team": 11,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 0,
+     "car": 0
+    },
+    "deathRounds": {
+     "5": 1,
+     "7": 1,
+     "8": 2,
+     "10": 7
+    },
+    "roundReached": {
+     "n": 16,
+     "mean": 9.25,
+     "min": 5,
+     "median": 10,
+     "max": 10
+    },
+    "firstArrivalS": {
+     "all": {
+      "n": 120,
+      "mean": 16.21,
+      "min": 8.3,
+      "median": 14.43,
+      "max": 65.4
+     },
+     "byRound": {
+      "1": {
+       "n": 16,
+       "mean": 18.11,
+       "min": 16.2,
+       "median": 16.38,
+       "max": 26.3
+      },
+      "2": {
+       "n": 11,
+       "mean": 17.83,
+       "min": 11.7,
+       "median": 13.3,
+       "max": 43.5
+      },
+      "3": {
+       "n": 16,
+       "mean": 15.37,
+       "min": 10.25,
+       "median": 13.83,
+       "max": 24
+      },
+      "4": {
+       "n": 16,
+       "mean": 16.73,
+       "min": 9.3,
+       "median": 15.93,
+       "max": 31.5
+      },
+      "5": {
+       "n": 16,
+       "mean": 14.93,
+       "min": 8.3,
+       "median": 14.15,
+       "max": 26.35
+      },
+      "6": {
+       "n": 13,
+       "mean": 14.69,
+       "min": 9.55,
+       "median": 13.65,
+       "max": 24.55
+      },
+      "7": {
+       "n": 12,
+       "mean": 12.52,
+       "min": 8.3,
+       "median": 12.08,
+       "max": 15.85
+      },
+      "8": {
+       "n": 14,
+       "mean": 14.83,
+       "min": 9.1,
+       "median": 14.52,
+       "max": 20.6
+      },
+      "9": {
+       "n": 11,
+       "mean": 16.24,
+       "min": 9.05,
+       "median": 15.8,
+       "max": 32.65
+      },
+      "10": {
+       "n": 11,
+       "mean": 24.49,
+       "min": 12.5,
+       "median": 15.7,
+       "max": 65.4
+      }
+     }
+    },
+    "loot": {
+     "unitsPerIntermission": {
+      "n": 132,
+      "mean": 10.64,
+      "min": 0,
+      "median": 6,
+      "max": 36
+     },
+     "recipesPerIntermission": 0.3,
+     "byRound": {
+      "2": {
+       "n": 16,
+       "mean": 28.88,
+       "min": 24,
+       "median": 30,
+       "max": 30
+      },
+      "3": {
+       "n": 16,
+       "mean": 15.38,
+       "min": 6,
+       "median": 15,
+       "max": 24
+      },
+      "4": {
+       "n": 16,
+       "mean": 11.25,
+       "min": 0,
+       "median": 12,
+       "max": 24
+      },
+      "5": {
+       "n": 16,
+       "mean": 8.63,
+       "min": 0,
+       "median": 6,
+       "max": 24
+      },
+      "6": {
+       "n": 15,
+       "mean": 16.8,
+       "min": 6,
+       "median": 12,
+       "max": 36
+      },
+      "7": {
+       "n": 15,
+       "mean": 2.8,
+       "min": 0,
+       "median": 0,
+       "max": 12
+      },
+      "8": {
+       "n": 14,
+       "mean": 6,
+       "min": 0,
+       "median": 0,
+       "max": 30
+      },
+      "9": {
+       "n": 12,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "10": {
+       "n": 12,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      }
+     },
+     "purchasesPerRun": {
+      "n": 16,
+      "mean": 2,
+      "min": 1,
+      "median": 2,
+      "max": 4
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 0,
+     "tutorialArrivalS": {
+      "n": 16,
+      "mean": 20.7,
+      "min": 20.7,
+      "median": 20.7,
+      "max": 20.7
+     }
+    },
+    "barricadesFallen": {
+     "perRound": {
+      "n": 132,
+      "mean": 0.15,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "byRound": {
+      "2": {
+       "n": 16,
+       "mean": 0.5,
+       "min": 0,
+       "median": 0.5,
+       "max": 1
+      },
+      "3": {
+       "n": 16,
+       "mean": 0.5,
+       "min": 0,
+       "median": 0.5,
+       "max": 1
+      },
+      "4": {
+       "n": 16,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "5": {
+       "n": 16,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "6": {
+       "n": 15,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "7": {
+       "n": 15,
+       "mean": 0.07,
+       "min": 0,
+       "median": 0,
+       "max": 1
+      },
+      "8": {
+       "n": 14,
+       "mean": 0.21,
+       "min": 0,
+       "median": 0,
+       "max": 1
+      },
+      "9": {
+       "n": 12,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "10": {
+       "n": 12,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      }
+     }
+    },
+    "boss": {
+     "spawnAfterWaveS": {
+      "n": 12,
+      "mean": 19.13,
+      "min": 3.5,
+      "median": 19.25,
+      "max": 60.5
+     },
+     "firstInsideBaseS": {
+      "n": 12,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "firstPlayerHitS": {
+      "n": 12,
+      "mean": 13.33,
+      "min": 5.8,
+      "median": 10.3,
+      "max": 32
+     },
+     "killAfterSpawnS": {
+      "n": 5,
+      "mean": 87.14,
+      "min": 77.85,
+      "median": 82.95,
+      "max": 98
+     },
+     "kills": 5,
+     "reached": 12
+    },
+    "towers": {
+     "runs": 16,
+     "rootsPerRun": {
+      "n": 16,
+      "mean": 3.63,
+      "min": 3,
+      "median": 3.5,
+      "max": 5
+     },
+     "tokensPerRun": {
+      "n": 16,
+      "mean": 3.63,
+      "min": 3,
+      "median": 3.5,
+      "max": 5
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 16,
+     "earned": {
+      "n": 16,
+      "mean": 308.75,
+      "min": 122,
+      "median": 335,
+      "max": 387
+     },
+     "spent": {
+      "n": 16,
+      "mean": 233.44,
+      "min": 61,
+      "median": 251.5,
+      "max": 290
+     },
+     "evolutions": {
+      "n": 16,
+      "mean": 156.25,
+      "min": 51,
+      "median": 164,
+      "max": 215
+     },
+     "repairs": {
+      "n": 16,
+      "mean": 7.5,
+      "min": 0,
+      "median": 5,
+      "max": 25
+     },
+     "forge": {
+      "n": 16,
+      "mean": 69.69,
+      "min": 10,
+      "median": 95,
+      "max": 115
+     },
+     "final": {
+      "n": 16,
+      "mean": 75.31,
+      "min": 26,
+      "median": 65.5,
+      "max": 149
+     }
+    },
+    "chaveiro": null,
+    "banks": {
+     "runs": 16,
+     "grana": {
+      "n": 16,
+      "mean": 50.94,
+      "min": 30,
+      "median": 52.5,
+      "max": 76
+     },
+     "share": {
+      "n": 16,
+      "mean": 0.18,
+      "min": 0.08,
+      "median": 0.16,
+      "max": 0.37
+     },
+     "pooledShare": 0.165,
+     "withdraws": {
+      "n": 16,
+      "mean": 10.31,
+      "min": 6,
+      "median": 10.5,
+      "max": 16
+     },
+     "enemyWithdraws": {
+      "n": 16,
+      "mean": 5.31,
+      "min": 0,
+      "median": 2.5,
+      "max": 17
+     },
+     "enemyGrana": {
+      "n": 16,
+      "mean": 10.5,
+      "min": 0,
+      "median": 5,
+      "max": 34
+     },
+     "primes": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 16,
+      "mean": 0.75,
+      "min": 0,
+      "median": 1,
+      "max": 2
+     },
+     "verdict": "low"
+    },
+    "verdict": {
+     "wins": "ok",
+     "target": {
+      "min": 2,
+      "max": 6
+     },
+     "round1": "ok"
+    }
+   }
+  },
+  "verdict": {
+   "ok": false,
+   "notes": [
+    "1p: banks 16.5 % of the Grana, target 25–35 % (low)"
+   ]
+  }
+ },
+ "runsCompact": true,
+ "ci": {
+  "run": "40590711343",
+  "url": "https://github.com/Cabraiz/viagem/actions/runs/40590711343",
+  "branch": "vgm/mapa-conexoes-sem-beco",
+  "sha": "28e9ada3e199473bc42a51b0ac6e35f9c0e5c67f",
+  "params": "0f526deca7c8"
+ },
+ "runs": [
+  {
+   "key": "1:1",
+   "seed": 1,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 20710,
+   "simMinutes": 17.26,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "762a45dd7425"
+  },
+  {
+   "key": "2:1",
+   "seed": 2,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "boss",
+   "roundReached": 10,
+   "diedRound": null,
+   "ticks": 21703,
+   "simMinutes": 18.09,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "43264f5a07e2"
+  },
+  {
+   "key": "3:1",
+   "seed": 3,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 5,
+   "diedRound": 5,
+   "ticks": 8910,
+   "simMinutes": 7.43,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "344531d3498d"
+  },
+  {
+   "key": "4:1",
+   "seed": 4,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 20594,
+   "simMinutes": 17.16,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "3ca3c00450dd"
+  },
+  {
+   "key": "5:1",
+   "seed": 5,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "boss",
+   "roundReached": 10,
+   "diedRound": null,
+   "ticks": 17424,
+   "simMinutes": 14.52,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "95ebf8663a67"
+  },
+  {
+   "key": "6:1",
+   "seed": 6,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 8,
+   "diedRound": 8,
+   "ticks": 16348,
+   "simMinutes": 13.62,
+   "wallHpEnd": 546,
+   "wallMaxHp": 600,
+   "digest": "7f88006638da"
+  },
+  {
+   "key": "7:1",
+   "seed": 7,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "boss",
+   "roundReached": 10,
+   "diedRound": null,
+   "ticks": 19871,
+   "simMinutes": 16.56,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "107a9ac481ad"
+  },
+  {
+   "key": "8:1",
+   "seed": 8,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 18762,
+   "simMinutes": 15.64,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "cfc155e15372"
+  },
+  {
+   "key": "9:1",
+   "seed": 9,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 22521,
+   "simMinutes": 18.77,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "4e58c7bdea12"
+  },
+  {
+   "key": "10:1",
+   "seed": 10,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 7,
+   "diedRound": 7,
+   "ticks": 13491,
+   "simMinutes": 11.24,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "f832a0328a9b"
+  },
+  {
+   "key": "11:1",
+   "seed": 11,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 21529,
+   "simMinutes": 17.94,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "a8da9a5bad52"
+  },
+  {
+   "key": "12:1",
+   "seed": 12,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 8,
+   "diedRound": 8,
+   "ticks": 15372,
+   "simMinutes": 12.81,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "16c5d5347001"
+  },
+  {
+   "key": "13:1",
+   "seed": 13,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 22529,
+   "simMinutes": 18.77,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "9d900e0f98f4"
+  },
+  {
+   "key": "14:1",
+   "seed": 14,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "boss",
+   "roundReached": 10,
+   "diedRound": null,
+   "ticks": 18744,
+   "simMinutes": 15.62,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "f2209e31202d"
+  },
+  {
+   "key": "15:1",
+   "seed": 15,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 10,
+   "diedRound": 10,
+   "ticks": 20138,
+   "simMinutes": 16.78,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "8bba5303a221"
+  },
+  {
+   "key": "16:1",
+   "seed": 16,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "boss",
+   "roundReached": 10,
+   "diedRound": null,
+   "ticks": 18988,
+   "simMinutes": 15.82,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "8ebf9bb4b588"
+  }
+ ]
+}

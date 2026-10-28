@@ -250,9 +250,10 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // and 12 start the B line by round 6). Seed 11 since the bicos (bancos-viram-bicos: the bots clock in at the shops in
   // the calm; seed 6's builder took no B site by round 6, seeds 1, 2, 4, 5, 7, 8, 11, 12 do). Seed 1 since
   // bots-20-mais-lentos (the room's bots walk 0.8 of a person; with ofertas-sem-xp seed 11's builder put up one root by
-  // round 6; seeds 1, 4, 6, 9, 10, 13–16 of 1–16 start the B line). Seed 2 since bots-tique-vai-e-volta (the bots stop
-  // short of a target instead of walking past and back: seed 1's two roots fell by round 6; seeds 2, 3, 6, 7, 10–13, 15,
-  // 16 start the B line).
+  // round 6; seeds 1, 4, 6, 9, 10, 13–16 of 1–16 start the B line). Seed 4 since mapa-conexoes-sem-beco (asset v5: the
+  // passages and the rubble cleared change the walks; seeds 4, 6, 9, 10, 15, 16 of 1–16 start the B line). Seed 2 since
+  // bots-tique-vai-e-volta (the bots stop short of a target instead of walking past and back) met map v6 (uno-anda-mapa-todo):
+  // seeds 2, 5, 6, 7, 10, 12, 14, 16 of 1–16 start the B line.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);

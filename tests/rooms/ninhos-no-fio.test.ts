@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {DICT,FrameDecoder,FrameEncoder,WireIds} from '../../src/protocol/protocol4.ts';
+import {DICT,FrameDecoder,FrameEncoder,POS_SCALE,WireIds} from '../../src/protocol/protocol4.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {NEST_COUNT} from '../../src/maps/nests.ts';
 import {ASLEEP_PER_VIEWER,INTEREST_RADIUS} from '../../src/contract/offscreen.ts';
@@ -76,7 +76,8 @@ test('ninhos room: the sleepers near a player ride the enemies with asleep, neve
   assert.ok(r3.ok);
   const three=r3.view.enemies.filter(e=>e.asleep===true),near=asleep.map(e=>Math.hypot(e.x-n.x,e.y-n.y)).sort((a,b)=>a-b);
   assert.equal(three.length,Math.min(3,inArea));
-  for(const e of three)assert.ok(Math.hypot(e.x-n.x,e.y-n.y)<=near[2]+1e-3,'the nearest three');
+  // The wire rounds each axis to 1/POS_SCALE, so a decoded body may sit up to √2/(2·POS_SCALE) off.
+  for(const e of three)assert.ok(Math.hypot(e.x-n.x,e.y-n.y)<=near[2]+2/POS_SCALE,'the nearest three');
   // The single-player view caps on its own too.
   assert.ok(sim.view('bot-1').enemies.filter(e=>e.asleep).length<=ASLEEP_PER_VIEWER);
 });

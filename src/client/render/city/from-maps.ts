@@ -66,6 +66,8 @@ const PROP_KINDS:Readonly<Record<string,readonly PropKind[]|null>>={
   prop:['crate','barrel','bench','lamp'],
   // The fountain is drawn by its water cells; doors are openings in buildings, not decorations.
   fountain:null,door:null,
+  // A prop a later asset version took off (scripts/becos-cidade.ts PROP_REMOVED): it keeps its index, so the others' ids.
+  removido:null,
 };
 /** Unknown maps prop kinds render as debris. */
 const UNKNOWN_PROP:PropKind='debris';

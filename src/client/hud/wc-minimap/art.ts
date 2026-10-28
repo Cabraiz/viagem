@@ -22,7 +22,7 @@ export type MmIcon=typeof MM_ICONS[number];
 export const MM_CELL=64;
 export const MM_MARKS_URL='/art/minimapa/marcas.webp',MM_CITY_URL='/art/minimapa/cidade-nevada.webp';
 /** The asset the city art was painted from, and the art's side in px. */
-export const MM_CITY_ART=Object.freeze({id:'cidade-nevada',version:4,side:512});
+export const MM_CITY_ART=Object.freeze({id:'cidade-nevada',version:5,side:512});
 
 /** The atlas cell of a class's face, or -1 (no face: the mark stays a dot in the team colour). */
 export const faceCell=(classId:string|undefined)=>classId?MM_FACES.indexOf(classId as typeof MM_FACES[number]):-1;

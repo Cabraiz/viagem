@@ -88,13 +88,26 @@ export class Cheers {
 export interface DanceState {
   hp:number;online?:boolean;spectator?:boolean;downed?:unknown;eliminated?:boolean;
   ride?:unknown;rideUntil?:number;slipUntil?:number;
+  /** D-051 manual combat: the inventory and the slot in the hand (absent with the automatic weapons: nothing in the hand). */
+  weapons?:readonly {id:string}[];hand?:number;
 }
 /**
- * A figure may dance only alive and on its feet, in the run, with its feet on the ground: not downed or out, not
- * riding a vehicle (the moto, the burpee's leap), not sliding on pigeon poop. `tick`: the run's current tick.
+ * Card dancas-5-herois-16q (28/10, "enquanto não tiver arma você pode dançar"): a hero with a weapon in the hand never
+ * dances, from the wait or from a cheer. `isWeapon` tells a weapon from what else a slot holds (render/arsenal-rules.ts
+ * isWeaponItem: a coxinha in slot 0 when no weapon is left is not one); without it any item in the hand counts.
  */
-export function danceAllowed(p:DanceState|undefined,tick:number):boolean{
+export function armed(p:Pick<DanceState,'weapons'|'hand'>,isWeapon:(id:string)=>boolean=()=>true):boolean{
+  const item=p.hand===undefined?undefined:p.weapons?.[p.hand];
+  return !!item&&isWeapon(item.id);
+}
+/**
+ * A figure may dance only alive and on its feet, in the run, with its feet on the ground and its hands free: not downed
+ * or out, not riding a vehicle (the moto, the burpee's leap), not sliding on pigeon poop, no weapon in the hand (armed).
+ * `tick`: the run's current tick.
+ */
+export function danceAllowed(p:DanceState|undefined,tick:number,isWeapon?:(id:string)=>boolean):boolean{
   if(!p||!(p.hp>0)||p.online===false||p.spectator||p.downed||p.eliminated)return false;
   if(p.ride&&(p.rideUntil??Infinity)>tick)return false;
+  if(armed(p,isWeapon))return false;
   return !((p.slipUntil??0)>tick);
 }

@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3240,
-  "bytes": 2251392916,
-  "liteBytes": 786095654,
+  "bytes": 2248807562,
+  "liteBytes": 784393780,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28593,13 +28593,13 @@
    "psnr": 39.3,
    "shownPsnr": 42.9
   },
-  "sprites/aposentado.dance128.b2d18b849abb.webp": {
-   "source": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
-   "lite": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
-   "bytes": 778774,
-   "liteBytes": 448970,
-   "psnr": 38.2,
-   "shownPsnr": 41.9
+  "sprites/aposentado.dance.64f76b4f31fb.webp": {
+   "source": "64f76b4f31fbd7aa998dc774dfc2a6fd0ab5c1627ba3d7d47b9587d0c9181da4",
+   "lite": "b3925ecfcb6668a73b6e0fe92668b8b9c4647e8d3333c756d48eb0218d2e81aa",
+   "bytes": 127400,
+   "liteBytes": 66022,
+   "psnr": 37.6,
+   "shownPsnr": 42.1
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",
@@ -29073,13 +29073,13 @@
    "psnr": 41.5,
    "shownPsnr": 43.7
   },
-  "sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
-   "source": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308",
-   "lite": "b14197907d40324243daf0718c9ca5fc46d39f796c9442816d69ba5e34655352",
-   "bytes": 644246,
-   "liteBytes": 352426,
-   "psnr": 38.2,
-   "shownPsnr": 43
+  "sprites/clt-cansado.dance.16bf2e0065b7.webp": {
+   "source": "16bf2e0065b7544280600f19e7d4b0497838dd458b7878172c7a57450b529173",
+   "lite": "8f52168ca34701805ae8c178f3a9f4e37bece1106eb6c08129ed928b4e33b68f",
+   "bytes": 89012,
+   "liteBytes": 49316,
+   "psnr": 40.1,
+   "shownPsnr": 44
   },
   "sprites/clt-cansado.dir4.webp": {
    "source": "61c68aed2dfd936ff5b4e01ec6bbb464e20f8c77893b3e1a0aaafbfba76eb1cc",
@@ -30697,13 +30697,13 @@
    "psnr": 38.5,
    "shownPsnr": 41.2
   },
-  "sprites/maromba.dance128.576e79362713.webp": {
-   "source": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f",
-   "lite": "14d2e95cc14de918839d7f9d993b08384dd1096d42f0627e96d05c7f90f3e153",
-   "bytes": 235908,
-   "liteBytes": 404396,
-   "psnr": 36.1,
-   "shownPsnr": 39.7
+  "sprites/maromba.dance.c2165441ce05.webp": {
+   "source": "c2165441ce054abcae6b8cfc809f66bd75531c446790a562dc95e0149b43980c",
+   "lite": "6f61668129e6f675f789330e73d55a29443976e4b05b3ced5f9f3eae4add6918",
+   "bytes": 147410,
+   "liteBytes": 76764,
+   "psnr": 35.8,
+   "shownPsnr": 41.1
   },
   "sprites/maromba.dir4.webp": {
    "source": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c",
@@ -32233,13 +32233,13 @@
    "psnr": 36.1,
    "shownPsnr": 40
   },
-  "sprites/vendedor-praia.dance128.932b5398d729.webp": {
-   "source": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",
-   "lite": "704c8541ed7162b3f0c057dc40b2c2b2182a13e8e2b53298ee65241632c35a0e",
-   "bytes": 788922,
-   "liteBytes": 417894,
-   "psnr": 34.6,
-   "shownPsnr": 39.5
+  "sprites/vendedor-praia.dance.7bf2bf0cae8a.webp": {
+   "source": "7bf2bf0cae8ac4fa1c5b614c42c9fb0ae415c2df565e32bce2d081b0122285b5",
+   "lite": "c3e2a85104f8f798766616197253c43a5d82113c9790343d68f7aabdb168aac7",
+   "bytes": 122622,
+   "liteBytes": 69996,
+   "psnr": 34,
+   "shownPsnr": 39.7
   },
   "sprites/vendedor-praia.dir4.webp": {
    "source": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926",
@@ -32689,13 +32689,13 @@
    "psnr": 39.3,
    "shownPsnr": 42.4
   },
-  "sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
-   "source": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d",
-   "lite": "e2b6696b93dcec65e0d8e3c8c0b30fea5e32c85ae0116ef02669f4e025fadcb6",
-   "bytes": 722494,
-   "liteBytes": 396260,
-   "psnr": 37,
-   "shownPsnr": 40.7
+  "sprites/viciado-em-bet.dance.8cf27c7fe640.webp": {
+   "source": "8cf27c7fe64041e31736955ba5913b803c1578b046c9e083cb9c872d73950079",
+   "lite": "4dd0e75ece14f0166828b4a3c6804056b351bee7f958e845071b010b81a13807",
+   "bytes": 98546,
+   "liteBytes": 55974,
+   "psnr": 38.6,
+   "shownPsnr": 41.7
   },
   "sprites/viciado-em-bet.dir4.webp": {
    "source": "00775f0c3cc6ae158750ca679d0db34a9617af68544aa5e0bfb735dd39461a78",

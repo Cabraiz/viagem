@@ -17,16 +17,12 @@ const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFile
 /**
  * S/N gaits that keep one leg in front, drawn before this gate. None is shown in a run: the heroes that run (viciado,
  * CLT) show run16; the walks are the bots' (R06, card of the bots) and the heroes' walk with HERO_GAIT.run off. A
- * fixed one leaves the list (the test asks for that), a new one fails.
+ * fixed one leaves the list (the test asks for that), a new one fails. The ten bots' walk128-S/N left it on 27/10 (card
+ * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror).
  */
 const KNOWN_SN=new Set([
-  'clt-cansado walk128-N','clt-cansado walk128-S',
-  'coach walk128-N','coach walk128-S','concurseira walk128-N','concurseira walk128-S','faxineira walk128-N',
-  'faxineira walk128-S','feirante walk128-N','feirante walk128-S','maromba walk128-N','maromba walk128-S',
-  'mendigo walk128-N','mendigo walk128-S','passageira walk128-N','passageira walk128-S','pedreiro walk128-N',
-  'pedreiro walk128-S','streamer walk128-N','streamer walk128-S',
-  'universitario walk128-N','universitario walk128-S','viciado-em-bet walk128-N','viciado-em-bet walk128-S',
-  'viciado-em-bet walk16-N','viciado-em-bet walk16-S','vizinha-fofoqueira walk128-N','vizinha-fofoqueira walk128-S',
+  'clt-cansado walk128-N','clt-cansado walk128-S','maromba walk128-N','maromba walk128-S',
+  'viciado-em-bet walk128-N','viciado-em-bet walk128-S','viciado-em-bet walk16-N','viciado-em-bet walk16-S',
 ]);
 
 /** Two legs (left 2 px wide, right 4 px wide) under a body, the front one longer: a 24 px cell, pivot at 12. */

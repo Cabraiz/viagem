@@ -573,8 +573,8 @@ async function validateTower(spec,id,files,ctx,r){
     const s=await sheetSource(ctx,folder,anim,anims[anim],perDir[anim],problems);if(!s)continue;
     const img=await load(s.source,s.label,problems);if(!img)continue;
     const frames=img.width/cw;
-    if(img.height!==dirs*ch||!Number.isInteger(frames)||!frames||(anim==='idle'&&frames!==TOWER_IDLE_FRAMES)){
-      const want=anim==='idle'?TOWER_IDLE_FRAMES:Number.isInteger(frames)&&frames>0?frames:'N';
+    if(img.height!==dirs*ch||!Number.isInteger(frames)||!frames||(anim==='idle'&&!TOWER_IDLE_FRAMES.includes(frames))){
+      const want=anim==='idle'?TOWER_IDLE_FRAMES[0]:Number.isInteger(frames)&&frames>0?frames:'N';
       problems.push(sizeProblem(s.label,img,typeof want==='number'?want*cw:`${cw}×N`,dirs*ch,`${want} quadros × ${dirs} direções de ${cw}×${ch} px`,`Uma linha por direção (${DIRECTIONS.join(', ')}), quadros lado a lado.`));continue;
     }
     if(!checkTransparent(img,s.label,problems))continue;

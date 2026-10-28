@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_FINAL_TEXT,FEAR_HOLE,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearLook,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
+import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_HOLE,FEAR_SAY_MS,FEAR_SAY_TEXT,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearLook,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
 import {BEAT_LEVEL,WHISPER_MAX,beatLevel,heartbeatSamples,whisperLevel,whisperSamples} from '../../src/client/audio/fear-sound.ts';
 import {causeCopy,DARK_COPY} from '../../src/client/hud/cause.ts';
 import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_FINAL_SECONDS,FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_SOURCE} from '../../src/rules/index.ts';
@@ -57,7 +57,7 @@ test('the clock: the first beat as the last stretch starts, one per period after
   assert.ok(frames.some(f=>f.thump)&&frames.every(f=>f.beat===0));
 });
 
-test('the arrow and the notice: right from the start alone, once; "Volte pro bando!" over the last stretch',()=>{
+test('the arrow and the notice: right from the start alone, once; nothing on top over the last stretch',()=>{
   const clock=new FearClock();
   const early=run(clock,0,FEAR_ARROW_SECONDS-.1,FEAR_ARROW_SECONDS-.1);
   assert.ok(early.every(f=>!f.alone),'not in the first second');
@@ -74,13 +74,40 @@ test('the arrow and the notice: right from the start alone, once; "Volte pro ban
   // Alone again: no second "Não se afaste" in the same run…
   const again=run(clock,10,20,2,10000);
   assert.ok(again.every(f=>f.notice===undefined));
-  // …but the last stretch says "Volte pro bando!" (urgent).
+  // …nor on top over the last stretch (card heroi-fala-cade-amigos: the hero says it in a balloon).
   const end=run(clock,20,FEAR_SECONDS-1,5,13000);
-  assert.deepEqual(end.at(-1)!.notice,{text:FEAR_FINAL_TEXT,final:true});
+  assert.ok(end.every(f=>f.notice===undefined));
   // A new run: the first notice again.
   clock.reset();
   const next=run(clock,0,2,2,60000);
   assert.equal(next.at(-1)!.notice?.text,FEAR_WARN_TEXT);
+});
+
+test('card heroi-fala-cade-amigos: over the last stretch the hero says "Cadê meus amigos?" once, the top stays clean',()=>{
+  assert.ok(FEAR_SAY_TEXT.length<=20,'a short line');
+  const finalAt=FEAR_SECONDS-FEAR_FINAL_SECONDS,clock=new FearClock();
+  // Alone from the start to the full dark (it never takes anyone: it stays there), well past the first notice.
+  const before=run(clock,0,finalAt-1,finalAt-1);
+  assert.ok(before.every(f=>f.say===undefined),'not before the last stretch');
+  const last=[...run(clock,finalAt-1,FEAR_SECONDS,FEAR_FINAL_SECONDS+1,60000),...run(clock,FEAR_SECONDS,FEAR_SECONDS,5,80000)];
+  assert.equal(last.filter(f=>f.say!==undefined).length,1,'once');
+  assert.equal(last.find(f=>f.say)!.say,FEAR_SAY_TEXT);
+  assert.ok(last.every(f=>f.notice===undefined),'no notice on top');
+  // The arrow waits while the line is up (it would cross the balloon), then comes back.
+  const said=last.findIndex(f=>f.say!==undefined),gap=Math.round(FEAR_SAY_MS*60/1000);
+  assert.ok(last.slice(0,said).every(f=>!f.saying)&&last.slice(said,said+gap-1).every(f=>f.saying&&f.alone));
+  assert.ok(last.slice(said+gap+1).every(f=>!f.saying),'the arrow comes back');
+  // Still alone in the full dark: no second balloon (it waits for company).
+  const flat=run(clock,FEAR_SECONDS,FEAR_SECONDS,3,90000);
+  assert.ok(flat.every(f=>f.say===undefined));
+  // Company found (the dark backs off), then alone again into the last stretch: it is said again, once.
+  run(clock,FEAR_SECONDS,10,2,100000);
+  const again=run(clock,10,FEAR_SECONDS,FEAR_SECONDS-10,110000);
+  assert.equal(again.filter(f=>f.say===FEAR_SAY_TEXT).length,1,'again after company, once');
+  // A new run says it again too.
+  clock.reset();
+  const next=run(clock,0,FEAR_SECONDS,FEAR_SECONDS,200000);
+  assert.equal(next.filter(f=>f.say===FEAR_SAY_TEXT).length,1);
 });
 
 test('the clock eases the wire and lets go of the dark when company is found',()=>{

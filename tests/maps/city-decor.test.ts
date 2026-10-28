@@ -35,7 +35,7 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,6);
+  assert.equal(asset.version,7);
   // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city).
   assert.ok(asset.decor.length>2500,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
@@ -133,7 +133,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,5);
+  assert.equal(b.decor.length,0);assert.equal(b.version,6);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);

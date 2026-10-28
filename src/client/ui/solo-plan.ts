@@ -92,5 +92,41 @@ export const SOLO_FAILED='Não foi possível começar a partida. Tente novamente
 export function soloErrorText(error:unknown):string{
   return error instanceof Error&&error.name==='Error'&&error.message?error.message:SOLO_FAILED;
 }
+/**
+ * auditoria de jogabilidade 14: a cold room Worker can miss the first "Jogar sozinho" (the room or the join fails) and the
+ * player saw the error at once. One more try, silent, SOLO_RETRY_GAP_MS later; `retryable` says no for an answer that a
+ * second try cannot change (the room's fatal word, e.g. an old version).
+ */
+export const SOLO_RETRY_GAP_MS=800;
+export async function soloOneRetry<T>(attempt:()=>Promise<T>,retryable:(error:unknown)=>boolean,
+  wait:(ms:number)=>Promise<unknown>=ms=>new Promise(done=>setTimeout(done,ms))):Promise<T>{
+  try{return await attempt();}
+  catch(error){if(!retryable(error))throw error;await wait(SOLO_RETRY_GAP_MS);return attempt();}
+}
 /** `?ilha=1` (tests only): "Jogar sozinho" opens the old island exploration, without a room. */
 export const islandFlag=(search:string)=>new URLSearchParams(search).get('ilha')==='1';
+
+/**
+ * "Jogar sozinho"'s steps on the card while the match opens (auditoria-ui-menus 5: only "Preparando…" for seconds). Each
+ * weighs its share of the bar and has its own line; the bar reaches a step's share only when it really finished (the
+ * game's code and the city's map download side by side, so either may end first).
+ */
+export type SoloStep='code'|'city'|'room'|'join';
+export const SOLO_STEPS:readonly {step:SoloStep;weight:number;text:string}[]=Object.freeze([
+  {step:'code',weight:.35,text:'Baixando o jogo…'},
+  {step:'city',weight:.35,text:'Baixando a cidade…'},
+  {step:'room',weight:.15,text:'Abrindo a sala…'},
+  {step:'join',weight:.15,text:'Entrando…'},
+]);
+/**
+ * The bar (0..1) and the line for how far each step got (0..1; a missing step has not moved): the line is the first
+ * step not done yet. The city's map reports its bytes, the others only their end.
+ */
+export function soloProgress(parts:Partial<Record<SoloStep,number>>):{fraction:number;text:string}{
+  const got=(s:SoloStep)=>Math.max(0,Math.min(1,parts[s]??0));
+  const fraction=SOLO_STEPS.reduce((sum,s)=>sum+s.weight*got(s.step),0);
+  const next=SOLO_STEPS.find(s=>got(s.step)<1);
+  return {fraction:Math.min(1,Math.round(fraction*100)/100),text:next?.text??SOLO_STEPS.at(-1)!.text};
+}
+/** The ready button of a solo room during the countdown: "Ops, peraí" (un-ready) read as an error in a match alone. */
+export const SOLO_STARTING='Começando…';

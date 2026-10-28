@@ -34,7 +34,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
-import {isWeaponItem} from './render/arsenal-rules.ts';
+import {arsenalLoads,isWeaponItem} from './render/arsenal-rules.ts';
 import {heldHand} from './sprites/hand-points.ts';
 import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt,releaseEnemyArt} from './art/horde-art.ts';
 import {ChefaoArtPlan,chefaoDeferred} from './art/chefao-art.ts';
@@ -433,6 +433,10 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
+    // The crates' floating items (caixa-aparece-tarde): the map opens with crates of any item, so in the manual combat every
+    // item sticker (~750 KB, the waiting room already fetched them: match-assets P1) comes with the art around the hero,
+    // not ~11 s later behind the city's stream. The shot strips stay with the first manual view (render/arsenal-fx.ts).
+    if(this.hooks.net?.combat==='manual')for(const l of arsenalLoads())if(!l.strip)this.load.image(l.key,l.url);
     // The defenses' sheets are not preloaded (none stands at the opening): every kind's was ~8 MB of download and
     // ~134 MB of decoded textures on a phone (auditoria-desempenho-28-10). A kit's ghost or a defense asks for its own
     // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).
@@ -1168,6 +1172,9 @@ export class IslandScene extends Phaser.Scene {
     // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
     const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
     const frame=this.fearClock.step(raw,dt,time,this.reduced);
+    // Card heroi-fala-cade-amigos: the hero's own line over the last stretch, the cast's balloon over the head; drawn
+    // here only, so only this player sees it. A priority line: a recent "Segura aí" does not swallow it.
+    if(frame.say)this.horde?.speak(net.id,frame.say,undefined,true);
     const lit=frame.look.alpha>0||frame.alone;
     this.fearOn=lit||frame.seconds>0;
     const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);
@@ -1181,7 +1188,8 @@ export class IslandScene extends Phaser.Scene {
       out.push({x:c.x,y:c.y,rx:Math.hypot(u.x-c.x,v.x-c.x),ry:Math.hypot(u.y-c.y,v.y-c.y)});
     }
     const box=this.heroWorldBox(),hero={x:box.x+box.width/2,y:box.y+box.height/2};
-    const near=frame.alone?spots[0]:undefined,to=near?this.project(near):undefined;
+    // While the hero's line is up the arrow waits: around the head it would cross the balloon's text.
+    const near=frame.alone&&!frame.saying?spots[0]:undefined,to=near?this.project(near):undefined;
     dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,spots:out,
       ...to?{arrow:{x:to.x,y:to.y}}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
     this.vignette?.cover(dark.covering);

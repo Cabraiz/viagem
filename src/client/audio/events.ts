@@ -126,6 +126,8 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     // Being eliminated earns a canned laugh from the studio audience.
     case 'eliminated':return 'risada';
     case 'boss-phase':return 'chefe';
+    // uno-atravessa-tralha: a square of the map's tralha (ids tralha*) broken, run over by the Uno: a short thwack.
+    case 'structure':return event.hp===0&&event.id.startsWith('tralha')?'golpe':undefined;
     // 'prepare' also opens the run (before round 1) and shares a tick with 'end', so only 'end' gets the ta-dá.
     case 'round':return event.phase==='wave'?'round-inicio':event.phase==='end'?'round-fim':undefined;
     default:return undefined;

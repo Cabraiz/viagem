@@ -263,7 +263,7 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   assert.ok(sys.upgrade(ctx,'a',id).ok,'A2 → A3 (single child)');
   at(ctx,d().readyTick);
   assert.deepEqual(sys.upgrade(ctx,'a',id),{ok:false,reason:'branch'},'A3 forks');
-  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'size'},'a maxSize-2 site cannot hold the 3×3 Ninho de Metralhadora');
+  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'size'},'a maxSize-2 site cannot hold the 3×3 Ninho');
   assert.deepEqual(sys.upgrade(ctx,'a',id,'A4b'),{ok:true,defense:id,kind:'ninho-do-sniper',cost:EVOLVE_PRICE[4]},'the alternative fits');
   at(ctx,d().readyTick);
   assert.deepEqual(sys.upgrade(ctx,'a',id),{ok:true,defense:id,kind:'equipe-antimaterial',cost:EVOLVE_PRICE[5]});

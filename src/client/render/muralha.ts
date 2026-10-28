@@ -131,6 +131,10 @@ export class MuralhaLayer {
     }
     return list.slice(0,count);
   }
+  /** The images square `id` shows now (uno-atravessa-tralha: the run-over pieces are cut from them). */
+  shown(id:string):Phaser.GameObjects.Image[]{
+    return (this.images.get(id)??[]).filter(i=>i.visible);
+  }
   /** Drops the images of squares that are gone. */
   prune(keep:ReadonlySet<string>){
     for(const [id,list] of this.images)if(!keep.has(id)){for(const i of list)i.destroy();this.images.delete(id);}

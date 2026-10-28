@@ -26,6 +26,7 @@ import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from '.
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
 import {holdsObra} from './towers/system.ts';
+import {TRALHA_PREFIX} from './towers/tralha.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -327,7 +328,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       give:(p:SimPlayer)=>{const own=p.build.weapons.find(w=>w.id===kitId('barricada'));if(own){own.level++;return true;}return addItem(p,{id:kitId('barricada'),level:1});},
     }}:{}),
     ...(cityWorld?{freeBuild:objective?{
-      car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
+      car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius,heading:chaveiro!.state.car.heading}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
       banks:()=>banks?.places??[],
@@ -455,7 +456,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
       ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
-      input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
+      input:id=>sticks.get(id),
+      // uno-atravessa-tralha: the map's own tralha never stops the car (it runs it over: towers/free-build unoAlertStep).
+      blocks:()=>structureTargets(stonewards.state,false).filter(b=>!b.id.startsWith(TRALHA_PREFIX)),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
       helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id),
       // D-052: the moto rides around a muro built across his way.

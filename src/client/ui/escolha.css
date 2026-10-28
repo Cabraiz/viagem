@@ -48,13 +48,24 @@
 #confirmation.escolha-arte{--escolha-img-h:clamp(90px,18dvh,150px);padding-left:20px;padding-right:20px}
 @media (max-height:520px){
   /* O popup desce um pouco para o herói do topo sair por cima da moldura também deitado. */
-  #confirmation.escolha-arte{--escolha-img-h:clamp(50px,17dvh,80px);margin-top:max(40px,13dvh);margin-bottom:6px;max-height:calc(100dvh - max(40px,13dvh) - 8px);padding-top:22px}
+  #confirmation.escolha-arte{--escolha-img-h:clamp(50px,17dvh,80px);margin-top:max(32px,9dvh);margin-bottom:6px;max-height:calc(100dvh - max(32px,9dvh) - 8px);padding-top:22px}
   #confirmation.escolha-arte .chosen-actions{margin-top:8px}
-  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,38dvh,150px);height:clamp(110px,38dvh,150px);margin:calc(-.55 * clamp(110px,38dvh,150px)) 0 -8px -6px}
-  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:4px 12px}
+  /* auditoria-ui-menus 14: the head kept ~15 px from the top of the screen and the link sat on the bottom wool. The hero
+     a bit smaller and less out of the frame, so the popup goes up (13dvh → 9dvh) and the room it gains lifts the link off
+     the bottom wool (padding 24: the popup is at its max height, the link only moves with the room). */
+  #confirmation.escolha-arte{padding-bottom:24px}
+  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(96px,30dvh,130px);height:clamp(96px,30dvh,130px);margin:calc(-.45 * clamp(96px,30dvh,130px)) 0 -8px -6px}
+  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:2px 12px}
   /* Bloco largo e baixo: a arte larga cobre o bloco (chão de lado a lado); o herói enche a altura acima do texto. */
   #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
   /* Deitado a arte larga já vem afastada: inteira, encostada na base. */
   #confirmation.escolha-arte #enter-coop .escolha-img{bottom:30px;height:calc(100% - 34px);object-fit:contain;object-position:50% 100%}
 }
+/* auditoria-ui-menus 5: "Jogar sozinho" while the match opens. The card stays lit (not the faded look of a disabled
+   button), its line names the running step and the bar fills with the real steps (solo-plan.ts soloProgress). */
+#enter-island[aria-busy=true]:disabled{opacity:1}
+#enter-island .carga{position:relative;display:block;height:8px;margin:5px 10px 2px;border-radius:var(--r-pilula);overflow:hidden;background:color-mix(in srgb,var(--c-breu) 55%,var(--c-lilas));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-papel-claro) 35%,transparent)}
+#enter-island .carga[hidden]{display:none}
+#enter-island .carga-cheio{display:block;width:var(--carga,0%);height:100%;border-radius:inherit;background:var(--c-amarelo);transition:width .3s ease-out}
+@media (prefers-reduced-motion:reduce){#enter-island .carga-cheio{transition:none}}

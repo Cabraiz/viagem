@@ -32,7 +32,7 @@ import {lightEnabled} from '../light.ts';
 import {getAudio} from '../../audio/engine.ts';
 import {UsableGlow} from '../usable-glow.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
-  towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
+  clipOf,towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,weaponPose,weaponSeed,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
 /** Where the defenses sit: the city's projection and depth (the sandbox and, after torres-fio, the scene). */
 export interface TowerWorld {
@@ -91,6 +91,11 @@ interface Tower {
   /** The delivered base sheet is in use (else the baked procedural texture). */
   art:boolean;
   dir:Dir8;want:Dir8;turnMs:number;recoilUntil:number;drawnDir:number;drawnRecoil:boolean;drawnPhase:TowerPhase|'';drawnView:number;
+  /**
+   * The delivered weapon's animation (card torres-animacao-idle-tiro): when the last volley started its fire sheet (ms),
+   * its idle offset (weaponSeed) and the pose last set (fire × 1000 + frame; -1 none).
+   */
+  fireAt:number;seedMs:number;drawnPose:number;
   rect:Rect;prop:{x:number;y:number;rect:Rect};mount:Pt;height:number;seen:number;target:number;
   /** Draw depth (its footprint's front corner) and the server aim the cached `want` was turned from. */
   depth:number;aimFor:number;
@@ -103,11 +108,16 @@ type Img=Phaser.GameObjects.Image|undefined;
  */
 interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:number;y1:number;born:number;ms:number;mx:number;my:number;ox:number;oy:number;
   cell:number;d0:number;dz:number;trail:Img;head:Img;puff:Img}
-interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img}
-interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img}
+/** A muzzle flash, or (`smoke`) the grey puff the heavy calibres leave at the muzzle (torres-animacao-idle-tiro). */
+interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img;smoke:boolean}
+interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img;tint:number}
 interface Crater {on:boolean;x:number;y:number;r:number;born:number;ms:number}
 
 export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
+/** The muzzle smoke of the heavy calibres: its radius and life against the flash's, its grey. */
+const SMOKE_R=1.1,SMOKE_MS=6,SMOKE_TINT=0x9aa0a6;
+/** The radar's pulse ring (the wire's spark ring, tinted). */
+const PULSE_TINT=0x6ec6ff;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
@@ -148,8 +158,8 @@ export class TowerRenderer {
   /** Shots, explosions and flashes: pooled Images in the scene's display list, each at its own point's actor depth. */
   private readonly fxImages:Phaser.GameObjects.Image[]=[];
   private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,dz:0,trail:undefined,head:undefined,puff:undefined}));
-  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined}));
-  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined}));
+  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined,smoke:false}));
+  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined,tint:0}));
   private readonly craters=pool<Crater>(CRATER_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
   private cursor={shot:0,flash:0,blast:0,crater:0};
   private readonly fader=new CoverFader();
@@ -300,7 +310,7 @@ export class TowerRenderer {
       const a=alpha.get(t.view.id)??1;
       if(a!==t.alpha){t.alpha=a;t.base.setAlpha(a);t.weapon.setAlpha(a);}
       // contorno-usavel-wc3: a defense (and its obra) can be built on and upgraded: the Warcraft 3 gold outline.
-      glow.mark(t.view.id,t.base,k);
+      if(this.outline)glow.mark(t.view.id,t.base,k);
     }
     glow.end();
     this.drawEffects(nowMs);
@@ -377,13 +387,15 @@ export class TowerRenderer {
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
       base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,artWait:false,hideUntil:0,scanAt:0,alpha:1,covers:false,
-      dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,
+      dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,fireAt:-1e9,seedMs:weaponSeed(view.id),drawnPose:-1,
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1,depth:0,aimFor:NaN};
     t.prop.rect=t.rect;
     const art=towerArt(view.kind);
     t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
     t.artWait=!!art?.base&&!t.art;
     if(t.artWait){t.hideUntil=this.now+TOWER_ART_WAIT_MS;this.o.needArt?.(view.kind);}
+    // The fire sheet streams only for the kinds standing in the match (towerLoads: not in the opening's queue).
+    else if(art?.fire&&!this.scene.textures.exists(towerFireKey(view.kind)))this.o.needArt?.(view.kind);
     return t;
   }
   private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();t.shadow?.destroy();}
@@ -430,6 +442,12 @@ export class TowerRenderer {
    * A volley: muzzle flash, recoil, and the shots toward its aim: with the server's `aim`, the reachable enemy along it
    * (or a point along it at AIM_FALLBACK of the range); without, the nearest reachable enemy.
    */
+  /** Sandbox `contorno=0` (torres-animacao-idle-tiro): no gold outline, the art itself in the recordings. */
+  outline=true;
+  /** Sandbox `anim=0` (the FPS check of torres-animacao-idle-tiro): the weapons stand on the idle's frame 0, as before. */
+  animate=true;
+  /** Where a defense's weapon stands on screen (world px; its mount), once drawn: the sandbox's `foco=torre` camera. */
+  mountOf(id:string):Pt|undefined{const t=this.towers.get(id);return t&&t.drawnPhase?{x:t.mount.x,y:t.mount.y}:undefined;}
   /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
   volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
@@ -437,7 +455,7 @@ export class TowerRenderer {
     // Each calibre's shot (audio/sfx.ts torre-*), throttled per calibre so a battery does not stack up.
     const audio=getAudio();if(audio.unlocked)audio.play(`torre-${t.look.calibre}`);
     const cal=t.cal,e=this.enemies,v=t.view;
-    t.recoilUntil=nowMs+RECOIL_MS;
+    t.recoilUntil=nowMs+RECOIL_MS;t.fireAt=nowMs;
     let tx=NaN,ty=NaN;
     if(v.aim!==undefined){
       const i=aimedIndex(t.look,v.x,v.y,v.aim,e.n,e.xs,e.ys,e.air),turn=v.aim*Math.PI*2,reach=t.look.range*AIM_FALLBACK;
@@ -455,9 +473,12 @@ export class TowerRenderer {
     this.muzzle(t);
     const mx=this.v.x,my=this.v.y;
     if(cal.flash>0)this.addFlash(mx,my,cal.flash*this.f,cal.flashMs,nowMs,t.depth+FX_DEPTH.flash);
+    // The heavy calibres (an explosive shot, the rockets) leave a puff of smoke at the muzzle that rises and thins out.
+    if(cal.flash>0&&(cal.blast>0||cal.shot==='rocket'))this.addFlash(mx,my,cal.flash*this.f*SMOKE_R,cal.flashMs*SMOKE_MS,nowMs,t.depth+FX_DEPTH.flash,true);
     if(cal.shot==='aura'){this.addBlast(v.x,v.y,t.look.range,cal.blastMs,nowMs,true);return;}
     if(!has||cal.shot==='none')return;
     if(cal.shot==='beam'){this.addBeam(t,tx,ty,nowMs,mx,my);return;}
+    if(cal.shot==='pulse'){this.addBlast(tx,ty,t.look.area,cal.blastMs,nowMs,true,PULSE_TINT);return;}
     const n=Math.min(BURST_MAX,t.look.shots),h=t.height*PHASE_HEIGHT[t.phase];
     // The path starts over the defense's centre at its roof; the drawn shot leaves the barrel tip (the offset fades out).
     const start=this.o.world.project(v.x,v.y,h,this.p),ox=mx-start.x,oy=my-start.y;
@@ -470,6 +491,12 @@ export class TowerRenderer {
   }
   /** World px of the muzzle tip into this.v (mount + barrel along the weapon's direction). */
   private muzzle(t:Tower){
+    // The delivered weapon's own muzzle (meta.muzzle, per direction row) while its sheet is drawn.
+    const art=t.drawnPose>=0?towerArt(t.view.kind):undefined,m=art?.muzzle?.[t.dir],idle=art?.idle;
+    if(m&&idle){
+      const k=this.artScale,[cw,ch]=idle.cell,a=idle.anchor??[.5,.5];
+      this.v.x=t.mount.x+(m[0]-a[0])*cw*k;this.v.y=t.mount.y+(m[1]-a[1])*ch*k;return;
+    }
     const d=dirVector(t.dir,this.v),len=t.cal.barrel*this.unitPx;
     this.v.x=t.mount.x+d.x*len;this.v.y=t.mount.y+d.y*len*.5;
   }
@@ -489,12 +516,12 @@ export class TowerRenderer {
     const s=this.slot();
     s.on=true;s.cal=t.cal;s.x0=t.view.x;s.y0=t.view.y;s.z0=t.height;s.x1=x1;s.y1=y1;s.born=born;s.ms=t.cal.blastMs;s.mx=mx;s.my=my;s.ox=0;s.oy=0;s.d0=t.depth;
   }
-  private addFlash(x:number,y:number,r:number,ms:number,born:number,depth:number){
-    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;
+  private addFlash(x:number,y:number,r:number,ms:number,born:number,depth:number,smoke=false){
+    const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;f.smoke=smoke;
     if(f.img)f.img.setDepth(depth);
   }
-  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false){
-    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;
+  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false,tint=0){
+    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;b.tint=tint;
     if(b.img&&b.ring!==ring){b.img.destroy();this.fxImages.splice(this.fxImages.indexOf(b.img),1);b.img=undefined;} // the ring lives on the ground
     b.ring=ring;b.depth=ring?0:this.fxDepth(x,y)+FX_DEPTH.blast;
     if(b.img&&!ring)b.img.setDepth(b.depth);
@@ -569,6 +596,7 @@ export class TowerRenderer {
       if(b.ring){ // the wire's spark ring lies on the snow: in the ground layer
         if(!b.img){const fr=this.atlas.get(FX.ring)!;b.img=this.scene.make.image({x:0,y:0,key:fr.key,frame:fr.frame},false);this.ground.add(b.img);}
         b.img.setVisible(true).setPosition(p.x,p.y).setScale(rw*2/(RING_W-8)).setAlpha(1-k);
+        if(b.tint)b.img.setTint(b.tint);else if(b.img.isTinted)b.img.clearTint();
         continue;
       }
       // The fireball rises as it fades (the baked one is drawn at half its rise).
@@ -578,7 +606,12 @@ export class TowerRenderer {
     for(const f of this.flashes){
       if(!f.on)continue;
       const k=(now-f.born)/f.ms;if(k>=1){f.on=false;f.img?.setVisible(false);continue;}
+      if(f.smoke){ // under the flash, growing as it rises one radius and a half, grey
+        f.img=this.fxImage(f.img,FX.puff,f.depth-FX_DEPTH.flash/2,false).setPosition(f.x,f.y-f.r*1.5*k).setScale(f.r*(1+1.4*k)*2/HEAD_TEX).setAlpha(.55*(1-k)).setTint(SMOKE_TINT);
+        continue;
+      }
       f.img=this.fxImage(f.img,FX.flash,f.depth,false).setPosition(f.x,f.y).setScale(f.r*(1-.4*k)*2.5/FLASH_TEX).setAlpha(1-k);
+      if(f.img.isTinted)f.img.clearTint();
     }
   }
   /** An effect's depth at its ground point (the world's effectDepth, else the actor depth). */
@@ -670,8 +703,8 @@ export class TowerRenderer {
       this.placeRail(t,view);
       this.placeShadow(t,view);
     }
-    const recoil=this.now<t.recoilUntil;
-    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil){t.drawnDir=t.dir;t.drawnRecoil=recoil;this.placeWeapon(t,recoil);}
+    const recoil=this.now<t.recoilUntil,pose=this.artPose(t),key=pose?(pose.fire?1000:0)+pose.frame:-1;
+    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil||t.drawnPose!==key){t.drawnDir=t.dir;t.drawnRecoil=recoil;t.drawnPose=key;this.placeWeapon(t,recoil,pose);}
   }
   /**
    * Draw depth at the footprint's front corner (the one nearest the viewer), like a city block: a figure behind any
@@ -827,15 +860,29 @@ export class TowerRenderer {
       g.lineStyle(Math.max(1,3*s),this.breu,1).lineBetween(a.x,a.y,b.x,b.y).lineStyle(Math.max(1,1.5*s),MATERIALS.madeira.luz,1).lineBetween(a.x,a.y,b.x,b.y);
     }
   }
-  /** The weapon: the delivered idle sheet's frame, or a baked procedural texture per kind × direction × recoil. */
-  private placeWeapon(t:Tower,recoil:boolean){
-    const show=(canFire(t.phase)||t.phase==='obra-3')&&t.look.calibre!=='arame';
+  /**
+   * The delivered weapon's pose now (weaponPose: the fire sheet after a volley, else the idle loop); undefined when the
+   * weapon is procedural (no idle sheet loaded). The fire sheet counts once it is loaded (it streams after the idle).
+   */
+  private artPose(t:Tower){
+    if(!t.art)return undefined;
+    const art=towerArt(t.view.kind),idle=clipOf(art?.idle,4);
+    if(!idle||!this.scene.textures.exists(towerGunKey(t.view.kind)))return undefined;
+    if(!this.animate)return {fire:false,frame:0};
+    const fire=art?.fire&&this.scene.textures.exists(towerFireKey(t.view.kind))?clipOf(art.fire,12):undefined;
+    return weaponPose(this.now,t.fireAt,t.seedMs,idle,fire,this.o.reduced);
+  }
+  /** The weapon: the delivered idle or fire sheet's frame (artPose), or a baked procedural texture per kind × direction × recoil. */
+  private placeWeapon(t:Tower,recoil:boolean,pose=this.artPose(t)){
+    // The wire's procedural weapon is the wire itself (drawWire); its delivered sheet is the siren's crew.
+    const show=(canFire(t.phase)||t.phase==='obra-3')&&(t.look.calibre!=='arame'||!!pose);
     t.weapon.setVisible(show);
     if(!show)return;
-    const art=t.art?towerArt(t.view.kind):undefined;
-    if(art?.idle&&this.scene.textures.exists(towerGunKey(t.view.kind))){
-      const frames=Math.max(1,art.idle.frames??1),anchor=art.idle.anchor??[.5,.5];
-      t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(this.artScale/textureRatio(art.idle)).setFrame(weaponFrame(t.dir,0,frames));
+    const art=pose?towerArt(t.view.kind):undefined,file=pose?.fire?art?.fire:art?.idle;
+    if(pose&&file){
+      const frames=Math.max(1,file.frames??1),anchor=file.anchor??[.5,.5];
+      t.weapon.setTexture(pose.fire?towerFireKey(t.view.kind):towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y)
+        .setScale(this.artScale/textureRatio(file)).setFrame(weaponFrame(t.dir,pose.frame,frames));
       return;
     }
     const name=(d:number,r:boolean)=>`arma:${t.view.kind}:${d}:${r?1:0}:${Math.round(this.unitPx)}`;
@@ -862,7 +909,7 @@ export class TowerRenderer {
     let x0=-g.disc-g.line,x1=g.disc+g.line,y0=-g.disc/2-g.line,y1=g.post+g.disc/2+g.line;
     const add=(x:number,y:number,rx:number,ry:number)=>{x0=Math.min(x0,x-rx);x1=Math.max(x1,x+rx);y0=Math.min(y0,y-ry);y1=Math.max(y1,y+ry);};
     if(shot==='beam')add(g.x1,g.y1-g.disc*.6,g.disc*1.1,g.disc*1.1);
-    else if(shot==='none')add(g.x1,g.y1-g.disc*1.4,g.disc*1.4+g.line,g.disc*.9+g.line);
+    else if(shot==='none'||shot==='pulse')add(g.x1,g.y1-g.disc*1.4,g.disc*1.4+g.line,g.disc*.9+g.line);
     else{const r=(g.thick+3*g.s)/2;add(g.x0,g.y0,r,r);add(g.x1,g.y1,Math.max(r,g.thick*.75),Math.max(r,g.thick*.75));}
     return {x0:Math.floor(x0)-2,y0:Math.floor(y0)-2,x1:Math.ceil(x1)+2,y1:Math.ceil(y1)+2};
   }
@@ -883,7 +930,7 @@ export class TowerRenderer {
         .fillStyle(this.amarelo,1).fillCircle(x1+d.x*disc*.2,y1-disc*.6+d.y*disc*.1,disc*.45);
       return;
     }
-    if(cal.shot==='none'){ // radar dish
+    if(cal.shot==='none'||cal.shot==='pulse'){ // radar dish
       g.lineStyle(thick*.6+2*s,this.breu,1).lineBetween(mx,my,x1,y1-disc*1.4).fillStyle(this.breu,1).fillEllipse(x1,y1-disc*1.4,disc*2.8,disc*1.8)
         .fillStyle(this.papel,1).fillEllipse(x1,y1-disc*1.4,disc*2.3,disc*1.4);
       return;
@@ -908,6 +955,7 @@ export const TOWER_ART_WAIT_MS=5000;
 /** Texture keys of a defense's imported sheets. */
 export const towerBaseKey=(kind:string)=>`art:torres:${kind}:base`;
 export const towerGunKey=(kind:string)=>`art:torres:${kind}:idle`;
+export const towerFireKey=(kind:string)=>`art:torres:${kind}:fire`;
 /**
  * Public URL of the lite copy of a defense's sheet (scripts/art-lite.mjs, family towers): one sheet per file, its
  * pages joined, frames in order at `liteCell`.
@@ -917,22 +965,23 @@ export const towerLiteUrl=(kind:string,name:string)=>`/art/lite/towers/${kind}/$
 export interface TowerLoad {key:string;url:string;frameWidth:number;frameHeight:number}
 /**
  * The delivered sheets of `kind` (every kind without it): the lite copy when the manifest has one (`liteCell`, a single
- * page even when the delivered sheet is paged), else a single-page delivered file; the rest stays procedural.
+ * page even when the delivered sheet is paged), else a single-page delivered file; the rest stays procedural. The fire
+ * sheet (torres-animacao-idle-tiro) only with `fire`: a phone holds it only for the kinds standing in the match.
  */
-export function towerLoads(kind?:TowerKind):TowerLoad[]{
+export function towerLoads(kind?:TowerKind,fire=!!kind):TowerLoad[]{
   const group=artIndex().groups.torres;if(!group)return [];
   const out:TowerLoad[]=[];
   for(const k of kind?[kind]:TOWER_KINDS as readonly TowerKind[]){
     const art=towerArt(k);if(!art)continue;
-    for(const [key,name,file] of [[towerBaseKey(k),'base',art.base],[towerGunKey(k),'idle',art.idle]] as const){
-      if(!file)continue;
+    for(const [key,name,file] of [[towerBaseKey(k),'base',art.base],[towerGunKey(k),'idle',art.idle],[towerFireKey(k),'fire',art.fire]] as const){
+      if(!file||name==='fire'&&!fire)continue;
       if(file.liteCell)out.push({key,url:towerLiteUrl(k,name),frameWidth:file.liteCell[0],frameHeight:file.liteCell[1]});
       else if(file.file&&(file.pages?.length??1)<=1)out.push({key,url:groupFileUrl(group,file.file),frameWidth:file.cell[0],frameHeight:file.cell[1]});
     }
   }
   return out;
 }
-/** Queues the delivered tower sheets not loaded yet (towerLoads) on the scene's loader. */
-export function queueTowerArt(scene:Phaser.Scene){
-  for(const l of towerLoads())if(!scene.textures.exists(l.key))scene.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
+/** Queues the delivered tower sheets not loaded yet (towerLoads; the fire sheets too with `fire`) on the scene's loader. */
+export function queueTowerArt(scene:Phaser.Scene,fire=false){
+  for(const l of towerLoads(undefined,fire))if(!scene.textures.exists(l.key))scene.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
 }

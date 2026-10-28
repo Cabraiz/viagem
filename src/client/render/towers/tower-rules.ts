@@ -78,7 +78,7 @@ export const TOWER_LOOK:Readonly<Record<TowerKind,TowerLook>>=Object.freeze({
   'holofote':look('C','holofote',[1,1],6,.5,1.2,{area:2}),
   'arame-e-sirene':look('C','arame',[1,2],4,.5,.6,{hits:'ground'}),
   'antiaerea-quadrupla':look('C','antiaerea',[2,2],9,.3,.8,{hits:'air',shots:4}),
-  'posto-de-radar':look('C','radar',[2,2],0,1,1.6),
+  'posto-de-radar':look('C','radar',[2,2],8,1.5,1.6,{area:1.6}),
 });
 export const TOWER_KINDS=Object.freeze(Object.keys(TOWER_LOOK) as TowerKind[]);
 export const isTowerKind=(k:string):k is TowerKind=>Object.prototype.hasOwnProperty.call(TOWER_LOOK,k);
@@ -268,7 +268,7 @@ export function firedNow(prevFireTick:number|undefined,d:Pick<TowerView,'fireTic
 }
 
 /** Shot drawing kinds: a fast streak, a lobbed shell, a rocket with smoke, a light beam, a spark ring, nothing. */
-export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'none';
+export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'pulse'|'none';
 export type CraterSize='p'|'m'|'g'|'gustavao';
 export interface CalibreLook {
   /** Muzzle flash radius (CSS px at zoom 1 × actor scale) and life (ms); 0 = no flash. */
@@ -302,7 +302,8 @@ export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
   holofote:cal({shot:'beam',flash:0,flashMs:0,speed:0,blastMs:260,barrel:.3}),
   arame:cal({shot:'aura',blastMs:300,barrel:0}),
   antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
-  radar:cal({shot:'none',barrel:.3}),
+  // The radar's pulse (torres-animacao-idle-tiro): a blue ring of its area on the group it hit.
+  radar:cal({shot:'pulse',flash:5,flashMs:120,blastMs:420,barrel:.3}),
 });
 /** Crater decal radius (u) and how long it stays on the snow (ms). */
 export const CRATER:Readonly<Record<CraterSize,{radius:number;ms:number}>>=Object.freeze({
@@ -345,16 +346,42 @@ export const towerArtScale=(diamondPx:number,cell:number=ART_CELL)=>diamondPx/(2
 /** Texture px per art px of a sheet: its lite copy's cell (scripts/art-lite.mjs) over the delivered cell. */
 export const textureRatio=(file:Pick<ArtFile,'cell'|'liteCell'>)=>file.liteCell?file.liteCell[0]/file.cell[0]:1;
 
-/** Imported art of a defense (manifest group `torres`): the base sheet, the weapon idle sheet and the mount (px, view 0°). */
-export interface TowerArt {base?:ArtFile;idle?:ArtFile;mount?:readonly [number,number]}
+/**
+ * Imported art of a defense (manifest group `torres`): the base sheet, the weapon's idle and fire sheets (8 rows ×
+ * frames) and the mount (px, view 0°).
+ */
+export interface TowerArt {base?:ArtFile;idle?:ArtFile;fire?:ArtFile;mount?:readonly [number,number];
+  /** Where the shot leaves the weapon sheet per direction row (cell fractions; meta.muzzle, read on the idle's frame 0). */
+  muzzle?:readonly (readonly [number,number])[]}
 export function towerArt(kind:TowerKind):TowerArt|undefined{
   const piece=artPiece('torres',kind);
   if(!piece)return undefined;
   const m=piece.meta?.mount;
   const mount=Array.isArray(m)&&m.length===2&&m.every(n=>Number.isFinite(n))?[m[0] as number,m[1] as number] as const:undefined;
-  const base=piece.files.base,idle=piece.files.idle;
+  const base=piece.files.base,idle=piece.files.idle,fire=piece.files.fire,mz=piece.meta?.muzzle;
   if(!base)return undefined;
-  return {base,...(idle?{idle}:{}),...(mount?{mount}:{})};
+  const muzzle=Array.isArray(mz)&&mz.length===8&&mz.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isFinite(n)&&n>=0&&n<=1))
+    ?(mz as [number,number][]).map(p=>[p[0],p[1]] as const):undefined;
+  return {base,...(idle?{idle}:{}),...(idle&&fire?{fire}:{}),...(mount?{mount}:{}),...(idle&&muzzle?{muzzle}:{})};
 }
+/** Frames and pace of a weapon sheet (ArtFile frames/fps; idle 4 at 4 fps, fire at 12 when the manifest says nothing). */
+export interface WeaponClip {frames:number;fps:number}
+export const clipOf=(f:Pick<ArtFile,'frames'|'fps'>|undefined,fps:number):WeaponClip|undefined=>
+  f?{frames:Math.max(1,f.frames??1),fps:typeof f.fps==='number'&&f.fps>0?f.fps:fps}:undefined;
+/**
+ * The weapon's pose now (card torres-animacao-idle-tiro): the fire sheet from its first frame at the volley (`fireAt`,
+ * the sim's shot: the flash frame on the shot's tick, restarted by each volley) to its last, then the idle sheet in a loop,
+ * offset by `seedMs` so a row of the same defense does not breathe in step. Reduced motion: the idle stands on frame 0.
+ */
+export function weaponPose(nowMs:number,fireAt:number,seedMs:number,idle:WeaponClip,fire?:WeaponClip,reduced=false):{fire:boolean;frame:number}{
+  if(fire){
+    const e=nowMs-fireAt;
+    if(e>=0&&e<fire.frames*1000/fire.fps)return {fire:true,frame:Math.min(fire.frames-1,Math.floor(e*fire.fps/1000))};
+  }
+  if(reduced||idle.frames<2)return {fire:false,frame:0};
+  return {fire:false,frame:Math.floor(Math.max(0,nowMs+seedMs)*idle.fps/1000)%idle.frames};
+}
+/** A defense's idle offset (ms, 0..999) from its id: stable across snapshots. */
+export const weaponSeed=(id:string)=>{let h=0;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;return ((h%1000)+1000)%1000;};
 /** Weapon frame in an idle sheet of 8 rows × `frames` columns. */
 export const weaponFrame=(dir:Dir8,frame:number,frames:number)=>dir*Math.max(1,frames)+(Math.max(1,frames)>1?((frame%frames)+frames)%frames:0);

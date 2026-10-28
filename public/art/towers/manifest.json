@@ -63,7 +63,11 @@
               "sha256": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272"
             }
           ],
-          "sha256": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272"
+          "sha256": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "idle": {
           "file": "antiaerea-quadrupla/idle.webp",
@@ -129,6 +133,40 @@
         "mount": [
           224,
           280
+        ],
+        "muzzle": [
+          [
+            0.48,
+            0.81
+          ],
+          [
+            0.14,
+            0.8
+          ],
+          [
+            0.09,
+            0.5
+          ],
+          [
+            0.18,
+            0.28
+          ],
+          [
+            0.5,
+            0.16
+          ],
+          [
+            0.78,
+            0.23
+          ],
+          [
+            0.88,
+            0.52
+          ],
+          [
+            0.75,
+            0.84
+          ]
         ]
       }
     },
@@ -193,7 +231,11 @@
               "sha256": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609"
             }
           ],
-          "sha256": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609"
+          "sha256": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609",
+          "liteCell": [
+            64,
+            64
+          ]
         },
         "idle": {
           "file": "arame-e-sirene/idle.webp",
@@ -298,7 +340,11 @@
               "sha256": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807"
             }
           ],
-          "sha256": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807"
+          "sha256": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807",
+          "liteCell": [
+            96,
+            96
+          ]
         },
         "idle": {
           "file": "atiradores-do-telhado/idle.webp",
@@ -428,7 +474,11 @@
               "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e"
             }
           ],
-          "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e"
+          "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e",
+          "liteCell": [
+            96,
+            96
+          ]
         },
         "idle": {
           "file": "equipe-antimaterial/idle.webp",
@@ -565,7 +615,11 @@
               "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe"
             }
           ],
-          "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe"
+          "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "idle": {
           "file": "guarnicao-do-predio/idle.webp",
@@ -739,7 +793,11 @@
               "sha256": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e"
             }
           ],
-          "sha256": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e"
+          "sha256": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "idle": {
           "file": "holofote/idle.webp",
@@ -805,6 +863,40 @@
         "mount": [
           143,
           346
+        ],
+        "muzzle": [
+          [
+            0.43,
+            0.47
+          ],
+          [
+            0.34,
+            0.49
+          ],
+          [
+            0.26,
+            0.47
+          ],
+          [
+            0.25,
+            0.41
+          ],
+          [
+            0.43,
+            0.39
+          ],
+          [
+            0.53,
+            0.38
+          ],
+          [
+            0.56,
+            0.46
+          ],
+          [
+            0.43,
+            0.45
+          ]
         ]
       }
     },
@@ -866,10 +958,14 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 80,
-              "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40"
+              "sha256": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af"
             }
           ],
-          "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40"
+          "sha256": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af",
+          "liteCell": [
+            160,
+            160
+          ]
         },
         "idle": {
           "file": "lanca-foguetes/idle.webp",
@@ -891,10 +987,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df"
+              "sha256": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6"
             }
           ],
-          "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
+          "sha256": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6",
           "liteCell": [
             160,
             160
@@ -935,6 +1031,40 @@
         "mount": [
           333,
           223
+        ],
+        "muzzle": [
+          [
+            0.5,
+            0.58
+          ],
+          [
+            0.44,
+            0.58
+          ],
+          [
+            0.35,
+            0.56
+          ],
+          [
+            0.34,
+            0.49
+          ],
+          [
+            0.5,
+            0.46
+          ],
+          [
+            0.64,
+            0.49
+          ],
+          [
+            0.61,
+            0.53
+          ],
+          [
+            0.53,
+            0.5
+          ]
         ]
       }
     },
@@ -1084,10 +1214,14 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 64,
-              "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d"
+              "sha256": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857"
             }
           ],
-          "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d"
+          "sha256": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "idle": {
           "file": "morteiro/idle.webp",
@@ -1153,6 +1287,40 @@
         "mount": [
           224,
           348
+        ],
+        "muzzle": [
+          [
+            0.53,
+            0.5
+          ],
+          [
+            0.41,
+            0.45
+          ],
+          [
+            0.33,
+            0.44
+          ],
+          [
+            0.25,
+            0.51
+          ],
+          [
+            0.5,
+            0.34
+          ],
+          [
+            0.44,
+            0.29
+          ],
+          [
+            0.75,
+            0.47
+          ],
+          [
+            0.66,
+            0.52
+          ]
         ]
       }
     },
@@ -1320,7 +1488,11 @@
               "sha256": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b"
             }
           ],
-          "sha256": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b"
+          "sha256": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "idle": {
           "file": "ninho-de-metralhadora/idle.webp",
@@ -1450,7 +1622,11 @@
               "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727"
             }
           ],
-          "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727"
+          "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "idle": {
           "file": "ninho-do-sniper/idle.webp",
@@ -1580,7 +1756,11 @@
               "sha256": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7"
             }
           ],
-          "sha256": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7"
+          "sha256": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7",
+          "liteCell": [
+            192,
+            192
+          ]
         },
         "idle": {
           "file": "obuseiro/idle.webp",
@@ -1653,6 +1833,40 @@
         "mount": [
           338,
           352
+        ],
+        "muzzle": [
+          [
+            0.49,
+            0.78
+          ],
+          [
+            0.33,
+            0.84
+          ],
+          [
+            0.16,
+            0.55
+          ],
+          [
+            0.27,
+            0.34
+          ],
+          [
+            0.5,
+            0.19
+          ],
+          [
+            0.86,
+            0.27
+          ],
+          [
+            0.84,
+            0.53
+          ],
+          [
+            0.63,
+            0.74
+          ]
         ]
       }
     },
@@ -1762,10 +1976,14 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 96,
-              "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab"
+              "sha256": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2"
             }
           ],
-          "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab"
+          "sha256": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2",
+          "liteCell": [
+            96,
+            96
+          ]
         },
         "idle": {
           "file": "posto-de-radar/idle.webp",
@@ -1787,10 +2005,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1"
+              "sha256": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2"
             }
           ],
-          "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
+          "sha256": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2",
           "liteCell": [
             96,
             96
@@ -1870,7 +2088,11 @@
               "sha256": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6"
             }
           ],
-          "sha256": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6"
+          "sha256": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6",
+          "liteCell": [
+            64,
+            64
+          ]
         },
         "idle": {
           "file": "rojao-de-festa/idle.webp",
@@ -1936,6 +2158,40 @@
         "mount": [
           123,
           246
+        ],
+        "muzzle": [
+          [
+            0.5,
+            0.51
+          ],
+          [
+            0.34,
+            0.47
+          ],
+          [
+            0.28,
+            0.42
+          ],
+          [
+            0.31,
+            0.28
+          ],
+          [
+            0.5,
+            0.16
+          ],
+          [
+            0.72,
+            0.23
+          ],
+          [
+            0.73,
+            0.39
+          ],
+          [
+            0.72,
+            0.48
+          ]
         ]
       }
     },
@@ -2000,7 +2256,11 @@
               "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d"
             }
           ],
-          "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d"
+          "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d",
+          "liteCell": [
+            64,
+            64
+          ]
         },
         "idle": {
           "file": "vigia-do-predio/idle.webp",
@@ -2130,7 +2390,11 @@
               "sha256": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef"
             }
           ],
-          "sha256": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef"
+          "sha256": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "idle": {
           "file": "vigias-armados/idle.webp",

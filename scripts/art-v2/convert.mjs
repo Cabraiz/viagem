@@ -284,9 +284,12 @@ export function leanIndex(value){
   return out;
 }
 export async function writeIndex(specs,{outRoot}){
-  const file=indexPath({outRoot}),groups={...((await readIndex(file))??(await readConflictedIndex(file)))?.groups};
-  // A group with no spec (made by its own importer) keeps its entry, from its own manifest when there is one (a merge joined it).
-  for(const [group,entry] of Object.entries(groups)){
+  const file=indexPath({outRoot}),clean=await readIndex(file),conflicted=clean?undefined:await readConflictedIndex(file);
+  const groups={...(clean??conflicted)?.groups};
+  // Over a conflicted index, a group outside `specs` (bicos, made by its own importer) comes from its own manifest when
+  // there is one (the merge joined it). Over a clean index it keeps its entry as is: a selected import (--groups menu)
+  // never rewrites the groups it did not select (tests/tools/import-menu-dance.test.ts).
+  if(conflicted)for(const [group,entry] of Object.entries(groups)){
     if(specs[group]||typeof entry?.output!=='string')continue;
     const manifest=await readManifest(manifestPath(entry,{outRoot}));
     if(manifest)groups[group]={output:entry.output,pieces:manifest.pieces};

@@ -131,6 +131,8 @@ test('the client: a run-over tralha square bursts (only near the Uno) and thwack
   assert.ok(pieces.length>=8&&pieces.length<=16,`${pieces.length} pieces`);
   assert.equal(pieces.reduce((a,p)=>a+p.w*p.h,0),rect.w*rect.h,'they tile the rect');
   assert.ok(pieces.every(p=>p.x>=rect.x&&p.y>=rect.y&&p.x+p.w<=rect.x+rect.w&&p.y+p.h<=rect.y+rect.h&&p.up>0&&p.spin!==0));
+  // Each shows as a 4–6 point shard inside its own cut, so no straight square edge.
+  assert.ok(pieces.every(p=>p.shard.length>=4&&p.shard.length<=6&&p.shard.every(q=>q.x>0&&q.y>0&&q.x<p.w&&q.y<p.h)),'shards');
   assert.deepEqual(runOverPieces(rect,12,7),pieces,'seeded');
   assert.deepEqual(runOverPieces({x:0,y:0,w:0,h:10},12,7),[]);
   assert.equal(soundForEvent({type:'structure',id:'tralha-3',hp:0,maxHp:200}),'golpe');

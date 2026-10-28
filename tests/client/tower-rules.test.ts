@@ -134,6 +134,18 @@ test('4. shake envelope: peak at the impact, decays to 0, none with reduced moti
   assert.equal(shakeAt(CALIBRE.fuzil,0,false),0);
   const o=shakeOffset(10,123);assert.ok(Math.abs(o.x)<=10&&Math.abs(o.y)<=6);
   assert.deepEqual(shakeOffset(10,123),o,'deterministic');
+  // torres-polimento: a fine tremor — within the bounds at every ms, the impact slams down first, no regular circle.
+  for(let ms=0;ms<=1000;ms+=7){const p=shakeOffset(10,ms);assert.ok(Math.abs(p.x)<=10+1e-9&&Math.abs(p.y)<=6+1e-9,`${ms}`);}
+  assert.equal(shakeOffset(10,0).y,6,'the slam: all the way down at the impact');
+  const radii=new Set<number>();for(let ms=200;ms<=800;ms+=50){const p=shakeOffset(10,ms);radii.add(Math.round(Math.hypot(p.x,p.y/.6)));}
+  assert.ok(radii.size>3,'two frequencies per axis: the offset is not a fixed-radius wobble');
+});
+
+test('4. effects by calibre: the long guns trace white, the flak red, the rest yellow',()=>{
+  assert.equal(CALIBRE.sniper.core,'branco');assert.equal(CALIBRE.antimaterial.core,'branco');
+  assert.equal(CALIBRE.antiaerea.core,'vermelho');
+  for(const id of ['pistola','fuzil','metralhadora','rotativa'] as const)assert.equal(CALIBRE[id].core,undefined,id);
+  for(const c of Object.values(CALIBRE))if(c.core)assert.equal(c.shot,'tracer');
 });
 
 test('5. towerArt: the manifest piece (base sheet, idle sheet, mount), else procedural',()=>{

@@ -786,7 +786,10 @@ class CitySandbox extends Phaser.Scene {
     for(let i=0;i<n;i++)this.air[i]=i%10===9?1:0;
     if(!towersDrawn)return;
     const view=()=>this.view;
-    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+    // The craters over everything the city lays on its ground (glints +2, the lamps' light pools +3), under every
+    // actor, as the game's TOWER_GROUND_DEPTH (scene.ts) is. Not that number itself: the game re-bases its depths
+    // around the hero, the sandbox does not, so its actors far into the city (or in a turned view) sort below -9985.
+    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+4,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
       ...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),
       depthVersion:()=>this.layer?.columnsVersion??0,
       world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},

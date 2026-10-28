@@ -1,6 +1,6 @@
 // Sonda do carregamento: menu → SELECIONAR → nome → BORA → Jogar sozinho → __partidaPronta, com a linha do tempo
 // dos estados da tela (a cada 200 ms) e os bytes baixados. Frio = perfil novo; quente = 2ª página no mesmo perfil.
-//   node sonda.mjs <url> <retrato|paisagem|pc> <saida-prefixo> [--cpu 4] [--rede 4g] [--espera 800] [--rodadas frio,quente] [--prints]
+//   node sonda.mjs <url> <retrato|paisagem|pc> <saida-prefixo> [--cpu 4] [--rede 4g] [--espera 800] [--local 127.0.0.1:4302] [--rodadas frio,quente] [--prints]
 import {chromium} from 'file:///C:/nvm4w/nodejs/node_modules/playwright/index.mjs';
 import {writeFileSync} from 'node:fs';
 const [url,tela,out]=process.argv.slice(2);
@@ -9,11 +9,14 @@ const CPU=Number(arg('cpu',1)),RODADAS=String(arg('rodadas','frio,quente')).spli
 // Rede de celular (o 4G rápido do DevTools): 9 Mb/s, 1,5 Mb/s de subida, 170 ms de ida e volta.
 const REDE={'4g':{latency:170,downloadThroughput:9e6/8,uploadThroughput:1.5e6/8}}[arg('rede','')];
 const VP={retrato:{width:390,height:844,touch:true},paisagem:{width:844,height:390,touch:true},pc:{width:1280,height:720,touch:false}}[tela];
-const browser=await chromium.launch({args:['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist']});
-const ctx=await browser.newContext({viewport:{width:VP.width,height:VP.height},deviceScaleFactor:1,hasTouch:VP.touch,isMobile:VP.touch});
+// --local: o endereço do site (o host da url) vai para um servidor HTTPS local com outro build; a origem continua a do
+// site, então o Worker de salas de produção aceita a sala (ele recusa origens locais).
+const LOCAL=arg('local','');
+const browser=await chromium.launch({args:['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist',...(LOCAL?[`--host-resolver-rules=MAP ${new URL(url).hostname} ${LOCAL}`,'--ignore-certificate-errors']:[])]});
+const ctx=await browser.newContext({viewport:{width:VP.width,height:VP.height},deviceScaleFactor:1,hasTouch:VP.touch,isMobile:VP.touch,ignoreHTTPSErrors:!!LOCAL});
 // Quanto tempo a sonda olha o popup antes de tocar em "Jogar sozinho" (uma pessoa leva 1 a 3 s).
 const ESPERA=Number(arg('espera',800));
-const resultado={url,tela,cpu:CPU,espera:ESPERA,rede:arg('rede',''),rodadas:{}};
+const resultado={url,local:LOCAL||undefined,tela,cpu:CPU,espera:ESPERA,rede:arg('rede',''),rodadas:{}};
 const estado=()=>{
   const q=s=>document.querySelector(s);
   const vis=e=>!!e&&!e.hidden&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden';
@@ -26,12 +29,16 @@ const estado=()=>{
     carga:vis(prog)?`${prog.getAttribute('aria-valuenow')}%`:'',
     sala:vis(wait)?`${wait.dataset.phase}|${ready?.textContent}|p0=${wait.dataset.preloadP0}`:'',
     pronta:!!window.__partidaPronta,
+    erro:q('#explore-error')?.textContent||undefined,
   });
 };
 async function rodada(nome,page){
   if(CPU>1||REDE){const c=await ctx.newCDPSession(page);
     if(CPU>1)await c.send('Emulation.setCPUThrottlingRate',{rate:CPU});
     if(REDE){await c.send('Network.enable');await c.send('Network.emulateNetworkConditions',{offline:false,...REDE});}}
+  page.on('console',m=>{if(m.type()==='error')console.log(nome,'console',m.text().slice(0,300));});
+  page.on('pageerror',e=>console.log(nome,'pageerror',String(e).slice(0,300)));
+  page.on('requestfailed',r=>console.log(nome,'falhou',r.url().slice(0,120),r.failure()?.errorText));
   const t0=Date.now();
   await page.goto(url,{waitUntil:'load',timeout:120000});
   await page.waitForSelector('#confirm',{timeout:60000});

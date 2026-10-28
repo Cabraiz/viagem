@@ -99,10 +99,11 @@
 
   /* Chips (782..852, x 25..709 with 18 between): the icon, then the label and the value. The game's letter is wider than
      the reference's, so each chip is as wide as its text (the longest trio, the viciado's, takes 670 of the 684) and the
-     rest of the row is shared: never an ellipsis. */
-  .insta-chips { display: grid; grid-template-columns: repeat(3, auto); gap: calc(var(--u) * 14); margin: calc(var(--u) * 4) 0 0; padding: 0 calc(var(--u) * 25); list-style: none; }
+     rest of the row is shared: never an ellipsis. auditoria-ui-menus 12: the text was 10 px; at 12 px the trio no longer
+     fits one line, so a long value breaks in two: the chips are 88 tall (782..870), taken from the grid (265 → 247) and the name step's row. */
+  .insta-chips { display: grid; grid-template-columns: repeat(3, minmax(0, auto)); gap: calc(var(--u) * 10); margin: calc(var(--u) * 4) 0 0; padding: 0 calc(var(--u) * 20); list-style: none; }
   .insta-chip {
-    display: flex; align-items: center; gap: calc(var(--u) * 8); min-width: 0; height: calc(var(--u) * 70); padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 10);
+    display: flex; align-items: center; gap: calc(var(--u) * 8); min-width: 0; min-height: calc(var(--u) * 88); padding: calc(var(--u) * 6) calc(var(--u) * 8) calc(var(--u) * 6) calc(var(--u) * 10);
     border-radius: var(--r-ficha); background: var(--insta-chip);
   }
   /* The icons in the reference's dark grey, one flat colour like its own (the user, 23/10): the Codex drawing as a mask. */
@@ -111,8 +112,8 @@
   .insta-chip-icone[data-icone="coroa"] { --icone: url('/art/lite/menu/insta/icone-coroa.webp'); }
   .insta-chip-icone[data-icone="pata"] { --icone: url('/art/lite/menu/insta/icone-pata.webp'); }
   .insta-chip span { display: flex; flex-direction: column; min-width: 0; }
-  .insta-chip small { font: 400 max(10px, calc(var(--u) * 19))/1.15 var(--f-sistema); color: var(--insta-cinza); }
-  .insta-chip b { font: 800 max(10px, calc(var(--u) * 20))/1.2 var(--f-sistema); white-space: nowrap; }
+  .insta-chip small { font: 400 max(12px, calc(var(--u) * 19))/1.15 var(--f-sistema); color: var(--insta-cinza); }
+  .insta-chip b { font: 800 max(12px, calc(var(--u) * 20))/1.1 var(--f-sistema); text-wrap: balance; }
 
   /* Tabs (880..955): the line over them, three icons of 37 centred in thirds, the active one underlined (8) in purple. */
   .insta-abas { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 calc(var(--u) * 22); border-top: max(1px, calc(var(--u) * 3)) solid var(--insta-linha); border-bottom: max(1px, calc(var(--u) * 3)) solid var(--insta-linha); }
@@ -120,7 +121,7 @@
   .insta-aba svg { width: calc(var(--u) * 42); height: calc(var(--u) * 42); }
   .insta-aba.ativa { box-shadow: inset 0 calc(var(--u) * -8) 0 var(--insta-roxo); margin: 0 calc(var(--u) * 14); }
   /* The grid (967..1231): three photos 231x265 with 8 between, x 17..715; exactly three, no second row. */
-  .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 265); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
+  .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 247); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
   .estadio .insta-post-botao { display: block; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: var(--r-ficha); background: none; box-shadow: none; cursor: zoom-in; }
   .insta-post-botao:active .insta-post { transform: scale(.97); }
   .insta-post { display: block; width: 100%; height: 100%; border-radius: var(--r-ficha); object-fit: cover; }
@@ -134,7 +135,7 @@
   .insta-privada span { font: 400 max(10px, calc(var(--u) * 24))/1.2 var(--f-sistema); color: var(--insta-cinza); }
 
   /* Step 2: the name row takes the tabs and the grid's place (880..1234; the stadium's margin-top:auto does not apply). */
-  .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 354); margin-top: calc(var(--u) * 28); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
+  .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 336); margin-top: calc(var(--u) * 28); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
   .estadio .estadio-nome[hidden] { display: none; }
   .estadio .estadio-nome .estadio-escolhido { display: none; }
   .estadio .estadio-nome .round-button { width: calc(var(--u) * 84); height: calc(var(--u) * 84); border-color: var(--insta-fundo); background: var(--insta-texto); color: var(--insta-fundo); font-size: max(10px, calc(var(--u) * 52)); }

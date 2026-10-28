@@ -64,8 +64,8 @@ import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
-import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
-import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
+import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos,stackedLabelOffsetCss} from './render/map-labels.ts';
+import {ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
@@ -529,7 +529,8 @@ export class IslandScene extends Phaser.Scene {
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
     this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112*HERO_DRAW_SCALE,112*HERO_DRAW_SCALE));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
-    this.destination=this.add.graphics().setDepth(100000).setName('destino');
+    // Under the name fichas (auditoria-arte-mundo item 12): a tap on a caído's ficha put the mark over its name.
+    this.destination=this.add.graphics().setDepth(ALLY_DEPTH-1).setName('destino');
     this.artMarks=new SceneMarks(this,p=>this.project(p));
     // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
     const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
@@ -1069,7 +1070,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.you||!this.actor)return;
     const marker=this.route.length>0&&markerVisible(this.markerUntil,time);
     if(!marker&&this.markerUntil!==undefined)this.destination.clear();
-    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,100000);
+    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,ALLY_DEPTH-1);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -1648,7 +1649,7 @@ export class IslandScene extends Phaser.Scene {
       // Who got you (card nome-inimigo-rede-social, etapa 7): the profile's name in a second ficha right under it.
       if(this.fallenBy||this.fallenLabel){
         const by=this.fallenLabel??=new MapLabel(this,'');
-        by.setCity(this.cityMode).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
+        by.setCity(this.cityMode).setSolid(true).setInside(true).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+stackedLabelOffsetCss(ENEMY_NAME_H_CSS,true,this.cityMode)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
           .draw(this.cameras.main.zoom,selfDown&&!!this.fallenBy);
       }
     }

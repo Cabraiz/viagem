@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LIGHT_HEADS,WIRE_MAX_CELLS,artViewOf,cellFrame,cellPoint,decorKey,isPole,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
-  matchInsulators,onCamera,polePairs,sagLine,type DecorEntry,type Pt,
+  lineHitsRect,matchInsulators,onCamera,polePairs,sagLine,type DecorEntry,type Pt,
 } from '../../src/client/render/city/live/rules.ts';
 
 const pole=(c:number,r:number,id='poste-concreto-1'):DecorEntry=>({id,c,r,w:1,h:1,rot:0});
@@ -135,4 +135,14 @@ test('bank screens are states, not idle loops; animVisibleViews narrows the view
   const all=liveMeta({anims:{toldo:{0:[1,1],90:[2,2]}},animVisibleViews:[90,'x']});
   assert.deepEqual(all.animVisibleViews,[90]);
   assert.ok(!loopVisible(all,'toldo',0)&&loopVisible(all,'toldo',90));
+});
+
+test('a wire hits the hero box only where one of its segments crosses it (auditoria-arte-mundo item 15)',()=>{
+  const box={x:10,y:10,w:10,h:20};
+  assert.equal(lineHitsRect([{x:0,y:0},{x:30,y:40}],box),true);
+  assert.equal(lineHitsRect([{x:0,y:0},{x:5,y:5},{x:15,y:15}],box),true,'a later segment');
+  assert.equal(lineHitsRect([{x:0,y:0},{x:30,y:0}],box),false,'above');
+  assert.equal(lineHitsRect([{x:0,y:40},{x:9,y:5}],box),false,'left, short of it');
+  assert.equal(lineHitsRect([{x:15,y:0},{x:15,y:50}],box),true,'vertical through');
+  assert.equal(lineHitsRect([{x:12,y:12}],box),false,'one point is no line');
 });

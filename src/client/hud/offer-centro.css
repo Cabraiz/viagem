@@ -1,77 +1,125 @@
-/* D-052 (card NEW-20261016-ORQ-oferta-melhoria-centro): the upgrade offer as one centred window, the same on the phone
-   (portrait and landscape) and on the desktop, after the board's design/ref-ofertas-de-melhoria.png: a dark window with
-   the title bar "Ofertas de melhoria", one wide card per choice (rarity in the corner, sticker, name, "Niv N", the value
-   line "atual > novo" with the new value in green), the line "Esperando os outros jogadores…" and the Pular / Rolar de
-   novo buttons with their counters. The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc).
-   Nothing in it scrolls: four cards fit 390×844, 844×390 (two columns) and the desktop. */
+/* D-052 + px39 (card NEW-20261025-ORQ-popup-levelup-12-variacoes): the upgrade offer "Ofertas de melhoria" as the
+   user's var-39, 16-bit pixel art with snow, the same on the phone (portrait and landscape) and on the desktop.
+   Every piece is ChatGPT art (public/art/ui-extra/px39/*.webp, cut from the green); the CSS only places, sizes and turns
+   them: the title plaque, the cards opened as a fan (the default pick in the middle, gold frame and rays behind its
+   icon; the others purple, turned to the sides), the "Nova" and "Niv N" seals, the gain box (number big, words small),
+   the Pular / Rolar de novo buttons with their counter. The cards open spinning from the middle (px39-leque).
+   The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc). Nothing in it scrolls. */
 .rh .rh-offer.rh-ofc{
-  --ofc-w:min(440px,calc(100vw - var(--rh-l,16px) - var(--rh-r,16px)));
+  /* --cw: a side card's width; the middle one is 1.18x. Narrow phones by the width, short screens by the height. */
+  --cw:min(30vw,150px,calc((100dvh - 165px) / 2));
+  --px-font:'Pixelify Sans',var(--f-cartaz);
+  --px-ink:#160f3c;
+  --px-line:1px 0 0 var(--px-ink),-1px 0 0 var(--px-ink),0 1px 0 var(--px-ink),0 -1px 0 var(--px-ink),
+    1px 1px 0 var(--px-ink),-1px 1px 0 var(--px-ink),1px -1px 0 var(--px-ink),-1px -1px 0 var(--px-ink),0 2px 0 #080320;
   position:fixed;z-index:30;left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);
-  box-sizing:border-box;width:var(--ofc-w);max-width:none;max-height:calc(100dvh - 16px);margin:0;padding:0 10px 10px;
-  display:flex;flex-direction:column;align-items:stretch;gap:8px;
-  border:2px solid var(--c-papel);border-radius:var(--r-janela);background:color-mix(in srgb,var(--c-breu) 94%,transparent);
-  color:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);text-align:left;overflow:hidden;
+  box-sizing:border-box;width:min(460px,calc(100vw - 8px));max-width:none;max-height:calc(100dvh - 8px);margin:0;padding:0 0 6px;
+  display:flex;flex-direction:column;align-items:center;gap:clamp(4px,2.4dvh,22px);
+  border:0;border-radius:0;background:none;box-shadow:none;
+  color:#f3e8d1;font-family:var(--px-font);text-align:center;overflow:visible;image-rendering:pixelated;
 }
-.rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:0;right:0;height:3px;border-radius:0}
-/* The title bar across the top. */
-.rh .rh-ofc .rh-offer-head{margin:0 -10px;padding:5px 10px;min-height:0;justify-content:center;gap:6px;
-  background:color-mix(in srgb,var(--c-lilas) 55%,var(--c-breu));border-bottom:2px solid var(--c-papel)}
-.rh .rh-ofc .rh-offer-title{flex:0 1 auto;text-align:center;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel)}
+.rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:10%;right:10%;height:3px;border-radius:0}
+/* The title on its plaque (purple board, gold frame, snow and icicles). */
+.rh .rh-ofc .rh-offer-head{position:relative;margin:0;padding:0;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;
+  background:none;border:0}
+.rh .rh-ofc .rh-offer-title{flex:0 0 auto;box-sizing:border-box;display:grid;place-items:center;
+  width:min(360px,88vw);aspect-ratio:900/303;padding:7.5% 6% 6% 6%;
+  background:url('/art/ui-extra/px39/placa-titulo.webp') center/100% 100% no-repeat;
+  font:700 clamp(18px,6.6vw,30px)/1 var(--px-font);color:#fadb7d;text-shadow:var(--px-line);white-space:nowrap}
+.rh .rh-ofc :is(.rh-offer-queue,.rh-offer-time){font:700 var(--t-13)/1.2 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-offer-later{min-height:24px;padding:0 8px}
 .rh .rh-ofc>.rh-window-fall{margin:0}
-/* The cards: one column, each a wide row; two columns on a short screen. */
-.rh .rh-ofc .rh-offer-cards{display:grid;grid-auto-flow:row;grid-template-columns:1fr;grid-auto-columns:auto;gap:8px;padding:0;min-height:0}
+/* The fan: one row, the cards overlap a little and turn around a point under them. */
+.rh .rh-ofc .rh-offer-cards{display:flex;flex-direction:row;justify-content:center;align-items:flex-end;gap:0;
+  padding:calc(var(--cw) * .08) 0 calc(var(--cw) * .12);min-height:0}
 .rh .rh-ofc .rh-card{
-  --rar:var(--c-cartolina);
-  position:relative;box-sizing:border-box;width:100%;min-height:64px;margin:0;padding:16px 10px 8px 8px;transform:none;
-  display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-areas:'icon body';align-items:center;column-gap:10px;
-  border:2px solid var(--rar);border-radius:var(--r-etiqueta);
-  background:color-mix(in srgb,var(--rar) 26%,var(--c-breu));color:var(--c-papel);box-shadow:inset 0 0 0 1px var(--c-breu);text-align:left;
+  --w:var(--cw);--rot:0deg;--dy:0px;--fx:0px;
+  position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);aspect-ratio:480/805;min-height:0;
+  margin:0 calc(var(--cw) * -.07);padding:calc(var(--w) * .27) calc(var(--w) * .1) calc(var(--w) * .1);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .035);
+  border:0;border-radius:0;background:url('/art/ui-extra/px39/cartao-lateral.webp') center/100% 100% no-repeat;
+  box-shadow:none;color:#f3e8d1;font-size:calc(var(--w) / 10);text-align:center;cursor:pointer;
+  transform-origin:50% 130%;transform:translateY(var(--dy)) rotate(var(--rot));
+  animation:px39-leque .52s cubic-bezier(.2,1.25,.4,1) backwards;
 }
 .rh .rh-ofc .rh-card::before,.rh .rh-ofc .rh-card::after{display:none}
-.rh .rh-ofc .rh-card:active{transform:translateY(2px)}
-.rh .rh-ofc .rh-card[data-rarity=nova]{--rar:var(--c-cartolina)}
-.rh .rh-ofc .rh-card[data-rarity=comum]{--rar:var(--c-pedra)}
-.rh .rh-ofc .rh-card[data-rarity=rara]{--rar:var(--arte-azul)}
-.rh .rh-ofc .rh-card[data-rarity=epica]{--rar:var(--arte-roxo)}
-.rh .rh-ofc .rh-card[data-rarity=lendaria]{--rar:var(--c-amarelo)}
-.rh .rh-ofc .rh-card-icon{grid-area:icon;width:44px;height:44px;border:2px solid var(--rar);border-radius:var(--r-etiqueta);background:var(--c-breu)}
-.rh .rh-ofc .rh-card-icon>.ic{width:36px;height:36px}
-.rh .rh-ofc .rh-card-body{grid-area:body;justify-self:stretch;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
-.rh .rh-ofc .rh-card-name{display:block;margin:0;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rh .rh-ofc .rh-card-value{display:block;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rh .rh-ofc .rh-card-value-new{color:var(--c-cartolina)}
-/* upgrades-megabonk: the tome's gain ("+1 projétil", "+10% dano"), short and big under the name. */
-.rh .rh-ofc .rh-card-gain{display:block;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-cartolina);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rh .rh-ofc .rh-card-rarity{position:absolute;left:8px;top:2px;font:700 11px/1.2 var(--f-sistema);color:var(--rar)}
-.rh .rh-ofc .rh-card-level{position:absolute;right:8px;top:2px;font:400 var(--t-13)/1.2 var(--f-cartaz);color:var(--c-amarelo)}
-/* The old tag's pieces stay in the DOM (labels, tests) but the wide card says it all. */
+@keyframes px39-leque{from{transform:translateX(var(--fx)) rotate(0deg) scale(.55);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rh .rh-ofc .rh-card{animation:none}}
+.rh .rh-ofc .rh-card[data-fan=l]{order:1;--rot:-14deg;--dy:4%;--fx:calc(var(--cw) * .9)}
+.rh .rh-ofc .rh-card[data-fan=m]{order:4;z-index:3}
+.rh .rh-ofc .rh-card[data-fan=r]{order:7;--rot:14deg;--dy:4%;--fx:calc(var(--cw) * -.9)}
+.rh .rh-ofc .rh-offer-cards[data-count='4']{--cw:min(24vw,128px,calc((100dvh - 165px) / 2.2))}
+.rh .rh-ofc .rh-card[data-fan=l2]{order:1;--rot:-22deg;--dy:9%;--fx:calc(var(--cw) * 1.5)}
+.rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;--rot:-6deg;--fx:calc(var(--cw) * .5)}
+.rh .rh-ofc .rh-card[data-fan=r1]{order:5;z-index:2;--rot:6deg;--fx:calc(var(--cw) * -.5)}
+.rh .rh-ofc .rh-card[data-fan=r2]{order:7;--rot:22deg;--dy:9%;--fx:calc(var(--cw) * -1.5)}
+.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card{margin:0 calc(var(--cw) * .02)}
+.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=l1]{--rot:-8deg}
+.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=r1]{--rot:8deg}
+/* The default pick: bigger, the gold frame on the dark teal, rays behind the icon. */
+.rh .rh-ofc .rh-card.rh-card-default{--w:calc(var(--cw) * 1.18);aspect-ratio:480/750;padding-top:calc(var(--w) * .22);
+  background-image:url('/art/ui-extra/px39/cartao-meio-dourado.webp')}
+.rh .rh-ofc .rh-card:active{filter:brightness(1.15)}
+.rh .rh-ofc .rh-card:focus-visible{outline:3px solid #fadb7d;outline-offset:2px}
+/* "Nova" (the rarity) on the parchment seal over the top-left corner. */
+.rh .rh-ofc .rh-card-rarity{position:absolute;left:-2%;top:9%;z-index:2;box-sizing:border-box;min-width:42%;padding:.28em .5em .32em;
+  background:url('/art/ui-extra/px39/selo-nova.webp') center/100% 100% no-repeat;
+  font:700 1.05em/1 var(--px-font);color:#3a1d14;text-shadow:none;white-space:nowrap}
+.rh .rh-ofc .rh-card-default .rh-card-rarity{top:8%}
+.rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:0 0 auto;display:grid;place-items:center;width:5.6em;height:5.6em;
+  margin:0;border:0;border-radius:0;background:none}
+.rh .rh-ofc .rh-card-icon>.ic{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-28%;z-index:-1;
+  background:url('/art/ui-extra/px39/raios.webp') center/contain no-repeat}
+/* "Niv N" on the dark plate with the arrow tips, across the card. */
+.rh .rh-ofc .rh-card-level{position:static;flex:0 0 auto;box-sizing:border-box;width:112%;margin:0 -6%;padding:.32em 0 .38em;
+  background:url('/art/ui-extra/px39/selo-niv.webp') center/100% 100% no-repeat;
+  font:700 1.05em/1 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
+.rh .rh-ofc .rh-card-body{flex:1 1 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  gap:.3em;min-width:0;min-height:0;text-align:center}
+.rh .rh-ofc .rh-card-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;
+  font:700 1.18em/1.05 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow-wrap:anywhere}
+/* The gain box: the number big in mint, the words small in white. */
+.rh .rh-ofc :is(.rh-card-gain,.rh-card-value){box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;min-height:2.9em;padding:.3em .35em;background:url('/art/ui-extra/px39/faixa-bonus-lateral.webp') center/100% 100% no-repeat;
+  font:700 .9em/1.05 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow:hidden}
+.rh .rh-ofc .rh-card-default :is(.rh-card-gain,.rh-card-value){background-image:url('/art/ui-extra/px39/faixa-bonus-meio.webp')}
+.rh .rh-ofc .rh-card-gain-big{font-size:1.55em;line-height:1;color:#77e48b}
+.rh .rh-ofc .rh-card-gain-small{font-size:.82em;line-height:1.05}
+.rh .rh-ofc .rh-card-gain~.rh-card-value{display:none}
+.rh .rh-ofc .rh-card-value-new{color:#77e48b}
+/* The old tag's pieces stay in the DOM (labels, tests) but the card says it all. */
 .rh .rh-ofc :is(.rh-card-blurb,.rh-card-joke,.rh-card-price,.rh-card-star,.rh-card-tag,.rh-offer-joke){display:none}
-.rh .rh-ofc .rh-card-stamp{width:60%}
-.rh .rh-ofc .rh-card-chosen{background:color-mix(in srgb,var(--c-amarelo) 40%,var(--c-breu))}
-.rh .rh-ofc.rh-offer-stamping .rh-card:not(.rh-card-chosen){transform:translateY(3px) scale(.98)}
-.rh .rh-ofc .rh-card-default{box-shadow:inset 0 0 0 1px var(--c-breu),0 0 0 2px var(--c-papel)}
+.rh .rh-ofc .rh-card-stamp{width:60%;z-index:4}
+.rh .rh-ofc .rh-card-chosen{filter:brightness(1.2) drop-shadow(0 0 6px #fadb7d)}
+.rh .rh-ofc.rh-offer-stamping .rh-card:not(.rh-card-chosen){filter:brightness(.6)}
 /* The foot: "levar os indicados" (two or more queued), the waiting line, Pular and Rolar de novo. */
 .rh .rh-ofc .rh-offer-foot{width:auto;margin:0}
-.rh .rh-ofc .rh-ofc-wait{margin:2px 0 0;text-align:center;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+.rh .rh-ofc .rh-ofc-wait{margin:0;text-align:center;font:700 var(--t-13)/1.2 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-ofc-wait[hidden]{display:none}
-.rh .rh-ofc .rh-ofc-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px}
-.rh .rh-ofc .rh-offer-all{flex:1 0 100%;min-height:40px;margin:0;font:700 var(--t-13)/1 var(--f-sistema)}
-@media (min-width:600px){.rh .rh-ofc .rh-offer-all{flex:0 1 auto;padding:0 14px}}
-.rh .rh-ofc .rh-ofc-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:0;padding:0 14px;
-  border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);font:700 var(--t-13)/1 var(--f-sistema);color:var(--c-papel);cursor:pointer}
-.rh .rh-ofc .rh-ofc-skip{background:color-mix(in srgb,var(--c-cartolina) 45%,var(--c-breu))}
-.rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,var(--arte-azul) 45%,var(--c-breu))}
-.rh .rh-ofc .rh-ofc-btn:disabled{opacity:.55;cursor:default}
-.rh .rh-ofc .rh-ofc-btn-count{font:700 11px/1 var(--f-sistema)}
+.rh .rh-ofc .rh-ofc-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;width:100%}
+.rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:.4em;
+  width:min(46%,200px);aspect-ratio:600/248;min-height:44px;margin:0;padding:10.5% 7% 8% 8%;border:0;border-radius:0;
+  background:url('/art/ui-extra/px39/botao-pular.webp') center/100% 100% no-repeat;box-shadow:none;
+  font:700 clamp(14px,4.4vw,20px)/1 var(--px-font);color:#f4ecf3;text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
+.rh .rh-ofc .rh-ofc-reroll{background-image:url('/art/ui-extra/px39/botao-rolar.webp');padding-left:6%;padding-right:6%}
+.rh .rh-ofc .rh-offer-all{flex:1 0 100%;width:auto;max-width:300px;aspect-ratio:auto;padding:8px 14px 6px;background-image:url('/art/ui-extra/px39/botao-rolar.webp')}
+.rh .rh-ofc .rh-ofc-btn:disabled{filter:grayscale(.6) brightness(.8);cursor:default}
+.rh .rh-ofc .rh-ofc-btn-count{display:grid;place-items:center;flex:0 0 auto;width:1.45em;height:1.45em;
+  background:url('/art/ui-extra/px39/contador.webp') center/100% 100% no-repeat;font:700 .85em/1 var(--px-font);color:#fff}
 .rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
-/* Short screens (phone landscape): two columns of cards, tighter rows. */
+/* Short screens (phone landscape): the plaque and the buttons in a column at the left, the fan at the right. */
 @media (max-height:500px){
   /* Bottom-anchored: the pause's clock ("Escolham! N s", pausa.ts) keeps its place above the window. */
-  .rh .rh-offer.rh-ofc{--ofc-w:min(600px,calc(100vw - 270px));top:auto;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:6px;padding:0 8px 8px}
-  .rh .rh-ofc .rh-offer-cards{grid-template-columns:1fr 1fr;gap:6px}
-  .rh .rh-ofc .rh-card{min-height:56px;padding:14px 8px 6px 6px;grid-template-columns:36px minmax(0,1fr);column-gap:8px}
-  .rh .rh-ofc .rh-card-icon{width:36px;height:36px}
-  .rh .rh-ofc .rh-card-icon>.ic{width:30px;height:30px}
-  .rh .rh-ofc .rh-ofc-btn{min-height:40px}
+  .rh .rh-offer.rh-ofc{--cw:min(17vw,124px,calc((100dvh - 70px) / 2.05));width:min(820px,calc(100vw - 16px));
+    top:auto;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'head cards' 'fall cards' 'wait cards' 'actions cards';
+    align-content:center;align-items:center;justify-items:center;gap:6px 12px}
+  .rh .rh-ofc .rh-offer-head{grid-area:head}
+  .rh .rh-ofc>.rh-window-fall{grid-area:fall}
+  .rh .rh-ofc .rh-ofc-wait{grid-area:wait}
+  .rh .rh-ofc .rh-ofc-actions{grid-area:actions;flex-direction:column;align-items:center;gap:6px}
+  .rh .rh-ofc .rh-offer-cards{grid-area:cards}
+  .rh .rh-ofc .rh-offer-title{width:min(300px,34vw);font-size:clamp(16px,2.6vw,24px)}
+  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){width:min(200px,24vw);font-size:clamp(13px,2vw,18px)}
 }

@@ -34,8 +34,11 @@ test('one centred window on every screen; the old corner panel loses; nothing sc
   assert.match(ts,/el\('section','rh-offer rh-ofc'\)/,'keeps .rh-offer for the zones, edges and windows lists');
   assert.match(css,/\.rh \.rh-offer\.rh-ofc\{[^}]*position:fixed;[^}]*left:50%;top:50%;[^}]*transform:translate\(-50%,-50%\)/);
   assert.doesNotMatch(css,/overflow(-y)?:(auto|scroll)/);
-  // Landscape: two columns, bottom-anchored under the pause's clock.
-  assert.match(css,/@media \(max-height:500px\)\{[\s\S]*grid-template-columns:1fr 1fr/);
+  // px39: the cards open as a fan (the default pick in the middle, turned sides), the same in landscape.
+  assert.match(css,/\.rh-card\[data-fan=l\]\{[^}]*--rot:-\d+deg/);
+  assert.match(css,/\.rh-card\[data-fan=r\]\{[^}]*--rot:\d+deg/);
+  assert.match(ts,/card\.dataset\.fan=slots\[index\]/);
+  // Landscape: bottom-anchored under the pause's clock.
   assert.match(css,/@media \(max-height:500px\)\{[\s\S]*top:auto;bottom:max\(8px,env\(safe-area-inset-bottom\)\)/);
   // Skip and reroll: off at 0 until the room sends them (RunPause has neither).
   assert.match(ts,/b\.disabled=true;/);

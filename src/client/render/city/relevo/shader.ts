@@ -117,13 +117,14 @@ vec3 kinds(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel1,clamp(f/gridSi
 vec3 cover(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel2,clamp(f/gridSize,e,1.0-e)).rgb;}
 // Ridge profile across the footprint (the bilinear cell mask is 0.5 on its edge, 1 in the middle of a cell).
 float berm(vec2 f){float m=smoothstep(0.3,0.95,cover(f).b);return m*m*(3.0-2.0*m);}
-// Height the ray and the light see: the ground plus the cliff ridges.
-float Hs(vec2 f){return H(f)+BERM*berm(f);}
 
 // Sine-free hash (Hoskins) and value noise, as in terrain/shaders.ts.
 float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
 float fbm(vec2 p){return n(p)*0.52+n(p*2.13+37.2)*0.27+n(p*4.37+91.7)*0.14+n(p*8.61)*0.07;}
+// Height the ray and the light see: the ground plus the cliff ridges, whose height wanders ±30 % along the line so the
+// shaded flank under the snow is not a band of one width (card chao-da-cidade-sem-emenda).
+float Hs(vec2 f){float b=berm(f);return H(f)+(b>0.0?BERM*b*(0.7+0.6*n(f*0.45+vec2(3.7,9.1))):0.0);}
 
 // Ground albedo (scripts/chao-albedo.mjs): a 4×2 atlas of seamless material photos, each slot padded by mirroring.
 // material() as in Crônicas (terrain/shaders.ts): two reads, the second turned and offset, blended by fbm, with mirrored
@@ -243,6 +244,14 @@ void main(){
  float flank=smoothstep(0.85,0.6,normal.z)*cliff*smoothstep(-0.1,0.2,normal.x+normal.y);
  vec3 cliffRock=mix(CLIFF_LIGHT,CLIFF_DARK,smoothstep(-0.25,0.25,normal.x-normal.y));
  cliffRock=mix(cliffRock,CLIFF_DARK,smoothstep(0.5,0.8,grain)*0.35);
+ // Snow edge (card chao-da-cidade-sem-emenda): not a flat lilac band. The wall tones go half way to a grey of the snow
+ // shade's hue (less saturated, bluer), darkest at the foot and fading towards the snow up the flank, and the snow line
+ // on it is ragged (the band's width varies with the ridge height in Hs, too).
+ float up=berm(f);
+ vec3 luma=vec3(0.299,0.587,0.114);
+ cliffRock=mix(cliffRock,SNOW_DEEP*(dot(cliffRock,luma)/dot(SNOW_DEEP,luma)),0.5);
+ cliffRock=mix(cliffRock*0.86,mix(cliffRock,SNOW_SHADE,0.5),smoothstep(0.05,0.85,up));
+ flank*=1.0-smoothstep(0.6,0.95,up+(macro-0.5)*0.7+(grain-0.5)*0.12);
  color=mix(color,mix(CLIFF_CAP,SNOW_SUN,0.5),cliff*(1.0-flank)*0.5);
  color=mix(color,cliffRock,flank*(1.0-smoothstep(0.7,0.85,fine+grain*0.3)*0.5));
 

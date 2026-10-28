@@ -136,3 +136,12 @@ html:has(.explore-shell[open]) main.estadio{content-visibility:hidden}
 .economy-toast-off{position:relative;align-self:stretch;flex:none;min-width:44px;min-height:24px;margin:0;padding:0 10px;border:0;border-left:2px solid var(--c-papel);border-radius:0 var(--r-ficha) var(--r-ficha) 0;background:var(--c-lilas-escuro);color:var(--c-papel);font:800 var(--t-13)/1 var(--f-sistema);cursor:pointer}
 .economy-toast-off::before{content:'';position:absolute;inset:-10px 0}
 .economy-toast-off:active{transform:translateY(2px)}
+/* auditoria-ui-menus 4: the settings in a landscape phone (844x390) cut "Vibrar" under the fold. Two columns: the camera,
+   the map line and the quality on the left, the whole sound panel (with Vibrar) on the right, all in the first screen; the
+   rest (quest, notes, connection) flows under them and scrolls. The room's menu view keeps its own width (menu.css). */
+@media (max-height:500px) and (min-width:600px){
+  .explore-settings:is(:not(.game-menu-host),[data-view=settings]){width:min(800px,calc(100vw - 28px));padding:12px 16px}
+  .explore-settings:is(:not(.game-menu-host),[data-view=settings]) .explore-settings-heading{margin-bottom:8px}
+  .explore-settings-content{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-items:start}
+  .explore-settings-content>.explore-sound{grid-column:2;grid-row:1/span 3}
+}

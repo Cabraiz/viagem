@@ -75,3 +75,13 @@ test('the menu head says "Partida solo" or how many people are in, never the raw
   assert.ok(!quietStatus('Conectado. Cabe até seis na sala.',false));
   assert.ok(!quietStatus('Conexão caiu. Tentando voltar à mesma sala…',true));
 });
+
+// auditoria-ui-menus 4: in landscape the settings are two columns, the sound panel (Vibrar) beside the quality.
+test('landscape settings: two columns, the sound panel in the first screen',()=>{
+  const css=readFileSync(new URL('../../src/client/explore.css',import.meta.url),'utf8');
+  const block=css.slice(css.indexOf('@media (max-height:500px) and (min-width:600px){\n  .explore-settings:is('));
+  assert.ok(block.length>0);
+  assert.match(block,/\.explore-settings-content\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(block,/\.explore-settings-content>\.explore-sound\{grid-column:2;grid-row:1\/span 3\}/);
+  assert.match(block,/:is\(:not\(\.game-menu-host\),\[data-view=settings\]\)\{width:min\(800px,calc\(100vw - 28px\)\)/,'the menu view keeps its width');
+});

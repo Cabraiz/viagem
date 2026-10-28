@@ -746,7 +746,7 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
   const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
   return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -800,15 +800,18 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}
     if(copy&&costumeFrame){copyMid=city.variant(costumeFrame.key,scale);if(!same(copyMid))copy=copyTop=copyMid=undefined;}
   }
-  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,scale,scale);
+  // Card inimigos-variedade: the critter's own size (render/enemy-variety.ts) on the drawn image only; the city copy is
+  // the kind's (built for `scale`), so a varied horde builds no extra copies.
+  const drawn=scale*(actor.vary??1);
+  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,drawn,drawn);
   else{
     if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
-    image.setOrigin(ox,oy).setScale(scale);
+    image.setOrigin(ox,oy).setScale(drawn);
   }
   image.setFlipX(false).setRotation(0);
   s.on=true;
   const art=ENEMY_ART[actor.kind];
-  s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.ratio=drawn/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
   if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
   if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;

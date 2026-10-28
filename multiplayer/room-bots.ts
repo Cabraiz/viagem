@@ -204,6 +204,8 @@ export class RoomBots {
         // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
         ...(sim.combat?{combat:sim.combat}:{}),
         ...(sim.mode==='ninhos'?{nests:true as const}:{}),
+        // bots-20-mais-lentos: the bench's person seat times its trips at a person's walk (the room has none).
+        ...(sim.personPace.has(mind.id)?{walkScale:1}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
       sim.setBotInput(mind.id,d.direction,d.cast,d.attack,d.work,d.target);

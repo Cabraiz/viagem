@@ -32,11 +32,12 @@ const STEP=1/SIM_HZ;
  * effects: slowed walking, or the slide while slipping (the stick and facing are ignored then); omitted, plain walking.
  * A slide needs a step, like walking: a player standing still (no step this tick) does not slide (D-036 decision: the
  * phone replays exactly the steps the room takes, and the stand-still balance of the rounds is unchanged).
+ * `walkScale`: the walk's share (card bots-20-mais-lentos: BOT_WALK_MULT for a room bot), 1 for a person.
  */
-export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number){
+export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number,walkScale=1){
   const effects=tick===undefined?undefined:p,slide=slipping(effects,tick??0);
   if(isDown(effects,tick??0))return;
-  const q=moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain);
+  const q=moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain,walkScale);
   p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
   if(slide)return;
   const length=Math.hypot(input.x,input.y);
@@ -59,10 +60,12 @@ export interface ManualCombat {attacking:Set<string>}
  * phone's replay), walking or not (the car rolled onto a hero standing still: out to its edge on this tick).
  * `bodies` (card heroi-empurra-inimigos): every step a hero takes pushes the solid enemies it walks into and stops at
  * their edge (maps bodyBlock, as the phone's replay), before the car's block; a function is also told whose step a
- * body changed.
+ * body changed. `walkScale` (card bots-20-mais-lentos): a player's share of the walk (the room bots' BOT_WALK_MULT),
+ * absent 1; not while `stepCap` holds the player (the car's pace).
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
-  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean|((playerId:string)=>void)):SimSystem{
+  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean|((playerId:string)=>void),
+  walkScale?:(playerId:string)=>number):SimSystem{
   const near:EnemyState[]=[];
   return {id:'players',step(ctx){
     const shove=bodies?enemyShove(ctx.terrain):undefined;
@@ -92,9 +95,12 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
         const from={x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
-        movePlayer(p,input,ctx.terrain,ctx.tick);
+        // bots-20-mais-lentos: a bot moving the car walks at the car's pace (its cap, carSpeed), not BOT_WALK_MULT's: the
+        // crew's speed is the car's table (empurrar-uno), and carSpeed(3) is more than a bot's 0.8 walk.
+        const cap=stepCap?.(p.id);
+        movePlayer(p,input,ctx.terrain,ctx.tick,cap===undefined?walkScale?.(p.id)??1:1);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        let q=capStep(from,p,stepCap?.(p.id),ctx.terrain);
+        let q=capStep(from,p,cap,ctx.terrain);
         if(shove){const free=q;q=bodyBlock(from,q,bodiesNear(ctx,q.x,q.y,near),ctx.terrain,shove);if(q!==free&&typeof bodies==='function')bodies(p.id);}
         q=carBlock(from,q,body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;

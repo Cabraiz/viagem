@@ -121,8 +121,13 @@ export class InputBatcher {
   private bucket=-1;private skill=false;private target?:string;private attack=false;private aim=-1;private work=false;
   private unsent:SegmentWire[]=[];
   private lastSend=-Infinity;
+  /**
+   * BUG-20261027-ORQ-tiro-delay-1s-predicao: an attack press waits (go now, outside the 10 Hz slot). A press needs a
+   * release first, one step at least, so this adds at most one message per two steps.
+   */
+  private urgent=false;
   /** Starts over at `seq` (welcome ack, new run), standing still like the room's fresh track. */
-  reset(seq=0){this.seq=seq;this.bucket=-1;this.skill=false;this.target=undefined;this.attack=false;this.aim=-1;this.work=false;this.unsent=[];this.lastSend=-Infinity;}
+  reset(seq=0){this.urgent=false;this.seq=seq;this.bucket=-1;this.skill=false;this.target=undefined;this.attack=false;this.aim=-1;this.work=false;this.unsent=[];this.lastSend=-Infinity;}
 
   /** The room is already past our steps (it held our last state longer than we stepped): continue from its ack. */
   catchUp(ack:number){if(ack>this.seq)this.seq=ack;}
@@ -137,6 +142,7 @@ export class InputBatcher {
     const aimed=attack&&aim?quantizeDirection(aim,this.aim):-1;
     const d=bucket<0?{x:0,y:0}:DIRECTIONS[bucket];
     if(bucket!==this.bucket||skill!==this.skill||target!==this.target||attack!==this.attack||aimed!==this.aim||work!==this.work){
+      if(attack&&!this.attack)this.urgent=true;
       this.bucket=bucket;this.skill=skill;this.target=target;this.attack=attack;this.aim=aimed;this.work=work;
       const flags=flagsOf(skill,attack,aimed,work);
       this.unsent.push(target!==undefined?[seq,d.x,d.y,flags,target]:[seq,d.x,d.y,flags]);
@@ -148,13 +154,13 @@ export class InputBatcher {
   /** The message to send now, if any: pending changes at most every SEND_MIN_MS, or a keepalive while active. */
   take(now:number):InputBatch|undefined{
     const changes=this.unsent.length>0;
-    if(changes&&(now-this.lastSend>=SEND_MIN_MS||this.unsent.length>=MAX_SEGMENTS)||!changes&&this.active&&now-this.lastSend>=KEEPALIVE_MS){
-      this.lastSend=now;return {seq:this.seq,steps:this.unsent.splice(0)};
+    if(changes&&(now-this.lastSend>=SEND_MIN_MS||this.unsent.length>=MAX_SEGMENTS||this.urgent)||!changes&&this.active&&now-this.lastSend>=KEEPALIVE_MS){
+      this.lastSend=now;this.urgent=false;return {seq:this.seq,steps:this.unsent.splice(0)};
     }
     return undefined;
   }
   /** When changes wait for the 10 Hz slot: the time it opens (the client flushes then even without a new step). */
-  get waitingUntil():number|undefined{return this.unsent.length?this.lastSend+SEND_MIN_MS:undefined;}
+  get waitingUntil():number|undefined{return this.unsent.length?this.urgent?this.lastSend:this.lastSend+SEND_MIN_MS:undefined;}
 }
 
 /** One applied step: where the player stood before it, and on which floor (maps city/viaduct.ts; absent: the ground). */
@@ -168,7 +174,9 @@ export interface InputTrackState {applied:number;lastFrom:number;known:number;he
   /** The aim of that late press (cone-ataque-melee), present only with one. */
   pressAim?:number;
   /** Bicos: Trabalhar as last handed to the simulation, present (true) only while held. */
-  appliedWork?:true}
+  appliedWork?:true;
+  /** The attack press already fired ahead of its step (earlyAttack), present only while that segment waits. */
+  earlyFrom?:number}
 const STOP:InputSegment=Object.freeze({from:0,x:0,y:0,skill:false});
 
 /**
@@ -197,6 +205,11 @@ export class InputTrack {
   private appliedTarget?:string;
   /** Bicos: Trabalhar last handed to the simulation (a change of it standing still still needs one step). */
   private appliedWork=false;
+  /**
+   * BUG-20261027-ORQ-tiro-delay-1s-predicao: the start of the queued attack segment that already fired on arrival,
+   * ahead of its step (the LEAD_STEPS wait is for the stick, not for the button), so it does not fire twice.
+   */
+  private earlyFrom=0;
   private history:Applied[]=[];
   /** When `known` last grew (ms; the Room's clock, or tick × STEP_MS in tests): the client's clock since then. */
   private knownAt=0;
@@ -208,7 +221,7 @@ export class InputTrack {
   /** Set by next() on the step that carries a tap: Simulation reads it after the step to answer the client. */
   tapped?:number;
   /** Starts over at `ack` (join, reconnect, new run): nothing held, nothing queued. */
-  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.attackPress=false;this.pressAim=undefined;this.appliedTarget=undefined;this.appliedWork=false;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;this.late=undefined;}
+  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.attackPress=false;this.pressAim=undefined;this.appliedTarget=undefined;this.appliedWork=false;this.earlyFrom=0;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;this.late=undefined;}
   /**
    * A batch from the client, or one legacy step `{seq,x,y,skill,target}` (protocol 4 before input-10hz, tests): the
    * whole message is refused when anything in it is malformed or out of order. A segment may only start after the
@@ -302,7 +315,14 @@ export class InputTrack {
     }
     if(seq>this.known+HORIZON_STEPS||this.batched&&seq>this.known+Math.floor((now-this.knownAt)/STEP_MS)-LEAD_STEPS||this.inert()&&press){
       // Waiting for the client's clock (or standing): a skill (or attack) press still goes now, in place, without spending a step.
-      if(!press)return undefined;
+      if(!press){
+        // An attack press that arrived goes now too, in place: the button does not wait LEAD_STEPS behind the stick.
+        const early=this.earlyAttack();
+        if(!early)return undefined;
+        this.earlyFrom=early.from;
+        const target=early.target??this.appliedTarget;
+        return {seq:this.applied,x:0,y:0,attack:true,skill:false,...(target!==undefined?{target}:{}),...aimOf(early)};
+      }
       return this.press({seq:this.applied,x:0,y:0,attack:attackPress,skill:skillPress,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{}),...aimOf(this.held),...this.pressAimOf()});
     }
     this.applied=seq;
@@ -310,7 +330,20 @@ export class InputTrack {
     if(this.history.length>HISTORY_STEPS)this.history.shift();
     this.appliedTarget=this.held.target;this.appliedWork=!!this.held.work;
     const input:PlayerInput={seq,x:this.held.x,y:this.held.y,attack:!!this.held.attack,skill:this.held.skill,...(this.held.target!==undefined?{target:this.held.target}:{}),...aimOf(this.held),...(this.held.work?{work:true as const}:{})};
+    const early=input.attack?undefined:this.earlyAttack();
+    if(early){this.earlyFrom=early.from;input.attack=true;if(!input.aim)Object.assign(input,aimOf(early));}
     return press?this.press({...input,skill:input.skill||skillPress,attack:input.attack||attackPress,...(input.aim?{}:this.pressAimOf())}):input;
+  }
+  /**
+   * The first queued (not yet stepped) attack segment while the steps applied do not attack, unless it already fired
+   * (earlyFrom): the room fires it on this tick instead of LEAD_STEPS later. The weapon's cooldown keeps its own step,
+   * when the room reaches it, from firing again; the release still comes on its step.
+   */
+  private earlyAttack():InputSegment|undefined{
+    const unapplied=this.held.from>this.applied;
+    if(!unapplied&&this.held.attack)return undefined;
+    const s=unapplied&&this.held.attack?this.held:this.queue.find(q=>q.attack);
+    return s&&s.from!==this.earlyFrom?s:undefined;
   }
   /** The late attack press's aim, when one waits. */
   private pressAimOf(){return this.attackPress&&this.pressAim!==undefined?{aim:DIRECTIONS[this.pressAim]}:{};}
@@ -341,7 +374,7 @@ export class InputTrack {
   private inert(){return !moving(this.held)&&!this.held.skill&&!this.held.attack&&this.held.target===this.appliedTarget&&!!this.held.work===this.appliedWork;}
   state():InputTrackState{
     return {applied:this.applied,lastFrom:this.lastFrom,known:this.known,held:{...this.held},queue:this.queue.map(s=>({...s})),skillPress:this.skillPress,batched:this.batched,knownAt:this.knownAt,lastCast:this.lastCast,casts:[...this.castQueue],
-      ...(this.appliedTarget!==undefined?{appliedTarget:this.appliedTarget}:{}),...(this.attackPress?{attackPress:true as const}:{}),...(this.pressAim!==undefined?{pressAim:this.pressAim}:{}),...(this.appliedWork?{appliedWork:true as const}:{})};
+      ...(this.appliedTarget!==undefined?{appliedTarget:this.appliedTarget}:{}),...(this.attackPress?{attackPress:true as const}:{}),...(this.pressAim!==undefined?{pressAim:this.pressAim}:{}),...(this.appliedWork?{appliedWork:true as const}:{}),...(this.earlyFrom>this.applied?{earlyFrom:this.earlyFrom}:{})};
   }
 }
 const movable=(p:SimPlayer)=>!p.downed&&!p.eliminated&&p.hp>0&&!p.spectator;

@@ -55,7 +55,7 @@
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
-import {shownTargets} from '../hud/arrows.ts';
+import {shownTargets,missionKeys,nestTarget} from '../hud/arrows.ts';
 import type {EdgeKind} from '../hud/edges.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
@@ -294,7 +294,20 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[],extra?:ReadonlySet<string>):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets,extra);
+/**
+ * Card objetivo-com-verbo: `caixas=N` the team opened N crates in this window (with `minerva=`/`explora=`: the line's
+ * count), `escuro=0..1` the dark on p1 (from DARK_PRESS: "Volte ao Uno!"). The run is shown once without them first, as
+ * the window's opening view.
+ */
+function missionScene(run:RunView):{before:RunView;after:RunView}|undefined{
+  const crates=Number(params.get('caixas')),dark=Number(params.get('escuro'));
+  if(!(crates>0)&&!(dark>0))return undefined;
+  // The opening view carries the stats too (chests 0 when absent): the window's count starts from it.
+  const opened=(add:number,p:RunView['players'][number])=>({...p,stats:{damage:0,kills:0,revives:0,pickups:0,...p.stats,chests:(p.stats?.chests??0)+add}});
+  return {before:{...run,players:run.players.map(p=>opened(0,p))},
+    after:{...run,players:run.players.map(p=>p.id!=='p1'?opened(0,p):{...opened(crates>0?crates:0,p),...(dark>0?{fear:dark}:{})})}};
+}
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -642,8 +655,10 @@ if(cidade)void (async()=>{
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // D-051 (ninhos-rounds-fora): the same 8 nests, 2 fallen, in the city's run (the chip and the phone bar read them).
   if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
-  // The sandbox's ticker (unless frozen=1) keeps updating this run.
-  view=run;hud.update(run);
+  // The sandbox's ticker (unless frozen=1) keeps updating this run; the mission's scene (caixas, escuro) on top of it.
+  const mission=missionScene(run);
+  hud.update(mission?.before??run);
+  view=mission?.after??run;hud.update(view);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
   const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
   const feet=await heroFeet();
@@ -668,13 +683,17 @@ if(cidade)void (async()=>{
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
       hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{}),
       // Card inimigos-querem-o-uno: `apanha=1` the car takes hits (its edge arrow while it is out of view).
-      ...(chaveiro&&params.get('apanha')==='1'?{car:{x:chaveiro.car.x,y:chaveiro.car.y,hit:true}}:{})});
+      ...(chaveiro&&params.get('apanha')==='1'?{car:{x:chaveiro.car.x,y:chaveiro.car.y,hit:true}}:{}),
+      // The mission line's target, as rescue.ts does (objetivo-com-verbo): the Uno, the moto, the nearest nest.
+      ...(chaveiro&&hud.unoArrow?{uno:{x:chaveiro.car.x,y:chaveiro.car.y,urgent:hud.unoArrow.urgent}}:{})});
+    const aim=hud.missionArrow;
+    if(aim?.kind==='ninho'&&!isOnScreen(aim))targets.push(nestTarget(aim,hero,locate));
     previous=groupKeys;
-    const arrows=city.layoutCityEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
+    const arrows=city.layoutCityEdges(shownHere(targets,missionKeys(aim)),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
-    hud.edges!.need(pointedTargets(shownHere(targets),area,seen),city.cityMustPoint);
+    hud.edges!.need(pointedTargets(shownHere(targets,missionKeys(aim)),area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],

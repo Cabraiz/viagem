@@ -35,7 +35,7 @@ import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,c
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import {createMinerva} from './minerva.ts';
-import {createMission,MissionTracker,type MissionPart} from './missao.ts';
+import {createMission,MissionTracker,missionFacts,type MissionArrow,type MissionPart} from './missao.ts';
 import './missao.css';
 import {isTowerKit,kitPiece} from '../../rules/index.ts';
 import './camp.css';
@@ -330,6 +330,8 @@ export class RunHud {
   }
   /** The Uno gets its edge arrow now (the mission: the Minerva, the last seconds of a time to explore); urgent: "Volte ao Uno.". */
   get unoArrow(){return this.unoArrowNow;}
+  /** The mission line's target (objetivo-com-verbo): the Uno, the moto, the nearest nest; rescue.ts draws its edge arrow. */
+  private missionArrowNow:MissionArrow|undefined;get missionArrow(){return this.missionArrowNow;}
 
   update(view:RunView){
     const t0=perfNow(); // ?perf=1: the HUD's work this frame
@@ -369,8 +371,8 @@ export class RunHud {
     const playing=!!me&&!me.spectator&&!me.eliminated&&!ended;
     const towerKit=!!me?.weapons.some(w=>{const piece=kitPiece(w.id);return !!piece&&isTowerKit(piece);});
     const out=this.missionTracker.step({tick:view.tick,...(this.ctx.minervaAteTick!==undefined?{minervaAte:this.ctx.minervaAteTick}:{}),
-      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing});
-    this.unoArrowNow=out.pointUno?{urgent:out.line?.key==='volta'}:undefined;
+      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing,facts:missionFacts(view,this.ctx.localId,this.routeInput?.hero)});
+    this.unoArrowNow=out.pointUno?{urgent:out.arrow?.kind==='uno'&&out.arrow.urgent}:undefined;this.missionArrowNow=out.arrow;
     this.mission.render(out.line);
   }
   /**

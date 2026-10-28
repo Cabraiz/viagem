@@ -45,7 +45,7 @@ import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
-import {shownTargets} from './arrows.ts';
+import {shownTargets,missionKeys,nestTarget} from './arrows.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
 export const CITY_TARGETS_MS=100;
@@ -357,11 +357,13 @@ export class RescueBoard {
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
     const banks=last.banks,car=objective&&!objective.ended?{x:objective.car.x,y:objective.car.y,hit:now-this.carHitAt<=UNO_HIT_MS}:undefined;
-    const point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined;
+    const point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined,aim=this.hud.missionArrow;
     const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),...(car?{car}:{}),...(uno?{uno}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
-    this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
+    // The mission line's target (objetivo-com-verbo): the moto's arrow, or the nearest nest's, joins the shown ones.
+    if(aim?.kind==='ninho'&&!inView(locate(aim),seen))targets.push(nestTarget(aim,focus,locate));
+    this.cityTargets=shownTargets(targets,missionKeys(aim));this.groupKeys=groupKeys;
   }
   /** Destroyed: a late room view or a frame already queued draws nothing (the island may be gone). */
   private dead=false;

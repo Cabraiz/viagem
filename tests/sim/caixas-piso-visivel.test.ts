@@ -34,12 +34,15 @@ test(`a person who opens crate after crate still sees at least ${VISIBLE_FLOOR} 
     s.resetRun();
     const pickups=()=>(s as unknown as {world:{pickups:Map<string,Chest>}}).world.pickups;
     const p0=s.players.get('p0')!;
-    let now=1000,opened=0,target:string|undefined,least=Infinity;
+    let now=1000,opened=0,target:string|undefined,least=Infinity,since=0;const skip=new Set<string>();
     for(let t=0;t<ticks(240);t++){
       rb.think(s);
-      const mine=[...pickups().values()].filter(k=>k.kind==='chest'&&!k.hiddenFor?.includes('p0'));
-      // He goes from crate to crate (stands on it until it opens): the hiding grows with every one.
-      if(!target||!pickups().has(target)){if(target)opened++;target=mine[0]?.id;if(target){const k=pickups().get(target)!;p0.x=k.x;p0.y=k.y;}}
+      const mine=[...pickups().values()].filter(k=>k.kind==='chest'&&!k.hiddenFor?.includes('p0')&&!skip.has(k.id));
+      // He goes from crate to crate (stands on it until it opens): the hiding grows with every one. One he cannot open
+      // in 8 s (a band beside it hits him: opening starts over) he leaves (mapa-conexoes-sem-beco: on asset v5 a band
+      // sleeps by seed 1's second crate).
+      if(target&&pickups().has(target)&&t-since>ticks(8)){skip.add(target);target=undefined;}
+      if(!target||!pickups().has(target)){if(target)opened++;target=mine.find(k=>k.id!==target)?.id;since=t;if(target){const k=pickups().get(target)!;p0.x=k.x;p0.y=k.y;}}
       p0.hp=p0.stats.maxHp;delete (p0 as {fear?:unknown}).fear;
       s.step(now+=50);
       if(t>ticks(5)&&t%ticks(1)===0)least=Math.min(least,[...pickups().values()].filter(k=>k.kind==='chest'&&!k.hiddenFor?.includes('p0')).length);

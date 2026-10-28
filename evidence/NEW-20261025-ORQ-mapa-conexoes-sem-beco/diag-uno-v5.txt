@@ -1,0 +1,2 @@
+Uno em (81.5,84.5); área (sondas de 0.5 u): herói 49934, carro 26821 (54 %)
+blocos de entulho: 42; tirados um a um, abrem ao carro ≥ 4 u²: 0

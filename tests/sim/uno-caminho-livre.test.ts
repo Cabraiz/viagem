@@ -6,6 +6,12 @@
  *  1. every square leans on a wall and leaves the car room to drive past (carStillPasses);
  *  2. the Uno pushed by the ChaveiroSystem itself (its collision with the mask and the squares) from where it starts
  *     reaches the plaza, the 4 mouths and every spawn its body reaches on the bare map, as it does with no tralha.
+ * NEW-20261027-ORQ-uno-anda-mapa-todo (the user, 27/10: "é para podermos andar com o carro pelo jogo todo"):
+ *  3. no square within TRALHA_POINT_KEEP of the plaza, its mouths or a spawn;
+ *  4. the Uno reaches every one of them (none left out on the bare map) and, per match (tralha + the living nests' keep
+ *     out), gets within 3 u of ≥ 90 of the 104 loot points: 90–92 on this .75 u grid, 93–95 (mean 93.8) on the
+ *     .5 u heatmap of the evidence (ORQ 28/10, option A: the crates keep their 11 u spread
+ *     (caixas-espalhadas) and their dead ends (mapa-becos); 4 of those left out sit in shelters, closed to the car).
  * D-031: results only.
  */
 import test from 'node:test';
@@ -14,7 +20,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {FlowField,UNREACHABLE,cityAsField,type FlowGrid,type Point} from '../../src/maps/index.ts';
-import {BASE_STATS,CAR_RADIUS,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
+import {BASE_STATS,CAR_NEST_KEEP_OUT,CAR_RADIUS,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
 import {pieceCells} from '../../src/rules/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
@@ -24,7 +30,7 @@ import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {createChaveiro} from '../../src/sim/chaveiro/system.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
 import {blockDiscs,pieceRectOf,type PieceState} from '../../src/sim/towers/free-build.ts';
-import {TRALHA_OWNER,againstWall,carStillPasses} from '../../src/sim/towers/tralha.ts';
+import {TRALHA_OWNER,TRALHA_POINT_KEEP,againstWall,carStillPasses} from '../../src/sim/towers/tralha.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -35,19 +41,20 @@ const OPEN=cityFlowGrid(new CityTerrain(city.asset,city.signature));
 const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 type Disc={x:number;y:number;r:number};
 
-/** The map's tralha of a real match (laid on its first step). */
-function tralhaOf(seed:number):PieceState[]{
+/** The map's tralha of a real match (laid on its first step) and its living nests. */
+function matchOf(seed:number):{tralha:PieceState[];nests:Point[]}{
   const s=new Simulation(seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
   s.add('p0','P0','cidadao-comum');s.resetRun();s.step(1000);
-  return ((s.run.stonewards.state as unknown as {defenses?:{pieces?:PieceState[]}}).defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER);
+  const nests=((s.run as unknown as {nests?:{state?:{nests?:{x:number;y:number;down?:boolean}[]}}}).nests?.state?.nests??[]).filter(n=>!n.down);
+  return {tralha:((s.run.stonewards.state as unknown as {defenses?:{pieces?:PieceState[]}}).defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER),nests};
 }
 /** A piece's blocker discs (barricada-tocar-no-mapa: 3 along its long side). */
 const discsOf=(p:PieceState):Disc[]=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,w,h);};
 
 /** A flow grid of the car's centre: a cell is open when the body (+ a little room) fits there, off every disc. */
 const CELL=.75,ROOM=.25;
-function carGrid(discs:readonly Disc[]):FlowGrid{
-  const w=Math.ceil(city.asset.size.w/CELL),h=Math.ceil(city.asset.size.h/CELL),open=new Uint8Array(w*h),R=CAR_RADIUS+ROOM;
+function carGrid(discs:readonly Disc[],room=ROOM):FlowGrid{
+  const w=Math.ceil(city.asset.size.w/CELL),h=Math.ceil(city.asset.size.h/CELL),open=new Uint8Array(w*h),R=CAR_RADIUS+room;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     const cx=(x+.5)*CELL,cy=(y+.5)*CELL;
     open[x+y*w]=city.clearDisc(cx,cy,R)&&discs.every(d=>(cx-d.x)**2+(cy-d.y)**2>=(d.r+R)**2)?1:0;
@@ -92,7 +99,8 @@ function drive(discs:readonly Disc[],field:FlowField,goal:Point,maxTicks:number)
 }
 
 const SEEDS=[1,2,3,4];
-const laid=new Map(SEEDS.map(s=>[s,tralhaOf(s)]));
+const matches=new Map(SEEDS.map(s=>[s,matchOf(s)]));
+const laid=new Map(SEEDS.map(s=>[s,matches.get(s)!.tralha]));
 
 test('the map\'s tralha leans on the walls and leaves the Uno room to drive past, every square of every match',()=>{
   for(const [seed,pieces] of laid){
@@ -109,7 +117,11 @@ test('the Uno, pushed from where it starts, reaches the plaza, the mouths and th
   const bare=carGrid([]),targets=goals(bare);
   const from=(g:FlowGrid,p:Point)=>new FlowField(g,[p]);
   const reachableBare=targets.filter(([,p])=>from(bare,p).cellCost(Math.floor(CAR.x/CELL),Math.floor(CAR.y/CELL))!==UNREACHABLE);
-  assert.ok(reachableBare.length>=7,`the bare map: ${reachableBare.map(([n])=>n).join(', ')}`);
+  // Every spawn and the plaza (uno-anda-mapa-todo); of the mouths, the N one is one cell between two cliffs (its
+  // barricade's, inside the plaza ring the widening keeps): the body with the pushers' room gets by it, not through.
+  const names=reachableBare.map(([n])=>n);
+  for(const n of ['praça','spawn N','spawn S','spawn L','spawn O'])assert.ok(names.includes(n),`the bare map: ${names.join(', ')}`);
+  assert.ok(reachableBare.length>=8,`the bare map: ${names.join(', ')}`);
   for(const seed of SEEDS.slice(0,2)){
     const discs=laid.get(seed)!.flatMap(discsOf),grid=carGrid(discs);
     for(const [name,goal] of reachableBare){
@@ -118,5 +130,25 @@ test('the Uno, pushed from where it starts, reaches the plaza, the mouths and th
       const run=drive(discs,field,goal,20*400);
       assert.ok(run.ok,`seed ${seed}: the Uno pushed toward ${name} stuck at (${run.at.x.toFixed(1)},${run.at.y.toFixed(1)})`);
     }
+  }
+});
+
+test('no square of tralha at the plaza, its mouths or a spawn',()=>{
+  const B=PTS.bocas,points:[string,Point][]=[['praça',PTS.praca],['boca N',B.N],['boca S',B.S],['boca L',B.L],['boca O',B.O],...Object.entries(ENTRANCES)];
+  for(const [seed,pieces] of laid)for(const p of pieces){const r=pieceRectOf(p);
+    for(const [name,q] of points){const d=Math.hypot(Math.max(r.x-q.x,0,q.x-(r.x+r.w)),Math.max(r.y-q.y,0,q.y-(r.y+r.h)));
+      assert.ok(d>=TRALHA_POINT_KEEP,`seed ${seed}: ${p.id} ${d.toFixed(1)} u from ${name}`);}}
+});
+
+test('the Uno gets within 3 u of ≥ 90 of the 104 loot points, every match (tralha + the living nests)',t=>{
+  const near=3/CELL;
+  for(const [seed,{tralha,nests}] of matches){
+    const discs=[...tralha.flatMap(discsOf),...nests.map(n=>({x:n.x,y:n.y,r:CAR_NEST_KEEP_OUT-CAR_RADIUS}))];
+    const grid=carGrid(discs,0),field=new FlowField(grid,[CAR]);
+    const reached=(p:Point)=>{for(let dy=-near;dy<=near;dy++)for(let dx=-near;dx<=near;dx++)if(field.cellCost(Math.floor(p.x/CELL)+dx,Math.floor(p.y/CELL)+dy)!==UNREACHABLE)return true;return false;};
+    const out=city.asset.loot.filter(p=>!reached(p));
+    t.diagnostic(`seed ${seed}: ${city.asset.loot.length-out.length}`);
+    assert.ok(city.asset.loot.length-out.length>=90,`seed ${seed}: ${city.asset.loot.length-out.length}/${city.asset.loot.length}; out: ${out.map(p=>`(${p.x.toFixed(0)},${p.y.toFixed(0)})`).join(' ')}`);
+    for(const [name,p] of Object.entries(ENTRANCES))assert.ok(reached(p),`seed ${seed}: the Uno never gets near spawn ${name}`);
   }
 });

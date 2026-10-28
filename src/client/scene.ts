@@ -54,7 +54,7 @@ import {carSortDepth} from './render/chaveiro/car-sort.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
 import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
 import {talkSeed} from './render/chaveiro/lines.ts';
-import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
+import {TowerRenderer,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
 import {buildPlanFor,elevation,farPath,worldBase} from '../maps/index.ts';
@@ -431,17 +431,9 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
-    // The defenses' sheets (~11 MB, none standing at the opening; cena-nasce-rapido): in the city after the art around
-    // the hero (queueLateArt), a defense built before its sheet fetching it first (needTowerArt).
-    if(!(this.field instanceof CityTerrain))this.queueLateArt();
-  }
-  private lateArtQueued=false;
-  /** Imported defense sheets (torres) when the manifest has them, once; else procedural. */
-  private queueLateArt(){
-    if(this.lateArtQueued)return;
-    this.lateArtQueued=true;
-    queueTowerArt(this);
-    if(this.booted&&!this.load.isLoading())this.load.start();
+    // The defenses' sheets are not preloaded (none stands at the opening): every kind's was ~8 MB of download and
+    // ~134 MB of decoded textures on a phone (auditoria-desempenho-28-10). A kit's ghost or a defense asks for its own
+    // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).
   }
   private towerArtAsked=new Set<string>();
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
@@ -461,7 +453,7 @@ export class IslandScene extends Phaser.Scene {
     }
   }
   /**
-   * The late queue's own copy of a sheet (queueLateArt): already fetched or being added → it lands soon (true); still
+   * The loader's own copy of a sheet: already fetched or being added → it lands soon (true); still
    * waiting its turn → taken out of the loader (false), fetched now instead. Both adding one key made Phaser log
    * 'Texture key already in use' (art:torres:vigia-do-predio:idle, the T1 built before the late queue reached it).
    */
@@ -648,7 +640,7 @@ export class IslandScene extends Phaser.Scene {
     this.booted=true;this.setQuality(this.quality);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);
     // The city's near art still on its way: the cover stays until it is in (updateCity calls ready then).
-    if(this.cityHeld)this.readyHeld=true;else{this.hooks.ready();this.queueLateArt();}
+    if(this.cityHeld)this.readyHeld=true;else this.hooks.ready();
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
   private viewport(){return {width:this.scale.width,height:this.scale.height};}
@@ -762,7 +754,6 @@ export class IslandScene extends Phaser.Scene {
       if(!(this.cityStream?.nearReady()&&this.city.groundSettled())&&performance.now()-this.heldSince<NEAR_ART_CAP_MS)return;
       this.cityHeld=false;this.releaseBackground();
       if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
-      this.queueLateArt();
     }
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};

@@ -58,7 +58,19 @@ export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number}
     &&p.x!==undefined&&p.y!==undefined&&Math.hypot(p.x-crate.x,p.y-crate.y)<BOT_LEAVES_CRATE);
 }
 
-export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS):LootPlan{
+/**
+ * auditoria-bots-sim (28/10) item 4: the bots opened 7 % of the verde and 9.5 % of the azul crates in 1p (60 % of the
+ * rarer): an armed bot left a verde to the knife-holders even next to it. Within LOOT_ANY_NEAR u it opens any crate.
+ * And in 6p a crate by the car waited ~53 s: one bot opening it (another bot within CRATE_CLAIM u of it and nearer)
+ * leaves it to that one, the others look for another.
+ */
+export const LOOT_ANY_NEAR=12,CRATE_CLAIM=OPEN_REACH*1.5;
+/**
+ * `opts.skip`: pickups this bot gave up on (bot-brain: no nearer in a while); `opts.leash`: only goals within `r` of
+ * `at` (bot-brain, mode 'ninhos': the car, LOOT_CAR_LEASH).
+ */
+export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS,
+  opts:{skip?:(id:string)=>boolean;leash?:{at:Point;r:number}}={}):LootPlan{
   const plan:LootPlan={};
   const inv=me.weapons,hand=me.hand??0;
   // 1. Eat when hurt.
@@ -81,7 +93,8 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(opts.skip?.(k.id)||opts.leash&&dist(k,opts.leash.at)>opts.leash.r)continue;
+    if(k.kind==='chest'){if(armed&&k.value<=1&&d>LOOT_ANY_NEAR||claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;
@@ -89,6 +102,15 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   // Next to a better weapon with the six full: "Trocar" (walking over it would not pick it up).
   if(!goal.stand&&!plan.command&&inv.length>=INVENTORY_SLOTS&&goalDist<=TAKE_REACH)plan.command={t:'take',pickup:goal.id};
   return plan;
+}
+/** Item 4: another standing bot within CRATE_CLAIM of this crate and nearer to it than `d` (this bot's distance). */
+function claimed(players:readonly PlayerRunView[],k:Point,me:string,d:number):boolean{
+  return players.some(p=>{
+    const q=p as PlayerRunView&{x?:number;y?:number};
+    if(p.id===me||!p.bot||p.downed||p.eliminated||p.spectator||q.x===undefined||q.y===undefined)return false;
+    const e=Math.hypot(q.x-k.x,q.y-k.y);
+    return e<=CRATE_CLAIM&&(e<d||e===d&&p.id<me);
+  });
 }
 /** How close a bot stands to a crate it opens (inside OPEN_REACH, with room for the sim's float). */
 export const CRATE_STAND=OPEN_REACH*.7;

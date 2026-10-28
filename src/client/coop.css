@@ -289,3 +289,5 @@
 /* Retrato a 125%, convidado com 5 ou 6 na sala: a janela rolaria (59 px). A linha da classe sai; o rosto continua
    mostrando a classe e o leitor de tela continua lendo. */
 @media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}
+/* PC (data-input=mouse, auditoria-ui 28/10 item 17): the attack says its key, a cap hanging on the circle's foot. */
+[data-input=mouse] #coop-attack::after{content:'Espaço';position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);padding:3px 8px;border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:800 12px/1 var(--f-sistema);text-shadow:none;white-space:nowrap;pointer-events:none}

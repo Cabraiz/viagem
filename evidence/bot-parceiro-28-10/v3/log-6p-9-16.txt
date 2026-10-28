@@ -1,0 +1,8 @@
+seed 9 6p: victory/opened 1277.6s | idle 150 stuck 1 far 2 downs 12 enemyStuck 0 still8 10 nudges 20 | person out 211.1s company 89.3% | 37.4s wall 1.46 ms/tick
+seed 10 6p: victory/opened 1169.3s | idle 124 stuck 0 far 0 downs 8 enemyStuck 0 still8 6 nudges 0 | person out 183.8s company 97.3% | 30.8s wall 1.3199999999999998 ms/tick
+seed 11 6p: victory/opened 1148.1s | idle 123 stuck 0 far 0 downs 2 enemyStuck 0 still8 4 nudges 5 | person out 146.3s company 98.1% | 38s wall 1.6600000000000001 ms/tick
+seed 12 6p: victory/opened 1142.7s | idle 149 stuck 0 far 0 downs 8 enemyStuck 0 still8 3 nudges 3 | person out 186.6s company 96.9% | 23.5s wall 1.03 ms/tick
+seed 13 6p: defeat/team 651.9s | idle 58 stuck 0 far 0 downs 7 enemyStuck 0 still8 6 nudges 2 | person out 72.3s company 99.7% | 14.9s wall 1.1400000000000001 ms/tick
+seed 14 6p: victory/opened 1397.1s | idle 163 stuck 0 far 0 downs 14 enemyStuck 0 still8 20 nudges 16 | person out 211.8s company 82% | 32.2s wall 1.15 ms/tick
+seed 15 6p: victory/opened 1280.3s | idle 152 stuck 0 far 0 downs 7 enemyStuck 0 still8 8 nudges 43 | person out 155.6s company 98.9% | 25.1s wall 0.9800000000000001 ms/tick
+seed 16 6p: defeat/team 744.2s | idle 59 stuck 0 far 0 downs 14 enemyStuck 0 still8 6 nudges 2 | person out 23.5s company 100% | 16.3s wall 1.1 ms/tick

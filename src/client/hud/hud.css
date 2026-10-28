@@ -896,3 +896,11 @@
 .rh-ended .rh-medo{display:none}
 .rh-member[data-longe]>:not(.rh-member-badge){opacity:.4;filter:grayscale(.7) brightness(.7);transition:opacity .6s,filter .6s}
 @media (prefers-reduced-motion:reduce){.rh-medo[data-kind=final]{animation:none}}
+
+/* PC on a big screen (data-hud=mesa, auditoria-ui 28/10 item 17): at 1280×720 the top band, the team column and the
+   inventory read small (11–13 px labels); they grow 1.25× (CSS zoom: the hit areas and the measures with them). The
+   inventory's offsets are divided back, so it keeps its place by the attack button (not zoomed: the shell's). */
+@media (min-width:1200px) and (min-height:680px){
+  .rh[data-hud=mesa] :is(.rh-top,.rh-team,.rh-inv){zoom:1.25}
+  .rh[data-hud=mesa] .rh-inv{right:calc((max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px) / 1.25);bottom:calc(max(24px,env(safe-area-inset-bottom)) / 1.25)}
+}

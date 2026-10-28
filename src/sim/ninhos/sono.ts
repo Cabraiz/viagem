@@ -30,6 +30,7 @@ import type {SimContext,Sleepers} from '../context.ts';
 import {SpatialHash} from '../spatial.ts';
 import {createEnemy,type EnemyKind} from '../enemies/catalog.ts';
 import {cancelTelegraphs} from '../telegraphs.ts';
+import {KNOCK_DECAY} from '../enemies/ai.ts';
 import {MAX_AWAKE} from '../../rules/index.ts';
 
 /** Bucket size of the sleepers' index (u): they never move, so big buckets keep a noise check to a few cells. */
@@ -82,6 +83,15 @@ export const MODE={alerta:1,cacando:2,perdeu:3} as const;
  * mark in the body's memory (sx, sy, st: JSON-safe).
  */
 export const STUCK_S=20,STUCK_MOVE=1,STUCK_FAR=20,STUCK_EVERY=1;
+/**
+ * The quick net (card bot-parceiro-e-bichos-parados): an awake enemy (not the boss, out of the Minerva) that moved less
+ * than STUCK_MOVE u over STILL_S s with nothing to do (no hit nor act within STILL_HIT s, not mid-act, its nearest
+ * standing hero past STILL_NEAR u but within STUCK_FAR: farther, the safety net above frees it; no kept point within
+ * STILL_KEEP u: the car a siege presses on) is pushed STILL_PUSH u sideways to its line to that hero, one side then the
+ * other; a body of the plan pushed more than STILL_SLEEP times within STILL_FORGET s sleeps again where it stands (a
+ * group's keeps being pushed). Its mark in the body's memory (qx, qy, qt; qn, qa: the pushes; JSON-safe).
+ */
+export const STILL_S=8,STILL_HIT=2,STILL_NEAR=3,STILL_KEEP=3,STILL_PUSH=2,STILL_SLEEP=2,STILL_FORGET=30;
 
 /**
  * The noise table (proposal §3, with the radii of the decision in claims/NEW-20261014-ORQ-ninhos-sim: pistol 12,
@@ -429,8 +439,38 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     list.forEach(({e},k)=>{e.readyTick=Math.max(e.readyTick,ctx.tick+react+Math.floor(k*spread/list.length));});
   }
 
+  /**
+   * The quick net (STILL_S, see the constant): awake bodies still with nothing to do, a hero within STUCK_FAR (farther
+   * out the safety net frees them), are pushed off where they stand; a body of the plan pushed more than STILL_SLEEP
+   * times within STILL_FORGET s sleeps again there (into `gone`). Out of the Minerva.
+   */
+  function nudge(ctx:SimContext,heroes:readonly SimPlayer[],keep:readonly Point[],gone:EnemyState[]){
+    const near2=STILL_NEAR*STILL_NEAR,far2=STUCK_FAR*STUCK_FAR,keep2=STILL_KEEP*STILL_KEEP,busy=ctx.tick-ticks(STILL_HIT);
+    for(const e of ctx.enemies.values()){
+      if(e.boss||!(e.hp>0)||gone.includes(e))continue;
+      const m=e.memory??={};
+      if(m.qa!==undefined&&ctx.tick-m.qa>ticks(STILL_FORGET)){delete m.qa;delete m.qn;}
+      // Held (the Minerva's spread start, frozen) or moving (a push too): the 8 s start over (not the pushes).
+      if(ctx.tick<e.readyTick||ctx.tick<(e.frozenUntil??-1)||m.qt===undefined||Math.hypot(e.x-(m.qx??e.x),e.y-(m.qy??e.y))>=STUCK_MOVE){
+        m.qx=e.x;m.qy=e.y;m.qt=ctx.tick;continue;
+      }
+      if(ctx.tick-m.qt<ticks(STILL_S))continue;
+      // Busy where it stands: it hit (a tower, the car, the moto) or acted (a throw, a shot) lately, or is mid-act; a hero
+      // within reach; a kept point (the car). No hero within STUCK_FAR: the safety net's.
+      let hero:SimPlayer|undefined,best=Infinity;
+      for(const p of heroes){const d=(p.x-e.x)**2+(p.y-e.y)**2;if(d<best){best=d;hero=p;}}
+      if((m.hitReady??-Infinity)>busy||(m.actReady??-Infinity)>busy||(m.state??0)!==0||best<=near2||best>far2||keep.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<=keep2)){m.qt=ctx.tick;continue;}
+      const n=(m.qn??0)+1;
+      if(n>STILL_SLEEP&&order.has(e.id)){gone.push(e);continue;}
+      // Sideways to its line to the nearest hero, one side then the other (around the corner it is caught on).
+      const a=Math.atan2(hero!.y-e.y,hero!.x-e.x)+(n%2?1:-1)*Math.PI/2;
+      e.knock={x:Math.cos(a)*STILL_PUSH*(1-KNOCK_DECAY),y:Math.sin(a)*STILL_PUSH*(1-KNOCK_DECAY)};
+      m.qn=n;m.qa=ctx.tick;m.qt=ctx.tick;
+    }
+  }
+
   /** The safety net (STUCK_S): awake enemies stuck far from every hero leave the world (see the constant). */
-  function unstick(ctx:SimContext){
+  function unstick(ctx:SimContext,minerva:boolean){
     const near=[...ctx.players.values()].filter(standing),far2=STUCK_FAR*STUCK_FAR,gone:EnemyState[]=[];
     const players:readonly Point[]=[...near,...options.keep?.(ctx)??[]];
     for(const e of ctx.enemies.values()){
@@ -441,6 +481,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(players.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<=far2)){m.st=ctx.tick;m.sx=e.x;m.sy=e.y;continue;}
       gone.push(e);
     }
+    if(!minerva)nudge(ctx,near,options.keep?.(ctx)??[],gone);
     for(const e of gone){
       const m=e.memory!;delete m.sx;delete m.sy;delete m.st;
       const i=order.get(e.id);
@@ -470,7 +511,10 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     recruit(ctx,route,count,tune){
       const room=Math.min(count,maxAwake-ctx.enemies.size);
       if(room<=0||!asleep.size||!route.length)return 0;
-      const near=[...asleep.values()].filter(e=>order.has(e.id)).map(e=>({e,d:routeDistance(e,route)}))
+      // Not one asleep on a viaduct's deck (card bot-parceiro-e-bichos-parados): from there a siege finds no car (the
+      // enemy-ai looks for structures on the ground), so a car-minded body (foco) stood on the deck, recruited again by
+      // every wave share after the safety net put it back to sleep (seed 1 6p, z-590, 210 s on).
+      const near=[...asleep.values()].filter(e=>order.has(e.id)&&e.andar!==1).map(e=>({e,d:routeDistance(e,route)}))
         .sort((a,b)=>a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
       const n=wakeAll(ctx,near,'chamado');
       for(const id of near){const e=ctx.enemies.get(id);if(e){(e.memory??={})[SIEGE]=1;tune?.(e);}}
@@ -513,7 +557,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       }
       sight(ctx,minerva?MINERVA_REACH:WAKE_SIGHT);
       awake(ctx);
-      if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx);
+      if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx,minerva);
       reindex(true);
       if(heard.size||state.heard.length)state.heard=[...heard].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
     },

@@ -21,7 +21,8 @@ function note(wave:Tone['wave'],freq:number,at:number,dur:number,gain:number,ext
 
 const list:SoundRecipe[]=[
   // Tiny thwack: noise click plus a fast pitch drop. Fires constantly, so it is short and quiet.
-  recipe('golpe','Golpe',45,0,[
+  // 70 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados): 300 critters made a one-note machine gun at 45 ms.
+  recipe('golpe','Golpe',70,0,[
     {wave:'noise',from:1800,to:900,at:0,dur:0.05,gain:0.3,attack:0.002,filter:{type:'bandpass',freq:1600,q:1.4}},
     {wave:'triangle',from:240,to:90,at:0,dur:0.09,gain:0.35,attack:0.002},
   ]),
@@ -52,6 +53,13 @@ const list:SoundRecipe[]=[
     {wave:'triangle',from:130,to:45,at:0.88,dur:0.3,gain:0.5,attack:0.004},
     {wave:'noise',from:300,to:120,at:0.88,dur:0.2,gain:0.3,attack:0.004,filter:{type:'lowpass',freq:420}},
   ],[60,40,140]),
+  // "Me salva" ping (NEW-20261028-ORQ-sons-da-partida-ligados): a short radio double blip, so the fall whistle plays
+  // once, at the fall, and the caído's call for help is a sound of its own.
+  recipe('sos','Me salva!',400,2,[
+    note('sine',1480,0,0.08,0.24,{attack:0.003}),
+    note('sine',1976,0.11,0.14,0.24,{attack:0.003}),
+    note('triangle',988,0.11,0.14,0.1,{attack:0.003}),
+  ],[30,40,30]),
   // Rising cheerful "tchanã".
   recipe('resgate','Resgate',200,2,[
     note('square',523,0,0.12,0.16,{filter:LOW}),
@@ -133,5 +141,5 @@ export const SOUND_ART:Readonly<Record<ProceduralId,SoundArt>>=Object.freeze({
   golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'podio-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
   boing:{sticker:'galo'},risada:{icon:'risada'},
-  carimbo:{word:'tum'},
+  carimbo:{word:'tum'},sos:{icon:'chamar'},
 });

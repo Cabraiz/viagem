@@ -1,6 +1,6 @@
-// Card NEW-20261023-ORQ-fear-escuridao-sozinho (user 24/10): alone, the dark closes in and in 60 s consumes the hero
-// (the normal fall, source 'escuridao'). Company: an ally on their feet within 8, or the Uno within 6; bots count as
-// company and never fear; every phase counts.
+// Card NEW-20261023-ORQ-fear-escuridao-sozinho (user 24/10): alone, the dark closes in, at its darkest in 60 s; since
+// card escuridao-justa (user 28/10, "a escuridão não mata") it never takes the hero. Company: an ally on their feet
+// within 8, or the Uno within 6; bots count as company and never fear; every phase counts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
@@ -8,7 +8,7 @@ import {BASE_STATS} from '../../src/contract/types.ts';
 import type {SimEvent,SimPlayer,RoundPhase} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
 import {createFearSystem,fearOf,type FearOptions} from '../../src/sim/fear.ts';
-import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_SOURCE,FEAR_TICKS} from '../../src/rules/index.ts';
+import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_CALM_RATE,FEAR_TICKS} from '../../src/rules/index.ts';
 
 type FakeCtx=SimContext&{tick:number;events:SimEvent[]};
 function player(id:string,x:number,y:number,extra:Partial<SimPlayer>={}):SimPlayer{
@@ -37,15 +37,18 @@ function run(ctx:FakeCtx,options:FearOptions,n:number){
 }
 const downs=(ctx:FakeCtx)=>ctx.events.filter(e=>e.type==='downed');
 
-test('alone: one tick of dark per tick; at 60 s the dark takes the hero (downed, source escuridao), not a tick before',()=>{
+test('alone: one tick of dark per tick up to 60 s, then it stays at its darkest and never takes the hero',()=>{
   const a=player('a',0,0),ctx=fakeCtx([a]);
   run(ctx,{},FEAR_TICKS-1);
-  assert.equal(a.fear,FEAR_TICKS-1);assert.equal(a.downed,undefined);
+  assert.equal(a.fear,FEAR_TICKS-1);
   assert.ok(Math.abs(fearOf(a)!-(FEAR_TICKS-1)/FEAR_TICKS)<1e-12);
   assert.equal(FEAR_TICKS,1200,'60 s at 20 Hz');
-  const sys=createFearSystem();ctx.tick++;sys.step(ctx);
-  assert.ok(a.downed,'consumed');assert.equal(a.hp,0);assert.equal(a.fear,undefined,'the fall clears it: a revive starts at 0');
-  assert.deepEqual(downs(ctx),[{type:'downed',player:'a',source:FEAR_SOURCE}]);
+  run(ctx,{},FEAR_TICKS*5);
+  assert.equal(a.fear,FEAR_TICKS);assert.equal(fearOf(a),1);
+  assert.equal(a.downed,undefined);assert.equal(a.hp,100);assert.equal(downs(ctx).length,0,'the dark does not kill');
+  // Company still backs it off from the darkest.
+  const b=player('b',1,0);ctx.players.set('b',b);run(ctx,{},FEAR_TICKS/FEAR_CALM_RATE);
+  assert.equal(a.fear,undefined);
 });
 
 test('company: an ally on their feet within 8 (boundary counts) holds the dark back, 30× faster than it grows',()=>{
@@ -84,7 +87,7 @@ test('bots are company and never fear (the solo with bots stays playable)',()=>{
   const a=player('a',0,0),bot=player('bot',100,100,{fear:50}),ctx=fakeCtx([a,bot]);
   run(ctx,{bot:id=>id==='bot'},FEAR_TICKS+5);
   assert.equal(bot.fear,undefined);assert.equal(bot.downed,undefined);
-  assert.ok(a.downed,'a far bot is no company');
+  assert.equal(a.fear,FEAR_TICKS,'a far bot is no company');assert.equal(a.downed,undefined);
   const p=player('p',0,0,{fear:500}),b2=player('b2',3,0),ctx2=fakeCtx([p,b2]);
   run(ctx2,{bot:id=>id==='b2'},1);assert.equal(p.fear,500-FEAR_CALM_RATE);
 });
@@ -95,8 +98,9 @@ test('every phase counts (the intermission too); the dark stops once the run is 
   run(ctx,{runEnded:()=>true},FEAR_TICKS);assert.equal(a.fear,10);assert.equal(a.downed,undefined);
 });
 
-test('two heroes taken on the same tick fall in id order, whatever the map order',()=>{
-  const a=player('a',0,0,{fear:FEAR_TICKS-1}),b=player('b',30,0,{fear:FEAR_TICKS-1}),ctx=fakeCtx([b,a]);
-  run(ctx,{},1);
-  assert.deepEqual(downs(ctx).map(e=>e.type==='downed'&&e.player),['a','b'],'by id, whatever the map order');
+test('a whole team alone at its darkest for minutes: nobody falls, nobody loses hp',()=>{
+  const heroes=['a','b','c'].map((id,i)=>player(id,i*30,0,{fear:FEAR_TICKS-1})),ctx=fakeCtx(heroes);
+  run(ctx,{},FEAR_TICKS*3);
+  for(const h of heroes){assert.equal(h.fear,FEAR_TICKS,h.id);assert.equal(h.downed,undefined,h.id);assert.equal(h.hp,100,h.id);}
+  assert.equal(downs(ctx).length,0);
 });

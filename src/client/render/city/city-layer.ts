@@ -26,7 +26,7 @@ const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.to
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
 import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,texelOf,type CityArtPlan,type CityLot} from './art-plan.ts';
-import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
+import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,heroRect,marksRect,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,rectsOverlap,type Pt,type Rect} from './projection.ts';
@@ -420,7 +420,8 @@ export class CityLayer {
     if(old===undefined&&!show.length)for(const key of this.lateArt){const c=this.chunksByKey.get(key);if(c&&!rectsOverlap(this.tracker.bounds(c,view),frame.camera)){old=key;break;}}
     if(old!==undefined){const t0=perfNow();this.dropChunk(old);this.buildChunk(old,view);perfSpan('chunk',t0);}
     this.applyOcclusion(frame,view);
-    this.vivo?.update(frame.camera,performance.now());
+    const h=frame.hero;
+    this.vivo?.update(frame.camera,performance.now(),h&&{rect:marksRect(heroRect(h.x,h.y,h.z,view,this.pivot,this.actorBox)),depth:this.actorDepth(h.x,h.y,h.z)},frame.dtMs);
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
       this.clock=(this.clock+frame.dtMs)%GLINT_PERIOD_MS;
       const alpha=0.55+0.45*Math.sin(this.clock/GLINT_PERIOD_MS*Math.PI*2);

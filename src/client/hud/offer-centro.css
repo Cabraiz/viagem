@@ -33,6 +33,12 @@
 .rh .rh-ofc::after{background-position:110px 130px;opacity:.7;animation-duration:8s;animation-iteration-count:4}
 @keyframes px39-neve{to{transform:translateY(var(--queda,260px))}}
 @media (prefers-reduced-motion:reduce){.rh .rh-ofc,.rh .rh-ofc::before,.rh .rh-ofc::after,.rh .rh-ofc .rh-card{animation:none}}
+/* The team's level-up pause (D-050): its box (pausa.ts, z 31) rides over the veil above the title plaque; the window
+   keeps that room free at its top (auditoria-ui-menus-28-10 item 1). Landscape: the box is one row (pausa.css). */
+.rh .rh-offer.rh-ofc[data-mode=pause]{--pausa-reserva:88px;padding-top:calc(max(2dvh,env(safe-area-inset-top)) + var(--pausa-reserva))}
+/* Portrait phones narrower than the fan: the side cards a little smaller, so the turned ones stay on screen (item 18:
+   at 390 px they stood at x = -3 and 393). */
+@media (max-width:430px){.rh .rh-offer.rh-ofc{--mw:min(45vw,280px);--sw:26vw}}
 .rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:10%;right:10%;height:3px;border-radius:0}
 /* The title on its plaque (purple board, gold frame, snow and icicles), wide at the top. */
 .rh .rh-ofc .rh-offer-head{position:relative;flex:0 0 auto;margin:0;padding:0;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;
@@ -131,8 +137,13 @@
 .rh .rh-ofc .rh-ofc-btn:disabled{opacity:1;filter:saturate(.55) brightness(.82);cursor:default}
 .rh .rh-ofc .rh-ofc-btn-count{display:grid;place-items:center;flex:0 0 auto;width:1.45em;height:1.45em;
   background:url('/art/ui-extra/px39/contador.webp') center/100% 100% no-repeat;font:700 .85em/1 var(--f-pixel);color:var(--px39-texto)}
-.rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
-.rh .rh-ofc.rh-ofc-only-wait{justify-content:center}
+.rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-foot,.rh-window-fall,.rh-ofc-actions){display:none}
+/* Waiting for the others (item 2): the card taken, smaller, under the plaque, the block in the lower part of the
+   screen so the frozen map shows above it; no Pular / Rolar de novo. */
+.rh .rh-ofc.rh-ofc-only-wait{justify-content:flex-end;padding-bottom:max(10dvh,env(safe-area-inset-bottom));--mw:min(40vw,200px);--tall:1.5}
+.rh .rh-ofc.rh-ofc-only-wait .rh-offer-cards[data-count='0']{display:none}
+.rh .rh-ofc.rh-ofc-only-wait .rh-card{animation:none;cursor:default}
+.rh .rh-ofc.rh-ofc-only-wait .rh-card:disabled{opacity:1}
 /* Short screens (phone landscape): the same composition, scaled to the height; the cards wider for their height. */
 @media (max-height:500px){
   .rh .rh-offer.rh-ofc{--mw:min(42vw,230px);--sw:min(27.5vw,165px);--tall:2.75;--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:min(30vw,calc(var(--bh) * 5));
@@ -143,4 +154,11 @@
   .rh .rh-offer.rh-ofc{justify-content:space-between}
   .rh .rh-ofc .rh-offer-cards{flex:1 1 0;height:auto}
   .rh .rh-ofc .rh-card-icon>.ic{max-width:calc(var(--w) * .8)}
+  /* "Levar os indicados", Pular and Rolar de novo on one row (item 3: Rolar went to a 3rd line cut at the edge). */
+  .rh .rh-ofc .rh-ofc-actions{flex-wrap:nowrap;gap:2vw}
+  .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){flex:0 1 var(--bw);min-width:0;font-size:max(14px,calc(var(--bh) * .36))}
+  .rh .rh-ofc .rh-offer-all{max-width:none}
+  .rh .rh-offer.rh-ofc[data-mode=pause]{--pausa-reserva:40px}
+  .rh .rh-ofc.rh-ofc-only-wait{--mw:min(30vw,170px);--tall:1.6;padding-bottom:max(3dvh,env(safe-area-inset-bottom))}
+  .rh .rh-ofc.rh-ofc-only-wait .rh-offer-cards{flex:0 1 auto;height:calc(var(--mw) * var(--tall) * .9)}
 }

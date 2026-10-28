@@ -147,6 +147,12 @@ export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
 export const ESCORT_LEASH=3;
 /**
+ * Card bot-parceiro-e-bichos-parados (item 6 of the 24/10 playtest: the person alone, away from the Uno, while the bots
+ * loot): the partner (BrainInput.partner) loots, takes a vehicle and opens a crate only within PARTNER_LOOT u of its
+ * person, never goes to an ATM, and in a lull walks back to within PARTNER_NEAR u of them (the fear's ally reach is 8).
+ */
+export const PARTNER_LOOT=5,PARTNER_NEAR=3;
+/**
  * BUG-20261023-ORQ-bots-na-nossa-velocidade: a person whose last decisions apart (at most ESCORT_PACE_GAP s) show them
  * walking at ESCORT_WALKING × the hero speed or more is walking, and the roamer with them walks too, at the full speed:
  * out of the leash straight along the way to them (no circling: its 0.35 sideways cost the walk ~18 %), inside it along
@@ -226,6 +232,43 @@ export const NEST_PUSH_TEAM=4,NEST_PUSH_NEAR=20;
  * more than the bill.
  */
 export const CHAVEIRO_KEEP_SHARE=1.3,CHAVEIRO_SAVE_ETA=-1;
+/**
+ * auditoria-bots-sim (28/10) item 1: in 11 of the 12 eliminations of the 6p team a friend stood within 6 u, often at
+ * 0.1-2 u, the whole 30 s bleed-out: at home or at an ATM (the rescue lived only in the combat branch, and mode 'ninhos'
+ * reads a calm bot as an intermission), or the revive cut by a dodge or an unstick and begun again. A fallen friend
+ * (rescueOf) now goes before everything but a telegraph about to land: before the moto, the car, an ATM, a crate and
+ * home; a pushing or rope bot leaves its task only for one within RESCUE_FIRST u. Once at it, the bot holds
+ * the revive: the telegraphs that fire after it ends (REVIVE_TICKS ×  RESCUE_TELEGRAPH_SLACK) do not move it, nor the
+ * unstick, nor a critter close by unless its hp is under RESCUE_FLEE_HP; and it keeps at it with up to
+ * RESCUE_HOLD_CLOSE critters within DANGER (a new rescue: fewer than RESCUE_START_CLOSE, as before).
+ */
+export const RESCUE_FIRST=8,RESCUE_START_CLOSE=4,RESCUE_HOLD_CLOSE=7,RESCUE_FLEE_HP=.25,RESCUE_TELEGRAPH_SLACK=1.3;
+/**
+ * Items 2 and 8: a goal (a critter chased or hunted, a crate, an obra) the bot gets no GOAL_PROGRESS u nearer to (nor
+ * hurts) in GOAL_STALL ticks is left out for GOAL_SKIP ticks: on the opening the roamers hunted critters awake inside a
+ * structure, standing ~2 min where the streets ended; crates and obras behind a wall held a bot 8-49 s.
+ */
+export const GOAL_STALL=4*HZ,GOAL_PROGRESS=.5,GOAL_SKIP=10*HZ,LOOT_SKIP=20*HZ,GOAL_STALL_WALK=2;
+/**
+ * Item 3: mode 'ninhos' with the car, a crate or a weapon on the ground is worth it only within LOOT_CAR_LEASH u of
+ * the car (the runner chained crates up to 74 u out, "home" and "loot" by turns for minutes). Not for a bot alone in
+ * the room (lootLeashed): on the live bench the solo bot then ended round 1 with ~R$ 0-75 and the car fell at ~5 min
+ * (1p 1/16; without the leash 4/16).
+ */
+export const LOOT_CAR_LEASH=20;
+export const lootLeashed=(players:readonly {eliminated?:boolean;spectator?:boolean}[])=>
+  players.filter(p=>!p.eliminated&&!p.spectator).length>1;
+/**
+ * Item 7: the car is a body (CAR_RADIUS): a bot walking home to it stops CAR_STAND_OFF u from its centre, and one closer
+ * than that is eased out (CAR_EASE), instead of holding the stick against it.
+ */
+export const CAR_STAND_OFF=2.5,CAR_EASE=1.2;
+/**
+ * Item 6: with more than CAR_SWARM critters within CAR_SWARM_R u of the car, the healthiest standing bot (hp share over
+ * CAR_LURE_HP; ties by id) fights from CAR_LURE_R u off the car on its own side, not on top of it: the critters it hits
+ * turn on it (foco.ts AGGRO) and follow it off the car, and the dodges no longer cross the car.
+ */
+export const CAR_SWARM=8,CAR_SWARM_R=6,CAR_LURE_R=5,CAR_LURE_HP=.5;
 
 export interface BrainMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
@@ -248,6 +291,12 @@ export interface BrainMemory {
   calm?:boolean;
   /** The place this bot reached and holds (ARRIVE_SLACK). */
   arrived?:Point;
+  /** auditoria-bots-sim item 1: the fallen friend this bot is reviving (RESCUE_HOLD_CLOSE), and whether it holds the revive now. */
+  rescueId?:string;reviveNear?:boolean;
+  /** Items 2 and 8: goals left out until a tick (a critter, a crate, an obra it did not get any nearer to: GOAL_STALL). */
+  skip?:Record<string,number>;
+  /** The goal walked to and the best distance (and its hp) so far, since `tick`. */
+  track?:{key:string;d:number;hp:number;tick:number;x:number;y:number};
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -277,6 +326,12 @@ export interface BrainInput {
    * follows them once they leave the wall's leash; guards (even index) keep the wall. Unset: wall only (protocol bots).
    */
   escort?:Point;
+  /**
+   * Card bot-parceiro-e-bichos-parados: the person this bot keeps company (the room bots' partner: one bot, with the
+   * loneliest person, in mode 'ninhos'). It walks with them in combat, and in a lull stays within PARTNER_NEAR u of them,
+   * looting only near them (PARTNER_LOOT); a rescue, a dodge and the objective's tasks still go first. Unset: as before.
+   */
+  partner?:Point;
   /**
    * D-047 (the chaveiro objective): the room's bots, so each one knows whether it is one of the pushers of a dead moto
    * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
@@ -698,18 +753,56 @@ export function decide(input:BrainInput):Decision{
     return false;
   };
   const still=()=>!peril(view,at);
-  // Telegraphs: step out of any area about to fire (the nearest safe direction of eight).
-  const danger=view.telegraphs.filter(t=>telegraphHits(t,at,.4));
+  const skipped=(key:string)=>(memory.skip?.[key]??-Infinity)>tick;
+  // Items 2 and 8: whether the bot got no GOAL_PROGRESS u nearer to `key` (nor hurt it: `hp`) in GOAL_STALL ticks; it is
+  // left out for `skipFor` then. `walked`: a walk on the streets may go round (farther first), so there moving
+  // GOAL_STALL_WALK u off where the count began is progress too; only a bot standing short of it is stalled.
+  const stalled=(key:string,to:Point,hp=0,skipFor=GOAL_SKIP,walked=false)=>{
+    const d=dist(at,to),t=memory.track;
+    if(!t||t.key!==key||d<t.d-GOAL_PROGRESS||hp<t.hp||walked&&dist(at,t)>GOAL_STALL_WALK){memory.track={key,d,hp,tick,x:at.x,y:at.y};return false;}
+    if(tick-t.tick<GOAL_STALL)return false;
+    const skip=memory.skip??={};
+    for(const k in skip)if(skip[k]<=tick)delete skip[k];
+    skip[key]=tick+skipFor;delete memory.track;
+    return true;
+  };
+  const hpShare=me.maxHp>0?me.hp/me.maxHp:1;
+  // Item 1: the fallen friend this bot goes to (the one it is at first), and whether it is at the revive already.
+  memory.reviveNear=false;
+  const close=view.enemies.filter(e=>dist(e,at)<DANGER);
+  let fallen=rescueOf(view,selfId,at,terrain,input.walkScale,memory.rescueId);
+  if(fallen&&close.length>=(fallen.p.id===memory.rescueId?RESCUE_HOLD_CLOSE:RESCUE_START_CLOSE))fallen=undefined;
+  if(fallen&&(task?.kind==='push'||task?.kind==='carro')&&dist(at,fallen.at)>RESCUE_FIRST)fallen=undefined;
+  if(!fallen)delete memory.rescueId;
+  const reviving=!!fallen&&dist(at,fallen.at)<=REVIVE_RADIUS;
+  // Telegraphs: step out of any area about to fire (the nearest safe direction of eight). At a revive, only of one that
+  // fires before it ends.
+  const reviveEnds=reviving?tick+(1-(fallen!.p.downed?.progress??0))*REVIVE_TICKS*RESCUE_TELEGRAPH_SLACK:-Infinity;
+  const danger=view.telegraphs.filter(t=>telegraphHits(t,at,.4)&&t.fireTick<=reviveEnds||!reviving&&telegraphHits(t,at,.4));
   if(danger.length){
+    // Item 6: mode 'ninhos', not through the car's body (its CAR_STAND_OFF ring), where a dodge pinned the bot to it.
+    const car=input.nests&&view.objective?view.objective.car:undefined;
     let best:Point|undefined,bestScore=-Infinity;
     for(let i=0;i<8;i++){
       const a=i*Math.PI/4,d={x:Math.cos(a),y:Math.sin(a)},p={x:at.x+d.x*1.6,y:at.y+d.y*1.6};
       if(terrain&&!walkable(p,terrain))continue;
       const hits=view.telegraphs.filter(t=>telegraphHits(t,p,.4)).length;
-      const score=-hits*10-dist(p,home)*.05;
+      const score=-hits*10-dist(p,home)*.05-(car&&dist(p,car)<CAR_STAND_OFF?5:0);
       if(score>bestScore){bestScore=score;best=d;}
     }
     if(best){decision.direction=best;decision.mode='dodge';return finish(decision,input);}
+  }
+  if(fallen){
+    decision.mode='rescue';memory.rescueId=fallen.p.id;
+    if(!reached(fallen.at,.7,REVIVE_RADIUS-.8)){
+      want=add(go(fallen.at,2.2,'rescueGoal'),repel(view.enemies,at,hpShare<.4?2.2:1.4));
+    }else{
+      // At the revive: it holds (3 s), only a bot nearly out steps off a critter on top of it.
+      memory.reviveNear=true;
+      if(hpShare<RESCUE_FLEE_HP&&!still())want=repel(view.enemies,at,2.2);
+    }
+    decision.direction=norm(want);
+    return finish(decision,input);
   }
   // D-047: a dead moto: walk over and stand by it until it starts (the sim counts two standing within PUSH_RADIUS).
   if(task?.kind==='push'){
@@ -728,7 +821,9 @@ export function decide(input:BrainInput):Decision{
   }
   // Veículos (bot-loot.ts vehicleGoal): in a lull, a parked vehicle a few steps away is worth the detour (the sim takes
   // it as the bot walks over it); with an objective task (the moto, the car) the task goes first.
-  const vehicle=!task?vehicleGoal(view,me,at):undefined;
+  let vehicle=!task?vehicleGoal(view,me,at):undefined;
+  // The partner: only one by its person (its walk would take it away from them).
+  if(vehicle&&input.partner&&dist(vehicle,input.partner)>PARTNER_LOOT)vehicle=undefined;
   if(vehicle){
     decision.mode='veiculo';
     decision.direction=norm(go(vehicle));
@@ -740,15 +835,20 @@ export function decide(input:BrainInput):Decision{
   const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
-    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
+    const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
+    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
+      {skip:id=>skipped(`loot:${id}`),...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
     const late=prepare&&!!round&&!!loot.goal&&round.phaseEndsTick-tick<=
       ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/botSpeed(input.terrain,input.walkScale)+LOOT_SPARE_SECONDS)*HZ;
-    if(loot.goal&&!late){
+    // Item 8: a crate or a weapon the bot gets no nearer to (behind a wall) is left out for LOOT_SKIP.
+    const there=!!loot.goal&&(loot.goal.stand?reached(loot.goal.at,CRATE_STAND,OPEN_REACH*.25):dist(at,loot.goal.at)<=.25);
+    if(there)delete memory.track;
+    if(loot.goal&&!late&&(there||!stalled(`loot:${loot.goal.id}`,loot.goal.at,0,LOOT_SKIP))){
       decision.mode='loot';
-      const close=loot.goal.stand?reached(loot.goal.at,CRATE_STAND,OPEN_REACH*.25):dist(at,loot.goal.at)<=.25;
+      const close=there;
       if(!close)want=go(loot.goal.at);
       decision.direction=close?{x:0,y:0}:norm(want);
       return finish(decision,input);
@@ -765,7 +865,7 @@ export function decide(input:BrainInput):Decision{
   }
   // Bancos: a bot with no objective task may go and hold an ATM (bankTask: in the intermission when the trip fits; in
   // the wave one bot per BANK_WAVE_PER, when the team is at least BANK_WAVE_MIN_UP).
-  const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
+  const bank=!task&&!input.partner&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';
     // Bicos: in the ring with the street clear and a short queue, it clocks in and stands still (the shift pays).
@@ -808,7 +908,7 @@ export function decide(input:BrainInput):Decision{
       const out=new Set<string>(),key=(p:Point)=>`${p.x},${p.y}`;
       let order:TowerOrder|'save'|undefined,spot:Point|undefined;
       for(let tries=0;tries<3;tries++){
-        order=pickTowerOrder(towers,p=>!out.has(key(p))&&trip(p,false));
+        order=pickTowerOrder(towers,p=>!out.has(key(p))&&!skipped(`build:${key(p)}`)&&trip(p,false));
         spot=order&&order!=='save'?orderSpot(towers,order):undefined;
         if(!spot||trip(spot,true))break;
         out.add(key(spot));order=undefined;spot=undefined;
@@ -819,7 +919,9 @@ export function decide(input:BrainInput):Decision{
         const w=spot?walk(spot,true):0;
         if(!spot||w===0||tick+w>=from-TOWER_EARLY){
           building=true;
-          if(w>0)site=spot;
+          // Item 8: an obra the bot gets no nearer to is left out (GOAL_SKIP); it was standing 8-32 s short of it.
+          if(w>0&&!stalled(`build:${key(spot!)}`,spot!,0,GOAL_SKIP,true))site=spot;
+          else if(w>0)building=false;
           else if(tick>=from&&tick-memory.lastForgeTick>=FORGE_GAP){decision.build=order;memory.lastForgeTick=tick;}
         }
       }else if(recipe&&(view.camp?.grana??0)-forgePrice(recipe,view.camp?.forge)<keep+towerReserve(towers).grana)
@@ -838,9 +940,14 @@ export function decide(input:BrainInput):Decision{
         decision.mode='forge';
         if(tick-memory.lastForgeTick>=FORGE_GAP){decision.forge=recipe;memory.lastForgeTick=tick;}
       }else{decision.mode='forge';want=go(home);}
+    }else if(input.partner){
+      // The partner keeps its person company (PARTNER_NEAR), wherever they gather or wait.
+      decision.mode='escort';
+      if(!reached(input.partner,PARTNER_NEAR,1))want=go(input.partner,1,'escortGoal');
     }else if(goHome){
       decision.mode='home';
       if(toHome>CAMP_RADIUS-2)want=go(home);
+      else if(view.objective?.car)want=carEase(view.objective.car,at);
     }else{
       const node=nodeFor(view.nodes??[],home,index,city&&(p=>botRouteDistance(city,p,home)));
       decision.mode='gather';
@@ -865,28 +972,33 @@ export function decide(input:BrainInput):Decision{
   // both guards held at their short leash 6 u from it while the roamer walked with a person).
   const last=city&&guard&&!boss&&!retreating&&view.enemies.length===1;
   // The person's walk, read from where they were at the last decision (kept up to date whether escorting or not).
-  const pace=escortPace(memory,input.escort,tick,terrain);
+  const pace=escortPace(memory,input.partner??input.escort,tick,terrain);
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
   // bots-na-nossa-velocidade: also with one walking out of it (away from home), so it leaves with them, not 6 u behind.
-  const escorting=!guard&&!!input.escort&&(dist(input.escort,home)>LEASH||!!pace&&outward(pace,input.escort,home));
+  // The partner (BrainInput.partner) walks with its person wherever they are, guard or not.
+  const escorting=!!input.partner||!guard&&!!input.escort&&(dist(input.escort,home)>LEASH||!!pace&&outward(pace,input.escort,home));
   // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
-  let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(view.enemies,at):undefined;
+  // Item 2: not one it got no nearer to (nor hurt) in GOAL_STALL (awake inside a structure: the roamers stood ~2 min).
+  const foes=view.enemies.filter(e=>!skipped(`foe:${e.id}`));
+  let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(foes,at):undefined;
   if(prey&&!way(prey,'huntGoal'))prey=undefined;
-  const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
-  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
+  if(prey&&stalled(`foe:${prey.id}`,prey,prey.hp))prey=undefined;
+  // Item 6: a swarm at the car: the healthiest bot fights from CAR_LURE_R off it, on its side, and pulls what it hits away.
+  const lure=!escorting&&!prey&&!focus?carLure(view,selfId,at,input.teamBots,input.nests):undefined;
+  const anchor=escorting?(input.partner??input.escort)!:prey?{x:prey.x,y:prey.y}:lure??home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
+  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:lure?CAR_LURE_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
   const b=city?way(anchor,chase)??toward(at,anchor):undefined;
   // How far out of the leash. City: once pulled back, all the way to HOME_SLACK inside the leash (no pacing on its edge
   // between planters), and nothing lures the bot out again on the way.
-  const out=dist(at,anchor)-leash,homing=!!b&&(out>0||memory.homing===true&&out>-HOME_SLACK);
+  // Item 7: home at the car stops CAR_STAND_OFF from its centre (a guard walked to 1.5 u and held the stick against it).
+  const atCar=!escorting&&!prey&&!lure&&!!view.objective?.car,slack=atCar?Math.max(0,Math.min(HOME_SLACK,leash-CAR_STAND_OFF)):HOME_SLACK;
+  const out=dist(at,anchor)-leash,homing=!!b&&(out>0||memory.homing===true&&out>-slack);
   if(b)memory.homing=homing;
-  const close=view.enemies.filter(e=>dist(e,at)<DANGER);
   // Skill: something close and it is ready (the room answers whether it went off).
   // D-051: no skill in the manual combat.
   if(input.combat!=='manual'&&close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
-  const fallen=rescueOf(view,selfId,at,terrain,input.walkScale);
-  const hpShare=me.maxHp>0?me.hp/me.maxHp:1;
   want=add(want,repel(view.enemies,at,hpShare<.4?2.2:1.4));
   // Hostile shots heading our way: sidestep.
   for(const s of view.projectiles){
@@ -899,11 +1011,7 @@ export function decide(input:BrainInput):Decision{
     want=add(want,{x:-s.vy/speed*side*1.2,y:s.vx/speed*side*1.2});
   }
   const walking=escorting&&!!pace&&!task;
-  if(fallen?.at&&close.length<4){
-    decision.mode='rescue';
-    if(!reached(fallen.at,.7,REVIVE_RADIUS-.8))want=add(want,go(fallen.at,2.2,'rescueGoal'));
-    else if(still())want={x:0,y:0};
-  }else if(walking){
+  if(walking){
     // Walk with the person at their speed (ESCORT_WALKING): the way to them out of the leash, their heading inside it.
     decision.mode='escort';
     const r=dist(at,anchor),w=b??toward(at,anchor);
@@ -912,17 +1020,21 @@ export function decide(input:BrainInput):Decision{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
     // Card boss-fim-onda-1: a boss at the car before them (bossFocus).
-    const siege=focus??nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
+    const siege=focus??(lure?undefined:nearest(foes.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at));
     // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
     // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the
     // bot out to the band's edge, where the lure stopped and the circle pulled it back in: pacing in place for seconds.
-    const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
+    const target=siege??nearestSeen(foes.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
     // City: not into a wall (a critter in sight past a building's corner had the bot push its edge for seconds).
     const chase=target&&toward(at,target,siege?1.2:.7),open=!chase||!city||walkable({x:at.x+chase.x/(siege?1.2:.7)*.8,y:at.y+chase.y/(siege?1.2:.7)*.8},terrain);
-    if(target&&open&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,chase!);
+    const stand=siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6;
+    if(target&&open&&(siege||roam)&&dist(target,at)>stand){
+      // Item 2: one it gets no nearer to (nor hurts) is left out (the boss at the car never is).
+      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp))want=add(want,chase!);
+    }
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
@@ -936,11 +1048,13 @@ export function decide(input:BrainInput):Decision{
     }else if(r>.5){const t={x:-(at.y-anchor.y)/r*memory.orbit,y:(at.x-anchor.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
     else want=add(want,{x:.3*memory.orbit,y:0});
   }
-  // Home pulls harder the farther out we are (not on the way to a fallen friend: it held the rescuer back).
-  if(decision.mode!=='rescue'&&!walking&&(out>0||homing)){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
+  // Home pulls harder the farther out we are (a rescue never gets here: it held the rescuer back).
+  if(!walking&&(out>0||homing)){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
+  // Item 7: touching the car's body, the stick no longer pushes into it (held against it, the bot read as stuck on the Uno).
+  if(atCar)want=offCar(view.objective!.car,at,want);
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
-  else if(decision.mode==='fight'&&!prey&&dist(at,home)>leash+2)decision.mode='home';
+  else if(decision.mode==='fight'&&!prey&&!lure&&dist(at,home)>leash+2)decision.mode='home';
   // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
   // the bot where it stands, instead of a full step one way and the other each think.
   decision.direction=city&&Math.hypot(want.x,want.y)<HOLD_BELOW?{x:0,y:0}:norm(want);
@@ -990,7 +1104,7 @@ const CAR_HELP_NEAR=4,CAR_RING=CAR_PUSH_REACH+.4;
  * The fallen friend this bot goes to: the nearest within RESCUE_REACH; else, up to RESCUE_FAR, one this bot is the
  * nearest standing bot to (ties: the lower id) and can reach in time (rescueFits).
  */
-function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undefined,walkScale?:number):{p:PlayerRunView;at:Point}|undefined{
+function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undefined,walkScale?:number,keep?:string):{p:PlayerRunView;at:Point}|undefined{
   const downs:{p:PlayerRunView;at:Point;d:number}[]=[];
   for(const p of view.players){
     if(p.id===selfId||!p.downed||p.eliminated||p.online===undefined)continue;
@@ -998,6 +1112,9 @@ function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undef
   }
   if(!downs.length)return undefined;
   downs.sort((a,b)=>a.d-b.d);
+  // Item 1: the friend this bot is on already, while it is still worth it (a second one falling nearer does not swap it).
+  const kept=keep!==undefined?downs.find(f=>f.p.id===keep):undefined;
+  if(kept&&(kept.d<RESCUE_REACH||kept.d<=RESCUE_FAR&&rescueFits(at,kept.at,kept.p.downed!.bleedOutTick-view.tick,terrain,walkScale)))return kept;
   if(downs[0].d<RESCUE_REACH)return downs[0];
   const bots:{id:string;at:Point}[]=[];
   for(const p of view.players){
@@ -1050,11 +1167,46 @@ function repel(enemies:readonly EnemyView[],at:Point,weight:number):Point{
   return {x,y};
 }
 
+/** Item 6: how far (u) the lure bot keeps from its point CAR_LURE_R off the car. */
+const CAR_LURE_LEASH=1.5;
+/**
+ * Item 6: where this bot fights when a swarm (more than CAR_SWARM critters within CAR_SWARM_R) is at the car, mode
+ * 'ninhos' with the objective: CAR_LURE_R off the car on its side, when it is the healthiest standing bot of the team
+ * (hp share over CAR_LURE_HP; ties by id). Undefined otherwise.
+ */
+export function carLure(view:RunView,selfId:string,at:Point,bots:readonly string[]|undefined,nests:boolean|undefined):Point|undefined{
+  const car=nests?view.objective?.car:undefined;
+  if(!car||!bots?.length||view.objective!.ended)return undefined;
+  let n=0;for(const e of view.enemies)if(e.hp>0&&dist(e,car)<CAR_SWARM_R)n++;
+  if(n<=CAR_SWARM)return undefined;
+  const share=(p:PlayerRunView)=>p.maxHp>0?p.hp/p.maxHp:0;
+  const pick=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&share(p)>CAR_LURE_HP)
+    .sort((a,b)=>share(b)-share(a)||(a.id<b.id?-1:a.id>b.id?1:0))[0];
+  if(pick?.id!==selfId)return undefined;
+  const d=dist(at,car),dir=d>.3?{x:(at.x-car.x)/d,y:(at.y-car.y)/d}:{x:1,y:0};
+  return {x:car.x+dir.x*CAR_LURE_R,y:car.y+dir.y*CAR_LURE_R};
+}
+/** Item 7: a push off the car's body when the bot is within CAR_STAND_OFF − .6 of its centre (nothing farther). */
+function carEase(car:Point,at:Point):Point{
+  const d=dist(at,car),edge=CAR_STAND_OFF-.6;
+  if(d>=edge)return {x:0,y:0};
+  const n=d>1e-6?{x:(at.x-car.x)/d,y:(at.y-car.y)/d}:{x:1,y:0},w=CAR_EASE*(edge-d)/edge;
+  return {x:n.x*w,y:n.y*w};
+}
+/** Item 7: within CAR_STAND_OFF − .6 of the car's centre, `want` less its part into the car. */
+function offCar(car:Point,at:Point,want:Point):Point{
+  const d=dist(at,car);
+  if(d>=CAR_STAND_OFF-.6||d<1e-6)return want;
+  const n={x:(car.x-at.x)/d,y:(car.y-at.y)/d},into=want.x*n.x+want.y*n.y;
+  return into>0?{x:want.x-n.x*into,y:want.y-n.y*into}:want;
+}
 /** Walls of trees and rocks: steer around them, and shake loose when the bot has not moved for a while. */
 function finish(decision:Decision,input:BrainInput):Decision{
   const {at,terrain,memory,view}=input,tick=view.tick;
   const moving=Math.hypot(decision.direction.x,decision.direction.y)>.15;
   if(!moving){decision.direction={x:0,y:0};memory.lastPos=at;memory.lastMoveTick=tick;memory.standTick??=tick;return decision;}
+  // Item 1: at a revive the unstick never takes the bot off it (the revive started over each time).
+  if(memory.reviveNear){memory.unstickUntil=-1;memory.lastPos=at;memory.lastMoveTick=tick;return holdHeading(decision,input);}
   if(tick<memory.unstickUntil&&memory.unstick){decision.direction=memory.unstick;decision.mode='unstick';return decision;}
   if(!memory.lastPos||dist(memory.lastPos,at)>.4){memory.lastPos=at;memory.lastMoveTick=tick;}
   else if(tick-memory.lastMoveTick>1.5*HZ){

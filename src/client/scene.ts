@@ -54,7 +54,7 @@ import {carSortDepth} from './render/chaveiro/car-sort.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
 import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
 import {talkSeed} from './render/chaveiro/lines.ts';
-import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
+import {TowerRenderer,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
 import {buildPlanFor,elevation,farPath,worldBase} from '../maps/index.ts';
@@ -64,8 +64,8 @@ import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
-import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
-import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
+import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos,stackedLabelOffsetCss} from './render/map-labels.ts';
+import {ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
@@ -95,6 +95,8 @@ const PUSH_MS=2*STEP*1000;
  * the city too: its art is scaled by CITY_VIEW_SCALE under a zoom 1/CITY_VIEW_SCALE times larger).
  */
 const ENEMY_TAP_RADIUS_PX=26;
+/** Share of the hero sprite's frame its body fills (the frame keeps room for the swing): the level-up ring's size. */
+const HERO_BODY_SHARE=.6;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
 /** The visual hook (data-sprite-* on the canvas, for tests and scripts) runs at most this often (ms): F3. */
@@ -434,17 +436,9 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
-    // The defenses' sheets (~11 MB, none standing at the opening; cena-nasce-rapido): in the city after the art around
-    // the hero (queueLateArt), a defense built before its sheet fetching it first (needTowerArt).
-    if(!(this.field instanceof CityTerrain))this.queueLateArt();
-  }
-  private lateArtQueued=false;
-  /** Imported defense sheets (torres) when the manifest has them, once; else procedural. */
-  private queueLateArt(){
-    if(this.lateArtQueued)return;
-    this.lateArtQueued=true;
-    queueTowerArt(this);
-    if(this.booted&&!this.load.isLoading())this.load.start();
+    // The defenses' sheets are not preloaded (none stands at the opening): every kind's was ~8 MB of download and
+    // ~134 MB of decoded textures on a phone (auditoria-desempenho-28-10). A kit's ghost or a defense asks for its own
+    // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).
   }
   private towerArtAsked=new Set<string>();
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
@@ -464,7 +458,7 @@ export class IslandScene extends Phaser.Scene {
     }
   }
   /**
-   * The late queue's own copy of a sheet (queueLateArt): already fetched or being added → it lands soon (true); still
+   * The loader's own copy of a sheet: already fetched or being added → it lands soon (true); still
    * waiting its turn → taken out of the loader (false), fetched now instead. Both adding one key made Phaser log
    * 'Texture key already in use' (art:torres:vigia-do-predio:idle, the T1 built before the late queue reached it).
    */
@@ -532,7 +526,8 @@ export class IslandScene extends Phaser.Scene {
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
     this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112*HERO_DRAW_SCALE,112*HERO_DRAW_SCALE));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
-    this.destination=this.add.graphics().setDepth(100000).setName('destino');
+    // Under the name fichas (auditoria-arte-mundo item 12): a tap on a caído's ficha put the mark over its name.
+    this.destination=this.add.graphics().setDepth(ALLY_DEPTH-1).setName('destino');
     this.artMarks=new SceneMarks(this,p=>this.project(p));
     // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
     const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
@@ -642,6 +637,7 @@ export class IslandScene extends Phaser.Scene {
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale,
         cell:()=>this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined});
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
+        heroAt:()=>this.actor.visible?{x:this.actor.x,y:this.actor.y}:undefined,heroHeight:()=>this.heroBodyPx(),localId:()=>this.hooks.net?.id,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
       const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;this.fallenLabel?.destroy();this.fallenLabel=undefined;this.fallenBy=undefined;};
@@ -651,7 +647,7 @@ export class IslandScene extends Phaser.Scene {
     this.booted=true;this.setQuality(this.quality);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);
     // The city's near art still on its way: the cover stays until it is in (updateCity calls ready then).
-    if(this.cityHeld)this.readyHeld=true;else{this.hooks.ready();this.queueLateArt();}
+    if(this.cityHeld)this.readyHeld=true;else this.hooks.ready();
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
   private viewport(){return {width:this.scale.width,height:this.scale.height};}
@@ -765,7 +761,6 @@ export class IslandScene extends Phaser.Scene {
       if(!(this.cityStream?.nearReady()&&this.city.groundSettled())&&performance.now()-this.heldSince<NEAR_ART_CAP_MS)return;
       this.cityHeld=false;this.releaseBackground();
       if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
-      this.queueLateArt();
     }
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
@@ -1072,7 +1067,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.you||!this.actor)return;
     const marker=this.route.length>0&&markerVisible(this.markerUntil,time);
     if(!marker&&this.markerUntil!==undefined)this.destination.clear();
-    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,100000);
+    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,ALLY_DEPTH-1);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -1412,12 +1407,20 @@ export class IslandScene extends Phaser.Scene {
     for(let i=0;i<allies.length;i++)set(figures[i+1],allies[i]);
     towers.update(time,delta,figures);
   }
-  /** A heavy impact shakes the screen (none with reduced motion): added after the camera's own centring. */
+  /**
+   * A heavy impact shakes the screen (none with reduced motion): added after the camera's own centring. The towers' shells
+   * and a hit that hurts the local hero (zueira-fx.ts, card levelup-estouro-e-tremida) add up.
+   */
   private shakeCamera(){
-    const towers=this.towers;if(!towers)return;
-    const cam=this.cameras.main,o=towers.shakeOffset(cam.zoom,this.shakeAt);
-    if(o.x||o.y){cam.scrollX+=o.x;cam.scrollY+=o.y;}
+    const cam=this.cameras.main,o=this.shakeAt;
+    for(const source of [this.towers,this.zueira]){
+      if(!source)continue;
+      source.shakeOffset(cam.zoom,o);
+      if(o.x||o.y){cam.scrollX+=o.x;cam.scrollY+=o.y;}
+    }
   }
+  /** The hero's body height on screen (scene px), to size the level-up burst around it. */
+  private heroBodyPx(){return this.actor.displayHeight*HERO_BODY_SHARE;}
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
   private enemyAt(p:Point){
     const feed=this.hooks.net?.feed;if(!feed)return undefined;
@@ -1522,6 +1525,8 @@ export class IslandScene extends Phaser.Scene {
     this.lastPhase=phase;
     // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
     const frozen=this.paused||!!net.run?.pause;
+    // The level-up burst plays when the pause opens too, if the levelup event did not come first (one per level).
+    if(net.run?.pause)this.zueira?.levelUp(net.run.pause.level);
     const axis=frozen?{x:0,y:0}:this.hooks.direction(),keys=frozen?{sx:0,sy:0}:this.keyAxis();
     const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
     const still=frozen||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
@@ -1654,7 +1659,7 @@ export class IslandScene extends Phaser.Scene {
       // Who got you (card nome-inimigo-rede-social, etapa 7): the profile's name in a second ficha right under it.
       if(this.fallenBy||this.fallenLabel){
         const by=this.fallenLabel??=new MapLabel(this,'');
-        by.setCity(this.cityMode).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
+        by.setCity(this.cityMode).setSolid(true).setInside(true).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+stackedLabelOffsetCss(ENEMY_NAME_H_CSS,true,this.cityMode)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
           .draw(this.cameras.main.zoom,selfDown&&!!this.fallenBy);
       }
     }

@@ -7,7 +7,7 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,hasBuild16,buildPlan,hasWork16,workPlan,type Movement128Plan} from './movement128.ts';
+import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,hasBuild16,buildPlan,hasWork16,workPlan,downedPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -140,7 +140,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite;downSince?:number}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -301,10 +301,12 @@ export class CharacterSprites {
    * `build` (card animacao-construir-6): the world direction to an obra going up next to the hero (buildFacing); a class
    * with a build16 standing still faces it and loops its build, the weapon put away. Walking drops it at once.
    * With `work` (card animacao-trabalhar-6: on a bico's shift, workFacing) the same with its work16 loop instead.
+   * `downed` (card queda-6-herois): the hero is caído (not out, not offline); a class with a downed16 plays its fall from
+   * the moment it went down and holds the last pose, lying, until lifted (the scene turns only the classes without one).
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number;pull?:boolean},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean}){
+    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean},downed=false){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
@@ -327,9 +329,11 @@ export class CharacterSprites {
     // Resting long enough, it dances (danca-no-jogo) once its sheet is in; meanwhile the rest goes on.
     const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&!pulling&&!building&&hurt===undefined,this.cues.get(sprite));
     const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
-    // A caído (card parado-respiracao-herois) is its rest, breathing, turned −90° by the scene: the legacy sheet it fell
-    // back to was older art (another outfit, a fishing rod in hand).
-    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):movementPlan(id,'idle',direction);
+    // A caído plays its fall (queda-6-herois) from the moment it went down, once; a class without one shows its rest,
+    // breathing, turned −90° by the scene (parado-respiracao-herois: the legacy sheet it fell back to was older art).
+    if(downed&&!alive)state.downSince??=this.scene.time.now;else state.downSince=undefined;
+    const fall=seen&&state.downSince!==undefined?downedPlan(id,direction):undefined;
+    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):fall??movementPlan(id,'idle',direction);
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -348,7 +352,7 @@ export class CharacterSprites {
         // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move; the pull too.
         const run=(motion==='walk'||pushing||pulling)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
-          dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+          fall?swingFrame(fall,(this.scene.time.now-state.downSince!)/fall.durationMs):dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();

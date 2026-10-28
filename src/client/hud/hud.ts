@@ -188,8 +188,10 @@ export class RunHud {
   private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
-  /** The level-up burst's hold on the pause's offer (card levelup-estouro-e-tremida): set while it runs. */
+  /** The level-up burst's hold on the pause's screen (card levelup-estouro-e-tremida): set while it runs. */
   private burstHold?:ReturnType<typeof setTimeout>;
+  /** What the burst holds back: the pause's veil and title (hud/pausa.ts) and the offer. */
+  private pauseScreen:readonly HTMLElement[]=[];
   private readonly forgeEl:HTMLElement;
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
@@ -266,6 +268,7 @@ export class RunHud {
       // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
       guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],
       useful:()=>this.zones().useful});
+    this.pauseScreen=[pausa.dim,pausa.el,offer.el];
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
@@ -324,18 +327,19 @@ export class RunHud {
     if(this.last)this.update(this.last);
   }
   /**
-   * A pause just opened: the offer stays invisible (and untouchable) for LEVELUP_BURST_MS while the scene plays the
-   * level-up burst on the hero (render/zueira-fx.ts), then shows. The room's deadline is long (D-050), 0.4 s of it is fine.
+   * A pause just opened: its screen (the veil that darkens the play, the title, the offer) stays invisible (and the offer
+   * untouchable) for LEVELUP_BURST_MS while the scene plays the level-up burst on the hero (render/zueira-fx.ts), bright,
+   * then shows. The room's deadline is long (D-050), 0.4 s of it is fine.
    */
   private holdOffer(){
     clearTimeout(this.burstHold);
-    this.offerEl.style.visibility='hidden';
+    for(const el of this.pauseScreen)el.style.visibility='hidden';
     this.burstHold=setTimeout(()=>this.releaseOffer(),LEVELUP_BURST_MS);
   }
   private releaseOffer(){
     if(this.burstHold===undefined)return;
     clearTimeout(this.burstHold);this.burstHold=undefined;
-    this.offerEl.style.removeProperty('visibility');
+    for(const el of this.pauseScreen)el.style.removeProperty('visibility');
   }
   /** The offer waits for the level-up burst (tests, dev probe). */
   get offerHeld(){return this.burstHold!==undefined;}

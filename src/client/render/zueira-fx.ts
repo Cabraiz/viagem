@@ -149,15 +149,15 @@ export class ZueiraFx {
     this.last.burst=!!f&&f.ring.alpha>0;
     if(!f||!feet||f.ring.alpha<=0){if(b&&now-b.start>1000)this.burst=undefined;if(g?.visible)g.clear().setVisible(false);return;}
     const gfx=g??(this.burstGfx=this.scene.add.graphics().setDepth(LEVELUP_DEPTH));
-    // Sized by the hero on screen, centred on its body (half its height above the feet).
-    const h=Math.max(24,this.options.heroHeight?.()??60),cx=feet.x,cy=feet.y-h*.5;
+    // Sized by the hero on screen, centred on its chest (three quarters of its body above the feet).
+    const h=Math.max(24,this.options.heroHeight?.()??60),cx=feet.x,cy=feet.y-h*.75;
     const {amarelo,papel,breu}=this.colors();
     gfx.clear().setVisible(true);
-    const r=f.ring.radius*h,w=Math.max(2,f.ring.width*h);
+    const r=f.ring.radius*h,w=Math.max(3,f.ring.width*h);
     gfx.lineStyle(w+3,breu,f.ring.alpha*.6).strokeCircle(cx,cy,r);
     gfx.lineStyle(w,amarelo,f.ring.alpha).strokeCircle(cx,cy,r);
     gfx.lineStyle(Math.max(1,w*.35),papel,f.ring.alpha).strokeCircle(cx,cy,r);
-    const size=Math.max(3,h*.07);
+    const size=Math.max(5,h*.22);
     for(const c of f.confetti){
       const x=cx+c.x*h,y=cy+c.y*h,cos=Math.cos(c.rotation)*size,sin=Math.sin(c.rotation)*size*.5;
       gfx.fillStyle(c.color,f.confettiAlpha).fillTriangle(x-cos,y-sin,x+cos,y+sin,x-sin,y+cos*.6);

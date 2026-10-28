@@ -19,9 +19,9 @@ export const HURT_SHAKE_SHARE=.1;
 export const LEVELUP_DEPTH=96520;
 
 /** Ring radius (× the hero's height) at the start and the end of the burst, and the still ring's under reduced motion. */
-export const RING_FROM=.35;
-export const RING_TO=1.05;
-export const RING_STILL=.7;
+export const RING_FROM=.5;
+export const RING_TO=2.1;
+export const RING_STILL=1.3;
 /** Confetti pieces popped per burst. */
 export const CONFETTI_N=18;
 
@@ -62,15 +62,15 @@ const hash=(i:number)=>{const s=Math.sin(i*12.9898+78.233)*43758.5453;return s-M
 export function burstFrame(ms:number,reduced:boolean,colors:readonly number[]):BurstFrame{
   const none:BurstFrame={ring:{radius:0,width:0,alpha:0},confetti:[],confettiAlpha:0};
   if(!(ms>=0)||ms>=LEVELUP_BURST_MS)return none;
-  if(reduced)return {ring:{radius:RING_STILL,width:.06,alpha:.9},confetti:[],confettiAlpha:0};
+  if(reduced)return {ring:{radius:RING_STILL,width:.1,alpha:.9},confetti:[],confettiAlpha:0};
   const t=ms/LEVELUP_BURST_MS,ease=1-(1-t)*(1-t);
-  const ring={radius:RING_FROM+(RING_TO-RING_FROM)*ease,width:.09*(1-.6*t),alpha:1-t*t};
+  const ring={radius:RING_FROM+(RING_TO-RING_FROM)*ease,width:.14*(1-.6*t),alpha:1-t*t};
   const confetti:ConfettiPiece[]=[];
   for(let i=0;i<CONFETTI_N;i++){
     // Fanned over the upper half-turn and a bit below, each with its own speed and spin.
     const angle=-Math.PI/2+(i/(CONFETTI_N-1)-.5)*Math.PI*1.5+(hash(i)-.5)*.3,speed=1+hash(i+50)*.9;
     const s=t*speed;
-    confetti.push({x:Math.cos(angle)*s*1.1,y:Math.sin(angle)*s*1.1+1.6*t*t,rotation:(hash(i+100)-.5)*12*t,color:colors[i%colors.length]??0xffffff});
+    confetti.push({x:Math.cos(angle)*s*2.6,y:Math.sin(angle)*s*2.6+2.4*t*t,rotation:(hash(i+100)-.5)*12*t,color:colors[i%colors.length]??0xffffff});
   }
   return {ring,confetti,confettiAlpha:t<2/3?1:3*(1-t)};
 }

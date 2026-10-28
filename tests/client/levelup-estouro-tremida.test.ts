@@ -90,9 +90,11 @@ test('wiring: the scene adds the hurt shake after centring and starts the burst 
   assert.match(scene,/localId:\(\)=>this\.hooks\.net\?\.id/);
 });
 
-test('wiring: the HUD holds the pause\'s offer for the burst, and lets go when the pause ends',()=>{
+test('wiring: the HUD holds the pause\'s screen (veil, title, offer) for the burst, and lets go when the pause ends',()=>{
   const hud=read('src/client/hud/hud.ts');
   assert.match(hud,/if\(!was&&pause\)this\.holdOffer\(\);else if\(!pause\)this\.releaseOffer\(\);/);
   assert.match(hud,/setTimeout\(\(\)=>this\.releaseOffer\(\),LEVELUP_BURST_MS\)/);
-  assert.match(hud,/this\.offerEl\.style\.visibility='hidden'/);
+  assert.match(hud,/this\.pauseScreen=\[pausa\.dim,pausa\.el,offer\.el\]/);
+  assert.match(hud,/for\(const el of this\.pauseScreen\)el\.style\.visibility='hidden'/);
+  assert.match(hud,/for\(const el of this\.pauseScreen\)el\.style\.removeProperty\('visibility'\)/);
 });

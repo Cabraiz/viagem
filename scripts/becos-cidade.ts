@@ -593,7 +593,7 @@ export function alargarParaUno(data:CityAssetData):{cells:number[];widened:numbe
   // The 1×1 rock pieces the cuts left beside the old ones: regrouped into big pieces together (rochas-grandes).
   if(data.decor&&opened.length)data.decor=bigCliffRocks(data.decor,BIG_ROCKS,opened.length);
   a=decode();
-  const moved=moveLootToUno(data,a);
+  const moved=moveLootToUno(data,a,decode);
   a=decode();
   return {cells:opened,widened,moved,refused,rubble,before,after:unoLoot(a).reached,total:a.loot.length};
 }
@@ -602,26 +602,33 @@ const WIDEN_KINDS=new Set(['wall','rubble','edge','cliff','']);
 
 /**
  * The loot points the Uno still misses go to the nearest spot (≤ LOOT_MOVE_MAX u) that it reaches, where the crate has
- * open ground around it (a hero opens it from any side) and keeps KEY_KEEP from the start and the spawns and LOOT_NEAR/2
- * from the other loot. Returns how many moved.
+ * open ground around it (a hero opens it from any side) and keeps KEY_KEEP from the start and the spawns. First pass:
+ * only spots LOOT_NEAR from the other loot (the spread the Poisson draw gave). Second pass: LOOT_NEAR/2, kept only while
+ * ≥ LOOT_WIDE_KEEP of the crates stay LOOT_NEAR from all others and no dead end loses its crate (caixas-espalhadas,
+ * mapa-becos). Returns how many moved.
  */
-export const LOOT_MOVE_MAX=12;
-function moveLootToUno(data:CityAssetData,a:CityAsset):number{
+export const LOOT_MOVE_MAX=20;
+/** Share of the loot points that keeps LOOT_NEAR from every other (caixas-espalhadas wants .9; one point of margin). */
+const LOOT_WIDE_KEEP=.9;
+function moveLootToUno(data:CityAssetData,a:CityAsset,decode:()=>CityAsset):number{
   const f=unoField(a),P=a.points,keys=[P.inicio,P.spawnN,P.spawnS,P.spawnL,P.spawnO],r3=(v:number)=>Math.round(v*1000)/1000;
   const loot=[...data.loot];let moved=0;
   const g=cityGraph(a),m=g.m,u=g.u,roomy=(x:number,y:number)=>{const t=Math.floor(x/u)+Math.floor(y/u)*m;return [0,1,-1,m,-m].every(k=>g.city[t+k]);};
-  for(let i=0;i<loot.length;i++){const p=loot[i];if(f.near(p))continue;
-    let best:CityPoint|undefined,bd=Infinity;
+  const spot=(i:number,gap:number)=>{const p=loot[i];let best:CityPoint|undefined,bd=Infinity;
     const R=Math.ceil(LOOT_MOVE_MAX/PROBE);
     for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
       const gx=Math.floor(p.x/PROBE)+dx,gy=Math.floor(p.y/PROBE)+dy;if(gx<0||gy<0||gx>=f.GW||gy>=f.GH||!f.reach[gx+gy*f.GW])continue;
       const q={x:r3((gx+.5)*PROBE),y:r3((gy+.5)*PROBE)},d=Math.hypot(q.x-p.x,q.y-p.y);
       if(d>=bd||d>LOOT_MOVE_MAX||!roomy(q.x,q.y))continue;
       if(Math.hypot(q.x-P.praca.x,q.y-P.praca.y)<PLAZA_KEEP||keys.some(k=>Math.hypot(q.x-k.x,q.y-k.y)<KEY_KEEP))continue;
-      if(loot.some((o,j)=>j!==i&&Math.hypot(o.x-q.x,o.y-q.y)<LOOT_NEAR/2))continue;
+      if(loot.some((o,j)=>j!==i&&Math.hypot(o.x-q.x,o.y-q.y)<gap))continue;
       best=q;bd=d;}
-    if(best){loot[i]=best;moved++;}
-  }
+    return best;};
+  const missed=()=>loot.map((p,i)=>({p,i})).filter(({p})=>!f.near(p)).map(({i})=>i);
+  const wide=()=>loot.filter(p=>loot.every(q=>q===p||Math.hypot(p.x-q.x,p.y-q.y)>=LOOT_NEAR)).length;
+  const emptyEnds=()=>{data.loot=[...loot];return resumo(decode()).becosSemMotivo;},ends=emptyEnds();
+  for(const gap of [LOOT_NEAR,LOOT_NEAR/2])for(const i of missed()){const q=spot(i,gap);if(!q)continue;const was=loot[i];loot[i]=q;
+    if((gap===LOOT_NEAR||wide()>=Math.ceil(loot.length*LOOT_WIDE_KEEP)+1)&&emptyEnds()<=ends)moved++;else loot[i]=was;}
   data.loot=loot;
   return moved;
 }

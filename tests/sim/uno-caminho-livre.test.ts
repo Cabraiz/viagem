@@ -9,7 +9,9 @@
  * NEW-20261027-ORQ-uno-anda-mapa-todo (the user, 27/10: "é para podermos andar com o carro pelo jogo todo"):
  *  3. no square within TRALHA_POINT_KEEP of the plaza, its mouths or a spawn;
  *  4. the Uno reaches every one of them (none left out on the bare map) and, per match (tralha + the living nests' keep
- *     out), gets within 3 u of ≥ 94 of the 104 loot points.
+ *     out), gets within 3 u of ≥ 90 of the 104 loot points: 90–92 on this .75 u grid, 93–95 (mean 93.8) on the
+ *     .5 u heatmap of the evidence (ORQ 28/10, option A: the crates keep their 11 u spread
+ *     (caixas-espalhadas) and their dead ends (mapa-becos); 4 of those left out sit in shelters, closed to the car).
  * D-031: results only.
  */
 import test from 'node:test';
@@ -138,14 +140,15 @@ test('no square of tralha at the plaza, its mouths or a spawn',()=>{
       assert.ok(d>=TRALHA_POINT_KEEP,`seed ${seed}: ${p.id} ${d.toFixed(1)} u from ${name}`);}}
 });
 
-test('the Uno gets within 3 u of ≥ 94 of the 104 loot points, every match (tralha + the living nests)',()=>{
+test('the Uno gets within 3 u of ≥ 90 of the 104 loot points, every match (tralha + the living nests)',t=>{
   const near=3/CELL;
   for(const [seed,{tralha,nests}] of matches){
     const discs=[...tralha.flatMap(discsOf),...nests.map(n=>({x:n.x,y:n.y,r:CAR_NEST_KEEP_OUT-CAR_RADIUS}))];
     const grid=carGrid(discs,0),field=new FlowField(grid,[CAR]);
     const reached=(p:Point)=>{for(let dy=-near;dy<=near;dy++)for(let dx=-near;dx<=near;dx++)if(field.cellCost(Math.floor(p.x/CELL)+dx,Math.floor(p.y/CELL)+dy)!==UNREACHABLE)return true;return false;};
     const out=city.asset.loot.filter(p=>!reached(p));
-    assert.ok(city.asset.loot.length-out.length>=94,`seed ${seed}: ${city.asset.loot.length-out.length}/${city.asset.loot.length}; out: ${out.map(p=>`(${p.x.toFixed(0)},${p.y.toFixed(0)})`).join(' ')}`);
+    t.diagnostic(`seed ${seed}: ${city.asset.loot.length-out.length}`);
+    assert.ok(city.asset.loot.length-out.length>=90,`seed ${seed}: ${city.asset.loot.length-out.length}/${city.asset.loot.length}; out: ${out.map(p=>`(${p.x.toFixed(0)},${p.y.toFixed(0)})`).join(' ')}`);
     for(const [name,p] of Object.entries(ENTRANCES))assert.ok(reached(p),`seed ${seed}: the Uno never gets near spawn ${name}`);
   }
 });

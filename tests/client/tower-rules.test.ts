@@ -212,7 +212,7 @@ test('6b. TowerFeed: volleys from an aim change and, at the catalog cadence, fro
   assert.equal(at(100+7*cd,0,east,{startTick:100+7*cd,readyTick:100+9*cd}),false,'in obra: no volley');
   // Aim steps under half a wire step are the same aim; the wrap is handled.
   assert.equal(aimMoved(.5,.5+.4/255),false);assert.equal(aimMoved(.5,.5+.6/255),true);assert.equal(aimMoved(.0005,.9995),false,'across the wrap');
-  // The rule itself: the arame's aura fires on any enemy in reach; a radar never (no aim).
+  // The rule itself: the arame's aura fires on any enemy in reach; a radar (it pulses since torres-animacao-idle-tiro) only along an aim.
   assert.equal(volleyNow('arame-e-sirene','pronta',.5,false,cd*2,0,0,{n:1,xs:[0],ys:[2],air:[0]}),true);
   assert.equal(volleyNow('posto-de-radar','pronta',undefined,false,1e6,0,0,east),false);
   assert.equal(volleyNow(kind,'danificada',0,false,cd,10,20,east),true,"a damaged defense still fires (the sim's canFire)");

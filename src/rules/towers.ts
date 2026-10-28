@@ -134,7 +134,9 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   'antiaerea-quadrupla':def({id:'antiaerea-quadrupla',name:'Antiaérea Quádrupla',label:'C4',tier:4,branch:'C',from:'arame-e-sirene',footprint:[2,2],hp:700,
     range:9,cooldown:s(.3),damage:12,shots:4,hits:'air'}),
   'posto-de-radar':def({id:'posto-de-radar',name:'Posto de Radar',label:'C5',tier:5,branch:'C',from:'antiaerea-quadrupla',footprint:[2,2],hp:800,
-    range:0,cooldown:s(1),damage:0,target:'none',radar:{reach:9,bonus:.3}}),
+    // torres-animacao-idle-tiro (the user, 25/10: "Radar ganha ataque"): it keeps the range bonus and sends a pulse at the
+    // densest group (ground and air), control like the rest of branch C: ~12 dps to each enemy in it (C4: 160, air only).
+    range:8,cooldown:s(1.5),damage:18,area:1.6,target:'cluster',slow:s(1),radar:{reach:9,bonus:.3}}),
 });
 export const DEFENSE_IDS=Object.keys(DEFENSES) as DefenseId[];
 /** D-052, free build: what {t:'build'} may name (contract/build.ts): a tower (the root) or a wall piece. */

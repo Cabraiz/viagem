@@ -50,7 +50,7 @@
  * `pausa=escolhendo|esperando|ultimo` (D-050, card NEW-20261014-E4-levelup-pausa-hud): the team's level-up pause, 4 players
  * unless `players=`, the room's fake pause (contract RunPause) sent like the room's, at each whole second:
  * escolhendo: the pause's offer window open by itself (offer.ts data-mode=pause, no clock of its own), 10 s of 12, Zé
- * already picked, you, Tia and Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha
+ * already picked, you, Tia and Bruninha thinking; esperando: you picked (the default card, clicked once the scene is in), 7 s, Tia and Bruninha
  * missing; ultimo: 3 s (urgent), only you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
@@ -81,7 +81,7 @@ const PAUSAS=['escolhendo','esperando','ultimo'] as const;
 const pausa=(PAUSAS as readonly string[]).includes(params.get('pausa')??'')?params.get('pausa') as typeof PAUSAS[number]:undefined;
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||(pausa?4:1)));
 // The pause's base scene: the combat offer open (escolhendo, ultimo), or a wave with nothing to pick (esperando).
-const requested=(params.get('state')??(pausa?(pausa==='esperando'?'wave':'offer-open'):null)) as HudScenario|null;
+const requested=(params.get('state')??(pausa?'offer-open':null)) as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';
 /** Round 1 of the city (card cidade-08): a wave scene with no banner, trimmed to round 1 in the city block below. */
 const tutorial=cidade&&(requested as string|null)==='tutorial';
@@ -363,6 +363,8 @@ function load(next:HudScenario){
   hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'||scenario==='offer-sem-xp'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
   // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
+  // esperando: drawn only once your card is picked (below), so the print shows the waiting window with it.
+  if(pausa==='esperando'&&!esperaPicked)document.body.dataset.hudReady='0';
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
@@ -371,9 +373,17 @@ function load(next:HudScenario){
   hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
+let esperaPicked=false;
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
-void artReady().then(ok=>{if(ok)load(scenario);});
+// `pausa=esperando`: then you pick the default card (an assistive click, past the offer's tap guard) and wait for the rest.
+void artReady().then(ok=>{
+  if(ok)load(scenario);
+  if(pausa==='esperando')setTimeout(()=>{
+    (hud.el.querySelector('.rh-offer .rh-card-default') as HTMLButtonElement|null)?.click();
+    esperaPicked=true;requestAnimationFrame(()=>{document.body.dataset.hudReady='1';});
+  },450);
+});
 
 /**
  * `pix=balao|recebido|enviado` (carteira-e-pix, hud/pix.ts; players ≥ 2): the PIX balloon open on Tia Cleide's portrait

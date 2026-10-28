@@ -164,6 +164,18 @@ export function pauseSpot(input:{viewport:{width:number;height:number};box:{widt
   const spot=places.find(fits)??{x:first.x,y:Math.max(minY,first.y)};
   return {x:Math.round(spot.x),y:Math.round(spot.y)};
 }
+/**
+ * Over the px39 offer (offer-centro.css: a veil over the whole screen, z 30) the title box rides on top of it (z 31,
+ * `data-na-oferta`): centred over the offer's title plaque (`head`) and PAUSE_GAP above it; the offer keeps that room
+ * free at its top in a pause (--pausa-reserva). With no room above the plaque, the screen's top edge (never off screen).
+ * Card oferta-pausa-hud-consertos (auditoria-ui-menus-28-10 item 1: the clock and who is missing were under the veil).
+ */
+export function pauseOverOffer(input:{viewport:{width:number;height:number};box:{width:number;height:number};head:Rect;top?:number}):{x:number;y:number}{
+  const {viewport,box,head,top=0}=input,g=PAUSE_GAP;
+  const x=Math.max(g,Math.min(viewport.width-box.width-g,head.x+head.width/2-box.width/2));
+  const y=Math.max(top+g/2,head.y-g-box.height);
+  return {x:Math.round(x),y:Math.round(y)};
+}
 /** The title's box at a spot crosses the offer (the layout test, and a guard for the sandbox). */
 export const spotCrosses=(spot:{x:number;y:number},box:{width:number;height:number},other:Rect)=>crosses({...spot,...box},other);
 
@@ -221,7 +233,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
     // Over: everything hides, and the live region empties (no stale "Falta você!" for the virtual cursor).
-    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';placed='';placedAt=-Infinity;bar='';secs=-1;live.textContent='';}last=undefined;return;}
+    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;delete box.dataset.naOferta;spot='';placed='';placedAt=-Infinity;bar='';secs=-1;live.textContent='';}last=undefined;return;}
     if(!shown){shown=true;dim.hidden=false;box.hidden=false;}
     // The text node changes in place (dom-put putTextData): a new node each second made Chrome check the page's :has()
     // rules up to <html> and restyle the whole document, which the place's read then paid for (BUG-20261025-ORQ-levelup-pausa-mede-1s).
@@ -241,7 +253,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
    * the boxes made the browser recalculate style and layout there (50–130 ms on a 4× phone, card levelup-pausa-mede-1s).
    */
   const place=(view:PauseView)=>{
-    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${screen.width}x${screen.height}`;
+    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
     const t=now();
     if(key===placed&&Math.abs(t-placedAt)<PAUSE_PLACE_MS)return;
     placed=key;placedAt=t;
@@ -252,10 +264,19 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const measure=()=>{
     const screen=viewportSize();
     const rect=(node:Element|null)=>{if(!node||(node as HTMLElement).hidden)return undefined;const r=node.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
+    const offer=rect(host.offer),head=offer&&host.offer.classList.contains('rh-ofc')?rect(host.offer.querySelector('.rh-offer-head')):undefined;
+    // The px39 offer covers the screen: the box goes over it, above the title plaque (pauseOverOffer).
+    const over=!!head;
+    if(over!==('naOferta' in box.dataset)){if(over)box.dataset.naOferta='';else delete box.dataset.naOferta;}
+    if(head){
+      const at=pauseOverOffer({viewport:screen,box:{width:box.offsetWidth,height:box.offsetHeight},head});
+      const where=`o${at.x},${at.y}`;if(where===spot)return;spot=where;
+      box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;return;
+    }
     const top=rect(host.top),minimap=rect(host.root.querySelector('.rh-minimap'));
     const rows=[...host.root.querySelectorAll('.rh-stack>:not([hidden])')].map(rect).filter((r):r is Rect=>!!r&&r.height>0);
     const at=pauseSpot({viewport:{width:screen.width,height:screen.height},box:{width:box.offsetWidth,height:box.offsetHeight},
-      top:top?top.y+top.height:0,offer:rect(host.offer),avoid:[...(minimap?[minimap]:[]),...rows]});
+      top:top?top.y+top.height:0,offer,avoid:[...(minimap?[minimap]:[]),...rows]});
     const where=`${at.x},${at.y}`;if(where===spot)return;spot=where;
     box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;
   };

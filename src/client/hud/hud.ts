@@ -55,6 +55,7 @@ import {createCenaPart} from './chefao-cena.ts';
 import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
+import {LEVELUP_BURST_MS} from '../render/levelup-fx-rules.ts';
 import './perfis.css';
 import {createProfiles,type Match,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
@@ -187,6 +188,8 @@ export class RunHud {
   private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
+  /** The level-up burst's hold on the pause's offer (card levelup-estouro-e-tremida): set while it runs. */
+  private burstHold?:ReturnType<typeof setTimeout>;
   private readonly forgeEl:HTMLElement;
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
@@ -317,8 +320,25 @@ export class RunHud {
       // D-052: a reroll changes only the counters.
       &&JSON.stringify([was.skips,was.rerolls])===JSON.stringify([pause.skips,pause.rerolls])))return;
     if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
+    if(!was&&pause)this.holdOffer();else if(!pause)this.releaseOffer();
     if(this.last)this.update(this.last);
   }
+  /**
+   * A pause just opened: the offer stays invisible (and untouchable) for LEVELUP_BURST_MS while the scene plays the
+   * level-up burst on the hero (render/zueira-fx.ts), then shows. The room's deadline is long (D-050), 0.4 s of it is fine.
+   */
+  private holdOffer(){
+    clearTimeout(this.burstHold);
+    this.offerEl.style.visibility='hidden';
+    this.burstHold=setTimeout(()=>this.releaseOffer(),LEVELUP_BURST_MS);
+  }
+  private releaseOffer(){
+    if(this.burstHold===undefined)return;
+    clearTimeout(this.burstHold);this.burstHold=undefined;
+    this.offerEl.style.removeProperty('visibility');
+  }
+  /** The offer waits for the level-up burst (tests, dev probe). */
+  get offerHeld(){return this.burstHold!==undefined;}
 
   /** Minuto de Minerva: the room's RunState.minervaAteTick (combat only), or undefined; the clock reads it on each view. */
   setMinerva(untilTick?:number){
@@ -702,6 +722,7 @@ export class RunHud {
     this.fear.frame(frame,far);
   }
   destroy(){
+    clearTimeout(this.burstHold);
     this.fear.destroy();
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();

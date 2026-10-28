@@ -151,7 +151,9 @@ export const PACK12:readonly Pack12Weapon[]=[
  * Fatia A1 (E5): the Pack weapons with world art on the patterns the sim already has (the nuvem-de-incenso waits for
  * its cloud art, fatia B: the Pack's defumador art is the tome's aura).
  */
-export const A1_PLAYABLE:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa',
-  'vela-esoterica','tijolo-baiano','taro-vencido'];
+export const A1_PLAYABLE:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','buscape','traque',
+  'tijolo-baiano','taro-vencido'];
+// The three rings (pandeiro, figa, vela-esoterica: type 'orbita') left the game with the chinelo (sem-arma-girando-no-chao,
+// the user 28/10: nothing spins around the hero); their rows stay above, out of the catalog, the inventory and the crates.
 /** The Pack weapons the sim runs: in the catalog, in the inventory and in the crates. */
 export const PACK12_PLAYABLE:ReadonlySet<string>=new Set([...A1_PLAYABLE,...A2_PLAYABLE]);

@@ -142,7 +142,7 @@ const bots=Math.max(0,Math.min(5,Number(params.get('bots'))||0));
 const ties=params.get('premios')==='empates';
 function tied<T extends {players:{stats?:unknown;weapons:unknown;passives:unknown}[]}>(v:T):T{
   if(!ties)return v;
-  const builds=[['guarda-chuva','cartao'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
+  const builds=[['guarda-chuva','cartao'],['boleto','tenis'],['boleto','megafone'],['boleto','audio'],['boleto','cartao'],['boleto']];
   return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:builds[i%6][0],level:i===5?2:1}],passives:builds[i%6].slice(1).map(id=>({id,level:1})),
     stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,chests:0,evolves:0}}))};
 }
@@ -285,7 +285,7 @@ function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:numbe
   if(command.t==='equip')hand=command.slot;
   else if(command.t==='use'){const it=weapons[command.slot];if(it&&it.level>1)weapons[command.slot]={...it,level:it.level-1};else{weapons.splice(command.slot,1);if(hand>command.slot)hand--;}}
   else if(command.t==='drop'){weapons.splice(command.slot,1);if(hand>=command.slot)hand=Math.max(0,hand-1);}
-  else weapons[hand]={id:'chinelo-lendario',level:5};
+  else weapons[hand]={id:'audio-lendario',level:5};
   return {...p,weapons,hand};
 }
 let eventId=0;
@@ -328,7 +328,7 @@ function load(next:HudScenario){
   // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").
   if(inv){
     view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1}:p)};
-    if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'chinelo-lendario'}];
+    if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'audio-lendario'}];
   }
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
   PERFIS_SANDBOX.forEach((kind,i)=>hud.profiles.add({kind,distance:PERFIS_DIST[i]??10,tilt:PERFIS_TILT[i]??0}));

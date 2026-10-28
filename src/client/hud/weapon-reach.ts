@@ -11,14 +11,14 @@ export interface ReachPlayer {weapons:readonly Owned[];hand?:number}
 
 /** manualReach (u) by weapon id, one entry per level (the last one repeats past it). */
 export const WEAPON_REACH:Readonly<Record<string,readonly number[]>>={
-  chinelo:[1.95,1.95,2.2,2.2,2.2,2.32,2.32,2.44],boleto:[7,7,7.5,7.5,8,8,8.5,9],cafe:[6,6,6.5,6.5,7,7,7.5,8],
+  boleto:[7,7,7.5,7.5,8,8,8.5,9],cafe:[6,6,6.5,6.5,7,7,7.5,8],
   'guarda-chuva':[.9,1,1,1.1,1.2,1.3,1.4,1.6],pombo:[8,8,8.5,8.5,9,9,9.5,10],audio:[2,2.3,2.3,2.5,2.7,3,3.2,3.5],
-  'chinelo-evo':[2.68],'boleto-evo':[9],'cafe-evo':[2.2],
+  'boleto-evo':[9],'cafe-evo':[2.2],
   faca:[2.6],pistola:[7],escopeta:[4],submetralhadora:[6],rifle:[11],macarico:[3.5],rojao:[9],
-  'chinelo-lendario':[2.68],'boleto-lendario':[9],'cafe-lendario':[2.2],'guarda-chuva-lendario':[1.6],'pombo-lendario':[10],'audio-lendario':[3.5],
+  'boleto-lendario':[9],'cafe-lendario':[2.2],'guarda-chuva-lendario':[1.6],'pombo-lendario':[10],'audio-lendario':[3.5],
   // Pack 12.
-  baladeira:[8],espeto:[7],sacole:[7],'tampa-voadora':[5.4],pandeiro:[1.952],'bola-murcha':[7],traque:[6],buscape:[9],figa:[1.464],
-  'vela-esoterica':[2.44],'tijolo-baiano':[11],'taro-vencido':[6],'panela-de-pressao':[3],'carro-de-som':[8],
+  baladeira:[8],espeto:[7],sacole:[7],'tampa-voadora':[5.4],'bola-murcha':[7],traque:[6],buscape:[9],
+  'tijolo-baiano':[11],'taro-vencido':[6],'panela-de-pressao':[3],'carro-de-som':[8],
 };
 
 /**
@@ -27,14 +27,14 @@ export const WEAPON_REACH:Readonly<Record<string,readonly number[]>>={
  * (net/attack-predict.ts) does not draw a press inside it; a test keeps it equal (tests/client/attack-predict.test.ts).
  */
 export const WEAPON_COOLDOWN_TICKS:Readonly<Record<string,readonly number[]>>={
-  chinelo:[110,110,110,110,120,114,114,120],boleto:[26,26,26,26,24,24,22],cafe:[100,110,110,110,114,114,110],
+  boleto:[26,26,26,26,24,24,22],cafe:[100,110,110,110,114,114,110],
   'guarda-chuva':[110,110,110,114,114,118,114,120],pombo:[32,32,32,32,30],audio:[40,40,40,40,38,38,36],
-  'chinelo-evo':[110],'boleto-evo':[18],'cafe-evo':[90],faca:[10,10,9],pistola:[12,11,11,10],escopeta:[22,21,20,19],
+  'boleto-evo':[18],'cafe-evo':[90],faca:[10,10,9],pistola:[12,11,11,10],escopeta:[22,21,20,19],
   submetralhadora:[4],rifle:[22,21,20,19],macarico:[4],rojao:[62,59,56,54],baladeira:[11,10,10,9],
-  espeto:[20,19,18,17],sacole:[12,11,11,10],'tampa-voadora':[22,21,20,19],pandeiro:[110,108,105,103],
-  'bola-murcha':[18,17,16,15],traque:[34,33,31,30],buscape:[20,19,18,17],figa:[130,127,124,121],
-  'vela-esoterica':[110,108,105,103],'tijolo-baiano':[38,36,35,33],'taro-vencido':[20,19,18,17],
-  'panela-de-pressao':[44,42,40,37],'carro-de-som':[200,190,180,170],'chinelo-lendario':[110],'boleto-lendario':[18],
+  espeto:[20,19,18,17],sacole:[12,11,11,10],'tampa-voadora':[22,21,20,19],
+  'bola-murcha':[18,17,16,15],traque:[34,33,31,30],buscape:[20,19,18,17],
+  'tijolo-baiano':[38,36,35,33],'taro-vencido':[20,19,18,17],
+  'panela-de-pressao':[44,42,40,37],'carro-de-som':[200,190,180,170],'boleto-lendario':[18],
   'cafe-lendario':[90],'guarda-chuva-lendario':[120],'pombo-lendario':[30],'audio-lendario':[36],
 };
 

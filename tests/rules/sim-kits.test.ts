@@ -12,7 +12,7 @@ import {classes,getClass,roles} from '../../src/rules/classes.ts';
 import {BLEED_OUT_TICKS} from '../../src/sim/revive.ts';
 
 // ---------- Fakes ----------
-const FIXED_WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
+const FIXED_WEAPONS=['boleto','cafe','guarda-chuva','pombo','audio'];
 const SKILL_IDS=['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira'];
 interface Hit {id:string;amount:number;src?:string;weapon?:string;killed:boolean}
 interface FakeCtx {tick:number;rng:Rng;players:Map<string,SimPlayer>;enemies:Map<string,EnemyState>;pickups:Map<string,PickupState>;
@@ -81,7 +81,8 @@ test('kits: 29 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
 });
 test('kits: all 4 roles covered, every fixed weapon is a starting weapon for 4-7 classes, required classes present',()=>{
   assert.deepEqual([...new Set(KITS.map(k=>k.role))].sort(),[...roles].sort());
-  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=4&&n<=7,`${w} starts ${n} classes`);}
+  // The audio also took the chinelo's classes when it left the game (sem-arma-girando-no-chao): up to 11.
+  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=4&&n<=(w==='audio'?11:7),`${w} starts ${n} classes`);}
   for(const id of ['cidadao-comum','mendigo','viciado-em-bet'])assert.ok(kitFor(id),id);
 });
 test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
@@ -130,7 +131,7 @@ test('kits: classBonusOf returns a copy, unknown class falls back, startingBuild
     bonus.might=5;
     assert.deepEqual(classBonusOf(id),{});
     assert.deepEqual(DEFAULT_KIT.classBonus,{});
-    assert.deepEqual(startingBuild(id),{weapons:[{id:'chinelo',level:1}],passives:[]});
+    assert.deepEqual(startingBuild(id),{weapons:[{id:'audio',level:1}],passives:[]});
     assert.equal(kitFor(id),undefined);assert.equal(hasSkill(id),false);
   }
   const a=startingBuild('mendigo'),b=startingBuild('mendigo');
@@ -673,7 +674,7 @@ const shot=(fake:FakeCtx,id:string,x:number,y:number,hostile:boolean)=>{
   fake.projectiles.set(id,{id,owner:hostile?'e':'p',source:'t',x,y,vx:0,vy:0,radius:.2,damage:5,pierce:0,untilTick:999,hostile,hit:[]});
 };
 const armed=(fake:FakeCtx,id:string,classId:string,x:number,y:number,ready=900)=>
-  addPlayer(fake,id,classId,x,y,{weaponReady:{chinelo:ready}},{weapons:[{id:'chinelo',level:1}],passives:[]});
+  addPlayer(fake,id,classId,x,y,{weaponReady:{audio:ready}},{weapons:[{id:'audio',level:1}],passives:[]});
 
 test('cone (Maromba): heavy hit only in the front arc, pushes survivors away; nothing in front = no cooldown',()=>{
   const {fake,ctx,hits}=makeCtx(1,100);
@@ -761,9 +762,9 @@ test('rally (Pagodeiro, Feirante): refunds the others\' skills and readies every
   const c=makeCtx(7,100);
   const promo=armed(c.fake,'p1','feirante',10,10),mate=armed(c.fake,'p2','mendigo',12,10),out=armed(c.fake,'p3','mendigo',20,10);
   cast(c.ctx,promo);
-  assert.equal(promo.weaponReady.chinelo,100);assert.equal(mate.weaponReady.chinelo,100);assert.equal(out.weaponReady.chinelo,900);
+  assert.equal(promo.weaponReady.audio,100);assert.equal(mate.weaponReady.audio,100);assert.equal(out.weaponReady.audio,900);
   const f=makeCtx(7,100);const fe=armed(f.fake,'p1','feirante',10,10,50);
-  cast(f.ctx,fe);assert.equal(fe.weaponReady.chinelo,50,'an already ready weapon is not delayed');
+  cast(f.ctx,fe);assert.equal(fe.weaponReady.audio,50,'an already ready weapon is not delayed');
 });
 
 test('rally mostHurt (Merendeira): feeds only the most hurt ally; nobody hurt = no cooldown',()=>{
@@ -783,7 +784,7 @@ test('volley: the Streamer starts on the tapped enemy and readies weapons',()=>{
   const streamer=armed(st.fake,'p1','streamer',10,10);streamer.target='e5';
   const res=cast(st.ctx,streamer)!;
   assert.deepEqual(res.hits,['e5','e0','e1','e2']);
-  assert.equal(streamer.weaponReady.chinelo,100);
+  assert.equal(streamer.weaponReady.audio,100);
 });
 
 test('fetch (Mãe de Pet): heals the most hurt ally on the spot during a wave only, no coxinha on the ground',()=>{

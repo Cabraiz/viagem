@@ -41,6 +41,7 @@ export * from './wallet.ts';
 // E5-checkpoint-por-round: the item catalog, so a room validates a checkpoint's builds.
 export {ITEMS} from './items.ts';
 export type {InventoryResult,InventoryRefusal,KitOrder,PlaceResult} from './inventory.ts';
+export {RETIRED_ITEM_IDS,isRetired,scrubBuild,scrubRetired} from './retired-items.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';
 export {cityUnoStart,startSlots,UNO_START_CLEAR} from './city/uno-start.ts';
 // D-051 mode 'ninhos' without rounds: the calm (rules/calma.ts) as the sim reads it.

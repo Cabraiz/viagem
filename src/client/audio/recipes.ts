@@ -120,6 +120,24 @@ const list:SoundRecipe[]=[
   ],[15]),
 ];
 
+/**
+ * The gem's combo (card som-alarme-gema-e-chefe, auditoria som-impacto item 7): each gem (the kill's cédula) caught
+ * within GEM_COMBO_MS of the last plays a semitone above it, up to GEM_COMBO_MAX; after a pause it is back at the base.
+ */
+export const GEM_COMBO_MS=1000,GEM_COMBO_MAX=12;
+/** The gem's playback rate `step` semitones up (≤ 2, the engine's top). */
+export function gemRate(step:number){return 2**(Math.max(0,Math.min(GEM_COMBO_MAX,step))/12);}
+export class GemCombo {
+  private step=0;
+  private last=-Infinity;
+  /** The rate of a gem caught at `now` (ms). */
+  next(now:number){
+    this.step=now-this.last<=GEM_COMBO_MS?Math.min(GEM_COMBO_MAX,this.step+1):0;
+    this.last=now;
+    return gemRate(this.step);
+  }
+}
+
 export const RECIPES:Readonly<Record<ProceduralId,SoundRecipe>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>{
     const found=list.find(r=>r.id===id);

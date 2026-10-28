@@ -9,6 +9,7 @@
 import type {SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
 import {WAVE_BOSS_IDS} from '../../rules/index.ts';
+import {GemCombo} from './recipes.ts';
 
 /**
  * Pack 12's weapons (sim/weapons/pack12.ts, which the client may not import) by type: the type's sound. The melee ones
@@ -128,23 +129,32 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'boss-phase':return 'chefe';
     // uno-atravessa-tralha: a square of the map's tralha (ids tralha*) broken, run over by the Uno: a short thwack.
     case 'structure':return event.hp===0&&event.id.startsWith('tralha')?'golpe':undefined;
+    // The intermission's end ("Fim do recreio!", sim/stonewards): the Uno honks (card som-alarme-gema-e-chefe).
+    case 'horn':return 'buzina';
     // 'prepare' also opens the run (before round 1) and shares a tick with 'end', so only 'end' gets the ta-dá.
     case 'round':return event.phase==='wave'?'round-inicio':event.phase==='end'?'round-fim':undefined;
     default:return undefined;
   }
 }
 
+/** The local player's gem combo, shared by the room's pickups (playEvents) and the cédula caught on screen (hud/rescue.ts). */
+export const GEMS=new GemCombo();
+/** The gem combo and its clock (ms); tests pass their own. */
+export interface GemClock {gems:GemCombo;now:()=>number}
+
 /**
  * Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played.
  * `heard`: an event whose sound already played on the client (a cédula caught on screen, render/cedula-catch.ts).
  * `elite`: an elite enemy by id (cueForEvent).
+ * Each of my gems climbs the combo's pitch (recipes.ts GemCombo); a heard one already did.
  */
 export function playEvents(audio:{play(id:SoundId,opts?:{gain?:number;rate?:number}):boolean},events:Iterable<SimEvent>,localPlayer?:string,
-  heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean):number{
+  heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean,clock:GemClock={gems:GEMS,now:()=>performance.now()}):number{
   let played=0;
   for(const event of events){
     const cue=cueForEvent(event,localPlayer,elite);
     if(!cue||heard?.(event))continue;
+    if(cue.id==='gema')cue.rate=clock.gems.next(clock.now());
     const {id,...opts}=cue;
     if(audio.play(id,opts))played++;
   }

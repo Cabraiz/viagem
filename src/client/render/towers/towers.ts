@@ -32,7 +32,7 @@ import {lightEnabled} from '../light.ts';
 import {getAudio} from '../../audio/engine.ts';
 import {UsableGlow} from '../usable-glow.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
-  clipOf,towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,weaponPose,weaponSeed,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
+  clipOf,towerArt,towerArtScale,towerKindScale,towerPhase,textureRatio,turnToward,weaponFrame,weaponPose,weaponSeed,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
 /** Where the defenses sit: the city's projection and depth (the sandbox and, after torres-fio, the scene). */
 export interface TowerWorld {
@@ -232,6 +232,8 @@ export class TowerRenderer {
   private get f(){return this.unitPx/24;}
   /** World px per art px of the delivered sheets (towerArtScale: the city scenery's). */
   private get artScale(){const c=this.o.cell,cell=typeof c==='function'?c():c;return towerArtScale(this.diamondPx,cell&&cell>0?cell:undefined);}
+  /** World px per art px of a kind's sheets: the scenery's, or the hero's for the ramo A posts (towerKindScale). */
+  private kindScale(kind:TowerKind){return towerKindScale(kind,this.artScale,this.s);}
   /** World px of 1 u along the ground (screen length of a unit step), for barrel lengths and blast ellipses. */
   private measure(){
     const w=this.o.world,a=w.project(0,0,0,{x:0,y:0}),b=w.project(1,0,0,{x:0,y:0}),c=w.project(0,1,0,{x:0,y:0});
@@ -385,7 +387,7 @@ export class TowerRenderer {
     }
     const img=this.ghostImg??=this.scene.add.image(0,0,'__DEFAULT').setName('torre-fantasma');
     const p=this.o.world.project(g.x,g.y,0,this.p),anchor=file.anchor??[.5,.85],view=this.o.world.view();
-    img.setTexture(towerBaseKey(g.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(this.artScale/textureRatio(file))
+    img.setTexture(towerBaseKey(g.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(this.kindScale(g.kind)/textureRatio(file))
       .setFrame(baseFrame('pronta',view,Math.max(1,Math.min(4,file.views??4)),Array.isArray(file.rows)?file.rows:undefined))
       .setAlpha(.72).setTint(g.color).setDepth(1e6+1).setVisible(true);
     return true;
@@ -514,7 +516,7 @@ export class TowerRenderer {
     // The delivered weapon's own muzzle (meta.muzzle, per direction row) while its sheet is drawn.
     const art=t.drawnPose>=0?towerArt(t.view.kind):undefined,m=art?.muzzle?.[t.dir],idle=art?.idle;
     if(m&&idle){
-      const k=this.artScale,[cw,ch]=idle.cell,a=idle.anchor??[.5,.5];
+      const k=this.kindScale(t.view.kind),[cw,ch]=idle.cell,a=idle.anchor??[.5,.5];
       this.v.x=t.mount.x+(m[0]-a[0])*cw*k;this.v.y=t.mount.y+(m[1]-a[1])*ch*k;return;
     }
     const d=dirVector(t.dir,this.v),len=t.cal.barrel*this.unitPx;
@@ -822,7 +824,7 @@ export class TowerRenderer {
   }
   private placeArt(t:Tower,view:number){
     const art=towerArt(t.view.kind)!,file=art.base!,img=t.base,w=this.o.world,p=w.project(t.view.x,t.view.y,0,this.p);
-    const scale=this.artScale,anchor=file.anchor??[.5,.85];
+    const scale=this.kindScale(t.view.kind),anchor=file.anchor??[.5,.85];
     img.setTexture(towerBaseKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(scale/textureRatio(file))
       .setFrame(baseFrame(t.phase,view,Math.max(1,Math.min(4,file.views??4)),Array.isArray(file.rows)?file.rows:undefined));
     const b=img.getBounds();t.rect.x=b.x;t.rect.y=b.y;t.rect.w=b.width;t.rect.h=b.height;
@@ -876,7 +878,9 @@ export class TowerRenderer {
   private placeShadow(t:Tower,view:number){
     const look=towerShadowLook(this.light,this.economyOn);
     if(!look){t.shadow?.setVisible(false);return;}
-    const v=t.view,w=this.o.world,{hx,hy}=this.extents(t),H=castHeight(t.look.calibre,t.look.height*PHASE_HEIGHT[t.phase]);
+    // A post drawn at the hero's size (towerKindScale) casts the shadow of what is drawn, not of its whole site.
+    const v=t.view,w=this.o.world,k=t.art?this.kindScale(v.kind)/this.artScale:1,e=this.extents(t),hx=e.hx*k,hy=e.hy*k;
+    const H=castHeight(t.look.calibre,t.look.height*PHASE_HEIGHT[t.phase])*k;
     const foot=[[-hx,-hy],[hx,-hy],[hx,hy],[-hx,hy]].map(([dx,dy])=>{const p=w.project(v.x+dx,v.y+dy,0,this.p);return {x:p.x,y:p.y};});
     const soft=softShadow(foot,H,this.unitPx,look,SHADOW_SOFT_PX*this.s);
     if(!soft.polys.length){t.shadow?.setVisible(false);return;}
@@ -982,7 +986,7 @@ export class TowerRenderer {
     if(pose&&file){
       const frames=Math.max(1,file.frames??1),anchor=file.anchor??[.5,.5];
       t.weapon.setTexture(pose.fire?towerFireKey(t.view.kind):towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y)
-        .setScale(this.artScale/textureRatio(file)).setFrame(weaponFrame(t.dir,pose.frame,frames));
+        .setScale(this.kindScale(t.view.kind)/textureRatio(file)).setFrame(weaponFrame(t.dir,pose.frame,frames));
       return;
     }
     const name=(d:number,r:boolean)=>`arma:${t.view.kind}:${d}:${r?1:0}:${Math.round(this.unitPx)}`;

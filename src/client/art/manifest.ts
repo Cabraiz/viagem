@@ -162,7 +162,17 @@ export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;
   return index;
 }
 
-export const artPiece=(group:ArtGroupId,id:string):ArtPiece|undefined=>index.groups[group]?.pieces[id];
+/**
+ * The attack effects of NEW-20261028-ORQ-efeitos-ataque-chatgpt. `?fxarte=0` hides them (today's code drawing, or the
+ * art before them is gone: the procedural look), to compare before × after on the same build.
+ */
+export const FX_ART_ATTACK:ReadonlySet<string>=new Set(['telegraph-enchimento','telegraph-borda','alerta-perigo','estrela-abate','chumbo-escopeta',
+  'corte-faca','seta-mira','cone-melee','anel-fase-coach','anel-fase-gelo','anel-fase-acucar','anel-caixa','coroa-prime','anel-alvo',
+  'anel-habilidade','aviso-spawn','aviso-explosao','seta-investida','arroto','molotov-garrafa','molotov-mira','fogo-aviso','coco-respingo',
+  'coco-gota','carimbo-objeto','carimbo-marca']);
+const fxArtOff=typeof location!=='undefined'&&new URLSearchParams(location.search).get('fxarte')==='0';
+export const artPiece=(group:ArtGroupId,id:string):ArtPiece|undefined=>
+  fxArtOff&&group==='efeitos'&&FX_ART_ATTACK.has(id)?undefined:index.groups[group]?.pieces[id];
 /** The current index (read-only use: pure planners enumerate a group's pieces from it). */
 export const artIndex=():ArtIndex=>index;
 /** Public URL of a file inside a group's output folder (`public/art/x` is served at `/art/x`). */

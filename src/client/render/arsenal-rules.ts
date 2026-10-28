@@ -12,6 +12,7 @@ import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 import {GOLD_LEVEL} from '../ui/sticker.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
+import {CONE_ART_ID,CONE_ART_KEY} from './melee-cone.ts';
 
 export type Rarity=1|2|3|4|5;
 export const rarityOf=(value:number):Rarity=>Math.min(5,Math.max(1,Math.round(Number.isFinite(value)?value:1))) as Rarity;
@@ -333,6 +334,8 @@ const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijo
 /** Draw-scale factor of a projectile (layers.ts): a hero's firearm bullet's (DEFAULT_SHOT_SOURCES), a lobbed object's, else 1. */
 export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.get(source)??LOBBED_DRAW_SCALE.get(source)??1;
 
+/** The crate's ground ring (efeitos `anel-caixa`, white, tinted by arsenal-fx.ts in the rarity colour). */
+export const CRATE_RING_ID='anel-caixa',CRATE_RING_KEY='arsenal:fx:anel-caixa';
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}
 const firstPageUrl=(group:'ui'|'efeitos',file:ArtFile|undefined)=>{const page=file&&artPages(file)[0];return page?artUrl(group,page.file):undefined;};
@@ -352,6 +355,9 @@ export function arsenalLoads():ArsenalLoad[]{
       const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
     }
   }
+  const ring=firstPageUrl('efeitos',fileOf('efeitos',CRATE_RING_ID));if(ring)out.push({key:CRATE_RING_KEY,url:ring,strip:false});
+  // The melee aim cone's piece (melee-cone.ts), one image laid on the sector.
+  const cone=firstPageUrl('efeitos',fileOf('efeitos',CONE_ART_ID));if(cone)out.push({key:CONE_ART_KEY,url:cone,strip:false});
   for(const look of Object.values(FIRE_LOOK)){
     if(!look.art||seen.has(look.art))continue;seen.add(look.art);
     const url=firstPageUrl('efeitos',fileOf('efeitos',look.art));if(url)out.push({key:fxKey(look.art),url,strip:true});

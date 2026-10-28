@@ -955,7 +955,9 @@ export class HordeRenderer{
     const look=a.look,art=ENEMY_ART[a.kind],body=this.enemyBody,css=this.css(),now=this.now,reduced=this.reduced;
     const height=art.height*art.originY*size*body;
     if(look.aura){
-      const e=groundEllipse(PALESTRA_RADIUS,this.ellipseAxes),k=auraPulse(now,reduced);
+      const e=groundEllipse(PALESTRA_RADIUS,this.ellipseAxes),k=auraPulse(now,reduced),ring=markArt('aura');
+      if(ring&&this.art.ready(ring))this.art.mark(this.phaseOwner(a).aura,ring,-9969,0,x,y,2*e.rx*k);
+      else{
       this.ellipse(x,y,e.rx*k,e.ry*k);
       const g=this.ground,n=PHASE_RING_POINTS;
       g.fillStyle(PHASE_GOLD,.1).fillPoints(this.ringPts,true,true,n);
@@ -963,6 +965,7 @@ export class HordeRenderer{
       g.lineStyle(3*css,PHASE_GOLD,.95).strokePoints(this.ringPts,true,true,n);
       this.ellipse(x,y,e.rx*k*.94,e.ry*k*.94);
       g.lineStyle(1.5*css,0xfff3c0,.7).strokePoints(this.ringPts,true,true,n);
+      }
     }
     if(look.sparkle){
       const g=this.overlay,top=by-height,s=body*size,f=this.sparkle;
@@ -972,10 +975,13 @@ export class HordeRenderer{
       }
     }
     if(look.reflect){
-      const g=this.overlay,cy=by-height*.5,rx=art.width*.56*size*body,ry=height*.6;
+      const g=this.overlay,cy=by-height*.5,rx=art.width*.56*size*body,ry=height*.6,ring=markArt('reflect');
+      if(ring&&this.art.ready(ring))this.art.mark(this.phaseOwner(a).reflect,ring,95000.5,0,bx,cy,2*rx);
+      else{
       this.ellipse(bx,cy,rx,ry);
       g.lineStyle(4*css,0xffffff,.35).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
       g.lineStyle(2*css,0x9be8f0,.9).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
+      }
       const t=reflectGlint(now,reduced);
       this.star4(g,bx+Math.cos(t)*rx,cy+Math.sin(t)*ry,6*body,0xffffff,.95);
       this.star4(g,bx+Math.cos(t+Math.PI)*rx,cy+Math.sin(t+Math.PI)*ry,4*body,0xffffff,.7);
@@ -983,9 +989,13 @@ export class HordeRenderer{
     if(a.sugar){
       // Açucarado (D-047): a pink halo around the body and pink sparkles (the gold ones are the coach's buff).
       const g=this.overlay,cy=by-height*.5,rx=art.width*.5*size*body,ry=height*.58,k=reduced?1:1+Math.sin(now*.008+a.phase*TAU)*.06;
+      const halo=markArt('sugar');
+      if(halo&&this.art.ready(halo))this.art.mark(this.phaseOwner(a).sugar,halo,95000.5,0,bx,cy,2*rx*k);
+      else{
       this.ellipse(bx,cy,rx*k,ry*k);
       g.lineStyle(7*css,SUGAR_PINK,.22).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
       g.lineStyle(2.2*css,SUGAR_PINK,.85).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
+      }
       const top=by-height,s=body*size,f=this.sparkle;
       for(let i=0;i<SPARKLES;i++){
         sparkleFrame(i,now,a.phase+.5,reduced,f);
@@ -995,11 +1005,15 @@ export class HordeRenderer{
     if(a.prime){
       // Cliente Prime (bancos): a gold crown with three points over the head, and a Breu edge.
       const g=this.overlay,s=body*size,cx=bx,top=by-height-5*s,w=19*s,h=14*s,bob=reduced?0:Math.sin(now*.006+a.phase*TAU)*1.5*s;
+      const piece=markArt('crown');
+      if(piece&&this.art.ready(piece))this.art.mark(this.phaseOwner(a).crown,piece,95000.5,0,cx,top+bob-h*.5,w*1.3);
+      else{
       const crown=this.crownPts,shape=CROWN_SHAPE;
       for(let i=0;i<7;i++){crown[i].x=cx+shape[i*2]*w;crown[i].y=top+bob-shape[i*2+1]*h;}
       g.fillStyle(PRIME_GOLD,1).fillPoints(crown,true);
       g.lineStyle(1.6*css,PALETTE.breu,1).strokePoints(crown,true);
       g.fillStyle(PALETTE.breu,1).fillCircle(cx,top-h*.3+bob,2.6*s);
+      }
     }
     if(look.headlight){
       const g=this.overlay,k=headlightGlow(now,a.phase,reduced),m=size>1?1.2:1;
@@ -1009,6 +1023,13 @@ export class HordeRenderer{
       g.fillStyle(0xffffff,.9).fillCircle(lx,ly,3.2*body);
     }
   }
+  /** Owners of an actor's imported phase marks (one image each in the FramesPool), made on first use. */
+  private phaseOwner(a:EnemyActor){
+    let o=this.phaseOwners.get(a);
+    if(!o){o={aura:{},reflect:{},sugar:{},crown:{}};this.phaseOwners.set(a,o);}
+    return o;
+  }
+  private phaseOwners=new WeakMap<EnemyActor,{aura:object;reflect:object;sugar:object;crown:object}>();
   /** Four-point star from four triangles (no point arrays). */
   private star4(g:Phaser.GameObjects.Graphics,x:number,y:number,r:number,color:number,alpha:number){
     const w=r*.28;

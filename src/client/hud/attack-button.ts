@@ -12,6 +12,19 @@
  */
 import type {EnemyView,Point} from '../../contract/index.ts';
 import {AttackPress,LastHit,autoAim,rayEnd,worldDirection,type AimEnemy} from './attack-aim.ts';
+import {artPages,artPiece,artUrl} from '../art/manifest.ts';
+
+/**
+ * The imported aim arrow (efeitos `seta-mira`, NEW-20261028-ORQ-efeitos-ataque-chatgpt), pointing right: its URL and
+ * cell aspect (height / width), or undefined (today's vector arrow).
+ */
+export function aimArrowArt():{url:string;aspect:number}|undefined{
+  const piece=artPiece('efeitos','seta-mira'),file=piece&&(piece.files.sheet??Object.values(piece.files)[0]),page=file&&artPages(file)[0];
+  const url=page&&artUrl('efeitos',page.file);
+  return file&&url?{url,aspect:file.cell[1]/file.cell[0]}:undefined;
+}
+/** The imported arrow's height on screen (CSS px): its own aspect at the reach's length, within these. */
+export const AIM_ART_H={min:22,max:44} as const;
 
 /** A drag shorter than this (CSS px from the button's centre) is a tap or a hold along the facing. */
 export const AIM_DEAD_ZONE_PX=12;
@@ -51,6 +64,7 @@ export class AttackButton {
   private readonly knob:SVGCircleElement;
   private readonly ring:SVGCircleElement;
   private readonly arrow:SVGPathElement;
+  private arrowArt?:SVGImageElement;private art?:{url:string;aspect:number};
   private pointer?:number;private centre?:Point;private drag:Point={x:0,y:0};private radius=RING_PX;
   private current?:string;
   private on=false;
@@ -59,6 +73,9 @@ export class AttackButton {
     this.ring=node('circle','atk-aim-ring');this.arrow=node('path','atk-aim-arrow');
     this.knob=node('circle','atk-aim-knob');this.knob.setAttribute('r','23');
     this.svg.append(this.arrow,this.ring,this.knob);host.append(this.svg);
+    const art=aimArrowArt();
+    if(art){this.art=art;this.arrowArt=node('image','atk-aim-art');this.arrowArt.setAttribute('href',art.url);
+      this.arrowArt.setAttribute('preserveAspectRatio','none');this.svg.insertBefore(this.arrowArt,this.ring);}
     const opts=signal?{signal}:{};
     button.addEventListener('pointerdown',e=>{
       if(!this.on||e.button!==0||button.disabled||this.pointer!==undefined)return;
@@ -128,9 +145,17 @@ export class AttackButton {
       const from=this.deps.toScreen(hero),to=rayEnd(hero,dir,reach,p=>this.deps.toScreen(p));
       // A shaft from the hero and a head at the reach's end, pointing the way it shoots.
       const head=Math.min(18,Math.hypot(to.x-from.x,to.y-from.y)/3),bx=to.x-dir.x*head,by=to.y-dir.y*head,nx=-dir.y*head*.6,ny=dir.x*head*.6;
+      const length=Math.hypot(to.x-from.x,to.y-from.y);
+      if(this.arrowArt&&this.art){
+        // The piece from the hero to the reach, turned the way it shoots; its height follows its aspect, within AIM_ART_H.
+        const h=Math.max(AIM_ART_H.min,Math.min(AIM_ART_H.max,length*this.art.aspect)),deg=Math.atan2(to.y-from.y,to.x-from.x)*180/Math.PI;
+        const a=this.arrowArt;a.setAttribute('x','0');a.setAttribute('y',f1(-h/2));a.setAttribute('width',f1(length));a.setAttribute('height',f1(h));
+        a.setAttribute('transform',`translate(${f1(from.x)} ${f1(from.y)}) rotate(${f1(deg)})`);a.style.display='';this.arrow.style.display='none';
+      }else{
       this.arrow.setAttribute('d',`M${f1(from.x)} ${f1(from.y)}L${f1(bx)} ${f1(by)}M${f1(bx+nx)} ${f1(by+ny)}L${f1(to.x)} ${f1(to.y)}L${f1(bx-nx)} ${f1(by-ny)}Z`);
       this.arrow.style.display='';
-    }else this.arrow.style.display='none';
+      }
+    }else{this.arrow.style.display='none';if(this.arrowArt)this.arrowArt.style.display='none';}
     this.hide(false);
   }
   /** The auto aim, keeping its hysteresis memory every frame like the server's SimPlayer.autoTarget. */

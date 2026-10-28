@@ -73,8 +73,10 @@ export const OP_SPRITE=6;
  * target and the burp cloud (flowing right, +x, from the mouth on its left edge). Each replaces today's vector
  * decoration of its kind when the renderer says its texture is in (DecorFrame.art); the zone and its edge never change.
  */
-export const DECOR_ART_IDS=['seta-investida','aviso-explosao','arroto','alerta-perigo'] as const;
-export const DECOR_ART_ARROW=0,DECOR_ART_BURST=1,DECOR_ART_GAS=2,DECOR_ART_ALERT=3;
+export const DECOR_ART_IDS=['seta-investida','aviso-explosao','arroto','alerta-perigo','molotov-mira','molotov-garrafa','fogo-aviso',
+  'coco-respingo','coco-gota','carimbo-marca','carimbo-objeto'] as const;
+export const DECOR_ART_ARROW=0,DECOR_ART_BURST=1,DECOR_ART_GAS=2,DECOR_ART_ALERT=3,DECOR_ART_RETICLE=4,DECOR_ART_BOTTLE=5,DECOR_ART_FIRE=6,
+  DECOR_ART_SPLAT=7,DECOR_ART_DROP=8,DECOR_ART_INK=9,DECOR_ART_STAMP=10;
 /** Frames per second of a looping decoration strip. */
 export const DECOR_ART_FPS=8;
 /**
@@ -192,6 +194,22 @@ function polar(t:TelegraphShape,a:number,d:number,project:ProjectFn){return proj
 const fade=(f:number)=>Math.min(1,f/.15,(1-f)/.2);
 /** Frames of decoration `slot` that are in (0 = draw today's vectors). */
 const artFrames=(f:DecorFrame,slot:number)=>f.art?f.art.frames[slot]|0:0;
+/**
+ * Imported ground piece on the zone's ellipse, `k` of its size, never distorted: as wide as the ellipse allows at the
+ * cell's aspect (a flatter cell fills the width, a taller one the height). Returns false when the piece is absent.
+ */
+function groundArt(f:DecorFrame,slot:number,k:number,alpha:number,layer=LAYER_ZONE){
+  if(artFrames(f,slot)<=0)return false;
+  const aspect=f.art!.aspect[slot]||1;let w=2*rx*k,h=w*aspect;
+  if(h>2*ry*k*1.6){h=2*ry*k*1.6;w=h/aspect;}
+  buf.sprite(layer,alpha,slot,ox,oy,0,w,h,0);return true;
+}
+/** Imported falling object, `h` tall with its bottom at (x,y) (AIR). Returns false when the piece is absent. */
+function airArt(f:DecorFrame,slot:number,x:number,y:number,h:number,angle=0){
+  if(artFrames(f,slot)<=0)return false;
+  const aspect=f.art!.aspect[slot]||1;
+  buf.sprite(LAYER_AIR,1,slot,x,y-h/2,angle,h/aspect,h,0);return true;
+}
 /** Looping frame of a strip of `frames` (offset by `shift` frames); reduced motion: still on frame 0. */
 export const decorLoopFrame=(f:{now:number;reduced:boolean},frames:number,shift=0)=>
   f.reduced||frames<=1?0:(Math.floor(Math.max(0,f.now)/1000*DECOR_ART_FPS)+shift)%frames;
@@ -237,6 +255,12 @@ function gas(t:TelegraphShape,f:DecorFrame,project:ProjectFn){
 /** Molotov: target rings and an orange rim on the ground, the burning cachaça bottle falling onto the center. */
 function bottle(f:DecorFrame){
   const b=buf,c=f.css;
+  if(artFrames(f,DECOR_ART_RETICLE)>0&&artFrames(f,DECOR_ART_BOTTLE)>0){
+    groundArt(f,DECOR_ART_RETICLE,.9,.95);
+    b.ellipse(LAYER_ZONE,HAZARD.breu,.2+.3*f.u,ox,oy,Math.max(4*c,rx*(.12+.22*f.u)),Math.max(2*c,ry*(.12+.22*f.u)));
+    const lift=(10+50*(1-f.u))*c,tilt=f.reduced?.2:Math.sin(f.now*.009+f.phase*TAU)*.35;
+    airArt(f,DECOR_ART_BOTTLE,ox,oy-lift+16*c,34*c,tilt);return;
+  }
   // Orange rim and the reticle.
   b.ring(LAYER_ZONE,HAZARD.fireOrange,.9,ox,oy,rx*.84,ry*.84,Math.max(3*c,ry*.1));
   b.ring(LAYER_ZONE,HAZARD.breu,.7,ox,oy,rx*.45,ry*.45,1.8*c);
@@ -285,6 +309,12 @@ const TONGUE:readonly number[]=[-.5,0,-.56,-.34,-.3,-.7,0,-1,.3,-.7,.56,-.34,.5,
 const FLAMES:readonly number[]=[-.42,-.3,.85, .4,-.32,.9, 0,-.05,1.15, -.5,.3,.8, .48,.28,.85];
 function flames(f:DecorFrame){
   const b=buf,c=f.css,phase=f.phase*TAU;
+  if(artFrames(f,DECOR_ART_FIRE)>0){
+    // The flames stand up out of the zone: width on the ellipse, the piece's own height above its base.
+    const aspect=f.art!.aspect[DECOR_ART_FIRE]||1,w=2*rx*.9,h=w*aspect,flick=f.reduced?1:1+.05*Math.sin(f.now*.021+phase);
+    b.ellipse(LAYER_ZONE,HAZARD.fireRed,.45,ox,oy,rx*.9,ry*.9);
+    b.sprite(LAYER_AIR,1,DECOR_ART_FIRE,ox,oy+ry*.9-h*flick/2,0,w,h*flick,0);return;
+  }
   b.ellipse(LAYER_ZONE,HAZARD.fireRed,.7,ox,oy,rx*.9,ry*.9);
   b.ellipse(LAYER_ZONE,HAZARD.fireOrange,.75,ox,oy,rx*.5,ry*.5);
   const w0=Math.max(9*c,rx*.36);
@@ -315,6 +345,12 @@ function flame(x:number,y:number,w:number,h:number,sway:number,color:number,alph
 const DROPS:readonly number[]=[.3,.66,.11, 1.6,.68,.09, 2.7,.64,.12, 3.8,.68,.09, 5,.66,.1];
 function splat(f:DecorFrame){
   const b=buf,c=f.css,rot=f.phase*TAU,e=1.6*c;
+  if(groundArt(f,DECOR_ART_SPLAT,.95,1,LAYER_AIR)){
+    if(f.u<.97){const lift=(6+26*(1-f.u))*c;
+      b.ellipse(LAYER_ZONE,HAZARD.breu,.25+.25*f.u,ox,oy,Math.max(3*c,rx*.25),Math.max(1.6*c,ry*.25));
+      airArt(f,DECOR_ART_DROP,ox,oy-lift,20*c);}
+    return;
+  }
   for(let i=0;i<DROPS.length;i+=3){const a=DROPS[i]+rot,d=DROPS[i+1],s=DROPS[i+2],x=sx(Math.cos(a)*d),y=sy(Math.sin(a)*d);
     b.ellipse(LAYER_AIR,HAZARD.poopDark,1,x,y,rx*s+e,ry*s+e);
     b.ellipse(LAYER_AIR,HAZARD.poop,1,x,y,rx*s,ry*s);}
@@ -363,6 +399,11 @@ function burst(f:DecorFrame){
 /** Carimbo (boss): the stamp's ink mark on the ground and the stamp coming down on it. */
 function stamp(f:DecorFrame){
   const b=buf,c=f.css;
+  if(groundArt(f,DECOR_ART_INK,.7,.95)){
+    const lift=(8+48*(1-f.u))*c;
+    b.ellipse(LAYER_ZONE,HAZARD.breu,.18+.3*f.u,ox,oy,Math.max(6*c,rx*.3),Math.max(3*c,ry*.3));
+    airArt(f,DECOR_ART_STAMP,ox,oy-lift+4*c,42*c);return;
+  }
   b.ring(LAYER_ZONE,HAZARD.ink,.85,ox,oy,rx*.6,ry*.6,Math.max(3*c,ry*.08));
   b.ring(LAYER_ZONE,HAZARD.ink,.85,ox,oy,rx*.46,ry*.46,1.8*c);
   for(let k=-1;k<=1;k++)b.line(LAYER_ZONE,HAZARD.ink,.85,sx(-.26+.06*Math.abs(k)),sy(k*.14),sx(.26-.06*Math.abs(k)),sy(k*.14),2.6*c);

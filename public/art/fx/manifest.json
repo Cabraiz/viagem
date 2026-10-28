@@ -2,6 +2,31 @@
   "version": 2,
   "group": "efeitos",
   "pieces": {
+    "alerta-perigo": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "alerta-perigo.webp",
+          "cell": [
+            128,
+            136
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "alerta-perigo.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "65907a4a5d54be228ed9ed086f13ad0a2b5ba33531145563a0ce753409c5471b"
+            }
+          ],
+          "sha256": "65907a4a5d54be228ed9ed086f13ad0a2b5ba33531145563a0ce753409c5471b"
+        }
+      },
+      "sha256": "ba92c06d80fa4c8aef5885987ffe446fd8a0095bd8bd9b381faa5ef35476881c"
+    },
     "anel-alvo": {
       "kind": "frames",
       "files": {
@@ -9,28 +34,123 @@
           "file": "anel-alvo.webp",
           "cell": [
             128,
-            128
+            72
           ],
-          "frames": 4,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 8,
+          "frames": 1,
           "pages": [
             {
               "file": "anel-alvo.webp",
-              "columns": 4,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 4,
-              "sha256": "2a3c475a4c4a385fddf3362c5847c2e6522d1450f274ea6f6de96dda482ef368"
+              "frameCount": 1,
+              "sha256": "62c2aa473fa638f59403fb91836c03ac8be0f0641bf76a425ad5a7884824723c"
             }
           ],
-          "sha256": "2a3c475a4c4a385fddf3362c5847c2e6522d1450f274ea6f6de96dda482ef368"
+          "sha256": "62c2aa473fa638f59403fb91836c03ac8be0f0641bf76a425ad5a7884824723c"
         }
       },
-      "sha256": "b5c235515a5adf65d4822b8053a841df2c8cd9eb4fcb6b862553f378f66924a7"
+      "sha256": "6af16e5492dcda0458cd0b15f2ac4bb1e9fe7e4bffe59f11c1a17ee530549f71"
+    },
+    "anel-caixa": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "anel-caixa.webp",
+          "cell": [
+            256,
+            112
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "anel-caixa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7a7291a7d1144277155288183a71f8a2e7d32edbe9496373f120a488d0637010"
+            }
+          ],
+          "sha256": "7a7291a7d1144277155288183a71f8a2e7d32edbe9496373f120a488d0637010"
+        }
+      },
+      "sha256": "ef378066f1e8dc6c21c618cfe8089e1ebd35dd32049865603fe578629281552a"
+    },
+    "anel-fase-acucar": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "anel-fase-acucar.webp",
+          "cell": [
+            256,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "anel-fase-acucar.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ba448b37c787c20e2e8659b4c6a90bba72dc65ce269a1a3941065c8930ef05bb"
+            }
+          ],
+          "sha256": "ba448b37c787c20e2e8659b4c6a90bba72dc65ce269a1a3941065c8930ef05bb"
+        }
+      },
+      "sha256": "d138193302f28ce03a620d8f5ed7de2ec35d318449eae9aedeef8916cf2962ab"
+    },
+    "anel-fase-coach": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "anel-fase-coach.webp",
+          "cell": [
+            256,
+            136
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "anel-fase-coach.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3bb9e2d8c06b46051098f8de66accc3ef32e448b6410bc62a6e07f71442cd26d"
+            }
+          ],
+          "sha256": "3bb9e2d8c06b46051098f8de66accc3ef32e448b6410bc62a6e07f71442cd26d"
+        }
+      },
+      "sha256": "bf977fee122b07329588d07a8fb7f8d82716b387f3e5f771e5a22f2c3787a075"
+    },
+    "anel-fase-gelo": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "anel-fase-gelo.webp",
+          "cell": [
+            256,
+            136
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "anel-fase-gelo.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4a009640646ec36b6cc4eae08e4041544c5d8b1263a415c4dabf2cf7a57de080"
+            }
+          ],
+          "sha256": "4a009640646ec36b6cc4eae08e4041544c5d8b1263a415c4dabf2cf7a57de080"
+        }
+      },
+      "sha256": "c64d269a3c44bb70add295458e73938321d9b53fe0ee292c56896393568763c9"
     },
     "anel-habilidade": {
       "kind": "frames",
@@ -39,28 +159,23 @@
           "file": "anel-habilidade.webp",
           "cell": [
             128,
-            128
+            72
           ],
-          "frames": 4,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 8,
+          "frames": 1,
           "pages": [
             {
               "file": "anel-habilidade.webp",
-              "columns": 4,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 4,
-              "sha256": "043be40d52b1c32fef13feeaefcc7709d744e8f0ce54135f075481ff04cbaed2"
+              "frameCount": 1,
+              "sha256": "327e8421c4d7d002ceaa93f16f12e74c0d997dd6a35001ba43ceca199eae8105"
             }
           ],
-          "sha256": "043be40d52b1c32fef13feeaefcc7709d744e8f0ce54135f075481ff04cbaed2"
+          "sha256": "327e8421c4d7d002ceaa93f16f12e74c0d997dd6a35001ba43ceca199eae8105"
         }
       },
-      "sha256": "29da18dfe602314ffa6fafbafb91d8b29d06a314282f745732753fd67e898e96"
+      "sha256": "b70393bc5514c3b5c9162b459626481e3a0299bbd1a41a3e4937e87a0fb39810"
     },
     "arroto": {
       "kind": "frames",
@@ -69,28 +184,23 @@
           "file": "arroto.webp",
           "cell": [
             192,
-            128
+            88
           ],
-          "frames": 6,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 10,
+          "frames": 1,
           "pages": [
             {
               "file": "arroto.webp",
-              "columns": 6,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 6,
-              "sha256": "e7134289f2119a520f02a6137a930c0bc1b7231a4e3fe7e12c1c8709d72850a6"
+              "frameCount": 1,
+              "sha256": "84fe929ecaa7187341036570cb180cb6bde351d0de055fb5b576d6f91c7c5121"
             }
           ],
-          "sha256": "e7134289f2119a520f02a6137a930c0bc1b7231a4e3fe7e12c1c8709d72850a6"
+          "sha256": "84fe929ecaa7187341036570cb180cb6bde351d0de055fb5b576d6f91c7c5121"
         }
       },
-      "sha256": "862ecd15b4e64d18db60e85068d6e4f8dd68a4b5feb9cac0b0c3b07e9290f9a9"
+      "sha256": "ebc34387f29375fa2fbd3a630965757cac17d8368a582fc71f60c1362e1ffded"
     },
     "arruda-aura": {
       "kind": "frames",
@@ -132,28 +242,23 @@
           "file": "aviso-explosao.webp",
           "cell": [
             128,
-            128
+            80
           ],
-          "frames": 8,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 8,
+          "frames": 1,
           "pages": [
             {
               "file": "aviso-explosao.webp",
-              "columns": 8,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "3f944c101fce5734a07d90584e91280ecb69bd91a86b8e3c28329fe69249feb9"
+              "frameCount": 1,
+              "sha256": "993a49e6eebcadc5f78147fbc6217dacc6ca269cdddb65140c96be9ce7f5403e"
             }
           ],
-          "sha256": "3f944c101fce5734a07d90584e91280ecb69bd91a86b8e3c28329fe69249feb9"
+          "sha256": "993a49e6eebcadc5f78147fbc6217dacc6ca269cdddb65140c96be9ce7f5403e"
         }
       },
-      "sha256": "b31b979acc685661a15fee4fcad05ea4363cbde903bc43d7b9a48e46c4c59c19"
+      "sha256": "98c4e2e845f5d4601c23f650d2f0fd2d346713e4f70abf2f903ed86359f4a361"
     },
     "aviso-spawn": {
       "kind": "frames",
@@ -162,28 +267,23 @@
           "file": "aviso-spawn.webp",
           "cell": [
             128,
-            128
+            72
           ],
-          "frames": 6,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 8,
+          "frames": 1,
           "pages": [
             {
               "file": "aviso-spawn.webp",
-              "columns": 6,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 6,
-              "sha256": "d6fc818d54fe92577c21c78fb105d9230c649e4724b52961618d26e1e9e8f909"
+              "frameCount": 1,
+              "sha256": "37e29f7704826783f7bf39d888a456044c47ae436d14895f72c4794635c47a5c"
             }
           ],
-          "sha256": "d6fc818d54fe92577c21c78fb105d9230c649e4724b52961618d26e1e9e8f909"
+          "sha256": "37e29f7704826783f7bf39d888a456044c47ae436d14895f72c4794635c47a5c"
         }
       },
-      "sha256": "0bd80ca7ee4fcc1863d2f98735ca4cd0e1521dc3f0526ce6baed95d454cb4712"
+      "sha256": "833ec077382ac11daf12d480ce329ad616c36e2e926773e71429036cde5a13f5"
     },
     "balao-fala": {
       "kind": "nineslice",
@@ -499,6 +599,81 @@
       },
       "sha256": "459f6b548a6c51c479016987d984e37996129cce452a6d64166a71d0dd9bab3b"
     },
+    "carimbo-marca": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "carimbo-marca.webp",
+          "cell": [
+            128,
+            80
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carimbo-marca.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9421a6ab3ddc77465a4289ae40853c993ed748d386ee272ab8eb739acf135039"
+            }
+          ],
+          "sha256": "9421a6ab3ddc77465a4289ae40853c993ed748d386ee272ab8eb739acf135039"
+        }
+      },
+      "sha256": "6704e4afdaa24e00c451f979be3d5a85d0763e6b525086df289e0dad3e5e906d"
+    },
+    "carimbo-objeto": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "carimbo-objeto.webp",
+          "cell": [
+            136,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carimbo-objeto.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "021201b638ce4496af81b6b4111d5f93a59f4286611ee171c5f5b571fe4e4e7c"
+            }
+          ],
+          "sha256": "021201b638ce4496af81b6b4111d5f93a59f4286611ee171c5f5b571fe4e4e7c"
+        }
+      },
+      "sha256": "bf258bfcf1e5bfdc772ad2b685e46ee25a89143fcd1614ba58bb9a0856ce6520"
+    },
+    "chumbo-escopeta": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "chumbo-escopeta.webp",
+          "cell": [
+            128,
+            32
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "chumbo-escopeta.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "12987db05d79b993da8ed123d2ea5c899db69ba9d40cc2dc814f207a27c617fe"
+            }
+          ],
+          "sha256": "12987db05d79b993da8ed123d2ea5c899db69ba9d40cc2dc814f207a27c617fe"
+        }
+      },
+      "sha256": "5ceab67b683da0f35a1002607c4eb90a045488ef1c4f3a3d0d0d7bab02fc0a54"
+    },
     "clarao-artilharia": {
       "kind": "frames",
       "files": {
@@ -649,6 +824,56 @@
       },
       "sha256": "7df16a6716ddb9145cb8c016100747345584a43c6ec70923e32aa17b4987b1a4"
     },
+    "coco-gota": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "coco-gota.webp",
+          "cell": [
+            40,
+            64
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "coco-gota.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3ed2cf2e993f1ebda806ae2355626d4da32607f97f39e8c17ac36f62c1737166"
+            }
+          ],
+          "sha256": "3ed2cf2e993f1ebda806ae2355626d4da32607f97f39e8c17ac36f62c1737166"
+        }
+      },
+      "sha256": "48718067623cc13b1436218f1c3108b294d36bca10e9e55b4824d1a4c1cb10b0"
+    },
+    "coco-respingo": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "coco-respingo.webp",
+          "cell": [
+            128,
+            80
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "coco-respingo.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a4ab4136092d037b955643d22d28d0f5e4a0484ff69b10221d046482c6d651ff"
+            }
+          ],
+          "sha256": "a4ab4136092d037b955643d22d28d0f5e4a0484ff69b10221d046482c6d651ff"
+        }
+      },
+      "sha256": "1c5bc215c26984cb465a174929c99793fee1b4f4a5589a78573c875b35457f93"
+    },
     "colher-de-pau-golpe": {
       "kind": "frames",
       "files": {
@@ -707,6 +932,31 @@
       },
       "sha256": "72c4788b4e06de363a4cd3439ba1b3905663708e4dd10a9058eb458bd71b5136"
     },
+    "cone-melee": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "cone-melee.webp",
+          "cell": [
+            256,
+            168
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cone-melee.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0bec532c0aeb1cc38df83831d2afdb96916bc7ff509337c367f2079897ec3f0a"
+            }
+          ],
+          "sha256": "0bec532c0aeb1cc38df83831d2afdb96916bc7ff509337c367f2079897ec3f0a"
+        }
+      },
+      "sha256": "0c50780a1881c4ea87ae06d2cbf27b004db1f9fdf9233e4b151fff551933eb67"
+    },
     "corneta-onda": {
       "kind": "frames",
       "files": {
@@ -739,6 +989,56 @@
       "meta": {
         "loop": false
       }
+    },
+    "coroa-prime": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "coroa-prime.webp",
+          "cell": [
+            64,
+            56
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "coroa-prime.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fb279052d9e1d03b63a413d59c7a7c0bcaa26bd685681eb94be4e6a9897906bd"
+            }
+          ],
+          "sha256": "fb279052d9e1d03b63a413d59c7a7c0bcaa26bd685681eb94be4e6a9897906bd"
+        }
+      },
+      "sha256": "43584a957ae8a04ee0c598e79aa46a853cfb9a9e98336bae9271e5d6e5441c3b"
+    },
+    "corte-faca": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "corte-faca.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "corte-faca.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "744b969d3e11edcec05e2f8cc1590d84eba172b0c151fc0b414880c8f3474829"
+            }
+          ],
+          "sha256": "744b969d3e11edcec05e2f8cc1590d84eba172b0c151fc0b414880c8f3474829"
+        }
+      },
+      "sha256": "a8b9bff5e5cdf974e3df3aba7fe2b5722c268737a74559992b50e86a7553a73b"
     },
     "cratera-g": {
       "kind": "frames",
@@ -931,6 +1231,31 @@
       },
       "sha256": "ccc6fd42e0f8baba17748e2b6fba95dd85869f9d95c1d9636744046f6cb23f2f"
     },
+    "estrela-abate": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "estrela-abate.webp",
+          "cell": [
+            64,
+            72
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "estrela-abate.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9fb2a1c162f08aa5686949e876a8984070d3e339cd03b25f674e0821e7673193"
+            }
+          ],
+          "sha256": "9fb2a1c162f08aa5686949e876a8984070d3e339cd03b25f674e0821e7673193"
+        }
+      },
+      "sha256": "4cf2785732b0174e18ed2448598ab6984b07711d9f901b0e044e7d41c4b32935"
+    },
     "etiqueta-devendo": {
       "kind": "nineslice",
       "files": {
@@ -1069,6 +1394,31 @@
         }
       },
       "sha256": "dc13003c54d2d59cdcf4129dcb2cc0128d78d84e75d413ce051b5ed1b3f6c5c7"
+    },
+    "fogo-aviso": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "fogo-aviso.webp",
+          "cell": [
+            128,
+            88
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "fogo-aviso.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2a29dd55f7c4569261cbcd2ecf218994133517529d5194d81fada8c69e456853"
+            }
+          ],
+          "sha256": "2a29dd55f7c4569261cbcd2ecf218994133517529d5194d81fada8c69e456853"
+        }
+      },
+      "sha256": "a36737ed213c4d2475c1504b2ed70d92429825a127a22f08922d1c494a0e326b"
     },
     "fogo-boitata-acerto": {
       "kind": "frames",
@@ -1526,6 +1876,56 @@
         }
       },
       "sha256": "b9d2600359795fb5953081208832906f2bc9537060630f0fe572b34d36a7161e"
+    },
+    "molotov-garrafa": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "molotov-garrafa.webp",
+          "cell": [
+            128,
+            120
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "molotov-garrafa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "56b6a9208d2d1d4976769fd7ebfe3b7718c71fdc4130a7d9f46e046f860aa023"
+            }
+          ],
+          "sha256": "56b6a9208d2d1d4976769fd7ebfe3b7718c71fdc4130a7d9f46e046f860aa023"
+        }
+      },
+      "sha256": "21505d507ec04483ae0eab27a3b8d6e4db53fa9506015fccd6ccb72e5e8e5044"
+    },
+    "molotov-mira": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "molotov-mira.webp",
+          "cell": [
+            128,
+            72
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "molotov-mira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "602349906db59eae5825901d8f55c31c21ce4f629eb0a9537699496789dcf26d"
+            }
+          ],
+          "sha256": "602349906db59eae5825901d8f55c31c21ce4f629eb0a9537699496789dcf26d"
+        }
+      },
+      "sha256": "8060abaac23bff67e15ed5a3ac8ce33fe74b6f84c2bdab9e0a8f1b14e726e1c0"
     },
     "morte-explosao": {
       "kind": "frames",
@@ -2015,29 +2415,49 @@
         "sheet": {
           "file": "seta-investida.webp",
           "cell": [
-            64,
-            64
+            128,
+            88
           ],
-          "frames": 4,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 10,
+          "frames": 1,
           "pages": [
             {
               "file": "seta-investida.webp",
-              "columns": 4,
+              "columns": 1,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 4,
-              "sha256": "e3cd6a1d275e3d1714a10e73fb380e43ad64950e6afd344f210672db15ae7857"
+              "frameCount": 1,
+              "sha256": "416fdd92ca6cfd29116706f5e0a1ae305ff1e3cffe1116ff743a6570c67c69a4"
             }
           ],
-          "sha256": "e3cd6a1d275e3d1714a10e73fb380e43ad64950e6afd344f210672db15ae7857"
+          "sha256": "416fdd92ca6cfd29116706f5e0a1ae305ff1e3cffe1116ff743a6570c67c69a4"
         }
       },
-      "sha256": "27e36c3ae82ca7efc14a902a0174df980352f1118f742156aa12ffa7f9235ac5"
+      "sha256": "ab6dbb25ef459cc6b69324aa2036bd4c86f71ef389fe2debf32d117f95467cab"
+    },
+    "seta-mira": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "seta-mira.webp",
+          "cell": [
+            256,
+            104
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "seta-mira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0cecccaa6032af82b7cc2735c99bfd894ef8f2f110f7b5bd74e750dbd5b74659"
+            }
+          ],
+          "sha256": "0cecccaa6032af82b7cc2735c99bfd894ef8f2f110f7b5bd74e750dbd5b74659"
+        }
+      },
+      "sha256": "913afb21478facc7eb37b74576b61e74c4d9cb4dbfb6abc419138c8a34e7b0b3"
     },
     "sombra-contato": {
       "kind": "frames",
@@ -2088,13 +2508,13 @@
               "rows": 1,
               "firstFrame": 0,
               "frameCount": 1,
-              "sha256": "74fa05edfdb54712e999ed3939d290400b5b27a95db01674789742d513d5d590"
+              "sha256": "b68ec549a66ea2206629c8e8c044204a4da20865f641ac3dcdc621aeeeebc827"
             }
           ],
-          "sha256": "74fa05edfdb54712e999ed3939d290400b5b27a95db01674789742d513d5d590"
+          "sha256": "b68ec549a66ea2206629c8e8c044204a4da20865f641ac3dcdc621aeeeebc827"
         }
       },
-      "sha256": "64a275ff8d0c7f9b195cb9933812f53c86db74840cb49ba33d7eb9048319f9d4"
+      "sha256": "c648e084ac2dd4d220a2f61021a01c8bbe18bbf2fe8c5cd64cc8e907ac0a0264"
     },
     "telegraph-enchimento": {
       "kind": "seamless",
@@ -2114,13 +2534,13 @@
               "rows": 1,
               "firstFrame": 0,
               "frameCount": 1,
-              "sha256": "2e2c2d9585d933cc0b5fd2bdf696d6f947331852a261d6b89d41a2d417d18a64"
+              "sha256": "eadc140dd884d715a2e71c3b3989895008ae7b011e36ef6ecb3491c802cbf47d"
             }
           ],
-          "sha256": "2e2c2d9585d933cc0b5fd2bdf696d6f947331852a261d6b89d41a2d417d18a64"
+          "sha256": "eadc140dd884d715a2e71c3b3989895008ae7b011e36ef6ecb3491c802cbf47d"
         }
       },
-      "sha256": "679b3e33d0f6674aa78950fa74befdc141b6955708366734277f3d5a8886797c"
+      "sha256": "e4f08ce32393bdaad32e2510e6e680397a873d357cce828154ae36540c719ff8"
     },
     "uivo-do-lobisomem-onda": {
       "kind": "frames",

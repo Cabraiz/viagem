@@ -47,10 +47,16 @@ export const MARK_ANCHOR:Readonly<Record<MarkElement,readonly [number,number]>>=
  * Effect strips drawn like marks but not on the ground (NEW-20261012-ORQ-importar-arte-d-restos item 5): the blackout's
  * eyes in the dark (`olhos-escuro`, 64×32, a pair of eyes, 4 blink frames). Loaded with the marks, never in MARK_PIECES.
  */
-export type FxMarkElement='eyes';
-export const FX_MARK_PIECES:Readonly<Record<FxMarkElement,string>>={eyes:'olhos-escuro'};
+export type FxMarkElement='eyes'|'aura'|'reflect'|'sugar'|'crown';
+/**
+ * Also the Elenco P1 state cues of layers.ts drawPhase (NEW-20261028-ORQ-efeitos-ataque-chatgpt): the coach's lecture
+ * ring, the influencer's reflect ring, the açucarado halo and the Cliente Prime's crown.
+ */
+export const FX_MARK_PIECES:Readonly<Record<FxMarkElement,string>>={eyes:'olhos-escuro',aura:'anel-fase-coach',reflect:'anel-fase-gelo',
+  sugar:'anel-fase-acucar',crown:'coroa-prime'};
 const ALL_MARKS:Readonly<Record<MarkElement|FxMarkElement,string>>={...MARK_PIECES,...FX_MARK_PIECES};
-const ALL_ANCHORS:Readonly<Record<MarkElement|FxMarkElement,readonly [number,number]>>={...MARK_ANCHOR,eyes:[.5,.5]};
+const ALL_ANCHORS:Readonly<Record<MarkElement|FxMarkElement,readonly [number,number]>>={...MARK_ANCHOR,eyes:[.5,.5],aura:[.5,.5],
+  reflect:[.5,.5],sugar:[.5,.5],crown:[.5,.5]};
 /** Frames per second when the file says none. */
 export const MARK_FPS=8;
 

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Importação da arte v2</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f5f2;--card:#fff;--text:#1d1d1f;--muted:#5c5c66;--border:#dddad3;
+--ok:#1a7f37;--ok-bg:#e3f4e8;--bad:#c62828;--bad-bg:#fde8e8;--wait:#5f6368;--wait-bg:#ececec;--code-bg:#f0eee9;}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--card:#1f1f23;--text:#ececf0;--muted:#a8a8b3;--border:#34343b;
+--ok:#4cc26a;--ok-bg:#16301e;--bad:#ff6b6b;--bad-bg:#3a1a1a;--wait:#b0b0b8;--wait-bg:#2c2c31;--code-bg:#2a2a30;}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:anywhere}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:1.6rem;line-height:1.25;margin:8px 0 4px}
+h2{font-size:1.25rem;margin:0 0 2px}
+.when{color:var(--muted);margin:0 0 12px}
+.totals{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:0;list-style:none}
+.totals li{flex:1 1 96px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card)}
+.totals strong{display:block;font-size:1.6rem;line-height:1.1}
+.totals .ok strong{color:var(--ok)}.totals .bad strong{color:var(--bad)}.totals .wait strong{color:var(--wait)}
+.hint{margin:0 0 20px;padding:12px 14px;border-radius:10px;background:var(--card);border-left:4px solid var(--bad)}
+.category{margin:0 0 20px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border)}
+.cat-counts{color:var(--muted);margin:0 0 10px}
+.pieces{list-style:none;margin:0;padding:0}
+.piece{padding:10px 0;border-top:1px solid var(--border)}
+.piece-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.piece-id{font-weight:600}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:600;white-space:nowrap}
+.badge.ok{color:var(--ok);background:var(--ok-bg)}.badge.bad{color:var(--bad);background:var(--bad-bg)}.badge.wait{color:var(--wait);background:var(--wait-bg)}
+.piece-body{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.thumb{max-width:min(256px,100%);min-width:min(96px,100%);height:auto;align-self:flex-start;border-radius:8px;border:1px solid var(--border);
+background:repeating-conic-gradient(#8883 0 25%,transparent 0 50%) 0 0/16px 16px;image-rendering:pixelated}
+.details{flex:1 1 220px;min-width:0}
+.source,.files,.pending{margin:6px 0 0}
+.notes{margin:6px 0 0;padding-left:20px;color:var(--muted)}
+.banner{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:var(--wait-bg);border-left:4px solid var(--wait);font-weight:600}
+.thumb-note{color:var(--muted);margin:0 0 20px}
+.pending{color:var(--muted)}
+.problems{margin:6px 0 0;padding-left:20px}
+.problems li{margin:4px 0}
+code{font:inherit;font-family:ui-monospace,Consolas,monospace;background:var(--code-bg);padding:0 4px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Importação da arte v2</h1>
+<p class="when">Gerado em 28/10/2026 às 19:41</p>
+
+<ul class="totals">
+<li class="ok"><strong>26</strong>aprovadas</li>
+<li class="bad"><strong>0</strong>reprovadas</li>
+<li class="wait"><strong>20</strong>pendentes</li>
+</ul>
+<p class="hint"><strong>Como corrigir:</strong> Corrija as peças reprovadas e rode o importador de novo; o que já foi aprovado não precisa ser reenviado.</p>
+
+</header>
+<section class="category"><h2>8. Efeitos e telegraphs</h2><p class="cat-counts">26 aprovadas · 20 pendentes · 2 opcionais (P1/P2)</p><ul class="pieces"><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">alerta-perigo</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/alerta-perigo.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-alvo</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-alvo.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-caixa</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-caixa.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-fase-acucar</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-fase-acucar.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-fase-coach</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-fase-coach.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-fase-gelo</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-fase-gelo.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">anel-habilidade</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/anel-habilidade.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">arroto</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/arroto.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">aviso-explosao</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/aviso-explosao.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">aviso-spawn</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/aviso-spawn.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">carimbo-marca</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/carimbo-marca.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">carimbo-objeto</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/carimbo-objeto.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">chumbo-escopeta</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/chumbo-escopeta.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">coco-gota</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/coco-gota.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">coco-respingo</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/coco-respingo.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">cone-melee</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/cone-melee.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">coroa-prime</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/coroa-prime.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">corte-faca</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/corte-faca.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">estrela-abate</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/estrela-abate.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">fogo-aviso</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/fogo-aviso.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">molotov-garrafa</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/molotov-garrafa.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">molotov-mira</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/molotov-mira.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">seta-investida</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/seta-investida.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">seta-mira</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/seta-mira.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">telegraph-borda</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/telegraph-borda.webp</code></p></li><li class="piece ok"><div class="piece-head"><span class="badge ok">✔ aprovada</span><span class="piece-id">telegraph-enchimento</span></div><p class="files">1 arquivo gravado: <code>public/art/fx/telegraph-enchimento.webp</code></p></li></ul><p class="pending">Ainda não entregues — o jogo continua com a arte atual: <code>balao-fala</code>, <code>barra-vida-moldura</code>, <code>barra-vida-moldura-elite</code>, <code>barra-vida-preenchimento</code>, <code>barra-vida-preenchimento-elite</code>, <code>caido-resgate</code>, <code>carimbo-chefe</code>, <code>etiqueta-devendo</code>, <code>fogo-chao</code>, <code>heroi-voce</code>, <code>impacto-faisca</code>, <code>impacto-neve</code>, <code>impacto-poeira</code>, <code>marcador-destino</code>, <code>morte-explosao</code>, <code>morte-gosma-1</code>, <code>morte-gosma-2</code>, <code>morte-gosma-3</code>, <code>morte-poof</code>, <code>sombra-contato</code></p><p class="pending optional">Opcionais (P1/P2), ainda não entregues — não bloqueiam o MVP: <code>olhos-escuro</code>, <code>veu-apagao</code></p></section>
+</main>
+</body>
+</html>

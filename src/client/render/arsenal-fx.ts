@@ -33,7 +33,7 @@ import type {CityOutlines} from './city-outline.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
 import {PELLET_TEX} from './keys.ts';
 import {THROW_MS} from '../../rules/index.ts';
-import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
+import {CRATE_ART,CRATE_RING_KEY,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
   FLOAT_PX,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
@@ -242,6 +242,8 @@ export class ArsenalFx{
   begin(now:number,body:number,reduced:boolean){
     this.now=now;this.body=body;this.reduced=reduced;
     this.rings.clear();this.arcs.clear();
+    for(let i=0;i<this.crateRingsUsed;i++)this.crateRings[i].setVisible(false);
+    this.crateRingsUsed=0;
     for(const [key,look] of this.ringLooks){
       for(const band of look.bands)band.setVisible(false);
       look.used=0;
@@ -268,7 +270,13 @@ export class ArsenalFx{
   private crateGround(id:string,x:number,y:number,value:number,q:Pt,color:number):number{
     const b=this.body;
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.006);
-    this.ringBand(`c|${color}|${Math.round(b*100)}`,g=>{
+    // Imported ring (efeitos `anel-caixa`, white): tinted in the colour, as wide as today's; its own height (no squash).
+    if(this.scene.textures.exists(CRATE_RING_KEY)){
+      let ring=this.crateRings[this.crateRingsUsed];
+      if(!ring){ring=this.track(this.scene.add.image(0,0,CRATE_RING_KEY).setDepth(RING_BAND_DEPTH));this.crateRings.push(ring);}
+      this.crateRingsUsed++;
+      ring.setPosition(q.x,q.y).setScale(CRATE_RING_W*b*pulse/Math.max(1,ring.width)).setTint(color).setVisible(true);
+    }else this.ringBand(`c|${color}|${Math.round(b*100)}`,g=>{
       g.fillStyle(color,.22).fillEllipse(0,0,CRATE_RING_W*b,CRATE_RING_H*b);
       g.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(0,0,CRATE_RING_W*b,CRATE_RING_H*b);
     },q).setScale(pulse);
@@ -555,6 +563,8 @@ export class ArsenalFx{
     p.label.setPosition(x,y+px*.5*k).setScale(nameK).setAlpha(m.alpha).setVisible(true);
     return true;
   };
+  private crateRings:Image[]=[];
+  private crateRingsUsed=0;
   private track<T extends Phaser.GameObjects.GameObject>(o:T):T{this.objects.push(o);return o;}
 }
 /** The crate sheet's texture key (art/base-art.ts), for tests and the sandbox. */

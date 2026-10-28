@@ -63,6 +63,19 @@ export const runeCount=(radius:number,half:number)=>Math.max(3,Math.round(radius
 
 const ARC_POINTS=40,GLYPH_POINTS=8;
 /**
+ * The imported cone (efeitos `cone-melee`, NEW-20261028-ORQ-efeitos-ataque-chatgpt): a sector pointing right, its apex at
+ * APEX of the cell, HALF its half aperture (rad) and its rim RIM px from the apex on the axis, bending in by BEND·φ² off
+ * it (measured on the piece). The sim's sector is laid on the ground as a fan of ARC_POINTS triangles from the apex,
+ * each world angle mapped to the piece's angle in proportion, each rim point to the piece's rim: the whole art, no crop.
+ */
+export const CONE_ART_ID='cone-melee',CONE_ART_KEY='arsenal:fx:cone-melee';
+export const CONE_ART={apex:[4/256,83.5/168],half:.39,rim:247/256,bend:.93,aspect:168/256} as const;
+/** UV of the piece at angle `phi` (rad, off its axis) on its rim. */
+export function coneArtRim(phi:number,out:Pt):Pt{
+  const r=CONE_ART.rim*(1-CONE_ART.bend*phi*phi);
+  out.x=CONE_ART.apex[0]+Math.cos(phi)*r;out.y=CONE_ART.apex[1]+Math.sin(phi)*r/CONE_ART.aspect;return out;
+}
+/**
  * How far under the hero's shadow the cone lies (cone-por-cima-e-clique-em-loop): the shadow and the hero's silhouette are at
  * the actor depth −2 (scene.ts place), the "você" ring at −1, so the cone is always on the ground under all of them.
  */
@@ -83,9 +96,12 @@ export class MeleeCone{
   private q:Pt={x:0,y:0};
   /** The ground layer's depth (outside the city). */
   private depth:number;
+  private scene:Phaser.Scene;
+  /** The imported fans, one per cone of the swing (made the first time the piece is in). */
+  private fans:Phaser.GameObjects.Rope[]=[];
 
   constructor(scene:Phaser.Scene,projector:Projector,depth:number){
-    this.projector=projector;this.depth=depth;
+    this.projector=projector;this.depth=depth;this.scene=scene;
     this.g=scene.add.graphics().setDepth(depth).setName('cone-ataque');
   }
   get object(){return this.g;}
@@ -112,17 +128,44 @@ export class MeleeCone{
   draw(now:number,body:number,hero:Pt|undefined,aim?:Pt,shadow?:number){
     const g=this.g;g.clear();
     const a=this.alpha(now);
+    for(const f of this.fans)f.setVisible(false);
     if(a<=.004||!hero||this.radius<=0){g.setVisible(false);return;}
     // City (the projector's actor depths): the ground there is pieces at actor depths, so the cone sits just under the
     // hero, below its "você" ring and shadow (you-rules RING_UNDER .3, shadow −1), like those; elsewhere the ground layer.
     g.setVisible(true).setDepth(coneDepth(!!this.projector.depthOverride,this.depth,shadow,()=>this.projector.depth(hero.x,hero.y)));
     let ux=this.dir.x,uy=this.dir.y;
     if(aim){const dx=aim.x-hero.x,dy=aim.y-hero.y,len=Math.hypot(dx,dy);if(len>1e-3){ux=dx/len;uy=dy/len;}}
-    const base=Math.atan2(uy,ux);
-    for(let i=0;i<this.count;i++)this.sector(hero.x,hero.y,base+2*Math.PI*i/this.count,a,body);
+    const base=Math.atan2(uy,ux),art=this.scene.textures?.exists(CONE_ART_KEY);
+    for(let i=0;i<this.count;i++){
+      const angle=base+2*Math.PI*i/this.count;
+      if(art)this.fan(i,hero.x,hero.y,angle,a,g.depth);else this.sector(hero.x,hero.y,angle,a,body);
+    }
   }
 
-  destroy(){this.g.destroy();}
+  destroy(){this.g.destroy();for(const f of this.fans)f.destroy();this.fans.length=0;}
+
+  /** The imported piece on the sector: a triangle strip apex, rim, apex, rim… every point projected on the ground. */
+  private fan(i:number,x:number,y:number,angle:number,a:number,depth:number){
+    let rope=this.fans[i];
+    if(!rope){
+      rope=this.scene.add.rope(0,0,CONE_ART_KEY,undefined,Array.from({length:ARC_POINTS+1},(_,k)=>({x:k,y:0})));
+      rope.dirty=false;this.fans[i]=rope;
+    }
+    const p=this.projector,r=this.radius,half=Math.min(this.half,Math.PI),xy=rope.vertices,uv=rope.uv,q=this.q,cap=xy.length>>1;
+    p.project(x,y,this.screen[0]);
+    const ax=this.screen[0].x,ay=this.screen[0].y;
+    let v=0;
+    const put=(sx:number,sy:number,u:number,w:number)=>{xy[v*2]=sx;xy[v*2+1]=sy;uv[v*2]=u;uv[v*2+1]=w;v++;};
+    for(let k=0;k<ARC_POINTS&&v+2<=cap;k++){
+      const t=-1+2*k/(ARC_POINTS-1),w=angle+t*half;
+      p.project(x+Math.cos(w)*r,y+Math.sin(w)*r,q);
+      coneArtRim(t*CONE_ART.half,this.glyph[0]);
+      put(q.x,q.y,this.glyph[0].x,this.glyph[0].y);
+      if(k<ARC_POINTS-1)put(ax,ay,CONE_ART.apex[0],CONE_ART.apex[1]);
+    }
+    while(v<cap){xy[v*2]=xy[(v-1)*2];xy[v*2+1]=xy[(v-1)*2+1];uv[v*2]=uv[(v-1)*2];uv[v*2+1]=uv[(v-1)*2+1];v++;}
+    rope.dirty=false;rope.setDepth(depth).setAlpha(a).setVisible(true);
+  }
 
   private sector(x:number,y:number,angle:number,a:number,b:number){
     const g=this.g,p=this.projector,r=this.radius,half=Math.min(this.half,Math.PI),a0=angle-half,a1=angle+half;

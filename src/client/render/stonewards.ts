@@ -509,9 +509,13 @@ export class StonewardsRenderer {
       if(age>=RUN_OVER_MS){b.g.destroy();return false;}
       const t=age/RUN_OVER_MS,s=age/1000,q=this.project(b.x,b.y);
       b.g.clear().setDepth(this.options.projector.depth(b.x,b.y)+.01).setAlpha(t<.6?1:1-(t-.6)/.4);
+      // dust ring on the ground, then the chunks (planks: twice as wide as tall) with a dark edge so they read on snow
+      const r=(18+70*Math.sqrt(t))*k;
+      b.g.fillStyle(this.c.claro,.55*(1-t)).fillEllipse(q.x,q.y,r*2,r);
       for(const c of b.chunks){
-        const dx=Math.cos(c.a)*c.v*s,dy=Math.sin(c.a)*c.v*s*.5,lift=Math.max(0,140*s-420*s*s)+10;
-        b.g.fillStyle(tints[c.tint],1).fillRect(q.x+(dx-c.size/2)*k,q.y+(dy-lift-c.size/2)*k,c.size*k,c.size*k);
+        const dx=Math.cos(c.a)*c.v*s,dy=Math.sin(c.a)*c.v*s*.5,lift=Math.max(0,260*s-620*s*s)+10;
+        const w=(c.tint===0?c.size*2:c.size)*k,h=c.size*k,x=q.x+dx*k-w/2,y=q.y+(dy-lift)*k-h/2;
+        b.g.fillStyle(this.c.breu,1).fillRect(x-k,y-k,w+2*k,h+2*k).fillStyle(tints[c.tint],1).fillRect(x,y,w,h);
       }
       return true;
     });

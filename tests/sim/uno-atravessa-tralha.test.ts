@@ -126,7 +126,7 @@ test('the client: a run-over tralha square bursts (only near the Uno) and thwack
   assert.deepEqual(ranOver(before,[],{x:11,y:10}).map(s=>s.id),['tralha-3'],'the far one went by a coleta or a horde');
   assert.deepEqual(ranOver(before,[sq,far],{x:11,y:10}),[],'still standing');
   assert.deepEqual(ranOver(before,[],undefined),[],'no Uno');
-  assert.equal(runOverChunks(5).length,9);
+  assert.equal(runOverChunks(5).length,14);
   assert.equal(soundForEvent({type:'structure',id:'tralha-3',hp:0,maxHp:200}),'golpe');
   assert.equal(soundForEvent({type:'structure',id:'tralha-3',hp:100,maxHp:200}),undefined);
   assert.equal(soundForEvent({type:'structure',id:'torre-1',hp:0,maxHp:200}),undefined);

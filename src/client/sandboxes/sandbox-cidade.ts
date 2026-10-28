@@ -643,7 +643,7 @@ class CitySandbox extends Phaser.Scene {
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     this.stone.push(view);
-    if(nose){const stone=this.stone;setTimeout(()=>stone.push({...view,structures:[]}),atropela);return;}
+    if(nose){const stone=this.stone;console.info('sandbox: atropela armado');setTimeout(()=>stone.push({...view,structures:[]}),atropela);return;}
     if(tralhaShot){this.mountTralha(projector,structures.find(x=>x.id==='b1')!);return;}
     if(muralhaShot)return; // the junk wall alone, no ghost
     if(carMoves)return; // anda=: the car and its rope, no ghost over the hero

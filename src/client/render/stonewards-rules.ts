@@ -130,11 +130,11 @@ export function ranOver(before:ReadonlyMap<string,StructureView>,after:readonly 
 }
 export const RUN_OVER_NEAR=4;
 /** The burst of junk a run-over square throws (ms), and its chunks: angle, speed (px/s at zoom 1), size, colour slot. */
-export const RUN_OVER_MS=520;
-export function runOverChunks(seed:number,n=9){
+export const RUN_OVER_MS=650;
+export function runOverChunks(seed:number,n=14){
   const out:{a:number;v:number;size:number;tint:number}[]=[];
   let h=(seed*2654435761)>>>0;const rnd=()=>{h=(h^(h>>>15))*2246822507>>>0;h=(h^(h>>>13))*3266489909>>>0;return ((h^=h>>>16)>>>0)/4294967296;};
-  for(let i=0;i<n;i++)out.push({a:(i+rnd()*.8)/n*Math.PI*2,v:60+rnd()*90,size:3+rnd()*4,tint:i%3});
+  for(let i=0;i<n;i++)out.push({a:(i+rnd()*.8)/n*Math.PI*2,v:90+rnd()*130,size:7+rnd()*8,tint:i%3});
   return out;
 }
 /** How long a hit structure flashes (ms); never with reduced effects (UX checklist B9). */

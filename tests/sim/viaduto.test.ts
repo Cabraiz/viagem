@@ -18,6 +18,7 @@ import {SimWorld} from '../../src/sim/core.ts';
 import {movePlayer} from '../../src/sim/systems/players.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
+import {FOCO,FOCO_UNO} from '../../src/sim/enemies/foco.ts';
 import {cityPlanner,citySteer} from '../../src/sim/city/grid.ts';
 import {createProjectileSystem,spawnProjectile} from '../../src/sim/projectiles.ts';
 import {addTelegraph,telegraphSystem} from '../../src/sim/telegraphs.ts';
@@ -175,6 +176,20 @@ test('a body hunting a hero on the deck walks to the ramp, climbs it and hits th
   hero.hp=100;delete hero.andar;hero.x=foot.x;hero.y=foot.y+3*U;
   for(let t=0;t<ticks(60)&&floorOf(e)===1;t++)world.step();
   assert.equal(floorOf(e),0,'it came down the ramp after the hero');
+});
+
+test('ritmo-morto-e-viaduto: a siege body woke on the deck walks down the ramp to the car on the street and hits it',()=>{
+  const terrain=shared.fork(),planner=cityPlanner(terrain);
+  const world=new SimWorld({terrain,seed:7});
+  world.round.index=3;world.round.phase='wave';world.round.phaseEndsTick=1e9;
+  const foot=rampFoot(V,U),car={id:'uno',x:foot.x,y:foot.y+4*U,radius:1};
+  const hits:string[]=[];
+  world.register(createEnemyAi({steer:citySteer(planner,{terrain}),heroSpeed:2,structures:()=>[car],hitStructure:(_c,id)=>{hits.push(id);}}));
+  const e=createEnemy(world,'bebado',{x:MID,y:row(DR+DH-6)});
+  e.andar=1;(e.memory??={}).siege=1;e.memory[FOCO]=FOCO_UNO;
+  for(let t=0;t<ticks(60)&&!hits.length;t++)world.step();
+  assert.equal(floorOf(e),0,`it came down the ramp (at ${e.x.toFixed(1)},${e.y.toFixed(1)})`);
+  assert.ok(hits.includes('uno'),'and hit the car');
 });
 
 test('a ground shot never hits a hero on the deck; a deck hero\'s hit never lands on the street',()=>{

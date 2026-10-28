@@ -50,8 +50,11 @@
   /* O popup desce um pouco para o herói do topo sair por cima da moldura também deitado. */
   #confirmation.escolha-arte{--escolha-img-h:clamp(50px,17dvh,80px);margin-top:max(40px,13dvh);margin-bottom:6px;max-height:calc(100dvh - max(40px,13dvh) - 8px);padding-top:22px}
   #confirmation.escolha-arte .chosen-actions{margin-top:8px}
-  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,38dvh,150px);height:clamp(110px,38dvh,150px);margin:calc(-.55 * clamp(110px,38dvh,150px)) 0 -8px -6px}
-  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:4px 12px}
+  /* auditoria-ui-menus 14: the head kept ~15 px from the top of the screen and the link sat on the bottom wool. The hero
+     a bit smaller and less out of the frame; the link lifted off the bottom border by the padding. */
+  #confirmation.escolha-arte{padding-bottom:20px}
+  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(96px,30dvh,130px);height:clamp(96px,30dvh,130px);margin:calc(-.45 * clamp(96px,30dvh,130px)) 0 -8px -6px}
+  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:2px 12px}
   /* Bloco largo e baixo: a arte larga cobre o bloco (chão de lado a lado); o herói enche a altura acima do texto. */
   #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}

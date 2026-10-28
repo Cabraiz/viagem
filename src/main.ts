@@ -432,7 +432,15 @@ document.getElementById('previous')!.addEventListener('click',()=>cycle(-1));
 document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
-nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
+// BORA! with no name (auditoria-ui-menus 9): the menu's own warning, not the browser's balloon (its look changes from
+// browser to browser): the field turns red, says it in its placeholder and shakes once; the live region reads it.
+const NAME_MISSING='Escolha um nome primeiro!',namePlaceholder=nameInput.placeholder;
+const nameMissing=(on:boolean)=>{
+  nameInput.classList.remove('nome-faltando');nameInput.placeholder=on?NAME_MISSING:namePlaceholder;
+  if(on){void nameInput.offsetWidth;nameInput.classList.add('nome-faltando');nameInput.setAttribute('aria-invalid','true');text('announcement',NAME_MISSING);}
+  else nameInput.removeAttribute('aria-invalid');
+};
+nameInput.addEventListener('input',()=>{nickname=nameInput.value;if(nameInput.classList.contains('nome-faltando'))nameMissing(false);});
 // A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
 // Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
@@ -466,8 +474,7 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!isLiberado(selected.id)) return; // a locked hero never gets past here (a click, Enter or a script)
   void autoFullscreen(tela); // inside the tap: browsers allow it only there
   if(etapaOf(etapa)==='escolher') {chooseHero();return;}
-  if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
-  nameInput.setCustomValidity('');
+  if(!nickname.trim()) {nameMissing(true);nameInput.focus();return;}
   nickname=nameInput.value=fitName(nickname);
   const saved={version:1,classId:selected.id,name:nickname,color};
   let persisted=false;

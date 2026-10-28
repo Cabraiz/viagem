@@ -44,3 +44,14 @@
 #confirmation .solo-bots-step{width:36px;min-height:40px;padding:0;border:0;background:none;color:inherit;font:900 var(--t-21)/1 var(--f-sistema)}
 #confirmation .solo-bots-value{min-width:2ch;text-align:center;font-weight:900;font-size:var(--t-16)}
 @media (max-height:520px){#confirmation{width:min(560px,calc(100vw - 28px));max-width:min(560px,calc(100vw - 28px))}#confirmation .solo-row{flex:1.6}}
+/* BORA! with no name (auditoria-ui-menus 9, main.ts nameMissing): the menu's own warning in place of the browser's
+   balloon. The field turns red, its placeholder says it, one short shake (none with reduced motion). */
+.estadio .estadio-nome #nickname.nome-faltando{border-color:var(--arte-vermelho);animation:nome-tremer .36s ease-in-out}
+.estadio .estadio-nome #nickname.nome-faltando::placeholder{color:var(--arte-vermelho-sombra);opacity:1}
+@keyframes nome-tremer{0%,100%{translate:0}20%{translate:-6px}40%{translate:6px}60%{translate:-4px}80%{translate:3px}}
+@media(prefers-reduced-motion:reduce){.estadio .estadio-nome #nickname.nome-faltando{animation:none}}
+/* Menu touch targets of at least 44x44 (auditoria-ui-menus 13: the profile's ≡ was 30x30, "Privacidade" 22 tall): a
+   transparent hit area around them, the drawing unchanged. */
+.estadio :is(.insta-menu,.menu-privacidade){position:relative}
+.estadio .insta-menu::after{content:'';position:absolute;inset:min(0px,calc((100% - 44px) / 2))}
+.estadio .menu-privacidade::after{content:'';position:absolute;inset:min(0px,calc((100% - 44px) / 2)) min(0px,calc((100% - 64px) / 2))}

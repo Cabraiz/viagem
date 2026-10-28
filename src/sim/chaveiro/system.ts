@@ -50,7 +50,7 @@ export const MOTO_RIDE_SECONDS=420;
  * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[]};
+export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[]};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**
@@ -65,7 +65,8 @@ export const CAR_LIMIT=120,BUDGET_BASE=25,BUDGET_PER_HIT=3;
  * the limit given back by repair() (the 2-minute explore interval between waves, NEW-20261023-ORQ-inicio-no-uno-caixas-120).
  */
 export const CAR_REPAIR_SHARE=.25;
-export const carLimitFor=(players:number)=>Math.round(CAR_LIMIT*playerScale(players).group);
+export const carLimitFor=(players:number,scale?:readonly number[])=>
+  Math.round(CAR_LIMIT*playerScale(players).group*(scale?.[Math.min(scale.length,Math.max(1,Math.round(players)))-1]??1));
 export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:2});
 export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
 /** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
@@ -191,6 +192,11 @@ export interface ChaveiroOptions {
    * MOTO_RIDE_SECONDS for every room. A bump keeps the span planned at MOTO_RIDE_SECONDS, crawled at LOMBADA_PACE.
    */
   ride?:readonly number[];
+  /**
+   * balanco-1p-3p-carro: × the car's hit limit by room size 1..6 (mode 'ninhos': CHAVEIRO_PACE.limit), read with the
+   * limit at the first step. Absent: carLimitFor's group scaling alone.
+   */
+  limit?:readonly number[];
 }
 
 export interface ChaveiroSystem {
@@ -473,7 +479,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         state.startTick=ctx.tick;
         // The limit follows the room the run starts with (a checkpoint keeps it).
         let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;
-        if(car.hits===0)car.limit=carLimitFor(n);
+        if(car.hits===0)car.limit=carLimitFor(n,options.limit);
         const ride=options.ride?rideSecondsFor(options.ride,n):MOTO_RIDE_SECONDS;
         if(ride!==MOTO_RIDE_SECONDS){state.ride=ride;pace();}
       }

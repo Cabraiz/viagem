@@ -278,6 +278,8 @@ export interface CalibreLook {
   speed:number;arc:number;
   /** Trail length (u) behind the shot; 0 = none. */
   trail:number;
+  /** A tracer's glowing core (torres-polimento): yellow by default, white-hot for the long guns, red for the flak. */
+  core?:'branco'|'vermelho';
   /** Explosion radius (u) and life (ms) at the impact; 0 = a small spark only. */
   blast:number;blastMs:number;
   crater?:CraterSize;
@@ -292,16 +294,16 @@ export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
   fuzil:cal({shot:'tracer',flash:6,flashMs:90,speed:42,trail:1.3,barrel:.4}),
   metralhadora:cal({shot:'tracer',flash:8,flashMs:80,speed:46,trail:1.4,barrel:.5}),
   rotativa:cal({shot:'tracer',flash:10,flashMs:80,speed:50,trail:1.6,barrel:.55}),
-  sniper:cal({shot:'tracer',flash:8,flashMs:90,speed:90,trail:2.6,barrel:.75}),
-  antimaterial:cal({shot:'tracer',flash:12,flashMs:110,speed:80,trail:3,blast:.35,blastMs:220,barrel:.85}),
+  sniper:cal({shot:'tracer',flash:8,flashMs:90,speed:90,trail:2.6,core:'branco',barrel:.75}),
+  antimaterial:cal({shot:'tracer',flash:12,flashMs:110,speed:80,trail:3,blast:.35,blastMs:220,core:'branco',barrel:.85}),
   rojao:cal({shot:'rocket',flash:7,flashMs:90,speed:9,arc:.9,trail:1.2,blast:1.2,blastMs:320,crater:'p',barrel:.3}),
   morteiro:cal({shot:'shell',flash:10,flashMs:120,speed:8,arc:3.2,blast:1.6,blastMs:380,crater:'m',barrel:.45}),
   foguete:cal({shot:'rocket',flash:10,flashMs:110,speed:13,arc:1.4,trail:1.8,blast:1.6,blastMs:360,crater:'m',barrel:.6}),
   obus:cal({shot:'shell',flash:16,flashMs:160,speed:14,arc:3.6,trail:.6,blast:2.4,blastMs:480,crater:'g',shake:3,shakeMs:220,barrel:.9}),
-  gustavao:cal({shot:'shell',flash:40,flashMs:320,speed:18,arc:9,trail:2.2,blast:6,blastMs:900,crater:'gustavao',shake:14,shakeMs:900,barrel:3.2}),
+  gustavao:cal({shot:'shell',flash:40,flashMs:320,speed:18,arc:9,trail:2.2,blast:6,blastMs:900,crater:'gustavao',shake:12,shakeMs:1000,barrel:3.2}),
   holofote:cal({shot:'beam',flash:0,flashMs:0,speed:0,blastMs:260,barrel:.3}),
   arame:cal({shot:'aura',blastMs:300,barrel:0}),
-  antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
+  antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,core:'vermelho',barrel:.5}),
   // The radar's pulse (torres-animacao-idle-tiro): a blue ring of its area on the group it hit.
   radar:cal({shot:'pulse',flash:5,flashMs:120,blastMs:420,barrel:.3}),
 });
@@ -328,9 +330,16 @@ export function shakeAt(c:Pick<CalibreLook,'shake'|'shakeMs'>,ms:number,reduced:
   const k=1-ms/c.shakeMs;
   return c.shake*k*k;
 }
-/** Shake offset (px) at `ms`: the amplitude on a fixed two-frequency wobble (deterministic, no random). */
+/** The impact's first ms push the screen down (the slam) before the wobble takes over. */
+export const SHAKE_SLAM_MS=80;
+/**
+ * Shake offset (px) at `ms`: the amplitude on a fixed wobble of two unrelated frequencies per axis (a fine tremor, not
+ * a regular circle), the vertical one starting as a slam downward (deterministic, no random). |x| ≤ a, |y| ≤ 0.6 a.
+ */
 export function shakeOffset(amplitude:number,ms:number,out:{x:number;y:number}={x:0,y:0}){
-  out.x=amplitude*Math.sin(ms*.09);out.y=amplitude*.6*Math.sin(ms*.13+1.3);
+  out.x=amplitude*(.72*Math.sin(ms*.083)+.28*Math.sin(ms*.231+.9));
+  const wobble=.7*Math.sin(ms*.121+1.3)+.3*Math.sin(ms*.297+.4),slam=Math.max(0,1-ms/SHAKE_SLAM_MS);
+  out.y=amplitude*.6*(wobble*(1-slam)+slam);
   return out;
 }
 

@@ -26,6 +26,7 @@ import {createProjectileSystem,spawnProjectile,type WeaponProjectile} from '../.
 import {createWeaponSystem} from '../../src/sim/weapons/system.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
 import {MAX_PROJECTILES,PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
+import {CLASH_XP} from '../../src/rules/enemy-roles.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {xpToNext} from '../../src/sim/progression.ts';
 import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
@@ -310,7 +311,7 @@ test('motoboy: in a full run his crash drops his XP once (kill hook, no credit)'
   const kills=events.filter(e=>e.type==='kill'&&e.enemy===moto.id);
   assert.equal(kills.length,1);
   assert.ok(![...w.pickups.values()].some(k=>k.kind==='xp'),'no gem');
-  assert.equal(earned()-xpBefore,ENEMIES.motoboy.xp,'his XP counted once');
+  assert.ok(Math.abs(earned()-xpBefore-ENEMIES.motoboy.xp*CLASH_XP)<1e-9,'his XP counted once');
 });
 
 // ---------- Influencer ----------

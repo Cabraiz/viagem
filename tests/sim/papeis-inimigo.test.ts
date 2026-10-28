@@ -19,7 +19,7 @@ import {Rng} from '../../src/contract/rng.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import type {SimContext} from '../../src/sim/context.ts';
 import {AGIOTA_SHOT,BRUTE,ENEMIES,ENEMY_KINDS,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,POSE_STATE,SLAM,SUMMON,createEnemy,enemyDef,
-  hazardKind,hazardOwner,isEnemyKind,isPriorityTarget,isReflecting} from '../../src/sim/enemies/catalog.ts';
+  hazardKind,hazardOwner,isEnemyKind,isPriorityTarget,isReflecting,roleHp} from '../../src/sim/enemies/catalog.ts';
 import {ENEMY_PHASE,EnemyAi,MINION_FLAG,STATE,type EnemyAiOptions} from '../../src/sim/enemies/ai.ts';
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
@@ -73,7 +73,7 @@ test('enemyDef: the nine are their catalog defs; every roster id is its role on 
     const def=enemyDef(e.id),r=ROLE_PROFILES[e.role],base=ENEMIES[r.base];
     assert.equal(def,enemyDef(e.id),'built once');
     assert.equal(def.id,e.id);assert.equal(def.name,e.name);assert.equal(def.behavior,r.behavior,e.id);
-    assert.equal(def.hp,Math.max(1,Math.round(base.hp*r.hp)),`${e.id} hp`);
+    assert.equal(def.hp,roleHp(e.role,base.hp),`${e.id} hp (the role's, ROLE_HITS)`);
     assert.equal(def.speed,base.speed*r.speed);assert.equal(def.damage,Math.max(1,Math.round(base.damage*r.damage)));
     assert.equal(def.radius,base.radius*r.radius*e.cell/r.cell);assert.equal(def.contactCooldown,base.contactCooldown);
     assert.equal(def.accent,e.accent);
@@ -183,7 +183,7 @@ test('invocador: no call at the minion cap, nobody comes when he dies mid-call, 
   addPlayer(C.world,'p',at(5));createEnemy(C.world,ofRole('invocador'),O);
   C.step(ticks(1)+SUMMON.warn+2);
   assert.ok(asked.length>=SUMMON.count[0]&&asked.every(k=>k==='bebado'),asked.join());
-  for(const m of [...C.world.enemies.values()].filter(e=>e.memory?.[MINION_FLAG]===1))assert.equal(m.maxHp,Math.max(1,Math.round(20*.1)));
+  for(const m of [...C.world.enemies.values()].filter(e=>e.memory?.[MINION_FLAG]===1))assert.equal(m.maxHp,Math.max(1,Math.round(ENEMIES.bebado.hp*.1)));
 });
 
 // ---------- mini-chefe ----------
@@ -240,7 +240,7 @@ test('director: the rotation is drawn on the first step (JSON), rounds spawn onl
   assert.ok(ctx.round.index>=4,`reached round ${ctx.round.index}`);
   const ids=new Set(rotationIds(rotation));
   for(const c of created)assert.ok(ids.has(c.kind),`round ${c.round}: ${c.kind} outside the rotation`);
-  for(const c of created)assert.ok(Object.values(roundRoster(rotation,c.round).roles).flat().includes(c.kind)||c.kind===roundRoster(rotation,c.round).elite,`round ${c.round}: ${c.kind} outside its band`);
+  for(const c of created)assert.ok(Object.values(roundRoster(rotation,c.round).roles).flat().includes(c.kind)||c.kind===roundRoster(rotation,c.round).elite||c.kind===roundRoster(rotation,c.round).solo,`round ${c.round}: ${c.kind} outside its band`);
   // Off: the table's nine kinds, no rotation in the state.
   const plain:typeof created=[];const ctx2=fakeCtx(21,new TerrainField(2));ctx2.players=ctx.players;
   const d2=createDirector(directorOptions(plain));runDirector(ctx2,d2,ticks(60*3));
@@ -419,8 +419,9 @@ test('round 6 with the rotation: bodies, threat and hp within a few % of the rou
         for(const k of b)assert.ok(mid.has(roleOf(k)!),`${at}: ${k} (${roleOf(k)}) is not a mid-band role`);
         assert.ok(b.length>=a.length&&b.length<=Math.ceil(a.length*1.05)&&b.length<=MAX_ROUND_ENEMIES,`${at}: ${b.length} bodies vs the table's ${a.length}`);
         const t=b.reduce((n,k)=>n+thr(k),0)/a.reduce((n,k)=>n+thr(k),0),h=hp(rot,b)/hp(table,a);
-        assert.ok(t>.94&&t<1.08,`${at}: threat ×${t.toFixed(3)}`);
-        assert.ok(h>.94&&h<1.08,`${at}: hp ×${h.toFixed(3)}`);
+        // ×0.7 bodies (CLASH_BODIES, vida-inimigos-estilo-clash): one body more or less is a bigger share at 1 player.
+        assert.ok(t>.9&&t<1.12,`${at}: threat ×${t.toFixed(3)}`);
+        assert.ok(h>.9&&h<1.12,`${at}: hp ×${h.toFixed(3)}`);
         cases++;ratio+=b.length/a.length;
       }
     }

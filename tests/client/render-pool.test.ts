@@ -171,7 +171,7 @@ test('telegraph outline covers exactly the zone the server damages (D-015: cone 
 });
 
 // ---------- Legibility (NEW-20261006-ORQ-horde-visual-noise) ----------
-import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority} from '../../src/client/render/legibility.ts';
+import {BAR_BOSS_W,BAR_MAX_W,BAR_MIN_W,BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority} from '../../src/client/render/legibility.ts';
 import {insetPolygon,telegraphOutline as outlineOf} from '../../src/client/render/telegraph-shape.ts';
 import {Ring as NumberRing} from '../../src/client/render/pool.ts';
 
@@ -338,4 +338,15 @@ test('hit flash: steady fire never keeps a critter white; each flash keeps its d
   const layers=readFileSync(new URL('../../src/client/render/layers.ts',import.meta.url),'utf8');
   assert.match(layers,/case 'damage':\{[^}]*enemy\.flashAt=flashStartOnHit\(this\.now,enemy\.flashAt\)/);
   assert.equal((layers.match(/\.flashAt=this\.now/g)??[]).length,1,'only the boss-phase cue sets the flash directly');
+});
+
+test('Clash bar: as wide as the body cell (pombo short, mini-chefe long), elite wider, boss its own, clamped',()=>{
+  assert.equal(enemyBarWidth(128,false,false),40,'a 128 cell keeps the old 40');
+  assert.equal(enemyBarWidth(128,true,false),54,'the elite as today');
+  assert.ok(enemyBarWidth(64,false,false)<enemyBarWidth(128,false,false));
+  assert.ok(enemyBarWidth(160,false,false)<enemyBarWidth(256,false,false));
+  assert.equal(enemyBarWidth(64,false,false),BAR_MIN_W,'the smallest stays readable');
+  assert.equal(enemyBarWidth(256,true,false),BAR_MAX_W,'the biggest never covers the horde');
+  assert.equal(enemyBarWidth(256,false,true),BAR_BOSS_W);
+  assert.equal(enemyBarWidth(Number.NaN,false,false),40,'unknown cell: the plain width');
 });

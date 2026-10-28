@@ -49,8 +49,10 @@ const HEROES=[
   // the collar redrawn far up by Codex (the user: "ampliar bem muito para cima caso precise descer"), the tag from the
   // scene itself below the bell (juntar-ext.py), 2x by Real-ESRGAN (ampliar.py). The menu shows the tag where variation 3
   // was and lets the collar run off the top (apelidos.ts LETREIRO_ALTO).
+  // NEW-20261028-ORQ-gatito-placas: the tag's top line reads "GATITO DA RAÇA" (the hero was renamed): only that band
+  // repainted by Codex on the same plate and blended into the 2x source, the rest of the pixels untouched.
   {id:'gato-nada-pra-comer',evidence:'D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-gato-destaque-8',
-    letreiro:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-letreiro-gato-na-cena/letreiro-3x-2x.png',
+    letreiro:'D:/Gits/viagem-board/evidence/NEW-20261028-ORQ-gatito-placas/letreiro-3x-2x-gatito.png',
     heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},

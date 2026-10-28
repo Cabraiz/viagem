@@ -66,7 +66,7 @@ test('4–5 feirinhas of 2–4 barracas, far apart, on open ground, away from th
     assert.equal(new Set(ids).size,ids.length,'one id each');
     for(let i=0;i<feiras.length;i++)for(let j=i+1;j<feiras.length;j++){
       const d=Math.hypot(feiras[i].x-feiras[j].x,feiras[i].y-feiras[j].y);
-      assert.ok(d>=FEIRA_GAP*.6,`seed ${seed}: ${feiras[i].id}–${feiras[j].id} only ${d.toFixed(1)} u apart`);
+      assert.ok(d>=FEIRA_GAP,`seed ${seed}: ${feiras[i].id}–${feiras[j].id} only ${d.toFixed(1)} u apart`);
     }
     // Blockers to the enemies (one disc each).
     for(const p of all)assert.ok(g.terrain.blockers().some(b=>b.id===p.id),`${p.id} blocks the enemies`);

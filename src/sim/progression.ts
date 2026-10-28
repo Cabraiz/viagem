@@ -41,6 +41,14 @@ export function xpToNext(level:number){
   if(l<=40)return 195+13*(l-20);
   return 455+16*(l-40);
 }
+/**
+ * D-051 mode 'ninhos' (ritmo-morto-e-viaduto): the first level costs FIRST_LEVEL_XP[heroes − 1] instead of xpToNext(1),
+ * heroes = the match's heroes (people and bots, not spectators) at its first step, fixed for the run (a fall never
+ * moves the bar). One bar for the whole team: 5 XP came in 12–27 s with 3 heroes and not before 2 min with 1, the
+ * card wants it at 60–120 s for any team. Levels 2+ cost xpToNext as ever.
+ */
+export const FIRST_LEVEL_XP:number[]=[6,9,11,12,12,12];
+export const firstLevelXp=(heroes:number)=>FIRST_LEVEL_XP[Math.min(FIRST_LEVEL_XP.length,Math.max(1,heroes))-1];
 export const createTeamProgress=():TeamProgress=>({xp:0,level:1,nextXp:xpToNext(1)});
 
 export const COLLECT_RADIUS=.6;
@@ -90,6 +98,8 @@ export interface ProgressionOptions {
   crates?:boolean;
   /** A cédula with no room on the ground (the pickup budget full, none to join): its Grana paid at once (default: dropped). */
   payGrana?(ctx:SimContext,amount:number,owner?:string):void;
+  /** D-051 mode 'ninhos': the first level's cost follows the match's heroes (FIRST_LEVEL_XP). */
+  firstLevelByHeroes?:boolean;
 }
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
@@ -101,6 +111,8 @@ export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:numb
   charges?:Record<string,[number,number]>;
   /** D-054: ROUND1_XP was paid this run. */
   round1Paid?:boolean;
+  /** firstLevelByHeroes: the heroes counted at the run's first step (absent before it). */
+  heroes?:number;
   /** Cédulas still to appear, in the order they appear (CEDULA_DELAY_SECONDS after their kill). */
   cedulas?:PendingCedula[]}
 /** D-052: every player starts a run with this many "Pular" (close the offer, no prize) and "Rolar de novo" (new cards). */
@@ -152,7 +164,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;delete state.cedulas;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;delete state.cedulas;delete state.heroes;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -402,6 +414,10 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
 
   const progression:SimSystem={id:'progression',step(ctx){
     const team=ctx.team;
+    if(options.firstLevelByHeroes&&state.heroes===undefined){
+      const heroes=[...ctx.players.values()].filter(p=>!p.spectator).length;
+      if(heroes>0){state.heroes=heroes;if(team.level===1)team.nextXp=firstLevelXp(heroes);}
+    }
     // Round 1's wave ended with no kill: its XP comes with the intermission (no pause there, D-050).
     if(round1Due(ctx)&&ctx.round.index===2&&ctx.round.phase==='prepare')team.xp+=payRound1();
     for(let n=0;n<MAX_LEVELS_PER_TICK&&team.xp>=team.nextXp;n++){

@@ -5,7 +5,8 @@
  *   node --experimental-strip-types evidence/ritmo-morto-28-10/levelup-audit.ts --players 3 [--seeds 1-16] [--cap-s 240] [--out f]
  * Per run: the first team level-up (s), the round phase then, whether a pause opened for it (the screen) or seat 0's
  * offer was settled without one, kills by 30/60/90/120 s, seat 0's downs and lowest hp before the first level, the
- * minuto de Minerva's end, the visitors (memory.visita) that came.
+ * minuto de Minerva's end, the visitors (memory.visita) that came, and xpAt[k]: the first second the team bar held k XP
+ * before the first level (with --first-xp 999 the bar never fills in the cap: the curve to calibrate FIRST_LEVEL_XP).
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,6 +20,7 @@ import {STEP_MS} from '../../src/protocol/index.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots,botIdentity} from '../../multiplayer/room-bots.ts';
 import {LevelupPause} from '../../multiplayer/levelup-pause.ts';
+import {FIRST_LEVEL_XP} from '../../src/sim/progression.ts';
 
 const HZ=20,ROOT=process.env.AUDIT_ROOT??path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const r1=(v:number)=>Math.round(v*10)/10,s=(tick:number)=>r1(tick/HZ);
@@ -27,7 +29,7 @@ function args(argv:string[]){
   const get=(n:string)=>{const i=argv.indexOf(n);return i>=0?argv[i+1]:undefined;};
   const seeds:number[]=[];
   for(const part of (get('--seeds')??'1-16').split(',')){const [a,b]=part.split('-').map(Number);for(let x=a;x<=(b??a);x++)seeds.push(x);}
-  return {seeds,players:Number(get('--players')??'3'),capS:Number(get('--cap-s')??'240'),out:get('--out')};
+  return {seeds,players:Number(get('--players')??'3'),capS:Number(get('--cap-s')??'240'),out:get('--out'),firstXp:get('--first-xp')};
 }
 
 function play(seed:number,players:number,capTicks:number,city:Awaited<ReturnType<typeof cityTerrainFrom>>&{ok:true}){
@@ -45,7 +47,7 @@ function play(seed:number,players:number,capTicks:number,city:Awaited<ReturnType
   let kills=0,downs0=0,minHp0=Infinity,armedS:number|null=null,minervaEndS:number|null=null,visitors=new Set<string>(),visitorHits=0;
   const killsAt:Record<string,number>={};
   const marks=[30,60,90,120,180];
-  const levels:number[]=[];
+  const levels:number[]=[],xpAt:number[]=[];
   while(!sim.outcome&&sim.tick<capTicks){
     clock+=STEP_MS;
     const was=levelup.paused,paused=levelup.update(sim,clock);
@@ -64,6 +66,7 @@ function play(seed:number,players:number,capTicks:number,city:Awaited<ReturnType
       else if(e.type==='damage'&&(e as {target?:string}).target==='bot1'&&visitors.has((e as {source?:string}).source??''))visitorHits++;
     }
     for(const m of marks)if(tick===m*HZ)killsAt[m]=kills;
+    if(firstLevelS===null)for(let k=xpAt.length+1;k<=sim.world.team.xp;k++)xpAt.push(s(tick));
     const p0=sim.players.get('bot1')!;
     if(firstLevelS===null&&isStanding(p0))minHp0=Math.min(minHp0,p0.hp);
     if(armedS===null&&p0.build.weapons.length)armedS=s(tick);
@@ -72,11 +75,12 @@ function play(seed:number,players:number,capTicks:number,city:Awaited<ReturnType
     for(const e of sim.world.enemies.values())if(e.memory?.visita===1)visitors.add(e.id);
   }
   return {seed,players,outcome:sim.outcome??'timeout',endS:s(sim.world.tick),firstLevelS,levelPhase,pauseS,offerSeenS,offerGoneS,offerPaused,
-    levels,kills,killsAt,downs0,minHp0:Number.isFinite(minHp0)?r1(minHp0):null,armedS,minervaEndS,visitors:visitors.size,visitorHits};
+    levels,kills,killsAt,downs0,minHp0:Number.isFinite(minHp0)?r1(minHp0):null,armedS,minervaEndS,visitors:visitors.size,visitorHits,xpAt};
 }
 
 async function main(){
   const a=args(process.argv.slice(2));
+  if(a.firstXp)FIRST_LEVEL_XP.fill(Number(a.firstXp));
   try{os.setPriority(0,os.constants.priority.PRIORITY_LOW);}catch{}
   const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');
   const hash=(JSON.parse(fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;

@@ -76,7 +76,7 @@ export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
  * bands): the visit waits, so the first level-up stays in the 60–120 s of the card in 1p as in 6p. Once Minerva ends
  * they are bodies like any other.
  */
-export const VISIT_FROM=35,VISIT_EVERY=20,VISIT_QUIET=10,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
+export const VISIT_FROM=60,VISIT_EVERY=15,VISIT_QUIET=10,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */

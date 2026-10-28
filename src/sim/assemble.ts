@@ -255,7 +255,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
     // A cédula with no room on the ground: paid like the kill would have been (read through `stonewards`, created below).
     payGrana:(ctx,amount,owner)=>{payKill(ctx.players,{},amount,stonewards.state,owner);},
-    ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
+    ...(options.combat==='manual'?{crates:true}:{}),
+    // D-051 mode 'ninhos': the first level's cost follows the heroes (progression.ts FIRST_LEVEL_XP).
+    ...(cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos'?{firstLevelByHeroes:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.

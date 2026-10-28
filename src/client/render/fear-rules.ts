@@ -36,6 +36,8 @@ export const FEAR_WARN_MS=5000;
 export const FEAR_WARN_TEXT='Não se afaste do bando';
 /** The hero's own line over the last stretch (card heroi-fala-cade-amigos), once per stretch alone; short (≤ ~20). */
 export const FEAR_SAY_TEXT='Cadê meus amigos?';
+/** The arrow steps aside this long after the line (ms; the balloon's life, layers.ts BUBBLE_MS): it would cross the text. */
+export const FEAR_SAY_MS=2200;
 
 const clamp01=(v:number)=>v<0?0:v>1?1:v;
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -102,6 +104,8 @@ export interface FearFrame {
   notice?:FearNotice;
   /** The hero says this over the head, this frame only: once each time the last stretch is reached alone. */
   say?:string;
+  /** The hero's line is on screen (FEAR_SAY_MS): the arrow waits, the balloon is the cue. */
+  saying:boolean;
 }
 
 /**
@@ -117,6 +121,7 @@ export class FearClock {
   private warned=false;
   /** The hero's line was said in this stretch alone: not again until company is found (the fear backs off). */
   private said=false;
+  private saidAt=-Infinity;
   /** One frame: `raw` the server's fear 0..1 (0 when not in combat, down or out), `dtMs` since the last frame. */
   step(raw:number,dtMs:number,nowMs:number,reduced=false):FearFrame{
     // Up to 2 s a frame: a slow phone (a few frames a second) still catches up with the wire within a frame or two.
@@ -141,8 +146,9 @@ export class FearClock {
     const notice:FearNotice|undefined=value>0&&nowMs-this.warnedAt<FEAR_WARN_MS?{text:FEAR_WARN_TEXT}:undefined;
     if(!this.rising)this.said=false;
     const say=look.final>0&&this.rising&&!this.said?FEAR_SAY_TEXT:undefined;
-    if(say)this.said=true;
-    return {seconds,look,beat,thump,alone,...notice?{notice}:{},...say?{say}:{}};
+    if(say){this.said=true;this.saidAt=nowMs;}
+    const saying=nowMs-this.saidAt<FEAR_SAY_MS;
+    return {seconds,look,beat,thump,alone,saying,...notice?{notice}:{},...say?{say}:{}};
   }
-  reset(){this.eased=0;this.last=0;this.rising=false;this.phase=0;this.warned=false;this.warnedAt=-Infinity;this.said=false;}
+  reset(){this.eased=0;this.last=0;this.rising=false;this.phase=0;this.warned=false;this.warnedAt=-Infinity;this.said=false;this.saidAt=-Infinity;}
 }

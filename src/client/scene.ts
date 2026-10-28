@@ -1184,7 +1184,8 @@ export class IslandScene extends Phaser.Scene {
       out.push({x:c.x,y:c.y,rx:Math.hypot(u.x-c.x,v.x-c.x),ry:Math.hypot(u.y-c.y,v.y-c.y)});
     }
     const box=this.heroWorldBox(),hero={x:box.x+box.width/2,y:box.y+box.height/2};
-    const near=frame.alone?spots[0]:undefined,to=near?this.project(near):undefined;
+    // While the hero's line is up the arrow waits: around the head it would cross the balloon's text.
+    const near=frame.alone&&!frame.saying?spots[0]:undefined,to=near?this.project(near):undefined;
     dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,spots:out,
       ...to?{arrow:{x:to.x,y:to.y}}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
     this.vignette?.cover(dark.covering);

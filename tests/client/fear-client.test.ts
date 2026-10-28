@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_HOLE,FEAR_SAY_TEXT,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearLook,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
+import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_HOLE,FEAR_SAY_MS,FEAR_SAY_TEXT,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearLook,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
 import {BEAT_LEVEL,WHISPER_MAX,beatLevel,heartbeatSamples,whisperLevel,whisperSamples} from '../../src/client/audio/fear-sound.ts';
 import {causeCopy,DARK_COPY} from '../../src/client/hud/cause.ts';
 import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_FINAL_SECONDS,FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_SOURCE} from '../../src/rules/index.ts';
@@ -93,6 +93,10 @@ test('card heroi-fala-cade-amigos: over the last stretch the hero says "Cadê me
   assert.equal(last.filter(f=>f.say!==undefined).length,1,'once');
   assert.equal(last.find(f=>f.say)!.say,FEAR_SAY_TEXT);
   assert.ok(last.every(f=>f.notice===undefined),'no notice on top');
+  // The arrow waits while the line is up (it would cross the balloon), then comes back.
+  const said=last.findIndex(f=>f.say!==undefined),gap=Math.round(FEAR_SAY_MS*60/1000);
+  assert.ok(last.slice(0,said).every(f=>!f.saying)&&last.slice(said,said+gap-1).every(f=>f.saying&&f.alone));
+  assert.ok(last.slice(said+gap+1).every(f=>!f.saying),'the arrow comes back');
   // Still alone in the full dark: no second balloon (it waits for company).
   const flat=run(clock,FEAR_SECONDS,FEAR_SECONDS,3,90000);
   assert.ok(flat.every(f=>f.say===undefined));

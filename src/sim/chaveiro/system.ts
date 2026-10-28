@@ -50,7 +50,7 @@ export const MOTO_RIDE_SECONDS=420;
  * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[],rate:0};
+export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[],rate:3};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**

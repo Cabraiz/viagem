@@ -1,0 +1,16 @@
+seed 1 3p: victory/opened 751.3s | idle 41 stuck 0 far 0 downs 4 enemyStuck 0 | 14.1s wall 0.9400000000000001 ms/tick
+seed 2 3p: victory/opened 790.4s | idle 47 stuck 0 far 0 downs 5 enemyStuck 2 | 13.4s wall 0.85 ms/tick
+seed 3 3p: victory/opened 767.9s | idle 44 stuck 0 far 0 downs 1 enemyStuck 0 | 10.1s wall 0.6599999999999999 ms/tick
+seed 4 3p: defeat/team 312.1s | idle 8 stuck 0 far 0 downs 4 enemyStuck 3 | 5.8s wall 0.93 ms/tick
+seed 5 3p: victory/opened 735.9s | idle 47 stuck 0 far 0 downs 1 enemyStuck 5 | 18.1s wall 1.23 ms/tick
+seed 6 3p: victory/opened 801.8s | idle 44 stuck 0 far 0 downs 4 enemyStuck 6 | 15.1s wall 0.9400000000000001 ms/tick
+seed 7 3p: victory/opened 709.3s | idle 37 stuck 0 far 0 downs 1 enemyStuck 2 | 12.9s wall 0.9099999999999999 ms/tick
+seed 8 3p: defeat/team 744.8s | idle 49 stuck 0 far 0 downs 3 enemyStuck 1 | 14s wall 0.9400000000000001 ms/tick
+seed 9 3p: victory/opened 822.4s | idle 46 stuck 0 far 0 downs 4 enemyStuck 0 | 13.6s wall 0.82 ms/tick
+seed 10 3p: victory/opened 823.1s | idle 41 stuck 1 far 0 downs 2 enemyStuck 0 | 15.4s wall 0.9400000000000001 ms/tick
+seed 11 3p: victory/opened 752.5s | idle 52 stuck 0 far 0 downs 2 enemyStuck 0 | 12.3s wall 0.82 ms/tick
+seed 12 3p: victory/opened 804.2s | idle 43 stuck 0 far 0 downs 3 enemyStuck 0 | 13.7s wall 0.85 ms/tick
+seed 13 3p: defeat/team 302.4s | idle 12 stuck 0 far 0 downs 3 enemyStuck 3 | 5.3s wall 0.8800000000000001 ms/tick
+seed 14 3p: defeat/team 318.6s | idle 6 stuck 0 far 0 downs 3 enemyStuck 3 | 7.8s wall 1.23 ms/tick
+seed 15 3p: victory/opened 787.5s | idle 50 stuck 0 far 0 downs 2 enemyStuck 0 | 13.6s wall 0.86 ms/tick
+seed 16 3p: defeat/team 341.6s | idle 9 stuck 0 far 0 downs 4 enemyStuck 2 | 6s wall 0.8800000000000001 ms/tick

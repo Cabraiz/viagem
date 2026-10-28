@@ -7,7 +7,7 @@
    The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc). Nothing in it scrolls. */
 .rh .rh-offer.rh-ofc{
   /* --cw: a side card's width; the middle one is 1.18x. Narrow phones by the width, short screens by the height. */
-  --cw:min(30vw,150px,calc((100dvh - 165px) / 2));
+  --cw:min(29vw,150px,calc((100dvh - 165px) / 2));
   --px-font:'Pixelify Sans',var(--f-cartaz);
   --px-ink:#160f3c;
   --px-line:1px 0 0 var(--px-ink),-1px 0 0 var(--px-ink),0 1px 0 var(--px-ink),0 -1px 0 var(--px-ink),
@@ -35,19 +35,19 @@
 .rh .rh-ofc .rh-card{
   --w:var(--cw);--rot:0deg;--dy:0px;--fx:0px;
   position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);aspect-ratio:480/805;min-height:0;
-  margin:0 calc(var(--cw) * -.07);padding:calc(var(--w) * .27) calc(var(--w) * .1) calc(var(--w) * .1);
+  margin:0 calc(var(--cw) * -.04);padding:calc(var(--w) * .27) calc(var(--w) * .1) calc(var(--w) * .1);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .035);
   border:0;border-radius:0;background:url('/art/ui-extra/px39/cartao-lateral.webp') center/100% 100% no-repeat;
   box-shadow:none;color:#f3e8d1;font-size:calc(var(--w) / 10);text-align:center;cursor:pointer;
-  transform-origin:50% 130%;transform:translateY(var(--dy)) rotate(var(--rot));
+  transform-origin:50% 60%;transform:translateY(var(--dy)) rotate(var(--rot));
   animation:px39-leque .52s cubic-bezier(.2,1.25,.4,1) backwards;
 }
 .rh .rh-ofc .rh-card::before,.rh .rh-ofc .rh-card::after{display:none}
 @keyframes px39-leque{from{transform:translateX(var(--fx)) rotate(0deg) scale(.55);opacity:0}}
 @media (prefers-reduced-motion:reduce){.rh .rh-ofc .rh-card{animation:none}}
-.rh .rh-ofc .rh-card[data-fan=l]{order:1;--rot:-14deg;--dy:4%;--fx:calc(var(--cw) * .9)}
+.rh .rh-ofc .rh-card[data-fan=l]{order:1;--rot:-12deg;--dy:4%;--fx:calc(var(--cw) * .9)}
 .rh .rh-ofc .rh-card[data-fan=m]{order:4;z-index:3}
-.rh .rh-ofc .rh-card[data-fan=r]{order:7;--rot:14deg;--dy:4%;--fx:calc(var(--cw) * -.9)}
+.rh .rh-ofc .rh-card[data-fan=r]{order:7;--rot:12deg;--dy:4%;--fx:calc(var(--cw) * -.9)}
 .rh .rh-ofc .rh-offer-cards[data-count='4']{--cw:min(24vw,128px,calc((100dvh - 165px) / 2.2))}
 .rh .rh-ofc .rh-card[data-fan=l2]{order:1;--rot:-22deg;--dy:9%;--fx:calc(var(--cw) * 1.5)}
 .rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;--rot:-6deg;--fx:calc(var(--cw) * .5)}
@@ -57,7 +57,7 @@
 .rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=l1]{--rot:-8deg}
 .rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=r1]{--rot:8deg}
 /* The default pick: bigger, the gold frame on the dark teal, rays behind the icon. */
-.rh .rh-ofc .rh-card.rh-card-default{--w:calc(var(--cw) * 1.18);aspect-ratio:480/750;padding-top:calc(var(--w) * .22);
+.rh .rh-ofc .rh-card.rh-card-default{--w:calc(var(--cw) * 1.18);aspect-ratio:480/750;padding-top:calc(var(--w) * .2);
   background-image:url('/art/ui-extra/px39/cartao-meio-dourado.webp')}
 .rh .rh-ofc .rh-card:active{filter:brightness(1.15)}
 .rh .rh-ofc .rh-card:focus-visible{outline:3px solid #fadb7d;outline-offset:2px}
@@ -66,9 +66,10 @@
   background:url('/art/ui-extra/px39/selo-nova.webp') center/100% 100% no-repeat;
   font:700 1.05em/1 var(--px-font);color:#3a1d14;text-shadow:none;white-space:nowrap}
 .rh .rh-ofc .rh-card-default .rh-card-rarity{top:8%}
-.rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:0 0 auto;display:grid;place-items:center;width:5.6em;height:5.6em;
+.rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:0 0 auto;display:grid;place-items:center;width:5em;height:5em;
   margin:0;border:0;border-radius:0;background:none}
 .rh .rh-ofc .rh-card-icon>.ic{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.rh .rh-ofc .rh-card-default .rh-card-icon{width:4.3em;height:4.3em}
 .rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-28%;z-index:-1;
   background:url('/art/ui-extra/px39/raios.webp') center/contain no-repeat}
 /* "Niv N" on the dark plate with the arrow tips, across the card. */
@@ -77,15 +78,15 @@
   font:700 1.05em/1 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-card-body{flex:1 1 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
   gap:.3em;min-width:0;min-height:0;text-align:center}
-.rh .rh-ofc .rh-card-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;
-  font:700 1.18em/1.05 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow-wrap:anywhere}
+.rh .rh-ofc .rh-card-name{flex:0 0 auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;
+  font:700 1.18em/1.15 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow-wrap:anywhere;padding-bottom:2px}
 /* The gain box: the number big in mint, the words small in white. */
 .rh .rh-ofc :is(.rh-card-gain,.rh-card-value){box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;
   width:100%;min-height:2.9em;padding:.3em .35em;background:url('/art/ui-extra/px39/faixa-bonus-lateral.webp') center/100% 100% no-repeat;
   font:700 .9em/1.05 var(--px-font);color:#f3e8d1;text-shadow:var(--px-line);white-space:normal;overflow:hidden}
 .rh .rh-ofc .rh-card-default :is(.rh-card-gain,.rh-card-value){background-image:url('/art/ui-extra/px39/faixa-bonus-meio.webp')}
 .rh .rh-ofc .rh-card-gain-big{font-size:1.55em;line-height:1;color:#77e48b}
-.rh .rh-ofc .rh-card-gain-small{font-size:.82em;line-height:1.05}
+.rh .rh-ofc .rh-card-gain-small{font-size:.9em;line-height:1.05}
 .rh .rh-ofc .rh-card-gain~.rh-card-value{display:none}
 .rh .rh-ofc .rh-card-value-new{color:#77e48b}
 /* The old tag's pieces stay in the DOM (labels, tests) but the card says it all. */
@@ -104,22 +105,22 @@
   font:700 clamp(14px,4.4vw,20px)/1 var(--px-font);color:#f4ecf3;text-shadow:var(--px-line);white-space:nowrap;cursor:pointer}
 .rh .rh-ofc .rh-ofc-reroll{background-image:url('/art/ui-extra/px39/botao-rolar.webp');padding-left:6%;padding-right:6%}
 .rh .rh-ofc .rh-offer-all{flex:1 0 100%;width:auto;max-width:300px;aspect-ratio:auto;padding:8px 14px 6px;background-image:url('/art/ui-extra/px39/botao-rolar.webp')}
-.rh .rh-ofc .rh-ofc-btn:disabled{filter:grayscale(.6) brightness(.8);cursor:default}
+.rh .rh-ofc .rh-ofc-btn:disabled{opacity:1;filter:saturate(.55) brightness(.82);cursor:default}
 .rh .rh-ofc .rh-ofc-btn-count{display:grid;place-items:center;flex:0 0 auto;width:1.45em;height:1.45em;
   background:url('/art/ui-extra/px39/contador.webp') center/100% 100% no-repeat;font:700 .85em/1 var(--px-font);color:#fff}
 .rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
 /* Short screens (phone landscape): the plaque and the buttons in a column at the left, the fan at the right. */
 @media (max-height:500px){
   /* Bottom-anchored: the pause's clock ("Escolham! N s", pausa.ts) keeps its place above the window. */
-  .rh .rh-offer.rh-ofc{--cw:min(17vw,124px,calc((100dvh - 70px) / 2.05));width:min(820px,calc(100vw - 16px));
+  .rh .rh-offer.rh-ofc{--cw:min(15vw,112px,calc((100dvh - 100px) / 2.2));width:max-content;max-width:calc(100vw - 16px);
     top:auto;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);
-    display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'head cards' 'fall cards' 'wait cards' 'actions cards';
-    align-content:center;align-items:center;justify-items:center;gap:6px 12px}
+    display:grid;grid-template-columns:auto auto;grid-template-areas:'head cards' 'fall cards' 'wait cards' 'actions cards';
+    align-content:center;align-items:center;justify-items:center;gap:6px 28px}
   .rh .rh-ofc .rh-offer-head{grid-area:head}
   .rh .rh-ofc>.rh-window-fall{grid-area:fall}
   .rh .rh-ofc .rh-ofc-wait{grid-area:wait}
   .rh .rh-ofc .rh-ofc-actions{grid-area:actions;flex-direction:column;align-items:center;gap:6px}
-  .rh .rh-ofc .rh-offer-cards{grid-area:cards}
+  .rh .rh-ofc .rh-offer-cards{grid-area:cards;padding-inline:calc(var(--cw) * .45)}
   .rh .rh-ofc .rh-offer-title{width:min(300px,34vw);font-size:clamp(16px,2.6vw,24px)}
   .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){width:min(200px,24vw);font-size:clamp(13px,2vw,18px)}
 }

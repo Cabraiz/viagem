@@ -177,6 +177,7 @@ test('a choose command shaped like the client\'s reaches the simulation',()=>{
   const offer=feed.take().offers[0];assert.ok(offer,'offer pushed to the client');
   const before=a.messages.length;
   command(room,a,{t:'choose',offer:offer.id,index:offer.defaultIndex,round:room.run.snapshot().round},clock);
+  step(room);
   const answer=a.messages.slice(before).find(m=>m.t==='offers');
   assert.ok(answer);assert.ok(!answer.offers.some((o:any)=>o.id===offer.id),'the picked offer is gone');
 });

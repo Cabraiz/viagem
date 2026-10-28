@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3271,
-  "bytes": 2255920202,
-  "liteBytes": 786938746,
+  "bytes": 2251657432,
+  "liteBytes": 786310054,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -34034,40 +34034,40 @@
    "shownPsnr": 43
   },
   "towers/vigia-do-predio/base.webp": {
-   "source": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc",
-   "lite": "a5b415d29f686f34587e011ae2757d7c0965e3a9f319aedb11d3ea6826d31411",
-   "bytes": 6077560,
-   "liteBytes": 614564,
+   "source": "694d327ef24699869619befc5d118e8bc5c07729d4f3487a7f9940ef0a7f3dcb",
+   "lite": "c0a314d44b66b289714fe5b9855eb276279e4e25ec6e96272ee9d0c3a2e8704c",
+   "bytes": 2890576,
+   "liteBytes": 353642,
    "liteCell": [
-    224,
-    416
+    232,
+    196
    ],
-   "psnr": 42,
-   "shownPsnr": 42
+   "psnr": 40.2,
+   "shownPsnr": 40.2
   },
   "towers/vigia-do-predio/fire.webp": {
-   "source": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d",
-   "lite": "b77b31e96978ca8b53eee8b5fd7a97f43144b3551608c25fbcef8e7160d75fed",
-   "bytes": 159356,
-   "liteBytes": 36938,
+   "source": "1c5049740b018552651e185c01d4867fe9d122a906f8cca3abbe2e1c6e5c1a73",
+   "lite": "b7c64292450b955f69f71fd2641ed9aa6d039d0ec651fd6bb466cb9939acfdc0",
+   "bytes": 1830218,
+   "liteBytes": 267940,
    "liteCell": [
-    64,
-    64
+    128,
+    128
    ],
-   "psnr": 47.7,
-   "shownPsnr": 47.7
+   "psnr": 40.1,
+   "shownPsnr": 40.1
   },
   "towers/vigia-do-predio/idle.webp": {
-   "source": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883",
-   "lite": "9a7af3d5a5d54c15301284d7e2cc02b79c3c3a6023ff25a5f7a3f6ab7359dae4",
-   "bytes": 126682,
-   "liteBytes": 29596,
+   "source": "8e4fb67e715e788683cdb68f1cb4c63f6d30e1ebf7e3ed7819e08e5a6df01346",
+   "lite": "09e30910a9e7d8c752d814a6d4f55a25deb695472147e984695704210926ba93",
+   "bytes": 1907320,
+   "liteBytes": 273916,
    "liteCell": [
-    64,
-    64
+    128,
+    128
    ],
-   "psnr": 48.6,
-   "shownPsnr": 48.6
+   "psnr": 39.8,
+   "shownPsnr": 39.8
   },
   "towers/vigias-armados/base.webp": {
    "source": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c",

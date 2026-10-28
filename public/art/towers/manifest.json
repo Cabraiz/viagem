@@ -2199,10 +2199,10 @@
       "kind": "tower",
       "files": {
         "base": {
-          "file": "vigia-do-predio/base-p1.webp",
+          "file": "vigia-do-predio/base.webp",
           "cell": [
-            448,
-            832
+            464,
+            392
           ],
           "views": 4,
           "rows": [
@@ -2215,117 +2215,126 @@
           ],
           "anchor": [
             0.5,
-            0.88
+            0.9388
           ],
           "pages": [
             {
-              "file": "vigia-do-predio/base-p1.webp",
-              "columns": 9,
-              "rows": 3,
+              "file": "vigia-do-predio/base.webp",
+              "columns": 4,
+              "rows": 6,
               "firstFrame": 0,
               "frameCount": 24,
-              "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc"
+              "sha256": "694d327ef24699869619befc5d118e8bc5c07729d4f3487a7f9940ef0a7f3dcb"
             }
           ],
-          "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc",
+          "sha256": "694d327ef24699869619befc5d118e8bc5c07729d4f3487a7f9940ef0a7f3dcb",
           "liteCell": [
-            224,
-            416
+            232,
+            196
           ]
         },
         "fire": {
           "file": "vigia-do-predio/fire.webp",
           "cell": [
-            128,
-            128
+            256,
+            256
           ],
-          "frames": 4,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
           "fps": 12,
           "pages": [
             {
               "file": "vigia-do-predio/fire.webp",
-              "columns": 4,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 32,
-              "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d"
+              "frameCount": 64,
+              "sha256": "1c5049740b018552651e185c01d4867fe9d122a906f8cca3abbe2e1c6e5c1a73"
             }
           ],
-          "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d",
+          "sha256": "1c5049740b018552651e185c01d4867fe9d122a906f8cca3abbe2e1c6e5c1a73",
           "liteCell": [
-            64,
-            64
+            128,
+            128
           ]
         },
         "idle": {
           "file": "vigia-do-predio/idle.webp",
           "cell": [
-            128,
-            128
+            256,
+            256
           ],
-          "frames": 4,
+          "frames": 8,
           "directions": 8,
           "anchor": [
             0.5,
-            0.88
+            0.8594
           ],
           "fps": 4,
           "pages": [
             {
               "file": "vigia-do-predio/idle.webp",
-              "columns": 4,
+              "columns": 8,
               "rows": 8,
               "firstFrame": 0,
-              "frameCount": 32,
-              "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883"
+              "frameCount": 64,
+              "sha256": "8e4fb67e715e788683cdb68f1cb4c63f6d30e1ebf7e3ed7819e08e5a6df01346"
             }
           ],
-          "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883",
+          "sha256": "8e4fb67e715e788683cdb68f1cb4c63f6d30e1ebf7e3ed7819e08e5a6df01346",
           "liteCell": [
-            64,
-            64
-          ]
-        },
-        "reload": {
-          "file": "vigia-do-predio/reload.webp",
-          "cell": [
             128,
             128
-          ],
-          "frames": 6,
-          "directions": 8,
-          "anchor": [
-            0.5,
-            0.88
-          ],
-          "fps": 8,
-          "pages": [
-            {
-              "file": "vigia-do-predio/reload.webp",
-              "columns": 6,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 48,
-              "sha256": "7265b0fe7b1982c784b4d7bd7c85ad01aa9850b4545cd521c1b1b0cd2c760bb3"
-            }
-          ],
-          "sha256": "7265b0fe7b1982c784b4d7bd7c85ad01aa9850b4545cd521c1b1b0cd2c760bb3"
+          ]
         }
       },
-      "sha256": "c8fe4154c96b366b942641c28c070d0bd18a05ffd6036fd683b2827a8ac0bad8",
+      "sha256": "16e28b6dd0336f16bd4b36cb36cffa6cdd92ce59142dc223f02c2ea6b1c63331",
       "meta": {
         "footprint": [
           2,
           2
         ],
         "mount": [
-          178,
-          398
+          232,
+          192
+        ],
+        "muzzle": [
+          [
+            0.5,
+            0.64
+          ],
+          [
+            0.17,
+            0.64
+          ],
+          [
+            0.07,
+            0.55
+          ],
+          [
+            0.26,
+            0.44
+          ],
+          [
+            0.5,
+            0.27
+          ],
+          [
+            0.74,
+            0.44
+          ],
+          [
+            0.93,
+            0.55
+          ],
+          [
+            0.83,
+            0.64
+          ]
         ]
       }
     },

@@ -92,6 +92,17 @@ export const SOLO_FAILED='Não foi possível começar a partida. Tente novamente
 export function soloErrorText(error:unknown):string{
   return error instanceof Error&&error.name==='Error'&&error.message?error.message:SOLO_FAILED;
 }
+/**
+ * auditoria de jogabilidade 14: a cold room Worker can miss the first "Jogar sozinho" (the room or the join fails) and the
+ * player saw the error at once. One more try, silent, SOLO_RETRY_GAP_MS later; `retryable` says no for an answer that a
+ * second try cannot change (the room's fatal word, e.g. an old version).
+ */
+export const SOLO_RETRY_GAP_MS=800;
+export async function soloOneRetry<T>(attempt:()=>Promise<T>,retryable:(error:unknown)=>boolean,
+  wait:(ms:number)=>Promise<unknown>=ms=>new Promise(done=>setTimeout(done,ms))):Promise<T>{
+  try{return await attempt();}
+  catch(error){if(!retryable(error))throw error;await wait(SOLO_RETRY_GAP_MS);return attempt();}
+}
 /** `?ilha=1` (tests only): "Jogar sozinho" opens the old island exploration, without a room. */
 export const islandFlag=(search:string)=>new URLSearchParams(search).get('ilha')==='1';
 

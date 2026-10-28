@@ -16,7 +16,7 @@ import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
 import {holdMenuDownload} from './audio/menu-music.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
-import {objectiveFromSearch,soloMemory,soloNext,soloPlan,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
+import {objectiveFromSearch,soloMemory,soloNext,soloOneRetry,soloPlan,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -614,14 +614,17 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a
     // room Worker from before reads none and opens the usual room, which the solo plan still switches to the city).
     const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};
-    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
-    if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
-    step('room');
-    client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();
+    // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time.
+    const joined=await soloOneRetry(async()=>{
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
+      if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
+      step('room');
+      const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;await fresh.join();
+      return fresh;
+    },()=>{const fatal=!!client?.fatal;if(!fatal){client?.leave();client=undefined;}return !fatal;});
     step('join');
     const {openExploration}=await import('./explore.ts');
     options.onJoined?.();
-    const joined=client;
     const opening=openExploration(hero,nick,joined);
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BOTS_DEFAULT,BOTS_KEY,SOLO_FAILED,SOLO_GAP_MS,SOLO_MAP,SOLO_RETRY_MS,botsLabel,clampBots,islandFlag,readBots,saveBots,soloErrorText,
-  objectiveFromSearch,soloMemory,soloNext,soloPlan,soloProgress,SOLO_STEPS,SOLO_STARTING,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
+  objectiveFromSearch,soloMemory,soloNext,soloOneRetry,soloPlan,soloProgress,SOLO_RETRY_GAP_MS,SOLO_STEPS,SOLO_STARTING,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
@@ -121,9 +121,9 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
   assert.equal(main.match(/openExploration\(/g)?.length,1,'the island opens from one place only');
   const lobby=read('src/client/lobby.ts');
   const solo=lobby.slice(lobby.indexOf('export async function openSolo'));
-  assert.match(solo,/client\.cityRef=cityRef;/,'the city goes in join.maps, or the room refuses setMap');
+  assert.match(solo,/fresh\.cityRef=cityRef;/,'the city goes in join.maps, or the room refuses setMap');
   assert.match(solo,/mountWaitingRoom\(layout,joined,\{solo:plan\}\)/);
-  assert.ok(solo.indexOf('options.onJoined?.()')>solo.indexOf('await client.join()'),'the dialog closes only once the room is joined');
+  assert.ok(solo.indexOf('options.onJoined?.()')>solo.indexOf('await fresh.join()'),'the dialog closes only once the room is joined');
   assert.match(lobby,/if\(step\.action==='map'\)client\.setMap\?\.\(options\.solo\.map\);/);
   assert.match(lobby,/else if\(step\.action==='ready'\)client\.ready\(true\);/);
   const css=read('src/client/style.css');
@@ -134,7 +134,7 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
   const lobby=read('src/client/lobby.ts'),solo=lobby.slice(lobby.indexOf('export async function openSolo'));
   assert.ok(solo.includes('const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};'),'map, solo and the asked objective');
   assert.ok(solo.includes("fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),"),'the body, no Content-Type header');
-  assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('client=new CoopClient'))),'no JSON content type: a simple request');
+  assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('new CoopClient'))),'no JSON content type: a simple request');
 });
 
 test('?modo= (D-051, rodada-legado): the solo room is always the nests with the manual combat, whatever the address',()=>{
@@ -163,8 +163,25 @@ test('auditoria-ui-menus 5: the solo downloads start when the popup opens, and t
   assert.match(main,/bar\.setAttribute\('role','progressbar'\)/);
   const solo=lobby.slice(lobby.indexOf('export async function openSolo'));
   assert.match(solo,/const warm=warmSolo\(hero\.id\)/,'the tap reuses what the popup started');
-  assert.ok(solo.indexOf("step('room')")<solo.indexOf('await client.join()')&&solo.indexOf("step('join')")>solo.indexOf('await client.join()'));
+  assert.ok(solo.indexOf("step('room')")<solo.indexOf('await fresh.join()')&&solo.indexOf("step('join')")>solo.indexOf('await fresh.join()'));
   assert.match(lobby,/options\.solo&&client\.run\?\.phase==='countdown'\?SOLO_STARTING/,'no "Ops, peraí" in a solo countdown');
   const css=read('src/client/ui/escolha.css');
   assert.match(css,/#enter-island\[aria-busy=true\]:disabled\{opacity:1\}/,'the card is not faded while it loads');
+});
+
+// auditoria de jogabilidade 14: a cold room Worker failed the first "Jogar sozinho" and the error showed at once.
+test('solo start: one silent second try, none for a fatal answer',async()=>{
+  const waits:number[]=[];const wait=async(ms:number)=>{waits.push(ms);};
+  let n=0;
+  assert.equal(await soloOneRetry(async()=>{if(++n===1)throw new Error('frio');return 'sala';},()=>true,wait),'sala');
+  assert.equal(n,2);assert.deepEqual(waits,[SOLO_RETRY_GAP_MS]);
+  n=0;
+  await assert.rejects(soloOneRetry(async()=>{++n;throw new Error(`falhou ${n}`);},()=>true,wait),/falhou 2/,'the second error is the one shown');
+  n=0;
+  await assert.rejects(soloOneRetry(async()=>{++n;throw new Error('versão velha');},()=>false,wait),/versão velha/);
+  assert.equal(n,1,'a fatal answer is not asked twice');
+  const solo=read('src/client/lobby.ts');
+  const open=solo.slice(solo.indexOf('export async function openSolo'));
+  assert.match(open,/const joined=await soloOneRetry\(async\(\)=>\{\n\s*const r=await fetch\(new URL\('\/rooms'/,'the room and the join are retried together');
+  assert.match(open,/if\(!fatal\)\{client\?\.leave\(\);client=undefined;\}return !fatal;/,'the failed client leaves before the retry');
 });

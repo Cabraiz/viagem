@@ -21,7 +21,9 @@ import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.
  * tall; the sun is ~40° up) at its opacity, and building art tinted warm on the sun side, cold on the shade side.
  */
 const LIGHT=lightEnabled();
-const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha}):undefined;
+/** Soft edge of the cast shadows (card chao-da-cidade-sem-emenda): nested layers, penumbra in cells, core cut by `fade`. */
+export const CAST_SHADOW_SOFT=Object.freeze({layers:4,penumbra:.22,fade:.4});
+const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha,soft:CAST_SHADOW_SOFT}):undefined;
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
@@ -684,9 +686,9 @@ export class CityLayer {
     // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
     const decor:DecorPrim[]=[];
     const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
-    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
+    for(const q of quads)if(!own(q)&&this.decorOn(q.kind)&&!bare(q.cx,q.cy))
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot,!this.relief))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
+    decor.push(...(painted.size||this.cliffs||this.relief?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
@@ -754,7 +756,7 @@ export class CityLayer {
     let glintCells=0;
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
-      if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
+      if(!this.decorOn(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
       let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot,!this.relief);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
@@ -764,6 +766,13 @@ export class CityLayer {
     }
     return quads.flatMap(q=>byCell.get(`${q.cx},${q.cy}`)??[]);
   }
+
+  /**
+   * Whether the procedural ground decor goes over a kind: not over painted art (decorOver), and not the cobble joints over
+   * the relief, whose shader draws its own stones and joints (card chao-da-cidade-sem-emenda: the drawn 1 px joints, a
+   * fifth of them snow white, read as a dashed white grid over the relief's stones).
+   */
+  private decorOn(kind:GroundKind){return this.materials.decorOver(kind)&&!(this.relief&&kind==='cobble');}
 
   /** Painted ground cells of one texture as a Mesh: projected cell corners, UVs from world position (materials.ts). */
   private groundMesh(quads:readonly GroundQuad[],key:string):Phaser.GameObjects.Mesh{

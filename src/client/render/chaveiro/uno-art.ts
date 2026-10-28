@@ -40,6 +40,8 @@ export const UNO_SMOKE_W=96,UNO_SMOKE_H=192,UNO_SMOKE_FRAMES=16,UNO_SMOKE_FPS=12
 export const UNO_SMOKE_SRC=[49.5,180] as const;
 /** Sheet px of the car per smoke px: the column is 90 % of the car's cell tall. */
 export const UNO_SMOKE_SCALE=.9*UNO_CELL/UNO_SMOKE_H;
+/** The smoke's tint: mid grey (the generated smoke is near white and vanished on the light paving), dark under CAR_LOW. */
+export const UNO_SMOKE_TINT=0x9a9a9a,UNO_SMOKE_LOW_TINT=0x55555c;
 /**
  * The engine's mouth in each view (px of the car's cell, read on the sheet): where the smoke comes out. In N, NO and NE
  * the raised hood stands between the camera and the engine, so the smoke rises behind the car.

@@ -27,7 +27,7 @@ import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
 import {UsableGlow} from '../usable-glow.ts';
 import {inFrontOfCar,towardViewer,type CarSort} from './car-sort.ts';
-import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_SMOKE_H,UNO_SMOKE_KEY,UNO_SMOKE_SCALE,UNO_SMOKE_SRC,UNO_SMOKE_URL,UNO_SMOKE_W,UNO_URL,unoBox,unoFootY,unoFrame,unoSmoke} from './uno-art.ts';
+import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_SMOKE_H,UNO_SMOKE_KEY,UNO_SMOKE_SCALE,UNO_SMOKE_TINT,UNO_SMOKE_LOW_TINT,UNO_SMOKE_SRC,UNO_SMOKE_URL,UNO_SMOKE_W,UNO_URL,unoBox,unoFootY,unoFrame,unoSmoke} from './uno-art.ts';
 import {HEIGHT_PX} from '../city/projection.ts';
 import type {Speaker} from './lines.ts';
 
@@ -268,12 +268,13 @@ export class ChaveiroRenderer {
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
       uno.setAlpha(this.coversBox(unoTop,carDepth,this.sort)?COVER_ALPHA:1);
       // Card uno-capo-fumaca: the engine smokes out of the raised hood (behind the car where the hood hides the engine);
-      // under CAR_LOW of its life (card inimigos-querem-o-uno) the same smoke turns dark and thick.
+      // tinted mid grey (white smoke vanished on the light paving), under CAR_LOW of its life (card inimigos-querem-o-uno)
+      // the same smoke turns dark. It never fades with the car (COVER_ALPHA): it is see-through already.
       const smoke=this.unoSmokeImage();
       if(smoke){
         const s=unoSmoke(frame,carX,footY,time,reduced),low=!view.ended&&carLife(view.car)<CAR_LOW;
         smoke.setFrame(s.frame).setScale(UNO_SCALE*UNO_SMOKE_SCALE).setPosition(s.x,s.y).setDepth(carDepth+(s.behind?-.02:.02))
-          .setTint(low||wrecked?0x55555c:0xffffff).setAlpha(uno.alpha*(low?1:.9)).setVisible(true);
+          .setTint(low||wrecked?UNO_SMOKE_LOW_TINT:UNO_SMOKE_TINT).setAlpha(1).setVisible(true);
       }
       const glow=this.glow??=new UsableGlow(this.scene,reduced);glow.begin(time);
       if(!view.ended)glow.mark('uno',uno,k);

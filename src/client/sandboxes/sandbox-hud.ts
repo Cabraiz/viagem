@@ -298,11 +298,13 @@ const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[],extr
  * count), `escuro=0..1` the dark on p1 (from DARK_PRESS: "Volte ao Uno!"). The run is shown once without them first, as
  * the window's opening view.
  */
-function missionScene(run:RunView):RunView|undefined{
+function missionScene(run:RunView):{before:RunView;after:RunView}|undefined{
   const crates=Number(params.get('caixas')),dark=Number(params.get('escuro'));
   if(!(crates>0)&&!(dark>0))return undefined;
-  return {...run,players:run.players.map(p=>p.id!=='p1'?p:{...p,...(dark>0?{fear:dark}:{}),
-    stats:{damage:0,kills:0,revives:0,pickups:0,...p.stats,chests:(p.stats?.chests??0)+(crates>0?crates:0)}})};
+  // The opening view carries the stats too (chests 0 when absent): the window's count starts from it.
+  const opened=(add:number,p:RunView['players'][number])=>({...p,stats:{damage:0,kills:0,revives:0,pickups:0,...p.stats,chests:(p.stats?.chests??0)+add}});
+  return {before:{...run,players:run.players.map(p=>opened(0,p))},
+    after:{...run,players:run.players.map(p=>p.id!=='p1'?opened(0,p):{...opened(crates>0?crates:0,p),...(dark>0?{fear:dark}:{})})}};
 }
 function load(next:HudScenario){
   scenario=next;tick=1000;
@@ -643,8 +645,8 @@ if(cidade)void (async()=>{
   if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
   // The sandbox's ticker (unless frozen=1) keeps updating this run; the mission's scene (caixas, escuro) on top of it.
   const mission=missionScene(run);
-  hud.update(run);
-  view=mission??run;hud.update(view);
+  hud.update(mission?.before??run);
+  view=mission?.after??run;hud.update(view);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
   const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
   const feet=await heroFeet();

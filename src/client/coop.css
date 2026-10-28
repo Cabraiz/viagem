@@ -68,8 +68,9 @@
 #coop-attack[data-work] .skillbtn-fill{stroke:var(--c-papel)}
 #coop-attack[data-work=dentro]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
 #coop-attack[data-work=dentro] .skillbtn-word{color:var(--c-papel)}
-/* torre-limite-rebocar-sem-arma: empty hands, "Sem arma" dimmed (the first crate gives a weapon). */
-#coop-attack[data-unarmed]:not([data-tow]):not([data-work]):not([data-build]){opacity:.62;filter:saturate(.4)}
+/* exploracao-espera-carregar-e-sem-arma: empty hands, the button dances ("Dançar", full colour: it answers); the first
+   time in a run "Abra uma caixa" stands in for the word on two lines (the crate icon says where the weapon is). */
+#coop-attack[data-note-kind=caixa] .skillbtn-word{white-space:normal;max-width:9ch;text-align:center;line-height:1}
 /* torre-limite-rebocar-sem-arma: at the Uno's rope end Atacar turns Rebocar (the interaction colour, like Trabalhar); on the rope, Soltar pressed in. */
 #coop-attack[data-tow]{background:var(--c-cartolina);color:var(--c-breu);text-shadow:none}
 #coop-attack[data-tow] .skillbtn-fill{stroke:var(--c-papel)}

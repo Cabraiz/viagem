@@ -213,8 +213,9 @@ export interface NestsSystem extends SimSystem {
   minerva(tick:number):boolean;
   /**
    * The room still waits for the team to load (multiplayer/load-wait.ts, card exploracao-espera-carregar): the minuto de
-   * Minerva ends a whole NEST_PACE.minerva after `tick` and the first wave keeps its distance from it. Nothing before
-   * the first step nor once the Minerva is over.
+   * Minerva ends a whole NEST_PACE.minerva after `tick` and the first wave keeps its distance from it. It moves half a
+   * second at a time (the clock rounds up, so it still reads the full minute): two {t:'run'} a second, not one a tick.
+   * Nothing before the first step nor once the Minerva is over.
    */
   holdMinerva(tick:number):void;
   /** The time to explore running at `tick` ([first tick, end tick]), undefined outside one (the Minerva is not one). */
@@ -411,7 +412,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     holdMinerva(tick){
       if(state.minervaUntil===undefined||tick>=state.minervaUntil)return;
       const by=tick+ticks(NEST_PACE.minerva)-state.minervaUntil;
-      if(by<=0)return;
+      if(by<ticks(.5))return;
       state.minervaUntil+=by;
       if(state.nextWave!==undefined)state.nextWave+=by;
     },

@@ -87,10 +87,13 @@ export const BUILD_WORD='Construir';
  * rope it lets go ("Soltar"). The face comes from hud/fortify/model.ts towFace.
  */
 /**
- * torre-limite-rebocar-sem-arma: empty hands (the heroes start with no weapon) say so on the attack button, with the
- * crate icon (the first crate gives a weapon), dimmed: the generic `ui/atacar` sticker is a hand with a bread knife.
+ * torre-limite-rebocar-sem-arma: empty hands (the heroes start with no weapon) show on the attack button with the crate
+ * icon (the first crate gives a weapon). Card exploracao-espera-carregar-e-sem-arma (the user, 28/10): with empty hands
+ * the button dances ("Dançar": a tap or Space dances at once, sprites/hero-dance.ts); the first time in a run it says
+ * "Abra uma caixa" for UNARMED_HINT_MS.
  */
-export const UNARMED_WORD='Sem arma',UNARMED_LABEL='Sem arma: abra uma caixa para pegar uma';
+export const UNARMED_WORD='Dançar',UNARMED_LABEL='Dançar (sem arma: abra uma caixa para pegar uma)';
+export const NOTE_OPEN_CRATE='Abra uma caixa',UNARMED_HINT_MS=4000;
 export const TOW_WORD='Rebocar',TOW_OFF_WORD='Soltar',TOW_LABEL='Rebocar o Uno: toque para pegar a corda',TOW_OFF_LABEL='Soltar a corda';
 export const buildLabel=(kitId:string)=>`Construir ${itemDisplay(kitId).name} à sua frente`;
 /** What the action button shows with a kit selected (or not): its word, its sticker ('' the attack's own) and its name. */
@@ -125,8 +128,10 @@ export class SkillButton {
   private handIcon:StickerName|''='';
   /** The selected kit de torre (construir-no-botao), undefined with a weapon. */
   private kit?:string;
-  /** Manual combat with nothing in the hand (setUnarmed): "Sem arma". */
+  /** Manual combat with nothing in the hand (setUnarmed): "Dançar". */
   private unarmed=false;
+  /** "Abra uma caixa" was already said in this run (once, the first time the hands are empty). */
+  private hinted=false;
   /** The rope face (setTow): 'rebocar' or 'soltar', undefined for Atacar. */
   private tow?:'rebocar'|'soltar';
   /** Bicos: 'oferta|<bico>' or 'dentro|<bico>' while the slot is Trabalhar, undefined otherwise. */
@@ -243,6 +248,7 @@ export class SkillButton {
     this.player=player;this.tick=tick;
     const free=this.combat==='manual'&&!this.kit&&!this.work&&!this.tow;
     this.setUnarmed(free&&!!player&&attackIconOf(player)===undefined);
+    if(this.unarmed&&!this.hinted){this.hinted=true;this.flash(NOTE_OPEN_CRATE,now,UNARMED_HINT_MS);}
     if(free&&!this.unarmed)this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);
@@ -267,9 +273,11 @@ export class SkillButton {
     this.handIcon=name;
     old.outerHTML=name?sticker(name,options):stickerOrIcon('atacar','chinelo',options);
   }
+  /** Empty hands in the manual combat: the button dances (Dançar) instead of attacking. */
+  get dancing(){return this.unarmed;}
   /** Run reset (rematch): ready, nothing pending. */
-  reset(){this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.setHeld(false);this.paint();}
-  private flash(note:string,now:number){this.note=note;this.noteUntil=now+NOTE_MS;this.refresh(now,true);}
+  reset(){this.hinted=false;this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.setHeld(false);this.paint();}
+  private flash(note:string,now:number,ms=NOTE_MS){this.note=note;this.noteUntil=now+ms;this.refresh(now,true);}
   /** The note on screen right now ('' none): CSS reads it to drop the green "ready" ring under "sem alvo". */
   get shownNote(){return this.el.dataset.note??'';}
   private refresh(now:number,force=false){
@@ -282,7 +290,7 @@ export class SkillButton {
   private paint(){
     const s=this.state,note=this.el.dataset.note??'';
     this.el.dataset.state=s.mode;
-    this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
+    this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':note===NOTE_OPEN_CRATE?'caixa':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
     this.word.textContent=note||(this.work?(this.work.startsWith('dentro')?WORKING_WORD:WORK_WORD):this.kit?BUILD_WORD:this.tow?(this.tow==='soltar'?TOW_OFF_WORD:TOW_WORD):this.unarmed?UNARMED_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);

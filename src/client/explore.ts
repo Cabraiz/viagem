@@ -364,6 +364,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
+  /** The scene-clock time of the last "Dançar" (the hero dances from it until it moves: sprites/hero-dance.ts cheer). */
+  let dancedAt:number|undefined;
+  const dance=()=>{pause(false);if(controller&&sceneReady)dancedAt=controller.scene.time.now;};
   let closed=false,paused=false;
   /** When the per-frame shell attributes were last written (SHELL_DATA_MS). */
   let shellDataAt=-Infinity;
@@ -526,6 +529,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill. A kit selected: Construir.
       if(skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled)workLatch.tap(performance.now());return;}
       if(skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}
+      if(skill?.dancing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}
       if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
@@ -545,6 +549,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     };
     window.addEventListener('pointerdown',onBuild,{capture:true,signal});
     window.addEventListener('click',onBuild,{capture:true,signal});
+    // exploracao-espera-carregar-e-sem-arma: with empty hands the button dances at once (Dançar), no swing.
+    const onDance=(e:Event)=>{
+      const button=(e.target as Element|null)?.closest?.('#coop-attack') as HTMLButtonElement|null;
+      if(!skill?.dancing||skill.working||skill.towing||!button||button.disabled)return;
+      if(e.type==='pointerdown'&&(e as PointerEvent).button!==0)return;
+      if(e.type==='click'&&(e as MouseEvent).detail!==0){e.stopImmediatePropagation();return;}
+      e.stopImmediatePropagation();e.preventDefault();dance();
+    };
+    window.addEventListener('pointerdown',onDance,{capture:true,signal});
+    window.addEventListener('click',onDance,{capture:true,signal});
     document.addEventListener('keydown',e=>{
       if(closed||!kitPlace.active||settings.open)return;
       if(e.key==='Escape'){e.preventDefault();kitPlace.cancel();}
@@ -643,9 +657,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
-      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),
+      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),danceAt:()=>dancedAt,
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&skill?.dancing&&!skill.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{

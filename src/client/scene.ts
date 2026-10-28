@@ -124,6 +124,8 @@ export interface SceneHooks {
   attacking?:()=>boolean;
   /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
   attackHeld?:()=>boolean;
+  /** The scene-clock time of the last tap on "Dançar" (empty hands): the own hero dances from it, like a cheer. */
+  danceAt?:()=>number|undefined;
   /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
   aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
@@ -1246,7 +1248,7 @@ export class IslandScene extends Phaser.Scene {
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
     if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
-    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
+    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:Math.max(this.cheers.of(meId)??-Infinity,this.hooks.danceAt?.()??-Infinity)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),

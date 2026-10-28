@@ -129,12 +129,22 @@ export function ranOver(before:ReadonlyMap<string,StructureView>,after:readonly 
   return out;
 }
 export const RUN_OVER_NEAR=4;
-/** The burst of junk a run-over square throws (ms), and its chunks: angle, speed (px/s at zoom 1), size, colour slot. */
-export const RUN_OVER_MS=650;
-export function runOverChunks(seed:number,n=14){
-  const out:{a:number;v:number;size:number;tint:number}[]=[];
+/** How long the pieces of a run-over square fly and settle (ms). */
+export const RUN_OVER_MS=800;
+/** A run-over piece: a rect of the source frame (x,y,w,h in frame px) and its throw (spin rad/s, out and up in source heights/s). */
+export interface RunOverPiece {x:number;y:number;w:number;h:number;spin:number;out:number;up:number;land:number}
+/**
+ * uno-atravessa-tralha: cuts the shown rect (frame px) of a run-over square's art into about `n` pieces (a grid that keeps
+ * them near square) and gives each a seeded throw. The renderer drops the pieces that are empty art.
+ */
+export function runOverPieces(rect:{x:number;y:number;w:number;h:number},n:number,seed:number):RunOverPiece[]{
   let h=(seed*2654435761)>>>0;const rnd=()=>{h=(h^(h>>>15))*2246822507>>>0;h=(h^(h>>>13))*3266489909>>>0;return ((h^=h>>>16)>>>0)/4294967296;};
-  for(let i=0;i<n;i++)out.push({a:(i+rnd()*.8)/n*Math.PI*2,v:90+rnd()*130,size:7+rnd()*8,tint:i%3});
+  if(!(rect.w>0&&rect.h>0&&n>0))return [];
+  const cols=Math.max(1,Math.round(Math.sqrt(n*rect.w/rect.h))),rows=Math.max(1,Math.ceil(n/cols)),out:RunOverPiece[]=[];
+  for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+    const x0=Math.round(rect.x+rect.w*i/cols),x1=Math.round(rect.x+rect.w*(i+1)/cols),y0=Math.round(rect.y+rect.h*j/rows),y1=Math.round(rect.y+rect.h*(j+1)/rows);
+    out.push({x:x0,y:y0,w:x1-x0,h:y1-y0,spin:(rnd()<.5?-1:1)*(4+rnd()*7),out:.6+rnd()*.9,up:1.1+rnd()*.9,land:rnd()*.12});
+  }
   return out;
 }
 /** How long a hit structure flashes (ms); never with reduced effects (UX checklist B9). */

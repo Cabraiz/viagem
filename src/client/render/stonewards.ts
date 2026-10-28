@@ -19,7 +19,7 @@ import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
 import {barracaColumn,barracaLona} from './stonewards-rules.ts';
-import {HIT_FLASH_MS,RUN_OVER_MS,WALL_LOW,ranOver,runOverChunks,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
+import {HIT_FLASH_MS,RUN_OVER_MS,WALL_LOW,ranOver,runOverPieces,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
 import {artPiece} from '../art/manifest.ts';
 
@@ -53,7 +53,9 @@ const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
 
 interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
 /** A tralha square the Uno ran over: its junk flies apart (uno-atravessa-tralha). */
-interface Burst {g:Phaser.GameObjects.Graphics;x:number;y:number;born:number;chunks:ReturnType<typeof runOverChunks>}
+/** A flying cut of the run-over art: where it is (scene px), its speed (px/s), spin, the ground line it lands on, its width. */
+interface BurstPiece {img:Phaser.GameObjects.Image;x:number;y:number;vx:number;vy:number;spin:number;land:number;w:number;g:number}
+interface Burst {g:Phaser.GameObjects.Graphics;x:number;y:number;born:number;last:number;pieces:BurstPiece[]}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
@@ -194,7 +196,7 @@ export class StonewardsRenderer {
     this.muralha.destroy();this.glow.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
-    for(const b of this.bursts)b.g.destroy();this.bursts=[];
+    for(const b of this.bursts){b.g.destroy();for(const p of b.pieces)p.img.destroy();}this.bursts=[];
   }
 
   private project(x:number,y:number){return this.options.projector.project(x,y,this.q);}
@@ -497,25 +499,50 @@ export class StonewardsRenderer {
     const corners=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]].map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
     g.clear().setDepth(depth).fillStyle(this.c.papel,.9).fillPoints(corners,true).lineStyle(2*k,this.c.breu,1).strokePoints(corners,true);
   }
+  /**
+   * uno-atravessa-tralha: the square's own art (the junk wall's images, or its base art) cut into 8–14 pieces that fly
+   * out, spin, fall back on the ground with a shadow and fade. Called before the square's images are pruned.
+   */
   private burst(s:StructureView){
     const g=this.scene.add.graphics().setName('tralha-atropelada');
-    this.bursts.push({g,x:s.x,y:s.y,born:this.now,chunks:runOverChunks(s.id.length*31+Math.round(s.x*7+s.y*13))});
+    const own=this.images.get(s.id),src=[...this.muralha.shown(s.id),...(own?.visible?[own]:[])];
+    const seed=s.id.length*31+Math.round(s.x*7+s.y*13),per=Math.max(4,Math.round(12/Math.max(1,src.length)));
+    const ground=this.project(s.x,s.y),gx=ground.x,gy=ground.y,pieces:BurstPiece[]=[],tex=this.scene.textures;
+    src.forEach((img,n)=>{
+      const f=img.frame,fw=f.realWidth,fh=f.realHeight,key=img.texture.key;
+      const crop=img.isCropped?(img as unknown as {_crop:{x:number;y:number;width:number;height:number}})._crop:undefined;
+      const rect=crop&&crop.width>0?{x:crop.x,y:crop.y,w:crop.width,h:crop.height}:{x:0,y:0,w:fw,h:fh};
+      const sx=Math.abs(img.scaleX),sy=Math.abs(img.scaleY),H=rect.h*sy;
+      for(const p of runOverPieces(rect,per,seed+n*977)){
+        // Drop a cut with no art in it (the frame's transparent margins).
+        let solid=false;
+        for(const [u,v] of [[.5,.5],[.25,.25],[.75,.25],[.25,.75],[.75,.75]])if(tex.getPixelAlpha(Math.floor(p.x+p.w*u),Math.floor(p.y+p.h*v),key,f.name)>40){solid=true;break;}
+        if(!solid||pieces.length>=14)continue;
+        const cx=p.x+p.w/2,cy=p.y+p.h/2,x=img.x+(cx-img.originX*fw)*img.scaleX,y=img.y+(cy-img.originY*fh)*img.scaleY;
+        const piece=this.scene.add.image(x,y,key,f.name).setName('tralha-pedaco').setCrop(p.x,p.y,p.w,p.h).setOrigin(cx/fw,cy/fh)
+          .setScale(img.scaleX,img.scaleY).setDepth(img.depth+.01);
+        const side=Math.max(-1,Math.min(1,(x-gx)/Math.max(1,rect.w*sx/2)));
+        pieces.push({img:piece,x,y,vx:(side+(p.out-1.05))*p.out*H*1.4,vy:-p.up*H*2.2,spin:p.spin,land:gy+(p.land-.04)*H,w:p.w*sx,g:H*14});
+      }
+    });
+    this.bursts.push({g,x:s.x,y:s.y,born:this.now,last:this.now,pieces});
   }
-  /** The run-over junk: chunks thrown out from the square's ground centre, falling back and fading. */
+  /** The run-over pieces fly, bounce once on their ground line, settle and fade; a dust ring and their shadows on the ground. */
   private drawBursts(k:number){
-    const tints=[this.c.casca,this.c.pedra,this.c.cartolina];
     this.bursts=this.bursts.filter(b=>{
       const age=this.now-b.born;
-      if(age>=RUN_OVER_MS){b.g.destroy();return false;}
-      const t=age/RUN_OVER_MS,s=age/1000,q=this.project(b.x,b.y);
-      b.g.clear().setDepth(this.options.projector.depth(b.x,b.y)+.01).setAlpha(t<.6?1:1-(t-.6)/.4);
-      // dust ring on the ground, then the chunks (planks: twice as wide as tall) with a dark edge so they read on snow
-      const r=(18+70*Math.sqrt(t))*k;
-      b.g.fillStyle(this.c.claro,.55*(1-t)).fillEllipse(q.x,q.y,r*2,r);
-      for(const c of b.chunks){
-        const dx=Math.cos(c.a)*c.v*s,dy=Math.sin(c.a)*c.v*s*.5,lift=Math.max(0,260*s-620*s*s)+10;
-        const w=(c.tint===0?c.size*2:c.size)*k,h=c.size*k,x=q.x+dx*k-w/2,y=q.y+(dy-lift)*k-h/2;
-        b.g.fillStyle(this.c.breu,1).fillRect(x-k,y-k,w+2*k,h+2*k).fillStyle(tints[c.tint],1).fillRect(x,y,w,h);
+      if(age>=RUN_OVER_MS){b.g.destroy();for(const p of b.pieces)p.img.destroy();return false;}
+      const t=age/RUN_OVER_MS,dt=Math.min(.05,Math.max(0,(this.now-b.last)/1000)),fade=t<.65?1:1-(t-.65)/.35,q=this.project(b.x,b.y);
+      b.last=this.now;
+      b.g.clear().setDepth(this.options.projector.depth(b.x,b.y)-.01);
+      const r=(18+60*Math.sqrt(t))*k;
+      b.g.fillStyle(this.c.claro,.45*(1-t)).fillEllipse(q.x,q.y,r*2,r);
+      for(const p of b.pieces){
+        p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.img.rotation+=p.spin*dt;
+        if(p.y>=p.land&&p.vy>0){p.y=p.land;p.vy=Math.abs(p.vy)>p.g*.08?-p.vy*.3:0;p.vx*=.45;p.spin*=.35;}
+        const high=Math.max(0,Math.min(1,(p.land-p.y)/(p.g*.05)));
+        b.g.fillStyle(this.c.breu,.3*fade*(1-.6*high)).fillEllipse(p.x,p.land,p.w*(.9-.4*high),p.w*(.3-.12*high));
+        p.img.setPosition(p.x,p.y).setAlpha(fade);
       }
       return true;
     });

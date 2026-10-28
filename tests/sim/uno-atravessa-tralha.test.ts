@@ -118,7 +118,7 @@ test('per match, the Uno\'s body gets near ≥ 98 % of the hero\'s ground, every
 });
 
 test('the client: a run-over tralha square bursts (only near the Uno) and thwacks; other structures stay quiet',async()=>{
-  const {ranOver,runOverChunks}=await import('../../src/client/render/stonewards-rules.ts');
+  const {ranOver,runOverPieces}=await import('../../src/client/render/stonewards-rules.ts');
   const {soundForEvent}=await import('../../src/client/audio/events.ts');
   const sq={id:'tralha-3',kind:'barricada',x:10,y:10,hp:200,maxHp:200,c:6,r:6} as never;
   const far={id:'tralha-4',kind:'barricada',x:40,y:40,hp:200,maxHp:200,c:26,r:26} as never;
@@ -126,7 +126,13 @@ test('the client: a run-over tralha square bursts (only near the Uno) and thwack
   assert.deepEqual(ranOver(before,[],{x:11,y:10}).map(s=>s.id),['tralha-3'],'the far one went by a coleta or a horde');
   assert.deepEqual(ranOver(before,[sq,far],{x:11,y:10}),[],'still standing');
   assert.deepEqual(ranOver(before,[],undefined),[],'no Uno');
-  assert.equal(runOverChunks(5).length,14);
+  // The pieces are cuts of the square's own art: they tile its shown rect exactly, no colour of their own.
+  const rect={x:10,y:4,w:96,h:120},pieces=runOverPieces(rect,12,7);
+  assert.ok(pieces.length>=8&&pieces.length<=16,`${pieces.length} pieces`);
+  assert.equal(pieces.reduce((a,p)=>a+p.w*p.h,0),rect.w*rect.h,'they tile the rect');
+  assert.ok(pieces.every(p=>p.x>=rect.x&&p.y>=rect.y&&p.x+p.w<=rect.x+rect.w&&p.y+p.h<=rect.y+rect.h&&p.up>0&&p.spin!==0));
+  assert.deepEqual(runOverPieces(rect,12,7),pieces,'seeded');
+  assert.deepEqual(runOverPieces({x:0,y:0,w:0,h:10},12,7),[]);
   assert.equal(soundForEvent({type:'structure',id:'tralha-3',hp:0,maxHp:200}),'golpe');
   assert.equal(soundForEvent({type:'structure',id:'tralha-3',hp:100,maxHp:200}),undefined);
   assert.equal(soundForEvent({type:'structure',id:'torre-1',hp:0,maxHp:200}),undefined);

@@ -1,0 +1,15 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/efeitos-ataque-chatgpt/evidence/efeitos-ataque-chatgpt/gerado/estilo-b.png. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images. Do not inspect, do not run code, do not check with PIL.
+
+It is a sprite sheet of attack effects for a 2D isometric (30 degree top-down camera) mobile action game set in a Brazilian city. The attached image is a screenshot of the game: read it ONLY for the art style and scale; do not copy, edit or reuse any part of it.
+
+Background: solid flat pure green #00FF00 everywhere (chroma key), no shadows on the background, no gradient, no floor, no text, no labels, no numbers. 7 separate items in a 4+3 grid, each well separated by at least 80 px of green, nothing touching the edges:
+1. Danger-zone fill tile: a SQUARE seamless tileable texture of diagonal hazard stripes, alternating danger red (#e0352b) and warm orange (#ff8a3d), painted with subtle brush texture, stripes at 45 degrees, no outline, fills its square completely.
+2. Danger alert badge: a bold exclamation mark "!" in cream white (#fff4dc) with a thick dark outline, on a small red rounded-diamond warning plate, readable at 24 px.
+3. Target ring lying flat on the ground (ellipse squashed 2:1 for the 30 degree camera), golden yellow with four small inward-pointing notches, thin glow, empty transparent centre (green inside).
+4. Knife slash: a crescent swoosh arc (about 150 degrees) of bright steel-white and pale cyan with a tapered tail and a few speed sparks.
+5. Shotgun pellets: a tight cluster of 5 small dark-lead pellets each with a short bright yellow-orange motion streak, all flying to the right.
+6. Kill star burst: a chunky 5-point cartoon star in cream white with 3 tiny sparkle satellites, for an enemy knock-out pop.
+7. Aim arrow lying flat on the ground (squashed 2:1): a wide yellow (#ffd23a) arrow pointing right, starting from a small ring, with a dark outline, like a mobile game aiming indicator.
+
+Style: chunky hand-inked comic VFX, thick uneven ink outline (#1b1726), cel-shaded with 2 tones, slight brush texture and small ink speckles, energetic and punchy, readable at small size.
+Same palette, same outline weight and same lighting (light from top-left) on all 7 items. Danger red must look like danger red. Items must stay legible over grass, snow, asphalt and water.

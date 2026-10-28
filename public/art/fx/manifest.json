@@ -506,6 +506,81 @@
         "loop": false
       }
     },
+    "brilho-branco": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "brilho-branco.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "brilho-branco.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "af47a63d500d9be63260dac3b5ac3f395faad2a3ed7587607d3c11ed95ada488"
+            }
+          ],
+          "sha256": "af47a63d500d9be63260dac3b5ac3f395faad2a3ed7587607d3c11ed95ada488"
+        }
+      },
+      "sha256": "b91c961aef575cc8badcb3c22f89dd69f78849f704918c5c90f6eeea27289a23"
+    },
+    "brilho-dourado": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "brilho-dourado.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "brilho-dourado.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "40514e4649753df34f83785a92d75b6377df0faa0afb012397b2cd2cdb0d2922"
+            }
+          ],
+          "sha256": "40514e4649753df34f83785a92d75b6377df0faa0afb012397b2cd2cdb0d2922"
+        }
+      },
+      "sha256": "6125e20942e1c3f8a143bf896927610f5ff48a3241460b106a6984a13bbdfa7e"
+    },
+    "brilho-rosa": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "brilho-rosa.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "brilho-rosa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bb2e5dd8f7c4bf21b28c3ec37e1f3a1d5920ad6b4b3b6a1333ede898ff1d8241"
+            }
+          ],
+          "sha256": "bb2e5dd8f7c4bf21b28c3ec37e1f3a1d5920ad6b4b3b6a1333ede898ff1d8241"
+        }
+      },
+      "sha256": "2ad5f34f02f7564e3e6bbe464d73d4b651ca4f7aab1d50f954a37a07ed6171e9"
+    },
     "caido-resgate": {
       "kind": "frames",
       "files": {
@@ -1394,6 +1469,31 @@
         }
       },
       "sha256": "dc13003c54d2d59cdcf4129dcb2cc0128d78d84e75d413ce051b5ed1b3f6c5c7"
+    },
+    "farol-moto": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "farol-moto.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "farol-moto.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4daef464905907e3a088b34a83d1f7072c5df96337b7e3d1e1545efb7eca09da"
+            }
+          ],
+          "sha256": "4daef464905907e3a088b34a83d1f7072c5df96337b7e3d1e1545efb7eca09da"
+        }
+      },
+      "sha256": "c34ddcd977cd9ac5ca1be119e478dfedd721f5b50436f5d16ec423df2a6e1400"
     },
     "fogo-aviso": {
       "kind": "frames",

@@ -174,6 +174,7 @@ const BASE_HERO={x:.6,y:1.2};
 const tele=real&&params.get('tele')==='1';
 /** `limpo=1` (with tele=1; card inimigos-v5a-padrao): no telegraphs and no map labels, so a print of the horde reads clean. */
 const limpo=tele&&params.get('limpo')==='1';
+const fases=tele&&params.get('fases')==='1';
 /**
  * Card contorno-breu: the city's screen-scale Breu outlines (render/city-outline.ts) on the hero and, with tele=1, on
  * the horde; `contorno=0` draws without them (before/after). `elenco=1` (with tele=1) adds one critter of every kind,
@@ -386,7 +387,7 @@ class CitySandbox extends Phaser.Scene {
     // kit=barricada (barricada-tocar-no-mapa): its ghost is the junk wall's art too.
     if((muralhaShot||objective||kitParam==='barricada')&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
-    if(ninhos&&!arsenal)queueHordeArt(this);
+    if((ninhos||fases)&&!arsenal)queueHordeArt(this);
   }
   create(){
     if(real){
@@ -742,7 +743,12 @@ class CitySandbox extends Phaser.Scene {
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
       ],
       // acucar=1 (D-047): both critters bought a sweet from Dona Cida (EnemyView.sugar, protocol 15).
-      enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
+      // fases=1 (efeitos-ataque-chatgpt): the Elenco P1 cues at once: the coach lecturing, the motoboy aiming his
+      // charge, the influencer posing, a buffed critter and an açucarado one.
+      enemies:fases?[{id:'e1',kind:'coach',x:x-2.2,y:y-1.4,hp:5,maxHp:5,phase:1},{id:'e2',kind:'motoboy',x:x+2,y:y-1.2,hp:5,maxHp:5,phase:1},
+        {id:'e3',kind:'influencer',x:x+.4,y:y+1.6,hp:5,maxHp:5,phase:1},{id:'e4',kind:'bebado',x:x-1.4,y:y+.6,hp:5,maxHp:5,phase:2},
+        {id:'e5',kind:'agiota',x:x+2.4,y:y+.8,hp:5,maxHp:5,sugar:true}]
+        :[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     const nests=ninhos?nestLab(view,x,y):undefined;
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));

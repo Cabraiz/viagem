@@ -300,6 +300,8 @@ const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
 const PHASE_RING_POINTS=32,PHASE_GOLD=0xf6c84a;
 /** D-047 açucarado: Dona Cida's sweets glow pink on a critter. */
 const SUGAR_PINK=0xff8fc8;
+/** The imported sparkles drawn this much bigger than star4 (see spark). */
+const SPARK_ART_BOOST=1.5;
 /** Bancos: the Cliente Prime's crown, and its outline (x, up) in its half width and height: three points. */
 const PRIME_GOLD=0xf2c14e,CROWN_SHAPE=[-1,0,-1,.55,-.5,.15,0,1,.5,.15,1,.55,1,0] as const;
 const MOTOBOY_LAMP={x:29,y:38} as const;
@@ -971,7 +973,7 @@ export class HordeRenderer{
       const g=this.overlay,top=by-height,s=body*size,f=this.sparkle;
       for(let i=0;i<SPARKLES;i++){
         sparkleFrame(i,now,a.phase,reduced,f);
-        this.star4(g,bx+f.dx*s*1.4,top+f.dy*s*1.4,Math.max(f.r*s,2.2*css),PHASE_GOLD,f.alpha);
+        this.spark(this.phaseOwner(a).gold[i],'sparkGold',g,bx+f.dx*s*1.4,top+f.dy*s*1.4,Math.max(f.r*s,2.2*css),PHASE_GOLD,f.alpha);
       }
     }
     if(look.reflect){
@@ -983,8 +985,9 @@ export class HordeRenderer{
       g.lineStyle(2*css,0x9be8f0,.9).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
       }
       const t=reflectGlint(now,reduced);
-      this.star4(g,bx+Math.cos(t)*rx,cy+Math.sin(t)*ry,6*body,0xffffff,.95);
-      this.star4(g,bx+Math.cos(t+Math.PI)*rx,cy+Math.sin(t+Math.PI)*ry,4*body,0xffffff,.7);
+      const glints=this.phaseOwner(a).glint;
+      this.spark(glints[0],'glint',g,bx+Math.cos(t)*rx,cy+Math.sin(t)*ry,6*body,0xffffff,.95);
+      this.spark(glints[1],'glint',g,bx+Math.cos(t+Math.PI)*rx,cy+Math.sin(t+Math.PI)*ry,4*body,0xffffff,.7);
     }
     if(a.sugar){
       // Açucarado (D-047): a pink halo around the body and pink sparkles (the gold ones are the coach's buff).
@@ -999,7 +1002,7 @@ export class HordeRenderer{
       const top=by-height,s=body*size,f=this.sparkle;
       for(let i=0;i<SPARKLES;i++){
         sparkleFrame(i,now,a.phase+.5,reduced,f);
-        this.star4(g,bx-f.dx*s*1.5,top+f.dy*s*1.2,Math.max(f.r*s,2.2*css),SUGAR_PINK,f.alpha);
+        this.spark(this.phaseOwner(a).pink[i],'sparkPink',g,bx-f.dx*s*1.5,top+f.dy*s*1.2,Math.max(f.r*s,2.2*css),SUGAR_PINK,f.alpha);
       }
     }
     if(a.prime){
@@ -1018,18 +1021,35 @@ export class HordeRenderer{
     if(look.headlight){
       const g=this.overlay,k=headlightGlow(now,a.phase,reduced),m=size>1?1.2:1;
       const lx=bx+(a.flip?-1:1)*MOTOBOY_LAMP.x*m*body*this.scale2.sx,ly=by-MOTOBOY_LAMP.y*m*body*this.scale2.sy;
+      const lamp=markArt('headlight');
+      if(lamp&&this.art.ready(lamp))this.art.mark(this.phaseOwner(a).lamp,lamp,95000.6,0,lx,ly,32*body*k)?.setAlpha(.6+.4*k);
+      else{
       g.fillStyle(0xfff2a8,.18*k).fillCircle(lx,ly,16*body*k);
       g.fillStyle(0xfff6c8,.35*k).fillCircle(lx,ly,9*body);
       g.fillStyle(0xffffff,.9).fillCircle(lx,ly,3.2*body);
+      }
     }
   }
   /** Owners of an actor's imported phase marks (one image each in the FramesPool), made on first use. */
   private phaseOwner(a:EnemyActor){
     let o=this.phaseOwners.get(a);
-    if(!o){o={aura:{},reflect:{},sugar:{},crown:{}};this.phaseOwners.set(a,o);}
+    if(!o){
+      const many=(n:number)=>Array.from({length:n},()=>({}));
+      o={aura:{},reflect:{},sugar:{},crown:{},lamp:{},gold:many(SPARKLES),pink:many(SPARKLES),glint:many(2)};this.phaseOwners.set(a,o);
+    }
     return o;
   }
-  private phaseOwners=new WeakMap<EnemyActor,{aura:object;reflect:object;sugar:object;crown:object}>();
+  private phaseOwners=new WeakMap<EnemyActor,{aura:object;reflect:object;sugar:object;crown:object;lamp:object;gold:object[];pink:object[];
+    glint:object[]}>();
+  /** A sparkle of r (the point's reach) from the imported star when it is in, else today's star4. */
+  private spark(owner:object,element:'sparkGold'|'sparkPink'|'glint',g:Phaser.GameObjects.Graphics,x:number,y:number,r:number,color:number,
+    alpha:number){
+    const art=markArt(element);
+    // The painted star reaches 85 % of its cell (2r/.85 lands its points where star4 put them); its thin points and
+    // outline read smaller than star4's flat fill at a few pixels, hence the boost.
+    if(art&&this.art.ready(art))this.art.mark(owner,art,95000.6,0,x,y,2*r/.85*SPARK_ART_BOOST)?.setAlpha(alpha);
+    else this.star4(g,x,y,r,color,alpha);
+  }
   /** Four-point star from four triangles (no point arrays). */
   private star4(g:Phaser.GameObjects.Graphics,x:number,y:number,r:number,color:number,alpha:number){
     const w=r*.28;

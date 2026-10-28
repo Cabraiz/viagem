@@ -41,6 +41,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'corda-livre':{...chaveiro('moto=entrega','&obra=1&corda=livre'),descricao:'puxar-uno-corda: a corda caída no chão na frente do Uno, o laço na ponta'},
   'corda-empurrando':{...chaveiro('moto=entrega','&empurrando=-40&t=1000'),descricao:'puxar-uno-corda: empurrando o Uno, a corda caída na frente'},
   'carro-andando':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000'),descricao:'D-052: o carro puxado na corda, virado para o movimento, rodas girando'},
+  'fases':{sandbox:'cidade',query:'mapa=real&tele=1&limpo=1&fases=1&hero=95,100',descricao:'efeitos-ataque-chatgpt: coach em palestra, motoboy com farol, influencer posando, bicho com buff e açucarado'},
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},

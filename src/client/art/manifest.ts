@@ -169,7 +169,7 @@ export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;
 export const FX_ART_ATTACK:ReadonlySet<string>=new Set(['telegraph-enchimento','telegraph-borda','alerta-perigo','estrela-abate','chumbo-escopeta',
   'corte-faca','seta-mira','cone-melee','anel-fase-coach','anel-fase-gelo','anel-fase-acucar','anel-caixa','coroa-prime','anel-alvo',
   'anel-habilidade','aviso-spawn','aviso-explosao','seta-investida','arroto','molotov-garrafa','molotov-mira','fogo-aviso','coco-respingo',
-  'coco-gota','carimbo-objeto','carimbo-marca']);
+  'coco-gota','carimbo-objeto','carimbo-marca','brilho-dourado','brilho-rosa','brilho-branco','farol-moto']);
 const fxArtOff=typeof location!=='undefined'&&new URLSearchParams(location.search).get('fxarte')==='0';
 export const artPiece=(group:ArtGroupId,id:string):ArtPiece|undefined=>
   fxArtOff&&group==='efeitos'&&FX_ART_ATTACK.has(id)?undefined:index.groups[group]?.pieces[id];

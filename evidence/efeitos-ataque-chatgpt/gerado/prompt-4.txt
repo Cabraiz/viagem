@@ -1,0 +1,9 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/efeitos-ataque-chatgpt/evidence/efeitos-ataque-chatgpt/gerado/folha-4.png.
+The attached image is the APPROVED style sheet of this game's attack effects: match its style exactly (hand-painted cartoon VFX, bold dark navy-black outline #1b1726, flat colours with one soft highlight and one shade, light from top-left, same outline weight). Read it ONLY for style; do not copy, edit or reuse any part of it, and do not repeat its items.
+Do not inspect, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+Background: solid flat pure green #00FF00 everywhere (chroma key), no shadow on the background, no gradient, no floor, no text, no labels, no numbers. 4 items in one row, each centred in its quarter, each about 300 px wide, separated by at least 80 px of background, nothing touching the image edges:
+1. Gold buff sparkle: a single four-point star twinkle, long thin vertical and horizontal points, golden yellow (#ffc93c) with a cream-white core, thin dark outline.
+2. Candy-pink sparkle: the same four-point star twinkle shape in candy pink (#ff7ac8) with a pale pink-white core, thin dark outline.
+3. White glint: the same four-point star twinkle in pure white with a very pale cyan edge, thin dark outline (a shine on a glossy ring).
+4. Motorbike headlight glow: a round lamp lens seen from the front, bright white-yellow centre, a cartoon warm yellow (#fff2a8) glow halo around it drawn as 2 flat concentric bands with a few short light rays, outlined.
+Same palette and outline on every item. Items must stay legible over grass, snow, asphalt and water.

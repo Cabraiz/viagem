@@ -50,7 +50,7 @@ export const MOTO_RIDE_SECONDS=420;
  * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[]};
+export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[],rate:0};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**
@@ -115,7 +115,7 @@ export interface ChaveiroState {
    * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
    * pulling, and who a hit knocked off it (no gesture until then).
    */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number};
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number;rateAt?:number;rateUsed?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -197,6 +197,11 @@ export interface ChaveiroOptions {
    * limit at the first step. Absent: carLimitFor's group scaling alone.
    */
   limit?:readonly number[];
+  /**
+   * balanco-1p-3p-carro: the most hit units the car takes per second (mode 'ninhos': CHAVEIRO_PACE.rate; a nest wave piled
+   * on the Uno emptied 224 in ~15 s with the bots beside it); blows past it still ring the alarm. 0/absent: no cap.
+   */
+  rate?:number;
 }
 
 export interface ChaveiroSystem {
@@ -510,7 +515,12 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.ended)return;
       countCrew(ctx);
       // The last blow counts only the hits left to the limit (the bill stays BUDGET_BASE + BUDGET_PER_HIT per hit taken).
-      const units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)],car.limit-car.hits);
+      let units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)],car.limit-car.hits);
+      if(options.rate){
+        const at=Math.floor(ctx.tick/ticks(1));
+        if(car.rateAt!==at){car.rateAt=at;car.rateUsed=0;}
+        units=Math.min(units,Math.max(0,options.rate-(car.rateUsed??0)));car.rateUsed=(car.rateUsed??0)+units;
+      }
       car.hits+=units;state.budget+=BUDGET_PER_HIT*units;
       const silent=ctx.tick>=car.alarmUntil;
       car.alarmUntil=Math.min(ctx.tick+ticks(ALARM_MAX_SECONDS),Math.max(car.alarmUntil,ctx.tick)+ticks(ALARM_PER_HIT_SECONDS));

@@ -452,6 +452,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
       // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
+      ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],

@@ -11,7 +11,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {walkable} from '../../src/maps/world.ts';
-import {CAR_SWARM,decide,newMemory,carLure} from '../../src/sim/bot-brain.ts';
+import {CAR_SWARM,decide,newMemory,carLure,lootLeashed} from '../../src/sim/bot-brain.ts';
 import {ticks} from '../../src/contract/types.ts';
 import type {RunView} from '../../src/contract/view.ts';
 
@@ -69,4 +69,11 @@ test('carLure: a swarm on the car sends the healthiest standing bot to fight 5 u
   assert.equal(carLure(v(CAR_SWARM+1),'bot-2',{x:-3,y:0},['bot-1','bot-2'],true),undefined,'the less healthy one stays');
   assert.equal(carLure(v(CAR_SWARM),'bot-1',{x:3,y:0},['bot-1','bot-2'],true),undefined,'not a swarm yet');
   assert.equal(carLure(v(CAR_SWARM+1),'bot-1',{x:3,y:0},['bot-1','bot-2'],false),undefined,'only in mode ninhos');
+});
+
+test('lootLeashed: a bot alone in the room loots past the car leash; with a teammate it stays by the car',()=>{
+  assert.equal(lootLeashed([{}]),false);
+  assert.equal(lootLeashed([{},{eliminated:true}]),false);
+  assert.equal(lootLeashed([{},{spectator:true}]),false);
+  assert.equal(lootLeashed([{},{}]),true);
 });

@@ -93,8 +93,9 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
 // bots-resgatam (headless audit, 16 seeds): the bots that rescue first and keep by the Uno won 3p 15/16 and 6p 14/16
 // (target 7–11). 3p hp ×1.5 → 14/16, ×2 → 12, ×2.5 → 11, ×3 → 7; 6p hp ×2.5 → 14, ×3 (march 1.35, damage 1.6) → 10.
-// 3p at the middle (×2.75), 4p and 5p in between; 1p and 2p as before.
-const CROWD={march:[1,1,1.28,1.303,1.327,1.35] as number[],hp:[1,1,2.75,2.833,2.917,3] as number[],damage:[1,1,1.5,1.533,1.567,1.6] as number[]};
+// The live bench is harder than the headless audit: 3p ×2.75 (headless 11/16) won 4/16 there, so 3p is back to ×1.5
+// (headless 14/16); 4p and 5p in between; 1p and 2p as before.
+const CROWD={march:[1,1,1.08,1.17,1.26,1.35] as number[],hp:[1,1,1.5,2,2.5,3] as number[],damage:[1,1,1.15,1.3,1.45,1.6] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
   // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).

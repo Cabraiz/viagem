@@ -245,9 +245,13 @@ export const RESCUE_FIRST=8,RESCUE_START_CLOSE=4,RESCUE_HOLD_CLOSE=7,RESCUE_FLEE
 export const GOAL_STALL=4*HZ,GOAL_PROGRESS=.5,GOAL_SKIP=10*HZ,LOOT_SKIP=20*HZ,GOAL_STALL_WALK=2;
 /**
  * Item 3: mode 'ninhos' with the car, a crate or a weapon on the ground is worth it only within LOOT_CAR_LEASH u of
- * the car (the runner chained crates up to 74 u out, "home" and "loot" by turns for minutes).
+ * the car (the runner chained crates up to 74 u out, "home" and "loot" by turns for minutes). Not for a bot alone in
+ * the room (lootLeashed): on the live bench the solo bot then ended round 1 with ~R$ 0-75 and the car fell at ~5 min
+ * (1p 1/16; without the leash 4/16).
  */
 export const LOOT_CAR_LEASH=20;
+export const lootLeashed=(players:readonly {eliminated?:boolean;spectator?:boolean}[])=>
+  players.filter(p=>!p.eliminated&&!p.spectator).length>1;
 /**
  * Item 7: the car is a body (CAR_RADIUS): a bot walking home to it stops CAR_STAND_OFF u from its centre, and one closer
  * than that is eased out (CAR_EASE), instead of holding the stick against it.
@@ -817,7 +821,7 @@ export function decide(input:BrainInput):Decision{
   const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
-    const car=input.nests?view.objective?.car:undefined;
+    const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
       {skip:id=>skipped(`loot:${id}`),...(car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
     if(loot.command)decision.inventory=loot.command;

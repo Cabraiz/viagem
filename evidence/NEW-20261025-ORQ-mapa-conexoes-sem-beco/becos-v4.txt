@@ -1,0 +1,16 @@
+versão 4: 54 becos (22 sem motivo: nem caixa no fim nem abrigo; 294 células), 23 abrigos
+lugares (15–70 u): 68 pares, 37 acima de 1.4×, mediana 1.43×
+  spawnS → ninho-08: reta 29 u, anda 181 u (6.35×)
+  spawnS → ninho-11: reta 35 u, anda 222 u (6.29×)
+  ninho-04 → ninho-05: reta 18 u, anda 90 u (4.91×)
+  ninho-08 → ninho-11: reta 61 u, anda 264 u (4.34×)
+  spawnS → ninho-10: reta 58 u, anda 203 u (3.49×)
+  spawnS → ninho-09: reta 49 u, anda 161 u (3.32×)
+  ninho-04 → ninho-06: reta 40 u, anda 124 u (3.12×)
+  ninho-05 → ninho-06: reta 37 u, anda 114 u (3.08×)
+  ninho-05 → ninho-07: reta 32 u, anda 91 u (2.88×)
+  boca S → ninho-11: reta 69 u, anda 147 u (2.12×)
+  boca S → ninho-08: reta 59 u, anda 119 u (2.00×)
+  boca O → ninho-11: reta 69 u, anda 133 u (1.93×)
+caixas (15–70 u): 2156 pares, 1274 (59 %) acima de 1.4×, mediana 1.55×, p90 3.10×
+spawn → praça a pé: spawnN 77 u, spawnS 85 u, spawnL 75 u, spawnO 72 u

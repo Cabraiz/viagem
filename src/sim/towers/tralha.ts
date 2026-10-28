@@ -5,7 +5,7 @@
  * - Laid once (TowersState.tralha.placed), on the first step of a city run with the car: TRALHA_GROUPS straight rows of
  *   up to TRALHA_GROUP_CELLS pieces (BARRICADA_CELLS cells long and 1 thick, barricada-tocar-no-mapa), end to end, each
  *   on the line from the car to a spawn (the run's rng: where on it, which way the row runs; the pieces turned along it). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
- *   body, within CAR_NEST_KEEP_OUT of a living nest or where it would lock the car off a spawn or the moto (free-build
+ *   body, within TRALHA_POINT_KEEP of the plaza, its mouths or a spawn, within CAR_NEST_KEEP_OUT of a living nest or where it would lock the car off a spawn or the moto (free-build
  *   locks). So the map never starts shut.
  * - Out of the Uno's way (NEW-20261025-ORQ-uno-caminho-caixas-vender, the user 25/10: "esses entulhos e essa barreira só
  *   atrapalham na parte de mover o Uno"): the line car → spawn runs down the avenues the car is pushed along, and to the
@@ -35,7 +35,9 @@ export const TRALHA_OWNER='mapa';
 /** A square goes against a wall: a solid sample within this (u) of its edge (see the header). */
 export const TRALHA_WALL_GAP=.6;
 /** The car drives past a square with this much room (u) beyond its own radius, on the car's mask and off every square. */
-export const TRALHA_CAR_MARGIN=.5;
+export const TRALHA_CAR_MARGIN=1;
+/** No square this close (u) to the plaza, a mouth of it or a spawn (uno-anda-mapa-todo, the user 27/10: "várias tralhas nas entradas do jogo"). */
+export const TRALHA_POINT_KEEP=6;
 /** How far (build cells, Chebyshev) from its point on the line car → spawn a row may start. */
 export const TRALHA_SEARCH_CELLS=10;
 export const TRALHA_PREFIX='tralha';
@@ -126,12 +128,14 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
   const {city,car}=world,P=city.asset.points,spawns=[P.spawnN,P.spawnS,P.spawnL,P.spawnO];
   const rng=ctx.rng.fork('tralha'),def=FREE_PIECE_DEFS.barricada,keep=car.radius+(UNO_BUILD_CELLS+1)*FREE_CELL,n=BARRICADA_CELLS;
   const pieces=towers.pieces??=[];
+  const B=P.bocas,keepOff=[P.praca,B.N,B.S,B.L,B.O,...spawns];
   let laid=0;
   const fits=(cell:{c:number;r:number},rot:0|1)=>{
     const [w,h]=pieceCells('barricada',rot);
     if(!onGround(city,cell,w,h))return false;
     const rect=pieceRect(cell,w,h);
     if(gap(rect,car)<keep)return false;
+    if(keepOff.some(q=>gap(rect,q)<TRALHA_POINT_KEEP))return false;
     if(pieces.some(p=>rectsOverlap(pieceRectOf(p),rect)))return false;
     for(const n of world.nests??[])if(gap(rect,n)<CAR_NEST_KEEP_OUT)return false;
     if(!againstWall(city,rect))return false;

@@ -1,8 +1,8 @@
-// Card NEW-20261028-ORQ-escuridao-justa (the E2 audit, 28/10, item 1): the dark must not take a hero doing what the
-// objective says ("Junte caixas e volte ao Uno"). On the real match (Cidade Nevada, the nests, the manual combat, a solo
-// with no bots: nobody else is company), from beside the Uno to each start crate within REACH u of it, open it and walk
-// back, at the slow loot walk (half the hero's real one), in the minuto de Minerva and again after it (the dark at full
-// pace), never falls to the dark. Enemies are out of it (the hero is untouchable): only the dark is under test.
+// Card NEW-20261028-ORQ-escuridao-justa (the E2 audit, 28/10; the user: "a escuridão não mata"): the dark never takes
+// anyone. On the real match (Cidade Nevada, the nests, the manual combat, a solo with no bots: nobody else is company),
+// over several seeds: from beside the Uno to each start crate within REACH u of it and back, at the slow loot walk (half
+// the hero's real one), then minutes alone far from the Uno, in the minuto de Minerva and after it. The dark fills up,
+// nobody falls to it. Enemies are out of it (the hero is untouchable): only the dark is under test.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -12,7 +12,7 @@ import {FlowField} from '../../src/maps/flowfield.ts';
 import {walkable,type Point} from '../../src/maps/world.ts';
 import {cityAsField} from '../../src/maps/index.ts';
 import {CAR_ID,SIM_HZ,ticks} from '../../src/contract/index.ts';
-import {FEAR_BASE_RADIUS,FEAR_EXPLORE_RATE,FEAR_SOURCE,FEAR_TICKS} from '../../src/rules/index.ts';
+import {FEAR_BASE_RADIUS,FEAR_TICKS} from '../../src/rules/index.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
@@ -87,7 +87,7 @@ function home(m:ReturnType<typeof match>){
   for(let t=0;t<SIM_HZ;t++)m.step();
 }
 
-test(`a solo hero fetches every start crate within ${REACH} u of the Uno and walks back without falling to the dark, in the minuto de Minerva and after it`,()=>{
+test(`nobody falls to the dark: a solo hero fetching the start crates within ${REACH} u and then alone for minutes, every seed`,()=>{
   for(const seed of [1,2,3,7,21,4242]){
     const m=match(seed);
     // In the minuto de Minerva the mission, word for word ("Junte caixas e volte ao Uno"): one round of the start crates
@@ -97,43 +97,19 @@ test(`a solo hero fetches every start crate within ${REACH} u of the Uno and wal
       .sort((a,b)=>Math.hypot(a.x-m.hero.x,a.y-m.hero.y)-Math.hypot(b.x-m.hero.x,b.y-m.hero.y))[0]);){near.push(c);fetch(m,c);}
     home(m);
     assert.ok(near.length>=1,`seed ${seed}: a start crate within ${REACH} u`);
-    assert.ok(m.sim.tick<ticks(MINERVA_S),`seed ${seed}: the trips fit the minuto de Minerva (${m.sim.tick/SIM_HZ} s)`);
-    assert.equal(m.fell(),undefined,`seed ${seed}: fell to ${m.fell()} in the minuto de Minerva`);
-    const minerva=m.most();
-    // After it, the dark at full pace: one trip to where each of those crates was (a crate respawns or not: walk there,
-    // stand the longest opening, come back).
-    while(m.sim.tick<ticks(MINERVA_S)+2)m.step();
-    for(const c of near){
-      assert.ok(walkTo(m,c,OPEN_REACH*.8),`seed ${seed}: reaches ${c.id} again`);
-      for(let t=0;t<ticks(3);t++)m.step();
-      home(m);
+    // Then far from the Uno, alone, through the end of the minute and well past the darkest (the Uno, left alone, may
+    // fall to the critters and end the run: only the live run counts, and it must hold the darkest a full FEAR_SECONDS).
+    const far={x:m.car.x+FEAR_BASE_RADIUS+20,y:m.car.y},until=Math.max(m.sim.tick,ticks(MINERVA_S))+3*FEAR_TICKS;
+    const live=()=>m.sim.run.chaveiro!.state.ended===undefined;
+    let darkest=0;
+    while(m.sim.tick<until&&live()){m.hero.x=far.x;m.hero.y=far.y;m.step();if(live()&&m.hero.fear===FEAR_TICKS)darkest++;}
+    assert.ok(darkest>=FEAR_TICKS,`seed ${seed}: the darkest held ${darkest/SIM_HZ} s of live run`);
+    assert.equal(m.fell(),undefined,`seed ${seed}: fell to ${m.fell()}`);
+    assert.equal(m.hero.downed,undefined,`seed ${seed}: on their feet`);
+    // Back at the Uno the dark goes as before (while the run lasts: the dark stops with it).
+    if(live()){
+      home(m);for(let t=0;t<ticks(2);t++)m.step();
+      if(live())assert.equal(m.hero.fear,undefined,`seed ${seed}: the Uno backs the dark off`);
     }
-    assert.equal(m.fell(),undefined,`seed ${seed}: fell to ${m.fell()} after the minuto de Minerva`);
-    // Room to spare: never past two thirds of the dark (the last stretch, the heartbeat, starts at 5/6).
-    assert.ok(m.most()<2/3,`seed ${seed}: the dark reached ${(m.most()*100).toFixed(0)} % (Minerva ${(minerva*100).toFixed(0)} %)`);
   }
-});
-
-test('leaning on the Uno is company: anywhere at its body\'s edge the dark never builds',()=>{
-  const m=match(7);
-  // Around the car, a step outside its body, the farthest the room lets a hero stand from its centre on that side.
-  for(let k=0;k<16;k++){
-    const a=k/16*Math.PI*2;
-    let spot:Point|undefined;
-    for(let r=CAR_CLEAR;r<FEAR_BASE_RADIUS;r+=.25){const p={x:m.car.x+Math.cos(a)*r,y:m.car.y+Math.sin(a)*r};if(open(p)){spot=p;break;}}
-    if(!spot)continue;
-    for(let t=0;t<SIM_HZ;t++){m.hero.x=spot.x;m.hero.y=spot.y;m.step();}
-    assert.equal(m.hero.fear,undefined,`at ${Math.hypot(spot.x-m.car.x,spot.y-m.car.y).toFixed(1)} u from the Uno`);
-  }
-  assert.ok(FEAR_BASE_RADIUS>=12,'the Uno\'s light (≈12 u on screen), not the old 6 u (a hero leaning on the car was 6.3 u off and fell)');
-});
-
-test(`exploring the dark grows at ${FEAR_EXPLORE_RATE}: alone the whole minuto de Minerva the hero falls only at its end`,()=>{
-  const m=match(1),far={x:m.car.x+FEAR_BASE_RADIUS+20,y:m.car.y};
-  const from=m.sim.tick;
-  let at:number|undefined;
-  for(let t=0;t<ticks(MINERVA_S)+5&&!m.fell();t++){m.hero.x=far.x;m.hero.y=far.y;m.step();if(m.fell())at=m.sim.tick-from;}
-  assert.equal(m.fell(),FEAR_SOURCE);
-  assert.equal(FEAR_TICKS/FEAR_EXPLORE_RATE,ticks(MINERVA_S),'the whole minuto de Minerva');
-  assert.ok(at!==undefined&&Math.abs(at-ticks(MINERVA_S))<=2,`fell at ${at!/SIM_HZ} s`);
 });

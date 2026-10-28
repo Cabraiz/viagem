@@ -7,11 +7,9 @@
  * - the way back: an arrow by the hero to the nearest safe spot, the notice "Não se afaste do bando" the first time
  *   (right at the start too: a solo hero is born away from the Uno) and "Volte pro bando!" over the last stretch, and
  *   the allies' portraits dimmed while alone.
- * - the countdown (card escuridao-justa, item 9): over the last FEAR_COUNT_SECONDS before the dark takes the hero, a
- *   ring that empties around him and "Escuro: N s" (real seconds: exploring, the dark grows at FEAR_EXPLORE_RATE).
  * Pure (no Phaser, no DOM): node tests pin the curve, the beat, the company and the notices.
  */
-import {FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_FINAL_SECONDS,FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_COUNT_SECONDS,FEAR_EXPLORE_RATE} from '../../rules/index.ts';
+import {FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_FINAL_SECONDS,FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS} from '../../rules/index.ts';
 
 export interface Pt {x:number;y:number}
 
@@ -37,16 +35,6 @@ export const FEAR_ARROW_SECONDS=1;
 export const FEAR_WARN_MS=5000;
 export const FEAR_WARN_TEXT='Não se afaste do bando';
 export const FEAR_FINAL_TEXT='Volte pro bando!';
-export const fearCountText=(n:number)=>`Escuro: ${n} s`;
-
-/** The run as the client sees it: the minuto de Minerva and the time to explore are on it while they last. */
-export interface FearRun {minervaAteTick?:number;exploraDesdeTick?:number;exploraAteTick?:number}
-/**
- * Ticks of dark per tick at the room's `tick` (sim/fear.ts: FEAR_EXPLORE_RATE while exploring, else 1). Against the tick,
- * not the fields' presence: the last {t:'run'} may still carry a window that has ended.
- */
-export const fearRate=(run:FearRun|undefined,tick:number)=>run&&((run.minervaAteTick!==undefined&&tick<run.minervaAteTick)
-  ||(run.exploraDesdeTick!==undefined&&tick>=run.exploraDesdeTick&&(run.exploraAteTick===undefined||tick<run.exploraAteTick)))?FEAR_EXPLORE_RATE:1;
 
 const clamp01=(v:number)=>v<0?0:v>1?1:v;
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -111,8 +99,6 @@ export interface FearFrame {
   /** The dark is growing (alone): the arrow, the notice and the dimmed portraits show. */
   alone:boolean;
   notice?:FearNotice;
-  /** The countdown while the dark grows, over its last FEAR_COUNT_SECONDS: whole seconds left and the ring's share (1 → 0). */
-  count?:{seconds:number;share:number};
 }
 
 /**
@@ -126,11 +112,8 @@ export class FearClock {
   private phase=0;
   private warnedAt=-Infinity;
   private warned=false;
-  /**
-   * One frame: `raw` the server's fear 0..1 (0 when not in combat, down or out), `dtMs` since the last frame, `rate` the
-   * dark's pace now (fearRate) for the countdown's real seconds.
-   */
-  step(raw:number,dtMs:number,nowMs:number,reduced=false,rate=1):FearFrame{
+  /** One frame: `raw` the server's fear 0..1 (0 when not in combat, down or out), `dtMs` since the last frame. */
+  step(raw:number,dtMs:number,nowMs:number,reduced=false):FearFrame{
     // Up to 2 s a frame: a slow phone (a few frames a second) still catches up with the wire within a frame or two.
     const value=clamp01(Number.isFinite(raw)?raw:0),dt=Math.max(0,Math.min(dtMs,2000))/1000;
     if(value>this.last)this.rising=true;else if(value<this.last||value===0)this.rising=false;
@@ -153,10 +136,7 @@ export class FearClock {
     let notice:FearNotice|undefined;
     if(look.final>0&&this.rising)notice={text:FEAR_FINAL_TEXT,final:true};
     else if(value>0&&nowMs-this.warnedAt<FEAR_WARN_MS)notice={text:FEAR_WARN_TEXT,final:false};
-    // From the wire value, not the eased one: the countdown is the server's, the ease is only the dark's look.
-    const left=(1-value)*FEAR_SECONDS/(rate>0?rate:1);
-    const count=this.rising&&value>0&&left<=FEAR_COUNT_SECONDS?{seconds:Math.max(1,Math.ceil(left)),share:clamp01(left/FEAR_COUNT_SECONDS)}:undefined;
-    return {seconds,look,beat,thump,alone,...notice?{notice}:{},...count?{count}:{}};
+    return {seconds,look,beat,thump,alone,...notice?{notice}:{}};
   }
   reset(){this.eased=0;this.last=0;this.rising=false;this.phase=0;this.warned=false;this.warnedAt=-Infinity;}
 }

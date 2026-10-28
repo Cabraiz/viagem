@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_FINAL_TEXT,FEAR_HOLE,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearCountText,fearLook,fearRate,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
+import {FEAR_ALPHA,FEAR_ARROW_SECONDS,FEAR_FINAL_TEXT,FEAR_HOLE,FEAR_WARN_MS,FEAR_WARN_TEXT,FearClock,fearBpm,fearLook,heartPulse,safeSpots} from '../../src/client/render/fear-rules.ts';
 import {BEAT_LEVEL,WHISPER_MAX,beatLevel,heartbeatSamples,whisperLevel,whisperSamples} from '../../src/client/audio/fear-sound.ts';
 import {causeCopy,DARK_COPY} from '../../src/client/hud/cause.ts';
-import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_COUNT_SECONDS,FEAR_EXPLORE_RATE,FEAR_FINAL_SECONDS,FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_SOURCE} from '../../src/rules/index.ts';
+import {FEAR_ALLY_RADIUS,FEAR_BASE_RADIUS,FEAR_FINAL_SECONDS,FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_SOURCE} from '../../src/rules/index.ts';
 
 const fearAt=(seconds:number)=>seconds/FEAR_SECONDS;
 /** Steps a clock through `seconds` of wire values at 60 fps from `from` (s alone) going up or down. */
@@ -81,34 +81,6 @@ test('the arrow and the notice: right from the start alone, once; "Volte pro ban
   clock.reset();
   const next=run(clock,0,2,2,60000);
   assert.equal(next.at(-1)!.notice?.text,FEAR_WARN_TEXT);
-});
-
-test('the countdown (escuridao-justa item 9): "Escuro: N s" and the ring over the last 20 real seconds, never with company',()=>{
-  assert.equal(FEAR_COUNT_SECONDS,20);assert.equal(fearCountText(12),'Escuro: 12 s');
-  const clock=new FearClock();
-  const before=run(clock,0,FEAR_SECONDS-FEAR_COUNT_SECONDS-.5,10);
-  assert.ok(before.every(f=>f.count===undefined),'none before the last 20 s');
-  const last=clock.step(fearAt(FEAR_SECONDS-FEAR_COUNT_SECONDS+.5),16,20000);
-  assert.equal(last.count?.seconds,20);assert.ok(Math.abs(last.count.share-19.5/20)<1e-9);
-  const end=clock.step(fearAt(FEAR_SECONDS-.2),16,20016);
-  assert.equal(end.count?.seconds,1,'never "0 s" while on their feet');
-  // Company: it backs off, the countdown goes at once.
-  assert.equal(clock.step(fearAt(FEAR_SECONDS-5),16,20032).count,undefined);
-  // Exploring the dark grows at half the pace: the same wire value is twice the real seconds left.
-  const slow=new FearClock();
-  run(slow,0,FEAR_SECONDS-25,10);
-  assert.equal(slow.step(fearAt(FEAR_SECONDS-25.1),16,99000,false,1).count,undefined,'25 s of dark left: no count at full pace');
-  assert.equal(slow.step(fearAt(FEAR_SECONDS-25.2),16,99016,false,FEAR_EXPLORE_RATE).count,undefined,'50 s of real time left exploring');
-  assert.equal(slow.step(fearAt(FEAR_SECONDS-9.6),16,99032,false,FEAR_EXPLORE_RATE).count?.seconds,20,'9.6 s of dark = 19.2 real s');
-});
-
-test('the pace of the dark on the client: the minuto de Minerva and the time to explore, against the room tick',()=>{
-  assert.equal(fearRate(undefined,10),1);assert.equal(fearRate({},10),1);
-  assert.equal(fearRate({minervaAteTick:2400},2399),FEAR_EXPLORE_RATE);
-  assert.equal(fearRate({minervaAteTick:2400},2400),1,'the minute is over: the last run message may still carry it');
-  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},5000),FEAR_EXPLORE_RATE);
-  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},4999),1);
-  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},7400),1);
 });
 
 test('the clock eases the wire and lets go of the dark when company is found',()=>{

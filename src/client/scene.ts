@@ -9,7 +9,7 @@ import {Vignette} from './render/vignette.ts';
 import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
 import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
-import {FEAR_BEAT_PULL,FearClock,fearRate,safeSpots,type FearFrame} from './render/fear-rules.ts';
+import {FEAR_BEAT_PULL,FearClock,safeSpots,type FearFrame} from './render/fear-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
@@ -1167,7 +1167,7 @@ export class IslandScene extends Phaser.Scene {
     if(raw<=0&&!this.fearOn)return;
     // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
     const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
-    const frame=this.fearClock.step(raw,dt,time,this.reduced,fearRate(net.run,net.tick));
+    const frame=this.fearClock.step(raw,dt,time,this.reduced);
     const lit=frame.look.alpha>0||frame.alone;
     this.fearOn=lit||frame.seconds>0;
     const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);
@@ -1182,8 +1182,8 @@ export class IslandScene extends Phaser.Scene {
     }
     const box=this.heroWorldBox(),hero={x:box.x+box.width/2,y:box.y+box.height/2};
     const near=frame.alone?spots[0]:undefined,to=near?this.project(near):undefined;
-    dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,heroH:box.height,spots:out,
-      ...to?{arrow:{x:to.x,y:to.y}}:{},...frame.count?{count:frame.count}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
+    dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,spots:out,
+      ...to?{arrow:{x:to.x,y:to.y}}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
     this.vignette?.cover(dark.covering);
   }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */

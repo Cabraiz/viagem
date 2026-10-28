@@ -535,10 +535,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
-  // Fear: the Uno (the chaveiro's car) is company, else the base (the wall). Exploring (escuridao-justa): the nests'
-  // minuto de Minerva and time to explore (what the room shows: minervaAteTick, exploraDesdeTick), else the intermission.
+  // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
   const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
-    exploring:ctx=>nests?nests.minerva(ctx.tick)||!!nests.exploring(ctx.tick):ctx.round.phase==='prepare',
     base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
 
   // D-051 manual combat: the inventory (sim/inventory.ts); the old kit-torre is one team ficha, a kit de torre

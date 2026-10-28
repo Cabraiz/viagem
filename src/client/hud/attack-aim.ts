@@ -147,7 +147,9 @@ export class AttackPress {
   private down=false;private latched=false;
   /** Keys holding it on the desktop (Space, the right mouse button): it lets go when the last one does. */
   private readonly keys=new Set<string>();
-  press(){this.down=true;this.latched=true;}
+  /** Whether the last press() started a press (it was not held): the scene predicts that one (tiro-delay-1s-predicao). */
+  fresh=false;
+  press(){this.fresh=!this.down;this.down=true;this.latched=true;}
   release(){this.down=false;}
   /**
    * A desktop key (`source`) held down or let go (cone-por-cima-e-clique-em-loop): held while any key holds it; a key let

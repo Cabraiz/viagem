@@ -8,6 +8,7 @@ import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_T
 import type {BuildRot,CombatMode,EnemyView,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
+import {AttackPredictor} from './attack-predict.ts';
 import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
@@ -244,6 +245,8 @@ export class CoopClient {
   get seq(){return this.batcher.seq;}
   /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
   readonly feed=new FrameRunFeed();
+  /** The local hero's attack drawn on the press, the room's copy skipped (tiro-delay-1s-predicao). */
+  readonly attackPredict=new AttackPredictor();
   /** How far behind the room this page handles frames, ms (N27, slow phone): the scene stops drawing to catch up. */
   readonly backlog=new Backlog();
   /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */

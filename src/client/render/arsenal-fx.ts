@@ -205,11 +205,14 @@ export class ArsenalFx{
     if(!this.manual)return;
     if(event.type==='damage')this.openings.hurt(event.target,this.now);
     else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value),event.player);
-    else if(event.type==='fire'){
-      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy,event.weapon);
-      const cone=this.selfCone;
-      if(cone&&cone.weapon===event.weapon&&event.player===this.options.selfId?.())this.cone.swing(this.now,cone.radius,cone.half,event.dx??0,event.dy??0);
-    }
+    else if(event.type==='fire')this.shot(event.weapon,event.x,event.y,event.dx,event.dy,event.player===this.options.selfId?.());
+  }
+  /** The local hero's shot drawn on the press, before the room's copy (tiro-delay-1s-predicao, net/attack-predict.ts). */
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){if(this.manual)this.shot(weapon,x,y,dx,dy,true);}
+  private shot(weapon:string,x:number,y:number,dx:number|undefined,dy:number|undefined,mine:boolean){
+    const look=FIRE_LOOK[weapon];if(look)this.fire(look,x,y,dx,dy,weapon);
+    const cone=this.selfCone;
+    if(cone&&cone.weapon===weapon&&mine)this.cone.swing(this.now,cone.radius,cone.half,dx??0,dy??0);
   }
 
   /**

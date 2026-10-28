@@ -8,8 +8,9 @@
 //      the middle and the end at the screen's real density; quadros.png, 8 frames of the GIF side by side with their
 //      second (what an executor reads: Read shows a GIF's first frame only); every pageerror and console error in erros.txt.
 //      The snow changes the whole frame, so the GIF runs ~0.5 MB/s even lossy (interFrameMaxError).
-// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|todos] [--tela celular|pc|ambas] [--segundos 20]
+// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|torres|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
+//      [--tipos rojao-de-festa,morteiro,…] [--lento 12]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
 // Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
 // (≤ 10 lines). The coach's hints and the economy question start as already seen (as the ORQ's prod prints did), so
@@ -19,7 +20,7 @@
 // Playwright is not a dependency of the repo: `import('playwright')`, else PLAYWRIGHT_MODULE, else D:/Gits/viagem-tools.
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
-import {existsSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {existsSync,mkdirSync,readFileSync,statSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createRequire} from 'node:module';
@@ -46,6 +47,9 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *  - nomes (nome-inimigo-rede-social, etapa 7): first the photo scene FOTO_NOMES (src/client/dev/foto.ts: elites and a
  *    chefão with the profile's name over the bar, "Te derrubou: X" under a caído ficha) in nomes.png, then the parado
  *    steps in a real match (an elite or a fall there shows the same fichas). Not part of "todos";
+ *  - torres (card torres-animacao-idle-tiro): no match; the city sandbox with one defense of each of --tipos by the hero,
+ *    firing at the stand-in horde (`torres=lista&tiro=1`), its clock --lento× slower so a 5 fps recording shows every
+ *    animation frame (idle between volleys, the fire sheet on each): one GIF per kind in <roteiro>-<tela>/<tipo>/. Not in "todos";
  *  - empurra (card heroi-empurra-inimigos): waits (out of the GIF, up to EMPURRA_WAIT_MS) for awake solid bodies near
  *    the hero (the 1st wave), then walks into the nearest one, one second at a time, without attacking: the hero pushes
  *    the crowd (solid bodies) and the GIF shows whether the phone's prediction shakes. Not in "todos" (it waits minutes).
@@ -62,7 +66,12 @@ export const ROTEIROS=Object.freeze({
   matches:s=>ROTEIROS.uno(s),
   nomes:s=>ROTEIROS.parado(s),
   empurra:s=>{const out=[];for(let left=s*1000;left>0;left-=1000)out.push({dir:D.l,ms:Math.min(1000,left)});return out;},
+  torres:s=>[{ms:s*1000}],
 });
+/** torres: the middle of the screen cut out for the GIF (width fraction, height ÷ width). */
+export const TORRES_CORTE=Object.freeze([.8,1.1]);
+/** torres: the kinds recorded by default (the B and C branches with delivered art). */
+export const TORRES_TIPOS=Object.freeze(['rojao-de-festa','morteiro','lanca-foguetes','obuseiro','holofote','arame-e-sirene','antiaerea-quadrupla','posto-de-radar']);
 /** empurra: how long to wait for the 1st wave's bodies (the minuto de Minerva 120 s + the first wave's 30–60 s). */
 export const EMPURRA_WAIT_MS=300000;
 /** The photo scene the nomes roteiro prints first. */
@@ -78,7 +87,7 @@ export const keysOf=dir=>{
 /** From the screen's center toward a point (the Uno's edge arrow), unit length; undefined at the center. */
 export const toward=(from,to)=>{const dx=to.x-from.x,dy=to.y-from.y,len=Math.hypot(dx,dy);return len>1?{x:dx/len,y:dy/len}:undefined;};
 
-const VALUE_FLAGS=new Set(['roteiro','tela','segundos','fps','modo','dist','url','build','esperar-build']);
+const VALUE_FLAGS=new Set(['roteiro','tela','segundos','fps','modo','dist','url','build','esperar-build','tipos','lento']);
 /** argv → options (validated); throws on a bad value. */
 export function parseOpts(argv){
   const flags={},pos=[];
@@ -94,10 +103,13 @@ export function parseOpts(argv){
   if(flags.modo!==undefined&&!(flags.modo in MODOS))throw new Error(`modo desconhecido: ${flags.modo}`);
   if(flags.url!==undefined&&!/^https?:\/\/[^/]+/.test(flags.url))throw new Error(`--url inválida: ${flags.url}`);
   if(flags.build!==undefined&&!/^[0-9a-f]{7,40}$/.test(flags.build))throw new Error(`--build: um sha, veio ${flags.build}`);
+  const tipos=flags.tipos?String(flags.tipos).split(',').filter(Boolean):[...TORRES_TIPOS];
+  for(const k of tipos)if(!/^[a-z0-9-]+$/.test(k))throw new Error(`--tipos: ids de torre separados por vírgula, veio ${k}`);
   return {out:pos[0],roteiros:list(flags.roteiro??'parado',ROTEIROS,'roteiro'),telas:list(flags.tela??'celular',TELAS,'tela'),
     segundos:num(flags.segundos,20,3,120,'segundos'),fps:num(flags.fps,5,1,15,'fps'),modo:flags.modo??'normal',dist:resolve(flags.dist??'dist'),
     url:flags.url?.replace(/\/+$/,''),build:flags.build,esperarBuild:num(flags['esperar-build'],12,0,30,'esperar-build'),
-    gif:!flags['sem-gif'],zeroErros:!!flags['zero-erros'],dicas:!!flags['com-dicas'],escolher:!flags['sem-escolha']};
+    gif:!flags['sem-gif'],zeroErros:!!flags['zero-erros'],dicas:!!flags['com-dicas'],escolher:!flags['sem-escolha'],
+    tipos,lento:num(flags.lento,flags.roteiro==='torres'?12:3,1,20,'lento')};
 }
 
 /** The screencast's frames (it sends one per change, as fast as the page paints) kept at least 1000/fps ms apart. */
@@ -148,7 +160,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${r.tremor?` · tremor: ${r.tremor.recuos} recuo(s) em ${r.tremor.quadros} quadros andando (${r.tremor.recuosContato} de ${r.tremor.contato} encostado, máx ${r.tremor.maxRecuo} u)`:''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.torres?` · ${r.torres.map(x=>`${x.tipo} ${x.disparos} tiros/${x.desenhados} desenhados`).join(', ')}`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${r.tremor?` · tremor: ${r.tremor.recuos} recuo(s) em ${r.tremor.quadros} quadros andando (${r.tremor.recuosContato} de ${r.tremor.contato} encostado, máx ${r.tremor.maxRecuo} u)`:''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -300,6 +312,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
         await p.screenshot({path:join(dir,'nomes.png'),timeout:30000});r.foto=FOTO_NOMES;
       }catch(e){r.erros.push(`foto ${FOTO_NOMES}: ${String(e.message??e).split('\n')[0]}`);await p.screenshot({path:join(dir,'nomes.png'),timeout:30000}).catch(()=>{});}
     }
+    if(roteiro==='torres'){await gravarTorres(p,cdp,base,o,t,dir,r);return r;}
     try{r.entrouMs=await entrar(p,base,o.modo,dir,roteiro==='matches'?'matches=demo':'');}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
@@ -352,23 +365,60 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     const frames=pickFrames(all,o.fps);
     r.duracaoMs=Date.now()-start;r.quadros=frames.length;
     await p.screenshot({path:join(dir,'fim.png'),timeout:30000}).catch(()=>{});
-    if(o.gif&&frames.length){
-      // The game checkout's sharp (a devDependency): on CI this script runs from a sparse checkout without node_modules.
-      const sharp=createRequire(join(process.cwd(),'package.json'))('sharp');
-      const w=t.gifWidth,small=await Promise.all(frames.map(f=>sharp(f.buf).resize({width:w}).png().toBuffer()));
-      const gif=await sharp(small,{join:{animated:true}}).gif({delay:gifDelays(frames.map(f=>f.t)),loop:0,colours:96,effort:4,interFrameMaxError:8,interPaletteMaxError:3}).toBuffer();
-      writeFileSync(join(dir,'partida.gif'),gif);r.gifKB=Math.round(gif.length/1024);
-      const pick=sheetFrames(frames.length),h=Math.round(t.viewport.height*w/t.viewport.width),cols=Math.min(t.sheetCols,pick.length),rows=Math.ceil(pick.length/cols);
-      const label=s=>Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="26"><rect width="64" height="26" fill="#000" fill-opacity=".6"/><text x="6" y="19" font-family="sans-serif" font-size="16" fill="#fff">${s}</text></svg>`);
-      await sharp({create:{width:cols*w,height:rows*h,channels:3,background:'#000'}})
-        .composite(pick.flatMap((i,k)=>[{input:small[i],left:(k%cols)*w,top:Math.floor(k/cols)*h},{input:label(`${((frames[i].t-frames[0].t)/1000).toFixed(1)} s`),left:(k%cols)*w,top:Math.floor(k/cols)*h}]))
-        .png().toFile(join(dir,'quadros.png'));
-    }
+    if(o.gif&&frames.length)r.gifKB=await escreverGif(frames,t,dir);
     return r;
   }finally{
     writeFileSync(join(dir,'erros.txt'),r.erros.length?r.erros.join('\n')+'\n':'(nenhum)\n');
     await within(browser.close());
   }
+}
+
+/** partida.gif (the frames at their real pace) and quadros.png (`sheet` of them with their second) in `dir`; the GIF's KB. */
+async function escreverGif(frames,t,dir,sheet=8){
+  // The game checkout's sharp (a devDependency): on CI this script runs from a sparse checkout without node_modules.
+  const sharp=createRequire(join(process.cwd(),'package.json'))('sharp');
+  const w=t.gifWidth,small=await Promise.all(frames.map(f=>sharp(f.buf).resize({width:w}).png().toBuffer()));
+  const gif=await sharp(small,{join:{animated:true}}).gif({delay:gifDelays(frames.map(f=>f.t)),loop:0,colours:96,effort:4,interFrameMaxError:8,interPaletteMaxError:3}).toBuffer();
+  writeFileSync(join(dir,'partida.gif'),gif);
+  const pick=sheetFrames(frames.length,sheet),h=Math.round(t.viewport.height*w/t.viewport.width),cols=Math.min(sheet>8?8:t.sheetCols,pick.length),rows=Math.ceil(pick.length/cols);
+  const label=s=>Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="26"><rect width="64" height="26" fill="#000" fill-opacity=".6"/><text x="6" y="19" font-family="sans-serif" font-size="16" fill="#fff">${s}</text></svg>`);
+  await sharp({create:{width:cols*w,height:rows*h,channels:3,background:'#000'}})
+    .composite(pick.flatMap((i,k)=>[{input:small[i],left:(k%cols)*w,top:Math.floor(k/cols)*h},{input:label(`${((frames[i].t-frames[0].t)/1000).toFixed(1)} s`),left:(k%cols)*w,top:Math.floor(k/cols)*h}]))
+    .png().toFile(join(dir,'quadros.png'));
+  return Math.round(statSync(join(dir,'partida.gif')).size/1024);
+}
+
+/**
+ * torres: per kind, the city sandbox with that defense firing (`torres=lista&tipos=<k>&tiro=1&lento=<K>`), the art
+ * streamed in (3 s), then --segundos of screencast: <dir>/<k>/{partida.gif,quadros.png,inicio.png}. The volleys the
+ * sandbox fired and the renderer drew go to the summary (window.__cidade.volleys()).
+ */
+async function gravarTorres(p,cdp,base,o,t,dir,r){
+  const t0=Date.now();r.torres=[];
+  for(const tipo of o.tipos){
+    const sub=join(dir,tipo);mkdirSync(sub,{recursive:true});
+    try{
+      await p.goto(`${base}/?sandbox=cidade&mapa=real&torres=lista&tipos=${tipo}&tiro=1&lento=${o.lento}&foco=torre&contorno=0&zoom=1`,{waitUntil:'load',timeout:90000});
+      await p.waitForFunction(()=>!!window.__cidade,null,{timeout:90000});
+    }catch(e){r.erros.push(`${tipo}: ${String(e.message??e).split(/\r?\n/)[0]}`);continue;}
+    await sleep(3000);
+    await p.screenshot({path:join(sub,'inicio.png'),timeout:30000}).catch(()=>{});
+    const all=[];
+    const onFrame=f=>{all.push({t:f.metadata.timestamp*1000,buf:Buffer.from(f.data,'base64')});cdp.send('Page.screencastFrameAck',{sessionId:f.sessionId}).catch(()=>{});};
+    // The whole screen at its CSS size, then the middle (the defense, foco=torre) cut out: a big GIF of one tower.
+    if(o.gif&&cdp){cdp.on('Page.screencastFrame',onFrame);await cdp.send('Page.startScreencast',{format:'jpeg',quality:85,maxWidth:t.viewport.width,maxHeight:t.viewport.height,everyNthFrame:1}).catch(()=>{});}
+    await sleep(o.segundos*1000);
+    if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
+    const v=await p.evaluate(()=>window.__cidade?.volleys?.()??null).catch(()=>null);
+    const frames=pickFrames(all,o.fps);r.quadros+=frames.length;
+    const sharp=createRequire(join(process.cwd(),'package.json'))('sharp'),cut=TORRES_CORTE[0],tall=TORRES_CORTE[1];
+    // The same shape on both screens: on the PC's wide one the height limits the cut.
+    for(const f of frames){const m=await sharp(f.buf).metadata(),w=Math.round(Math.min(m.width*cut,m.height/tall)),h=Math.min(m.height,Math.round(w*tall));
+      f.buf=await sharp(f.buf).extract({left:Math.round((m.width-w)/2),top:Math.round((m.height-h)/2),width:w,height:h}).png().toBuffer();}
+    const kb=o.gif&&frames.length?await escreverGif(frames,{...t,gifWidth:360,viewport:{width:360,height:Math.round(360*tall)}},sub,24):0;r.gifKB+=kb;
+    r.torres.push({tipo,quadros:frames.length,disparos:v?.fired??0,desenhados:v?.drawn??0,gifKB:kb});
+  }
+  r.entrouMs=0;r.duracaoMs=Date.now()-t0;
 }
 
 /** dist/multiplayer.json pointed at the local Worker for the run, restored on every way out (never ship 127.0.0.1). */

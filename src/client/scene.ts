@@ -79,6 +79,9 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
+import {heldWeapon,heldCooldownMs} from './hud/weapon-reach.ts';
+import {weaponSound} from './audio/events.ts';
+import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -118,6 +121,10 @@ export interface SceneHooks {
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
    */
   attacking?:()=>boolean;
+  /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
+  attackHeld?:()=>boolean;
+  /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
+  aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
   working?:(direction:Point)=>boolean;
   /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
@@ -368,6 +375,8 @@ export class IslandScene extends Phaser.Scene {
   private facing=Math.PI/2;
   /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
   private intent:Point={x:0,y:0};
+  /** The last way the hero walked (a predicted shot without any aim goes there). */
+  private lastIntent:Point={x:1,y:0};
   /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
   private inputAt=-Infinity;
   /** Who cheers now (danca-no-jogo etapa 2): fed by the run's events, read by the dance cues. */
@@ -437,7 +446,7 @@ export class IslandScene extends Phaser.Scene {
   /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
   private needTowerArt(kind:TowerKind){
     for(const l of towerLoads(kind)){
-      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key))continue;
+      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key)||this.loaderTakes(l.key))continue;
       this.towerArtAsked.add(l.key);
       if(bitmapsAvailable()){
         void fetchBitmap(l.url,'high').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
@@ -449,6 +458,18 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
       }
     }
+  }
+  /**
+   * The late queue's own copy of a sheet (queueLateArt): already fetched or being added → it lands soon (true); still
+   * waiting its turn → taken out of the loader (false), fetched now instead. Both adding one key made Phaser log
+   * 'Texture key already in use' (art:torres:vigia-do-predio:idle, the T1 built before the late queue reached it).
+   */
+  private loaderTakes(key:string){
+    const load=this.load as unknown as {list:Phaser.Structs.Set<Phaser.Loader.File>;inflight:Phaser.Structs.Set<Phaser.Loader.File>;queue:Phaser.Structs.Set<Phaser.Loader.File>};
+    if(load.inflight?.entries.some(f=>f.key===key)||load.queue?.entries.some(f=>f.key===key))return true;
+    // Safe: the loader completes on its sets' sizes (LoaderPlugin.fileProcessComplete), only `progress` counts it.
+    for(const f of [...load.list?.entries??[]])if(f.key===key)load.list.delete(f);
+    return false;
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -591,7 +612,9 @@ export class IslandScene extends Phaser.Scene {
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
-        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
+        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
+        // The local hero's shots already drawn on the press are not drawn again (net/attack-predict.ts).
+        ownFire:(event,eventId,tick)=>net.attackPredict.fire(eventId,event.weapon,tick,performance.now()),onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround()??this.stickGround(),
@@ -900,6 +923,29 @@ export class IslandScene extends Phaser.Scene {
     const d=this.hooks.aimStick?.();
     return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
   }
+  /**
+   * BUG-20261027-ORQ-tiro-delay-1s-predicao: the attack button was pressed (hud/attack-button.ts `pressed`). When the
+   * room would take that press (manual combat, a weapon in the hand, nothing holding the hands), the swing, the shot's
+   * flash and its sound show now, aimed like the room aims: the mouse or the aim stick, the chosen target, the auto
+   * aim's pick, else the way the hero last walked. The room's copy of it is skipped (net/attack-predict.ts).
+   */
+  predictAttack(){
+    const net=this.hooks.net;
+    if(!net||!this.horde||!this.hooks.manual?.()||this.paused||net.run?.phase!=='combat'||net.run.pause||net.run.cena||net.handsBusy||this.isOut())return;
+    const me=net.feed.players.get(net.id),self=net.players.get(net.id);
+    if(!me||!self?.hp||me.downed||me.eliminated)return;
+    const held=heldWeapon(me),weapon=held?.id;
+    if(!weapon||!net.attackPredict.press(performance.now(),weapon,heldCooldownMs(held)))return;
+    const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
+    const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
+    const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
+    this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y);
+    const sound=weaponSound(weapon),audio=getAudio();
+    if(sound&&audio.unlocked)audio.play(sound);
+    // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).
+    const tiro=(window as {__tiro?:{local?:number[]}}).__tiro;
+    if(tiro?.local)requestAnimationFrame(()=>tiro.local!.push(performance.now()));
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -1198,9 +1244,11 @@ export class IslandScene extends Phaser.Scene {
     const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
-    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||this.hooks.attacking?.())this.inputAt=this.time.now;
+    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
     this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
+    // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
+    const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras));
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1509,6 +1557,7 @@ export class IslandScene extends Phaser.Scene {
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
+      if(Math.hypot(this.intent.x,this.intent.y)>1e-6)this.lastIntent=this.intent;
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
       const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       // Bicos: Trabalhar rides the step too (moving lets it go: hud/bicos.ts WorkLatch).

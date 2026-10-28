@@ -251,6 +251,26 @@ export async function readIndex(file){
   return undefined;
 }
 /**
+ * The index left by a merge stopped on it (git's conflict markers, the queue's resolveIndexConflict): both sides'
+ * groups, the incoming side's over ours; anything else gives undefined. Without it a regen kept only the groups of
+ * `specs`, and a group another importer writes (import-bicos.mjs: `bicos`) went missing (bots-walk128-troca-perna).
+ */
+export async function readConflictedIndex(file){
+  let text;try{text=await readFile(file,'utf8');}catch{return undefined;}
+  if(!/^<{7}( |$)/m.test(text))return undefined;
+  const sides=[[],[]];let at='both';
+  for(const line of text.split(/\r?\n/)){
+    if(/^<{7}( |$)/.test(line))at='ours';
+    else if(/^\|{7}( |$)/.test(line))at='base';
+    else if(/^={7}$/.test(line))at='theirs';
+    else if(/^>{7}( |$)/.test(line))at='both';
+    else{if(at!=='theirs'&&at!=='base')sides[0].push(line);if(at!=='ours'&&at!=='base')sides[1].push(line);}
+  }
+  const parsed=sides.map(lines=>{try{const m=JSON.parse(lines.join('\n'));return m&&m.version===MANIFEST_VERSION&&m.groups&&typeof m.groups==='object'?m:undefined;}catch{return undefined;}});
+  if(!parsed[0]&&!parsed[1])return undefined;
+  return {version:MANIFEST_VERSION,groups:{...parsed[0]?.groups,...parsed[1]?.groups}};
+}
+/**
  * (Re)writes the client index `public/art/manifest.json` (spec.mjs INDEX_FILE, read by src/client/art/manifest.ts)
  * atomically: {version:2, groups:{[group]:{output, pieces}}} with every group of `specs` whose manifest exists on disk
  * (its pieces exactly as in that manifest), over the previous index (groups without a manifest keep their entry).
@@ -264,7 +284,16 @@ export function leanIndex(value){
   return out;
 }
 export async function writeIndex(specs,{outRoot}){
-  const file=indexPath({outRoot}),groups={...(await readIndex(file))?.groups};
+  const file=indexPath({outRoot}),clean=await readIndex(file),conflicted=clean?undefined:await readConflictedIndex(file);
+  const groups={...(clean??conflicted)?.groups};
+  // Over a conflicted index, a group outside `specs` (bicos, made by its own importer) comes from its own manifest when
+  // there is one (the merge joined it). Over a clean index it keeps its entry as is: a selected import (--groups menu)
+  // never rewrites the groups it did not select (tests/tools/import-menu-dance.test.ts).
+  if(conflicted)for(const [group,entry] of Object.entries(groups)){
+    if(specs[group]||typeof entry?.output!=='string')continue;
+    const manifest=await readManifest(manifestPath(entry,{outRoot}));
+    if(manifest)groups[group]={output:entry.output,pieces:manifest.pieces};
+  }
   for(const [group,spec] of Object.entries(specs)){
     const manifest=await readManifest(manifestPath(spec,{outRoot}));
     if(manifest)groups[group]={output:spec.output,pieces:manifest.pieces};

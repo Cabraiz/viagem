@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3225,
-  "bytes": 2239751890,
-  "liteBytes": 783865832,
+  "files": 3240,
+  "bytes": 2251392916,
+  "liteBytes": 786095654,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28050,11 +28050,11 @@
    "shownPsnr": 46.2
   },
   "menu/insta/logo-gato-nada-pra-comer.webp": {
-   "source": "e9c265a3ab51fa41002c53b09ead9609cb1d046e651e977878fae2918775d6ba",
-   "lite": "57c1028825d59200592df77c7fc42e98f31e1cb60246112776801024bdef8d4a",
-   "bytes": 25112,
-   "liteBytes": 21624,
-   "psnr": 39.8,
+   "source": "c8f375640c577da12a64b04dad00ede26ef83f84042d7c327cc4de24fed36e3b",
+   "lite": "a2bb22070ef7154116b52a92b51f13253e4278a1f1843a75cdd40c084c5ae7ed",
+   "bytes": 25296,
+   "liteBytes": 21668,
+   "psnr": 39.7,
    "shownPsnr": 42
   },
   "menu/insta/logo-maromba.webp": {
@@ -29545,13 +29545,13 @@
    "psnr": 40.6,
    "shownPsnr": 44.7
   },
-  "sprites/coach.walk128-n.d0a422a3b3c7.webp": {
-   "source": "d0a422a3b3c7bfcd5d332b81c0d52b33c00f188e29c11a63c71bc079bb5e3dea",
-   "lite": "7b9a1495f37346d10388f1a2abf93b4f41f7d86575120525e4a26f702c67173f",
-   "bytes": 432764,
-   "liteBytes": 244490,
-   "psnr": 42.1,
-   "shownPsnr": 45
+  "sprites/coach.walk128-n.1fa5e6765943.webp": {
+   "source": "1fa5e6765943a93e35e04af8b5e482b1febb924c4fd231083c98695a8c710a90",
+   "lite": "bf2df940fe5d950818df9029c4e24a20e10f52771659964e386fd74995c5c5f3",
+   "bytes": 43532,
+   "liteBytes": 176036,
+   "psnr": 40.3,
+   "shownPsnr": 43.6
   },
   "sprites/coach.walk128-ne.ec6b315efdf7.webp": {
    "source": "ec6b315efdf718a4159f1cea7a60db50d0ef8d59527edfe580f7b9d7191992e0",
@@ -29569,13 +29569,13 @@
    "psnr": 41.1,
    "shownPsnr": 44.6
   },
-  "sprites/coach.walk128-s.994c997b381e.webp": {
-   "source": "994c997b381eb5f8d17b00533dd2e38a8ebfadbfcd86c76fde77118e36355c3d",
-   "lite": "677cb73a3053bbcce53b324b41fd957657f7289d07af68bc12524c558fa5502c",
-   "bytes": 497634,
-   "liteBytes": 264506,
-   "psnr": 38.2,
-   "shownPsnr": 43.2
+  "sprites/coach.walk128-s.aa714783e7d6.webp": {
+   "source": "aa714783e7d6208c7e953f525dfa00cc426c519116c782913a07c73f1224ae84",
+   "lite": "e9041be6d746ca4a14244c3c93165058dc5223fc72a6460030a75dbf84d4ba65",
+   "bytes": 51076,
+   "liteBytes": 190932,
+   "psnr": 37.8,
+   "shownPsnr": 42.7
   },
   "sprites/coach.walk128-se.d2ba402d6525.webp": {
    "source": "d2ba402d6525ca6fc592fec0a9112ffedf0b0fc47385b99af5a6563bbc4946a5",
@@ -29713,13 +29713,13 @@
    "psnr": 41.5,
    "shownPsnr": 44.3
   },
-  "sprites/concurseira.walk128-n.732533151a16.webp": {
-   "source": "732533151a160b3e14002f900feed33a77bea686294daa6dc2a337c6e8fd39f2",
-   "lite": "9cbf050590942c6dcccd34b5cd5b4bfa1ba6594f30c73631b7373709f996a6e5",
-   "bytes": 473372,
-   "liteBytes": 261344,
-   "psnr": 42.5,
-   "shownPsnr": 44.9
+  "sprites/concurseira.walk128-n.1f5f5b7e86ef.webp": {
+   "source": "1f5f5b7e86ef26ee1f1979823d0bc9e96e3933ae23dd872433d44d5bc2366b6e",
+   "lite": "c388d8c1f4f1adfae4250544aa6411df963856173e470d6c404818c034c7e43c",
+   "bytes": 62074,
+   "liteBytes": 171822,
+   "psnr": 42.1,
+   "shownPsnr": 44
   },
   "sprites/concurseira.walk128-ne.33a2eaac1077.webp": {
    "source": "33a2eaac10778734c94904e5d4c9c827237b92ae4439983578173c9918aaff29",
@@ -29737,13 +29737,13 @@
    "psnr": 42.5,
    "shownPsnr": 45.3
   },
-  "sprites/concurseira.walk128-s.aecd043711e2.webp": {
-   "source": "aecd043711e2f8a35bcaf21513159845ed4ce4080a705659274de163594eb4a3",
-   "lite": "56aa4c6a3b1fd45476ac7985208d3423412727e82b2a95ff5db5023ca2e2c47c",
-   "bytes": 540384,
-   "liteBytes": 283426,
-   "psnr": 39.8,
-   "shownPsnr": 43.8
+  "sprites/concurseira.walk128-s.c8fffedb08c9.webp": {
+   "source": "c8fffedb08c9dc7c64d359f93dd189aa85ee776673ecd5f3ad7b45d44ee4b8e7",
+   "lite": "b5911260e237787ff0a210678d36645ce48039b194de00149badc0ca77eb7c5e",
+   "bytes": 46988,
+   "liteBytes": 194300,
+   "psnr": 39.4,
+   "shownPsnr": 42.9
   },
   "sprites/concurseira.walk128-se.3c7bc5fd9da8.webp": {
    "source": "3c7bc5fd9da8da48371d2f4de80d8fa3e86e0ae236d718a063088729f6838b92",
@@ -29889,13 +29889,13 @@
    "psnr": 37.8,
    "shownPsnr": 42.2
   },
-  "sprites/faxineira.walk128-n.546d03393d5b.webp": {
-   "source": "546d03393d5bb316331e65e216b8580fad1e2553fea0331c7a63cf146c23a2b5",
-   "lite": "7cd910805f3dfd71739c4749a0186fc04787625e40cc73dac0cc0829b11fad77",
-   "bytes": 383354,
-   "liteBytes": 220130,
-   "psnr": 38.7,
-   "shownPsnr": 42.5
+  "sprites/faxineira.walk128-n.8af40e52b6ce.webp": {
+   "source": "8af40e52b6cee1e0c5bb483c323385541e9ccc1526d3cafb8db340fc37f59443",
+   "lite": "48e8e65319c8f69b3154a8d59cb667eaa271b583bcd04ae771f4f584aecfcb3f",
+   "bytes": 69444,
+   "liteBytes": 173336,
+   "psnr": 37.6,
+   "shownPsnr": 41.1
   },
   "sprites/faxineira.walk128-ne.187502f242cb.webp": {
    "source": "187502f242cb54f1d094aa21f4eda5cd1a88e5a4004e0f18169e0a92e0213733",
@@ -29913,13 +29913,13 @@
    "psnr": 39.4,
    "shownPsnr": 43.4
   },
-  "sprites/faxineira.walk128-s.0c7b06c74b2f.webp": {
-   "source": "0c7b06c74b2fe689d63a70b537382cd4644fff1f4b0345f4186fc87240339f50",
-   "lite": "9f87e68cf84b8ef946807677a0c37e03a866ac843203d9b5844063cf3eceacc1",
-   "bytes": 457944,
-   "liteBytes": 247426,
-   "psnr": 37.5,
-   "shownPsnr": 42.3
+  "sprites/faxineira.walk128-s.9479b32afa88.webp": {
+   "source": "9479b32afa884dc523db29188816f44ea6a597a9f86949ad04d9595981743c19",
+   "lite": "8c66b7cc6ec97dfc41902a8a7c8c72916fccb35e8130c9dfc5dd52e0f466a2ed",
+   "bytes": 77016,
+   "liteBytes": 191766,
+   "psnr": 36.5,
+   "shownPsnr": 40.7
   },
   "sprites/faxineira.walk128-se.248eb0e858b0.webp": {
    "source": "248eb0e858b0267a993f2fe9b0e97558c17ff4279415661483b4f4793d904cca",
@@ -30057,13 +30057,13 @@
    "psnr": 36.6,
    "shownPsnr": 41.8
   },
-  "sprites/feirante.walk128-n.14b8e4268b16.webp": {
-   "source": "14b8e4268b1601ae49bbf3184d815571a460bdc99a8357556ebea497c9260c76",
-   "lite": "ba5b90e6b317e31ac9bd87a43bbcc0b67b15fbd6eb662b4f3e488fa9e19c19ed",
-   "bytes": 556082,
-   "liteBytes": 287412,
-   "psnr": 36.3,
-   "shownPsnr": 42.2
+  "sprites/feirante.walk128-n.85f1a9610ac2.webp": {
+   "source": "85f1a9610ac2377b1dafb9ddd144ffbbf3f95ec0ebd53cbb411db8605bd7e21b",
+   "lite": "6011b16112f23239506956b3972cc5f0c6bc7c6992fc7337d8d001cbf2d759d1",
+   "bytes": 73396,
+   "liteBytes": 221396,
+   "psnr": 34.5,
+   "shownPsnr": 41.2
   },
   "sprites/feirante.walk128-ne.c4748ca4db7a.webp": {
    "source": "c4748ca4db7a79d202a891cacad5996f8ea04f1f6f21c12d3ef96ee00a76e232",
@@ -30081,13 +30081,13 @@
    "psnr": 35.7,
    "shownPsnr": 42.1
   },
-  "sprites/feirante.walk128-s.83628c8e1765.webp": {
-   "source": "83628c8e1765aa70ccd58df6575c5d2977848edb7083078f43d9d7409fd2991c",
-   "lite": "b6eb1a8d404993a7bc0b1eca2b1b8f1432a4e5a736df5a7720688a69c09e76f3",
-   "bytes": 625526,
-   "liteBytes": 320060,
-   "psnr": 36.9,
-   "shownPsnr": 42
+  "sprites/feirante.walk128-s.33c7ddfc4616.webp": {
+   "source": "33c7ddfc46166e686df16e3ed2772ef5c1b4bafe0cb1f56f37f09973b14d22ed",
+   "lite": "78e86a0397b593ffb29396007b01efd3e0bf5b3ccedb310924a76eb57a7c5ad6",
+   "bytes": 73130,
+   "liteBytes": 221600,
+   "psnr": 34.9,
+   "shownPsnr": 40.7
   },
   "sprites/feirante.walk128-se.75482e68736a.webp": {
    "source": "75482e68736a617062710eecc37008f5ff90672ec5df00701d3b646eb8473034",
@@ -31185,13 +31185,13 @@
    "psnr": 43.6,
    "shownPsnr": 46
   },
-  "sprites/mendigo.walk128-n.ab6a0f186779.webp": {
-   "source": "ab6a0f18677974b37a8b80921bf9fa676e0d006920807e3e7f1e78a634efeefb",
-   "lite": "b80af30496b53a5cc17152febcb09643c20e698e08fa384e7232de7872c80779",
-   "bytes": 412312,
-   "liteBytes": 233656,
-   "psnr": 44.5,
-   "shownPsnr": 46.9
+  "sprites/mendigo.walk128-n.96fea3bfac61.webp": {
+   "source": "96fea3bfac61607d8e67dc19da16412eddf269f6e6121c5572b5971fab86838a",
+   "lite": "c1ae108637e835c52210082dcbe0244f8b401b2cabab9940507a1f6b54df20e8",
+   "bytes": 44090,
+   "liteBytes": 170260,
+   "psnr": 43.2,
+   "shownPsnr": 45.3
   },
   "sprites/mendigo.walk128-ne.7ee55652ab85.webp": {
    "source": "7ee55652ab85d32e35561bf49207068d57e16e6a4e0e49c74906951559a3e50d",
@@ -31209,13 +31209,13 @@
    "psnr": 44,
    "shownPsnr": 46.2
   },
-  "sprites/mendigo.walk128-s.691ec641646c.webp": {
-   "source": "691ec641646c0902d90464f3df57940e9f340fe5fae4b74c0afb3adfd7080ca3",
-   "lite": "5f3e166f03865ac3c177ca951bc42f272f24e4fc4bac084666eb66e4936f3b3d",
-   "bytes": 528878,
-   "liteBytes": 279486,
-   "psnr": 42.3,
-   "shownPsnr": 45.3
+  "sprites/mendigo.walk128-s.068b648fbed6.webp": {
+   "source": "068b648fbed640381933cdb29782e42e935b871364c9c7378d95d1684ac6db0b",
+   "lite": "5f4734164b58416872f57cbeeedd98dc9e6c4e981ff544a5d57cb13a7b79a38d",
+   "bytes": 36432,
+   "liteBytes": 181162,
+   "psnr": 42.1,
+   "shownPsnr": 45.2
   },
   "sprites/mendigo.walk128-se.a54ae5cfe058.webp": {
    "source": "a54ae5cfe0582461bfe39134e44f27b5017c06367754d881fc2444a90fafa343",
@@ -31449,13 +31449,13 @@
    "psnr": 43.1,
    "shownPsnr": 45.4
   },
-  "sprites/passageira.walk128-n.a61070729c8a.webp": {
-   "source": "a61070729c8a600eb1659e9e226aeb7bc225331226520cc728386c739bb43205",
-   "lite": "bcef7705628b76ab12a4a4e815dde40c9fdab114c17a552c0b63005d86f8be2b",
-   "bytes": 403230,
-   "liteBytes": 229180,
+  "sprites/passageira.walk128-n.8ac19c7fdde1.webp": {
+   "source": "8ac19c7fdde1d5ce69a4d0ce1ebc1f5553bec097d0e740dda6a98d306ab866cf",
+   "lite": "c61f4ebc050b7d05254707f4782ecde99f3ba0d3c38174cee9b05bf1008cbe36",
+   "bytes": 31762,
+   "liteBytes": 149978,
    "psnr": 44.5,
-   "shownPsnr": 45.6
+   "shownPsnr": 44.6
   },
   "sprites/passageira.walk128-ne.d2ff087d55d4.webp": {
    "source": "d2ff087d55d47f38870dfae31a307dc3e4c0e3ed8407ac7bab81eb19fc3eddff",
@@ -31473,13 +31473,13 @@
    "psnr": 43.6,
    "shownPsnr": 45.5
   },
-  "sprites/passageira.walk128-s.7dcc26acaf2d.webp": {
-   "source": "7dcc26acaf2db0d84446781febe5e71106877f4553776855b41affc4a508553c",
-   "lite": "d61e8d00b600434d124fd61f06ecab97a7a291a3161a5a0902c49b18068fffbd",
-   "bytes": 509000,
-   "liteBytes": 268112,
-   "psnr": 41.7,
-   "shownPsnr": 44.9
+  "sprites/passageira.walk128-s.1a7b3dcac25c.webp": {
+   "source": "1a7b3dcac25c63cefaa3d7a1d0142d4220930a330b4218b9523d5f9a36133db9",
+   "lite": "7834f25537057145120647de9db9af7d06dcc948ad0b605375aeec484bdd597b",
+   "bytes": 42884,
+   "liteBytes": 189854,
+   "psnr": 41.4,
+   "shownPsnr": 43
   },
   "sprites/passageira.walk128-se.3db80188c845.webp": {
    "source": "3db80188c8455cad5c55efe8c69eb7c7bf0175d942910b6bd84eafa768d0f84d",
@@ -31617,13 +31617,13 @@
    "psnr": 38.5,
    "shownPsnr": 43.4
   },
-  "sprites/pedreiro.walk128-n.b49ff0ae03ae.webp": {
-   "source": "b49ff0ae03ae9c095227dc50c2d7ff829345b4acf3e3a890f488ab5355b1e995",
-   "lite": "b111a381e861244c2fdd7046b331cfcf2779065f844fd3091dd0bc619101f0e3",
-   "bytes": 446386,
-   "liteBytes": 247478,
-   "psnr": 37.4,
-   "shownPsnr": 43.2
+  "sprites/pedreiro.walk128-n.8055d1f7a66b.webp": {
+   "source": "8055d1f7a66b33b6609858c611e867b6a7694fa27e78d9c423f04d0aaa531f6f",
+   "lite": "3b51ed08560f094eea95c8de400c45df90f27419d0acc1136d350561fb58db2b",
+   "bytes": 54988,
+   "liteBytes": 192258,
+   "psnr": 36.2,
+   "shownPsnr": 40.7
   },
   "sprites/pedreiro.walk128-ne.c779a06d56f5.webp": {
    "source": "c779a06d56f5eaf3e637eef17e308d7497dfea144269bf5289eac0206237fbd1",
@@ -31641,13 +31641,13 @@
    "psnr": 36.5,
    "shownPsnr": 42.5
   },
-  "sprites/pedreiro.walk128-s.8a333556893c.webp": {
-   "source": "8a333556893ce637d1e8fcbb4f4cdde8aa8dfe18e319d9b2f3080e9a58be0a9a",
-   "lite": "c943d3ab4f7de5ee6a6efbcf5ea8e22c3da7182e68536ab6537f38230c174612",
-   "bytes": 485862,
-   "liteBytes": 273344,
-   "psnr": 36.7,
-   "shownPsnr": 42.5
+  "sprites/pedreiro.walk128-s.e28061df875b.webp": {
+   "source": "e28061df875bd35779f1e524980a58817b2a97e59e428a7f4ffc64f1cbeb92d1",
+   "lite": "5f2bd2d4e9e95473a8afac86c268f8f6041b3c99d27a88efe2f922c973d47ded",
+   "bytes": 60816,
+   "liteBytes": 200258,
+   "psnr": 35,
+   "shownPsnr": 40.9
   },
   "sprites/pedreiro.walk128-se.643cb60f4358.webp": {
    "source": "643cb60f4358ed87bc49ddde7c94b28da37d2f1c69c1ddd0017fb2a0e547cede",
@@ -31881,13 +31881,13 @@
    "psnr": 40.1,
    "shownPsnr": 43.3
   },
-  "sprites/streamer.walk128-n.e035802dbabd.webp": {
-   "source": "e035802dbabd1186ae26898b0707023c8d7b546a961861a01c910a76242cd87b",
-   "lite": "8b46337878e37b59d26133ac46b101a63a626871ab52e1e38bdd2cfe922fd763",
-   "bytes": 391406,
-   "liteBytes": 246948,
-   "psnr": 40.6,
-   "shownPsnr": 43.5
+  "sprites/streamer.walk128-n.9a8e97396bea.webp": {
+   "source": "9a8e97396beaf7f4605ddb0a4ce272bff577451bc7d4ebbc2178815a65dab81a",
+   "lite": "3bd6b4381bf0018debe53665be3a068e71ceda53dca5c0597c3d5a6f27bb9dd0",
+   "bytes": 62788,
+   "liteBytes": 172174,
+   "psnr": 38.7,
+   "shownPsnr": 42.2
   },
   "sprites/streamer.walk128-ne.ceecb57a8ced.webp": {
    "source": "ceecb57a8ced935a8c918b5a1e7f52b06f8fbe15e5a26709c9a909317bbc0613",
@@ -31905,13 +31905,13 @@
    "psnr": 39.7,
    "shownPsnr": 43.3
   },
-  "sprites/streamer.walk128-s.b7cc00ca0b05.webp": {
-   "source": "b7cc00ca0b05124181d66d197cd4d07cf6e60dc5e56c2e88967260473cd6ab76",
-   "lite": "fe4ffb2b3c7b429142abba3b0e40b778519757d4963046aba5083b73bebade87",
-   "bytes": 403700,
-   "liteBytes": 247360,
-   "psnr": 38.8,
-   "shownPsnr": 42.6
+  "sprites/streamer.walk128-s.debd2e8b88d6.webp": {
+   "source": "debd2e8b88d6e53379ef1da4f6a8753629a5c760bade15018cab0b41d62595d4",
+   "lite": "8baecbfd15ab62507a0e254956977848f3a09e70d12b8bc010cf9a0f574a7351",
+   "bytes": 36520,
+   "liteBytes": 160050,
+   "psnr": 37.4,
+   "shownPsnr": 42.3
   },
   "sprites/streamer.walk128-se.d14fc592dbb3.webp": {
    "source": "d14fc592dbb36e24d13390109c5c5b1dcc13f5c25b349a209814064778eb696d",
@@ -32089,13 +32089,13 @@
    "psnr": 44.3,
    "shownPsnr": 46.2
   },
-  "sprites/universitario.walk128-n.cb164ff44b0f.webp": {
-   "source": "cb164ff44b0f503c880fa195495413b3549a6a3adb3ab51ab0754b0d95c31186",
-   "lite": "1bd752311deb8aa3c3c53ce32b3143c7607596d6e6b7790bcc8addbf18b97605",
-   "bytes": 352144,
-   "liteBytes": 202788,
-   "psnr": 45.5,
-   "shownPsnr": 46.9
+  "sprites/universitario.walk128-n.548974805bf6.webp": {
+   "source": "548974805bf6fdc0407bb1f35f8622c27f8dc9ea488411b8eb6736ae0c4e6284",
+   "lite": "6263662204a7f1777b4ca177a66079a2eddc00b3096e56afa98be5207e3a232d",
+   "bytes": 52884,
+   "liteBytes": 156262,
+   "psnr": 43.5,
+   "shownPsnr": 45
   },
   "sprites/universitario.walk128-ne.ec585baa7b0b.webp": {
    "source": "ec585baa7b0b7eba3826045a0b5b4e6b8256c56bb9fdfcbed0f4ae638d060a1f",
@@ -32113,13 +32113,13 @@
    "psnr": 45.1,
    "shownPsnr": 46
   },
-  "sprites/universitario.walk128-s.ec07c448b62d.webp": {
-   "source": "ec07c448b62d4556ee9f0a9541db7673827beec593bfd74e35683457cf7d2b0a",
-   "lite": "f2e70ed797f51b8704d1bf0ee073b8b7c794177400209c7ab1a020accda95495",
-   "bytes": 359216,
-   "liteBytes": 205500,
-   "psnr": 43.9,
-   "shownPsnr": 46.1
+  "sprites/universitario.walk128-s.8f6282670203.webp": {
+   "source": "8f628267020315ef5e0fc55f6717eb102f3651c9330ff1eb09531302371dd42e",
+   "lite": "120e4f88f6302fdf8c728a57f4e2070f447c0569248ade16874d2fab6059cea3",
+   "bytes": 56558,
+   "liteBytes": 157234,
+   "psnr": 42.7,
+   "shownPsnr": 45.3
   },
   "sprites/universitario.walk128-se.10661dbfb128.webp": {
    "source": "10661dbfb128deba22a7abb4f2fe93cda8bce8404699c2c15886b97d2788cf65",
@@ -33177,13 +33177,13 @@
    "psnr": 40.9,
    "shownPsnr": 44.6
   },
-  "sprites/vizinha-fofoqueira.walk128-n.cff27b4e3a9c.webp": {
-   "source": "cff27b4e3a9c5c7fb2d8c1fea58ef50f9ea18ec8b6f9daa7b81ced286c4d48bc",
-   "lite": "d3352ad1e6e0e50459fabfc85b83dd84e1d12d0679ad8e58dfe78bc375ec6e0e",
-   "bytes": 478324,
-   "liteBytes": 245788,
-   "psnr": 40.8,
-   "shownPsnr": 43.9
+  "sprites/vizinha-fofoqueira.walk128-n.bdfdca128618.webp": {
+   "source": "bdfdca128618a4b2078bef532bbafd77a1eb82531e0f626757bdedc6f3c4ad78",
+   "lite": "080a8b0c3be1b6f1ac523ae8eb440833b1f668a2e2224b3376391fb3be64f1e9",
+   "bytes": 44072,
+   "liteBytes": 167802,
+   "psnr": 40.3,
+   "shownPsnr": 43.1
   },
   "sprites/vizinha-fofoqueira.walk128-ne.d84952185540.webp": {
    "source": "d8495218554050e228d9ed5d2dd075e0eb202bf289b753a3e7c1d01dd5330f69",
@@ -33201,13 +33201,13 @@
    "psnr": 42.2,
    "shownPsnr": 45.3
   },
-  "sprites/vizinha-fofoqueira.walk128-s.19da2e2f4af5.webp": {
-   "source": "19da2e2f4af5bf03c133de140e1a80c7f554227824c22da624a6f5c9f5ba47bb",
-   "lite": "17853e7e07edeb3edd8407746fed19d22fe39e31d4ddf6643a20bb899c72ed4e",
-   "bytes": 475654,
-   "liteBytes": 260246,
-   "psnr": 40.1,
-   "shownPsnr": 44.2
+  "sprites/vizinha-fofoqueira.walk128-s.b808ee3cd182.webp": {
+   "source": "b808ee3cd182908bddbf3a2de4470d6cc761352017e901e2bc4d6aed8c1c50ef",
+   "lite": "a86b6213d400930310002b4a5c676fcbb0bb0ec66d220b5f8a845516b26ec0b3",
+   "bytes": 39662,
+   "liteBytes": 167300,
+   "psnr": 39.6,
+   "shownPsnr": 43.9
   },
   "sprites/vizinha-fofoqueira.walk128-se.128b829586d8.webp": {
    "source": "128b829586d8e030f874498222314ec9aa526aef9852388af3c4f140be2e95f8",
@@ -33253,6 +33253,18 @@
    "psnr": 42.3,
    "shownPsnr": 42.3
   },
+  "towers/antiaerea-quadrupla/fire.webp": {
+   "source": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272",
+   "lite": "63ce8c87cc5d7c584eb1b00fca785824060b99120a635a40d813fe1ca119eb0e",
+   "bytes": 2941810,
+   "liteBytes": 357036,
+   "liteCell": [
+    128,
+    128
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
   "towers/antiaerea-quadrupla/idle.webp": {
    "source": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123",
    "lite": "3643ba324396081bcc2346c5bc42bc2ff1412580184c45978152a6019c1a69aa",
@@ -33276,6 +33288,18 @@
    ],
    "psnr": 45.3,
    "shownPsnr": 45.3
+  },
+  "towers/arame-e-sirene/fire.webp": {
+   "source": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609",
+   "lite": "e836e37aff6e8c71f2281d772066a3975e4fac4d50850c686008cabe136b7c6d",
+   "bytes": 374864,
+   "liteBytes": 75356,
+   "liteCell": [
+    64,
+    64
+   ],
+   "psnr": 44.4,
+   "shownPsnr": 44.4
   },
   "towers/arame-e-sirene/idle.webp": {
    "source": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e",
@@ -33301,6 +33325,18 @@
    "psnr": 40.7,
    "shownPsnr": 40.7
   },
+  "towers/atiradores-do-telhado/fire.webp": {
+   "source": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807",
+   "lite": "487011608243fd27db6e615d0bf66baff4df400817edb6bc70ca689445686ac1",
+   "bytes": 1010730,
+   "liteBytes": 155820,
+   "liteCell": [
+    96,
+    96
+   ],
+   "psnr": 43.1,
+   "shownPsnr": 43.1
+  },
   "towers/atiradores-do-telhado/idle.webp": {
    "source": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9",
    "lite": "d2db916bfabe35783ad3cf021958a21dcbbd6e044965f6d840030bc021bc32dd",
@@ -33325,6 +33361,18 @@
    "psnr": 45,
    "shownPsnr": 45
   },
+  "towers/equipe-antimaterial/fire.webp": {
+   "source": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e",
+   "lite": "998897418f9da18a4fd6ce1cb5da1f132cdf0050ce377a0397dd7d8d837792fa",
+   "bytes": 837602,
+   "liteBytes": 145440,
+   "liteCell": [
+    96,
+    96
+   ],
+   "psnr": 45.7,
+   "shownPsnr": 45.7
+  },
   "towers/equipe-antimaterial/idle.webp": {
    "source": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813",
    "lite": "b61236d31a23e4e4c59af86ba90e8ed652c4289c84b3471e3c6ab171d1ab780d",
@@ -33348,6 +33396,18 @@
    ],
    "psnr": 42,
    "shownPsnr": 42
+  },
+  "towers/guarnicao-do-predio/fire.webp": {
+   "source": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe",
+   "lite": "045788986e0e8b2dcbae303e4ce7f38e4eb046f0354395840167074e6abbc826",
+   "bytes": 2813026,
+   "liteBytes": 396810,
+   "liteCell": [
+    128,
+    128
+   ],
+   "psnr": 43.5,
+   "shownPsnr": 43.5
   },
   "towers/guarnicao-do-predio/idle.webp": {
    "source": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c",
@@ -33385,6 +33445,18 @@
    "psnr": 50,
    "shownPsnr": 50
   },
+  "towers/holofote/fire.webp": {
+   "source": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e",
+   "lite": "5ba91d6afbe6f77aa648eafabcb35d949c0824c4b45c3de4535698d6789f0b3d",
+   "bytes": 402774,
+   "liteBytes": 73448,
+   "liteCell": [
+    80,
+    80
+   ],
+   "psnr": 44,
+   "shownPsnr": 44
+  },
   "towers/holofote/idle.webp": {
    "source": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be",
    "lite": "73f94e37246aa1bc007547c3ec30201c37a0bfd7f54b55e565b7e3a5a09100b4",
@@ -33409,17 +33481,29 @@
    "psnr": 44,
    "shownPsnr": 44
   },
-  "towers/lanca-foguetes/idle.webp": {
-   "source": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
-   "lite": "62e1f3f336274d6f92d7574dd17950f78da4bb36387d65babebd6ef667820a32",
-   "bytes": 1131558,
-   "liteBytes": 175598,
+  "towers/lanca-foguetes/fire.webp": {
+   "source": "ffdc1ad371498503a42a9a9a534ed2c5403d958fa8e1c14a8039963f47f8e6af",
+   "lite": "cf46f42465244a4b6b77efc908e7a6e8a72926f62f4c64b25f0e8011275471e4",
+   "bytes": 1480578,
+   "liteBytes": 482374,
    "liteCell": [
     160,
     160
    ],
-   "psnr": 47.1,
-   "shownPsnr": 47.1
+   "psnr": 45.9,
+   "shownPsnr": 45.9
+  },
+  "towers/lanca-foguetes/idle.webp": {
+   "source": "ca9c0905b0563a3ab6b33c0cf27efeb261c542953957a96144b2753b95d75cd6",
+   "lite": "42fa030ab29c2f3341fd3bb968224276d123cafc8cc9d358f6c88f498465b32f",
+   "bytes": 534204,
+   "liteBytes": 175810,
+   "liteCell": [
+    160,
+    160
+   ],
+   "psnr": 47.6,
+   "shownPsnr": 47.6
   },
   "towers/linha-ferrea-curva/base.webp": {
    "source": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f",
@@ -33456,6 +33540,18 @@
    ],
    "psnr": 47.5,
    "shownPsnr": 47.5
+  },
+  "towers/morteiro/fire.webp": {
+   "source": "0db7814b4772419f5c63be6b31811eaa2beb1781aa7b5382e2ce760fe6136857",
+   "lite": "ade9e2b56b3e81d384b349d4087a9fbd91935c87e42816e1fdca7e44065b4f15",
+   "bytes": 555572,
+   "liteBytes": 194256,
+   "liteCell": [
+    80,
+    80
+   ],
+   "psnr": 44.2,
+   "shownPsnr": 44.2
   },
   "towers/morteiro/idle.webp": {
    "source": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc",
@@ -33505,6 +33601,18 @@
    "psnr": 45.7,
    "shownPsnr": 45.7
   },
+  "towers/ninho-de-metralhadora/fire.webp": {
+   "source": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b",
+   "lite": "4ed5220b5ecf4ce454c0a8b398ecb7e9dc8764427087b18dfdb70b9208343417",
+   "bytes": 2605858,
+   "liteBytes": 384274,
+   "liteCell": [
+    128,
+    128
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
   "towers/ninho-de-metralhadora/idle.webp": {
    "source": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7",
    "lite": "23ed53d521027972b9d570d0367ffa6d438a869b813fd5e392b73f48a7a46d3b",
@@ -33529,6 +33637,18 @@
    "psnr": 40.9,
    "shownPsnr": 40.9
   },
+  "towers/ninho-do-sniper/fire.webp": {
+   "source": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727",
+   "lite": "f971ee22f7622bf60db218c32308eae347e56024c6148f3ccce82a7d15089b5c",
+   "bytes": 576558,
+   "liteBytes": 97990,
+   "liteCell": [
+    80,
+    80
+   ],
+   "psnr": 44.9,
+   "shownPsnr": 44.9
+  },
   "towers/ninho-do-sniper/idle.webp": {
    "source": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995",
    "lite": "ce88644a20a780efcad55c80c0a86ef797ae89c64c375a25761b6499d74ba78f",
@@ -33552,6 +33672,18 @@
    ],
    "psnr": 43.2,
    "shownPsnr": 43.2
+  },
+  "towers/obuseiro/fire.webp": {
+   "source": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7",
+   "lite": "785e23d27f098254db1e33212b54d0e142bf3cc9c08b1f0acbadc91079bdb008",
+   "bytes": 4453916,
+   "liteBytes": 588726,
+   "liteCell": [
+    192,
+    192
+   ],
+   "psnr": 46.2,
+   "shownPsnr": 46.2
   },
   "towers/obuseiro/idle.webp": {
    "source": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd",
@@ -33589,17 +33721,29 @@
    "psnr": 48.8,
    "shownPsnr": 48.8
   },
-  "towers/posto-de-radar/idle.webp": {
-   "source": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
-   "lite": "23547643dbf385ed33cf1e908f8012ae2dbd7db210d3335dff6a1456a828ee86",
-   "bytes": 914608,
-   "liteBytes": 157108,
+  "towers/posto-de-radar/fire.webp": {
+   "source": "a5da57744cddcde6a94c21d7c9043fd5e121b11966061ff2174b2cc4b00899c2",
+   "lite": "dc26359452ef2cbdd67d328464f86d8781d01ad1be940e8241ad8cc8b890cc54",
+   "bytes": 1408292,
+   "liteBytes": 474864,
    "liteCell": [
     96,
     96
    ],
-   "psnr": 42,
-   "shownPsnr": 42
+   "psnr": 43.1,
+   "shownPsnr": 43.1
+  },
+  "towers/posto-de-radar/idle.webp": {
+   "source": "2a713730c032afe2d676ace82719bc82b7dae2b141c92b8a1e02bbb7f7cf70c2",
+   "lite": "39fd4d7039457d7f171e154f722b0e2ff9798f386d38828baa0f881dabbfa075",
+   "bytes": 456826,
+   "liteBytes": 158254,
+   "liteCell": [
+    96,
+    96
+   ],
+   "psnr": 43.3,
+   "shownPsnr": 43.3
   },
   "towers/rojao-de-festa/base.webp": {
    "source": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff",
@@ -33612,6 +33756,18 @@
    ],
    "psnr": 49.6,
    "shownPsnr": 49.6
+  },
+  "towers/rojao-de-festa/fire.webp": {
+   "source": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6",
+   "lite": "c5e56611d13810651e746e4d62e48ac5b25b2778ccd4d2da6b6cabda5a11d447",
+   "bytes": 355234,
+   "liteBytes": 73236,
+   "liteCell": [
+    64,
+    64
+   ],
+   "psnr": 43.1,
+   "shownPsnr": 43.1
   },
   "towers/rojao-de-festa/idle.webp": {
    "source": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405",
@@ -33637,6 +33793,18 @@
    "psnr": 42,
    "shownPsnr": 42
   },
+  "towers/vigia-do-predio/fire.webp": {
+   "source": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d",
+   "lite": "b77b31e96978ca8b53eee8b5fd7a97f43144b3551608c25fbcef8e7160d75fed",
+   "bytes": 159356,
+   "liteBytes": 36938,
+   "liteCell": [
+    64,
+    64
+   ],
+   "psnr": 47.7,
+   "shownPsnr": 47.7
+  },
   "towers/vigia-do-predio/idle.webp": {
    "source": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883",
    "lite": "9a7af3d5a5d54c15301284d7e2cc02b79c3c3a6023ff25a5f7a3f6ab7359dae4",
@@ -33660,6 +33828,18 @@
    ],
    "psnr": 41.8,
    "shownPsnr": 41.8
+  },
+  "towers/vigias-armados/fire.webp": {
+   "source": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef",
+   "lite": "144ef02c17b48295d1366a7c610c685209fe3982fb5dc0a9aa4d4a31c1fef9ca",
+   "bytes": 872868,
+   "liteBytes": 154752,
+   "liteCell": [
+    80,
+    80
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
   },
   "towers/vigias-armados/idle.webp": {
    "source": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64",

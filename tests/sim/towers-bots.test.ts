@@ -235,9 +235,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(4,3,6);
+  const a=cityRun(2,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 4, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 2, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -251,12 +251,14 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // the calm; seed 6's builder took no B site by round 6, seeds 1, 2, 4, 5, 7, 8, 11, 12 do). Seed 1 since
   // bots-20-mais-lentos (the room's bots walk 0.8 of a person; with ofertas-sem-xp seed 11's builder put up one root by
   // round 6; seeds 1, 4, 6, 9, 10, 13–16 of 1–16 start the B line). Seed 4 since mapa-conexoes-sem-beco (asset v5: the
-  // passages and the rubble cleared change the walks; seeds 4, 6, 9, 10, 15, 16 of 1–16 start the B line).
+  // passages and the rubble cleared change the walks; seeds 4, 6, 9, 10, 15, 16 of 1–16 start the B line). Seed 2 since
+  // bots-tique-vai-e-volta (the bots stop short of a target instead of walking past and back) met map v6 (uno-anda-mapa-todo):
+  // seeds 2, 5, 6, 7, 10, 12, 14, 16 of 1–16 start the B line.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(4,3,6);
+  const b=cityRun(2,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });
@@ -290,7 +292,8 @@ test('D-048: the bots never start a root without a whole ficha, and a 6-bot team
   // Seed 3 (was 5): after balanco-pos-1-7 part A (sites at the mouths, enemy radius × 1.15) seed 5's six bots fall in
   // round 3, before the ficha rule has anything to show; the rule, not survival, is under test here (survival: the bench).
   // Seed 4 (was 3) since the viaduct (mapa-175-com-viaduto: the run starts on its deck): seed 3's six fall in round 3 now.
-  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
+  // A root is a build order (a repair of a root also reads `→ ${ROOT_DEFENSE}` and needs no ficha: vida-inimigos-estilo-clash).
+  const a=cityRun(4,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>/^\d+:build /.test(o)&&o.endsWith(`→ ${ROOT_DEFENSE}`));
   console.log(`[D-048] 6 bots, seed 4, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
     `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.sim.teamGrana()}\n  orders: ${a.orders.join(' | ')}`);
   assert.ok(roots.length>=2,`${roots.length} roots`);

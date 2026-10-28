@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -28,7 +28,7 @@ import {FILL_TEXEL_CSS,TELEGRAPH_BORDER_KEY,TELEGRAPH_FILL_KEY,TELEGRAPH_STRIP_P
 import {token,tokenColor} from '../ui/tokens.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
-import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
+import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
 import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
 import {contactWidth} from './shadow-rules.ts';
@@ -38,7 +38,7 @@ import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScal
 import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
 import {CedulaCatch,catchFlight} from './cedula-catch.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
-import {THROW_MS} from '../../rules/index.ts';
+import {THROW_MS,rosterEntry} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
@@ -90,6 +90,8 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /** One of the local hero's 'fire' events (the view's tick): false when it was already drawn on the press (tiro-delay-1s-predicao). */
+  ownFire?:(event:Extract<SimEvent,{type:'fire'}>,eventId:number,tick:number)=>boolean;
   /** The ground point the local hero aims at (world u): the mouse on a PC, undefined on touch (melee aim cone, render/melee-cone.ts). */
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
@@ -121,6 +123,8 @@ interface EnemyActor{
   /** The soft dark contact shadow under the soles (shadow-rules.ts CONTACT, card inimigos-v5a-padrao) and its width (0: a flyer). */
   contact:Image;contactW:number;
   barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
+  /** Sprite cell of the roster entry (rules/enemy-roster.ts): the health bar's width. */
+  cell:number;
   /** The profile's name over an elite's or a boss's bar (enemy-name-rules.ts), undefined for the rest. */
   name:string|undefined;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
@@ -411,7 +415,7 @@ export class HordeRenderer{
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,name:undefined,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,cell:128,name:undefined,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,tone:undefined,vary:1,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
@@ -522,6 +526,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
@@ -599,6 +605,7 @@ export class HordeRenderer{
     // queueEnemyArt); a fresh actor starts with no art id, so even the default 'bebado' asks.
     const art=enemyArtId(view.kind,kind);
     if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}
+    a.cell=rosterEntry(view.kind)?.cell??128;
     a.costume=this.costume&&this.costume.art===art?this.costume.variant:undefined;
     if(used.fresh){
       a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
@@ -672,6 +679,7 @@ export class HordeRenderer{
   private handle(event:SimEvent,eventId:number){
     // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
     if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
+    else if(event.type==='fire'&&event.player===this.options.selfId?.()&&this.options.ownFire?.(event,eventId,this.viewTick)===false){/* drawn on the press */}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
@@ -1014,7 +1022,16 @@ export class HordeRenderer{
   private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
-  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.enemyBody;}
+  /**
+   * Feet to the bar's top: the imported figure's head + the bar itself + a hair (Clash: right on the head; the cell's
+   * empty top used to float it); a flyer's hover on top. Without art, the procedural kind's offset.
+   */
+  private barLift(a:EnemyActor){
+    const head=enemyArtHead(a.image),body=this.enemyBody,size=a.elite?ELITE_SCALE:1;
+    if(head===undefined)return ENEMY_ART[a.kind].bar*size*a.fit*body;
+    const hover=a.kind==='pombos'&&enemyArtFlies(a.art)!==false?ENEMY_ART.pombos.hover*size*body:0;
+    return (head+BAR_HEAD_GAP)*body+hover;
+  }
   /**
    * The profile's name (card nome-inimigo-rede-social, etapa 7) in a map ficha over the bar of an elite or a boss: constant
    * screen size, its bottom ENEMY_NAME_GAP_CSS over the bar's top. One ficha per named enemy on screen, dropped with it.
@@ -1028,17 +1045,18 @@ export class HordeRenderer{
   }
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
-    // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).
+    // Bars as wide as the body (Clash: a pombo's short, a mini-chefe's long), × the actor scale in the city; sqrt(ui) has it once.
     const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=(a.elite&&!a.boss?Math.sqrt(this.ui/this.enemyBody):1)*this.enemyBody;
-    const w=(a.boss?170:a.elite?54:40)*u,h=(a.boss?13:7)*u,border=3*u;
-    const fill=a.boss?0xb48cff:ratio>.5?0x8fe39a:ratio>.25?0xffd36e:0xff8080;
+    const w=enemyBarWidth(a.cell,a.elite,a.boss,ELITE_SCALE)*u,h=(a.boss?13:7)*u,border=3*u;
+    const fill=a.boss?BOSS_BAR_FILL:ENEMY_BAR_FILL;
     // Imported frame + fill (9-slice) when the variant's pair is in: the fill stretches to the hp share, tinted as today.
     const art=barArt(a.elite&&!a.boss);
     if(art&&this.art.ready(art.frame)&&this.art.ready(art.fill)){
       if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
       const left=x-w/2-border,top=y-border,fw=barFillWidth(w,ratio,(art.fill.left+art.fill.right)*u);
       this.art.slice(a.barBg,art.frame,95000,left,top,w+2*border,h+2*border,u);
-      if(fw>0)this.art.slice(a.barFill,art.fill,95001,left+border,top+border,fw,h,u)?.setTint(fill);
+      // Flat side colour (the imported fill is a dark green: a red multiply tint came out brown).
+      if(fw>0)this.art.slice(a.barFill,art.fill,95001,left+border,top+border,fw,h,u)?.setTintFill(fill);
       return;
     }
     const key=a.elite&&!a.boss?FX.barElite:FX.bar;

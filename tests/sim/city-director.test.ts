@@ -812,11 +812,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
   const json=JSON.stringify({events:ctx.events,sentAt:ctx.sentAt,created:log.created,ends:log.ends,state:director.state,round:ctx.round});
   return {hash:createHash('sha256').update(json).digest('hex').slice(0,16),created:log.created.length,stage:director.state.stage};
 }
+// Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
-  'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'a8b18644d60449bc','infinito kill=40 seed 1':'861f7d89517418ba',
-  'infinito kill=Infinity seed 0':'0953c7ab3326ff1f', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
+  'ilha kill=40 seed 0':'1fc43b6300de0c62','ilha kill=40 seed 1':'1343f2642f75f06a',
+  'ilha kill=Infinity seed 0':'42923a6cc4f0c0b8',
+  'infinito kill=40 seed 0':'6c4dd60bb3eac2b1','infinito kill=40 seed 1':'0e0418654d31c95c',
+  'infinito kill=Infinity seed 0':'cc46f17cd95df8aa', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

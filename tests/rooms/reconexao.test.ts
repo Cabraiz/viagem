@@ -79,7 +79,7 @@ test('drops of 5 s and 20 s in the middle of combat: same character, offers kept
     const stats=room.sim.statsOf(id);
     assert.ok(room.sim.tick>tickAtDrop);assert.ok(dealt>0,'she hit something');
     assert.ok(Math.abs(stats.damage-dealt)<1e-6,'each hit counted once across the drop and the rejoin');
-    say(room,back,{t:'choose',round:1,offer:offers[0].id,index:0},t);
+    say(room,back,{t:'choose',round:1,offer:offers[0].id,index:0},t);room.advance(t+=50);
     assert.deepEqual(back.messages.findLast(m=>m.t==='offers').offers,[]);
   }
 });

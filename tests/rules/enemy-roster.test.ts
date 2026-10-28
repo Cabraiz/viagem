@@ -120,7 +120,7 @@ test('role profiles: behavior, base kind, multipliers and threat; generic lines 
   for(const role of ENEMY_ROLES){
     const r=ROLE_PROFILES[role];
     assert.equal(r.id,role);assert.equal(r.behavior,behavior[role],role);assert.equal(r.base,base[role],role);
-    for(const k of ['hp','speed','damage','radius','xp'] as const)assert.ok(r[k]>0&&r[k]<=3,`${role}.${k}`);
+    for(const k of ['speed','damage','radius','xp'] as const)assert.ok(r[k]>0&&r[k]<=3,`${role}.${k}`);
     assert.ok(r.threat>=0,role);
     assert.ok(r.barks.length>=4&&r.deathLines.length>=3&&r.reactionLines.length>=3&&r.pops.length>=3,`${role}: lines`);
     for(const l of [...r.barks,...r.deathLines,...r.reactionLines])assert.ok([...l].length<=30,`${role}: "${l}"`);

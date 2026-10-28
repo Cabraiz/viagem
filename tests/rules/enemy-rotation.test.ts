@@ -123,7 +123,8 @@ test('round 8: the lone mini-chefe takes its threat (ROLE_PROFILES threat x the 
     assert.equal(withMini.groups.filter(g=>g.solo).length,1);assert.equal(control.groups.filter(g=>g.solo).length,0);
     if(control.groups.filter(g=>!g.boss&&!g.elite).flatMap(g=>g.members).length>=MAX_ROUND_ENEMIES)continue;
     const soloThreat=ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1)),given=regularThreat(control)-regularThreat(withMini);
-    assert.ok(given>=soloThreat*.75&&given<=soloThreat*1.25,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
+    // ×0.7 bodies (CLASH_BODIES): at 1 player the body rounding gives up ~0.68 of it (still about 1 on average).
+    assert.ok(given>=soloThreat*.65&&given<=soloThreat*1.25,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
     ratios.push(given/soloThreat);
   }
   assert.ok(ratios.length>=200,`${ratios.length} uncapped cases`);

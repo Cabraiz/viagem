@@ -47,7 +47,7 @@ export function xpToNext(level:number){
  * moves the bar). One bar for the whole team: 5 XP came in 12–27 s with 3 heroes and not before 2 min with 1, the
  * card wants it at 60–120 s for any team. Levels 2+ cost xpToNext as ever.
  */
-export const FIRST_LEVEL_XP:number[]=[6,9,11,12,12,12];
+export const FIRST_LEVEL_XP:number[]=[6,6,7,10,12,13];
 export const firstLevelXp=(heroes:number)=>FIRST_LEVEL_XP[Math.min(FIRST_LEVEL_XP.length,Math.max(1,heroes))-1];
 export const createTeamProgress=():TeamProgress=>({xp:0,level:1,nextXp:xpToNext(1)});
 

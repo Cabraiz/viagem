@@ -262,9 +262,9 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
     render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,W(2));
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');
     decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,W(4),'turn/late arrival keeps the walk phase');
-    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,W(4));
-    decoders.get(requests[2])!();await flush();render(1424+ATTACK_MS/2,'N',1);assert.equal(sprite.frame.name,'64','half the swing (ATTACK_MS, ataque-1s), half the poses');
-    render(1424+600,'N',2);assert.equal(sprite.frame.name,'0','the next hit restarts the swing from its first pose');
+    render(1424,'N',1,false);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading (standing: a walking hero keeps its walk, atirar-andando) keeps the matching oblique camera');assert.equal(sprite.frame.name,W(4));
+    decoders.get(requests[2])!();await flush();render(1424+ATTACK_MS/2,'N',1,false);assert.equal(sprite.frame.name,'64','half the swing (ATTACK_MS, ataque-1s), half the poses');
+    render(1424+600,'N',2,false);assert.equal(sprite.frame.name,'0','the next hit restarts the swing from its first pose');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().leasedTextures,1);
     setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const attackKey=sprite.texture.key;
     render(1424+T(1000)+1,'N',2,false);await flush();assert.equal(requests.length,4);assert.equal(sprite.texture.key,attackKey,'stopping holds the same oblique camera while rest decodes');
@@ -277,11 +277,11 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
     assert.equal(requests.length,4,'turning in idle uses the same eight-pose texture');
     sprite.visible=false;render(2953,'N',2,false);assert.match(sprite.texture.key,/dir4c$/);assert.equal(cache.stats().leasedTextures,0);
     sprite.visible=true;render(3053,'N',2,false);assert.equal(cache.stats().leasedTextures,1);
-    render(3153,'S',3);await flush();assert.equal(requests.length,5);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8','leaving idle keeps the oblique rest until attack loads');
+    render(3153,'S',3,false);await flush();assert.equal(requests.length,5);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8','leaving idle keeps the oblique rest until attack loads');
     failures.get(requests[4])!();await flush();assert.equal(requests.length,6,'failed lite tries the original exactly once');
-    render(3163,'S',3);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');
-    failures.get(requests[5])!();await flush();render(3203,'S',3);assert.match(sprite.texture.key,/dir4c$/,'concrete failure restores a usable legacy attack');assert.equal(cache.stats().leasedTextures,0);
-    render(3223,'S',3);await flush();assert.equal(requests.length,6,'failed clip is not requested repeatedly');
+    render(3163,'S',3,false);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');
+    failures.get(requests[5])!();await flush();render(3203,'S',3,false);assert.match(sprite.texture.key,/dir4c$/,'concrete failure restores a usable legacy attack');assert.equal(cache.stats().leasedTextures,0);
+    render(3223,'S',3,false);await flush();assert.equal(requests.length,6,'failed clip is not requested repeatedly');
     sprite.emit('destroy');assert.equal(cache.stats().owners,0);
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(removed.length,4);
   }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}

@@ -66,6 +66,15 @@ export const MINERVA_REACH=1.5;
  * the nearest to a standing hero first (plan order on ties), never all on one tick.
  */
 export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
+/**
+ * The visitors (NEW-20261028-ORQ-ritmo-morto-e-viaduto: the first 2 min were dead, half the 1p runs had no level-up by
+ * 4 min). While the minuto de Minerva holds the horde, every VISIT_EVERY s from VISIT_FROM s one group of armed
+ * standing heroes (VISIT_GROUP u apart; the groups take turns, so the team's XP comes at one pace whatever its size)
+ * gets VISIT_COUNT of the weakest sleepers between VISIT_NEAR and VISIT_FAR u of it, caçando, without their bands
+ * (memory.visita: the AI's Minerva hold lets them walk). A group with VISIT_ALIVE visitors still standing near it gets
+ * none that time. Once Minerva ends they are bodies like any other.
+ */
+export const VISIT_FROM=15,VISIT_EVERY=25,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -154,7 +163,11 @@ export interface SleepBody {readonly id:string;readonly kind:EnemyKind;readonly 
  * 1 asleep, 2 awake, with its hp; and the noise window (the loudest noise per source, keys sorted). The bodies
  * themselves come back from the seed (sonoBodies).
  */
-export interface SonoState {players:number;life:[0|1|2,number][];heard:[string,Noise][]}
+export interface SonoState {players:number;life:[0|1|2,number][];heard:[string,Noise][];
+  /** The tick of the next visit (VISIT_EVERY), set on the first step in the minuto de Minerva; absent before. */
+  visitAt?:number;
+  /** Visits made (the groups' turn); absent before the first. */
+  visits?:number}
 
 export interface SonoOptions {
   plan:NestPlan;
@@ -185,6 +198,8 @@ export interface SonoOptions {
    * only the sleepers within MINERVA_REACH (it walked into their reach: they hit it, standing, the enemy-ai's hold).
    */
   minerva?:(ctx:SimContext)=>boolean;
+  /** Whether a hero has a weapon to meet the visitors with (VISIT_FROM); absent: every standing hero. */
+  armed?:(p:SimPlayer)=>boolean;
 }
 
 export interface Sono {
@@ -423,13 +438,35 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
   }
 
+  /**
+   * A visit (VISIT_FROM): the groups of armed standing heroes (by id, each led by its first), the turn's group gets the
+   * weakest sleepers in its ring (maxHp, then distance, then plan order), up to the cap of awake bodies. Whether it came.
+   */
+  function visit(ctx:SimContext):boolean{
+    const heroes=[...ctx.players.values()].filter(p=>standing(p)&&(options.armed?.(p)??true)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+    const groups:SimPlayer[]=[];
+    for(const p of heroes)if(!groups.some(g=>Math.hypot(g.x-p.x,g.y-p.y)<=VISIT_GROUP))groups.push(p);
+    const room=Math.min(VISIT_COUNT,maxAwake-ctx.enemies.size);
+    if(!groups.length||room<=0||!asleep.size)return false;
+    const g=groups[(state.visits??0)%groups.length];
+    let alive=0;
+    for(const e of ctx.enemies.values())if(e.memory?.visita===1&&e.hp>0&&Math.hypot(e.x-g.x,e.y-g.y)<=VISIT_FAR)alive++;
+    if(alive>=VISIT_ALIVE)return false;
+    const ring=queryAsleep(g.x,g.y,VISIT_FAR,[]).filter(e=>order.has(e.id)).map(e=>({e,d:Math.hypot(e.x-g.x,e.y-g.y)})).filter(x=>x.d>=VISIT_NEAR)
+      .sort((a,b)=>a.e.maxHp-b.e.maxHp||a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
+    if(!ring.length)return false;
+    wakeAll(ctx,ring,'chamado');
+    for(const id of ring){const e=ctx.enemies.get(id);if(e)(e.memory??={}).visita=1;}
+    return true;
+  }
   /** Whether the last step was in the minuto de Minerva (undefined before the first: a restore never releases). */
   let held:boolean|undefined;
   /** The end of the minuto de Minerva (MINERVA_REACT, MINERVA_SPREAD): the awake bodies start one by one. */
   function release(ctx:SimContext){
     const players=[...ctx.players.values()].filter(standing),list:{e:EnemyState;d:number}[]=[];
     for(const e of ctx.enemies.values()){
-      if(e.boss||!(e.hp>0))continue;
+      // A visitor already walks (VISIT_FROM): it keeps going.
+      if(e.boss||!(e.hp>0)||e.memory?.visita===1)continue;
       let d=Infinity;
       for(const p of players)d=Math.min(d,Math.hypot(p.x-e.x,p.y-e.y));
       list.push({e,d});
@@ -550,7 +587,15 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       const minerva=!!options.minerva?.(ctx);
       if(held&&!minerva)release(ctx);
       held=minerva;
-      if(minerva){heard.clear();}
+      if(minerva){
+        heard.clear();
+        state.visitAt??=ctx.tick+ticks(VISIT_FROM);
+        // Nobody armed yet (or no room): the visit waits a second, the next one still VISIT_EVERY after it.
+        if(ctx.tick>=state.visitAt){
+          if(visit(ctx)){state.visits=(state.visits??0)+1;state.visitAt=ctx.tick+ticks(VISIT_EVERY);}
+          else state.visitAt=ctx.tick+ticks(1);
+        }
+      }
       else if(ctx.tick%every===0){
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);

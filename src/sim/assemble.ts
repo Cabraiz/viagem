@@ -20,7 +20,7 @@ import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
-import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
+import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
@@ -352,7 +352,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-051: where an alerta or a perdeu walks (the sleepers of a run in mode 'ninhos'; none otherwise).
     ...(nestMode?{goal:(ctx:SimContext,e:EnemyState)=>sono?.goal(ctx,e),
       // The minuto de Minerva (the user, 22/10): no critter walks nor chases; it still hits whoever comes into its reach.
-      hold:(ctx:SimContext)=>!!nests?.minerva(ctx.tick)}:{}),
+      // Its visitors (sono.ts VISIT_FROM) walk to the armed heroes.
+      hold:(ctx:SimContext,e:EnemyState)=>!!nests?.minerva(ctx.tick)&&e.memory?.visita!==1}:{}),
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
     // The BASE hero walk on this terrain (maps baseHeroSpeed): the heroes walk HERO_SPEED_MULT × it, but the enemies
@@ -485,7 +486,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
             // Card monstros-espalhados: a noise inside a safe place draws the alerta to its door, never in.
             door:at=>safePlaceAt(city,at)?.opening,
             // The minuto de Minerva: no noise wakes anyone, the sight only within MINERVA_REACH (the AI holds them still).
-            minerva:ctx=>!!nests?.minerva(ctx.tick)},cp?.sono);
+            minerva:ctx=>!!nests?.minerva(ctx.tick),
+            // The visitors come to a hero with a weapon (manual combat starts with none: the first crates).
+            armed:p=>!hasInventory(p)||p.build.weapons.some(isWeaponItem)},cp?.sono);
           world.sleepers=sleep.sleepers;
           // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
           // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).

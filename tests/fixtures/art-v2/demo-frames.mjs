@@ -4,7 +4,7 @@
  * and never passes for finished art. Sizes from scripts/art-v2/spec.mjs `expected`; the 9-slices carry the sidecar
  * `slice` the importer requires, with an explicit `"kind":"nineslice"` (a sidecar without `kind` would keep the table's
  * kind and cell too, validate.mjs withExpected) and, for the plaque, its `cell` (the table has none):
- *  - efeitos/balao-fala.png 96×64 (slice 16): pink body, thick lime edge, cyan stripes in the stretching middle.
+ *  - efeitos/balao-fala.png 74×28 (slice 10): pink body, thick lime edge, cyan stripes in the stretching middle.
  *  - efeitos/etiqueta-devendo.png 96×64 (slice 14): red body with a yellow/black warning-striped edge.
  *  - efeitos/barra-vida-moldura(-elite).png 64×12 (slice 4): magenta (elite: orange with notches) frame, hollow.
  *  - efeitos/barra-vida-preenchimento(-elite).png 64×12 (slice 3): near-white fill with dark ticks (the game tints it).
@@ -31,7 +31,7 @@ export const DEMO_FRAMES=Object.freeze({
 });
 /** Sidecars by piece: 9-slice insets [left, top, right, bottom] (and the plaque's cell). */
 export const DEMO_FRAME_SIDECARS=Object.freeze({
-  'balao-fala':{kind:'nineslice',slice:[16,16,16,16]},'etiqueta-devendo':{kind:'nineslice',slice:[14,14,14,14]},
+  'balao-fala':{kind:'nineslice',slice:[10,10,10,10]},'etiqueta-devendo':{kind:'nineslice',slice:[14,14,14,14]},
   'barra-vida-moldura':{kind:'nineslice',slice:[4,4,4,4]},'barra-vida-moldura-elite':{kind:'nineslice',slice:[4,4,4,4]},
   'barra-vida-preenchimento':{kind:'nineslice',slice:[3,3,3,3]},'barra-vida-preenchimento-elite':{kind:'nineslice',slice:[3,3,3,3]},
   plaquinha:{kind:'nineslice',cell:[48,32],slice:[8,8,8,8]},
@@ -62,11 +62,11 @@ const onRing=(x,y,cx,cy,rx,t)=>{const d=Math.hypot((x-cx)/rx,(y-cy)/(rx/2));retu
 /** Writes the demo under `dir` (the `arte-entrada/` layout). Returns DEMO_FRAMES. */
 export async function writeDemoFrames(dir){
   const fx=path.join(dir,'efeitos'),props=path.join(dir,'cenario','props');
-  // Speech balloon: pink body, lime edge (6 px), cyan diagonal stripes only in the middle (stretching) area.
-  await save(path.join(fx,'balao-fala.png'),96,64,(x,y)=>{
-    if(!inRound(x,y,1,1,94,62,14))return;
-    if(!inRound(x,y,7,7,88,56,9))return LIME;
-    return x>16&&x<80&&y>16&&y<48&&(x+y)%10<3?CYAN:PINK;
+  // Speech balloon (body only, edge to edge): pink body, lime edge (4 px), cyan diagonal stripes only in the middle.
+  await save(path.join(fx,'balao-fala.png'),74,28,(x,y)=>{
+    if(!inRound(x,y,0,0,73,27,8))return;
+    if(!inRound(x,y,4,4,69,23,5))return LIME;
+    return x>10&&x<63&&y>10&&y<17&&(x+y)%10<3?CYAN:PINK;
   });
   // "DEVENDO" tag: red body, yellow/black striped edge.
   await save(path.join(fx,'etiqueta-devendo.png'),96,64,(x,y)=>{

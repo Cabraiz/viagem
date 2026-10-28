@@ -2534,13 +2534,13 @@
               "rows": 1,
               "firstFrame": 0,
               "frameCount": 1,
-              "sha256": "eadc140dd884d715a2e71c3b3989895008ae7b011e36ef6ecb3491c802cbf47d"
+              "sha256": "4e820eb15407b9ccce4a5af10cd0ecdd12859929a076772672ebbf28b0c92e61"
             }
           ],
-          "sha256": "eadc140dd884d715a2e71c3b3989895008ae7b011e36ef6ecb3491c802cbf47d"
+          "sha256": "4e820eb15407b9ccce4a5af10cd0ecdd12859929a076772672ebbf28b0c92e61"
         }
       },
-      "sha256": "e4f08ce32393bdaad32e2510e6e680397a873d357cce828154ae36540c719ff8"
+      "sha256": "8163cab86a17f6a41c9ef86fcac9ee3b5abba18bb9d0e2dbb769cf569fc111c0"
     },
     "uivo-do-lobisomem-onda": {
       "kind": "frames",

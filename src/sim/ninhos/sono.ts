@@ -72,9 +72,11 @@ export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
  * standing heroes (VISIT_GROUP u apart; the groups take turns, so the team's XP comes at one pace whatever its size)
  * gets VISIT_COUNT of the weakest sleepers between VISIT_NEAR and VISIT_FAR u of it, caçando, without their bands
  * (memory.visita: the AI's Minerva hold lets them walk). A group with VISIT_ALIVE visitors still standing near it gets
- * none that time. Once Minerva ends they are bodies like any other.
+ * none that time. A team that killed something in the last VISIT_QUIET s found its own fight (the bots roam into
+ * bands): the visit waits, so the first level-up stays in the 60–120 s of the card in 1p as in 6p. Once Minerva ends
+ * they are bodies like any other.
  */
-export const VISIT_FROM=15,VISIT_EVERY=25,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
+export const VISIT_FROM=35,VISIT_EVERY=20,VISIT_QUIET=10,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -167,7 +169,9 @@ export interface SonoState {players:number;life:[0|1|2,number][];heard:[string,N
   /** The tick of the next visit (VISIT_EVERY), set on the first step in the minuto de Minerva; absent before. */
   visitAt?:number;
   /** Visits made (the groups' turn); absent before the first. */
-  visits?:number}
+  visits?:number;
+  /** The tick of the last kill heard (VISIT_QUIET); absent before the first. */
+  killAt?:number}
 
 export interface SonoOptions {
   plan:NestPlan;
@@ -374,7 +378,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(ev.type==='fire'){
         const n=options.weaponNoise?.(ev.weapon,ctx.players.get(ev.player))??AUTO_WEAPON_NOISE[ev.weapon]??DEFAULT_WEAPON_NOISE;
         api.noise(ev.player,{x:ev.x,y:ev.y,r:n.r,p:n.p});
-      }else if(ev.type==='kill')api.noise(ev.by??'kill',{x:ev.x,y:ev.y,...NOISE.kill});
+      }else if(ev.type==='kill'){api.noise(ev.by??'kill',{x:ev.x,y:ev.y,...NOISE.kill});state.killAt=ctx.tick;}
     }
   }
   /** End of a window: each source rolls once (keys sorted), its sleepers by plan order, on the 'ruido' fork. */
@@ -590,8 +594,9 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(minerva){
         heard.clear();
         state.visitAt??=ctx.tick+ticks(VISIT_FROM);
-        // Nobody armed yet (or no room): the visit waits a second, the next one still VISIT_EVERY after it.
-        if(ctx.tick>=state.visitAt){
+        // A kill in the last VISIT_QUIET s, nobody armed yet or no room: the visit waits a second, the next one still
+        // VISIT_EVERY after it.
+        if(ctx.tick>=state.visitAt&&ctx.tick-(state.killAt??-Infinity)>=ticks(VISIT_QUIET)){
           if(visit(ctx)){state.visits=(state.visits??0)+1;state.visitAt=ctx.tick+ticks(VISIT_EVERY);}
           else state.visitAt=ctx.tick+ticks(1);
         }

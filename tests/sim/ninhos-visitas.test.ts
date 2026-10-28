@@ -14,7 +14,7 @@ import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
-import {MODE,VISIT_COUNT,VISIT_EVERY,VISIT_FAR,VISIT_FROM,VISIT_NEAR} from '../../src/sim/ninhos/sono.ts';
+import {MODE,VISIT_COUNT,VISIT_EVERY,VISIT_FAR,VISIT_FROM,VISIT_NEAR,VISIT_QUIET} from '../../src/sim/ninhos/sono.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -78,5 +78,20 @@ test('an unarmed hero (manual combat, no weapon yet) gets no visitor',()=>{
   addPlayer(world,'p1',at.x,at.y,true);
   while(world.tick<ticks(VISIT_FROM+VISIT_EVERY+2))world.step();
   assert.equal(visitors(world).length,0);
+  sys.dispose();
+});
+
+test('a team that just killed something gets no visitor until VISIT_QUIET s after the kill',()=>{
+  const {world,sys}=run();
+  const at=spot(sys.sono()!);
+  addPlayer(world,'p1',at.x,at.y);
+  const start=world.tick,kill=start+ticks(VISIT_FROM)-ticks(1);
+  while(world.tick<kill)world.step();
+  // A kill of its own (the sim emits it as the hero's shot lands), far from any sleeper's ear.
+  world.emit({type:'kill',enemy:'x',kind:'x',by:'p1',x:-1e3,y:-1e3} as Parameters<SimWorld['emit']>[0]);
+  while(world.tick<kill+ticks(VISIT_QUIET)-2)world.step();
+  assert.equal(visitors(world).length,0,'no visit inside the quiet');
+  while(world.tick<kill+ticks(VISIT_QUIET)+ticks(1)+2)world.step();
+  assert.equal(visitors(world).length,VISIT_COUNT,'the visit comes once the team is quiet');
   sys.dispose();
 });

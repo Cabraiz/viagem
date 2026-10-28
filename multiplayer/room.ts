@@ -2,6 +2,7 @@ import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,t
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {LevelupPause} from './levelup-pause.ts';
 import {BossScene} from './boss-scene.ts';
+import {LoadWait} from './load-wait.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
 import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
@@ -380,6 +381,8 @@ export class Room {
   readonly levelup=new LevelupPause();
   /** Card boss-fim-onda-1: the chefão's arrival scene (multiplayer/boss-scene.ts), which holds the sim like the pause. */
   readonly cena=new BossScene();
+  /** Card exploracao-espera-carregar: the run's start waits for the phones to draw it (multiplayer/load-wait.ts). */
+  readonly loading=new LoadWait();
   /** The sim stands still for the players: the level-up pause or the chefão's scene (their commands are refused). */
   private get held(){return this.levelup.paused||this.cena.playing;}
   private lastNow=Date.now();
@@ -703,6 +706,8 @@ export class Room {
       this.pushRun();
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
+    // exploracao-espera-carregar: the phone drew its first frame of the run (scene.ts); an older one never says it.
+    else if(m.t==='carregou')this.loading.loaded(c.playerId);
     else if(m.t==='sos')this.sos(c,m,now);
     else if(m.t==='emote')this.emote(c,m,now);
     // Consent for the result's "momento mais vergonhoso" (VGM-053B): {t:'pref',shame:false} leaves this player out.
@@ -1259,7 +1264,7 @@ export class Room {
   }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
-    this.checkpointRef=undefined;this.levelup.reset();this.cena.reset();
+    this.checkpointRef=undefined;this.levelup.reset();this.cena.reset();this.loading.reset();
     this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
@@ -1296,6 +1301,8 @@ export class Room {
       // People away: their hero follows the team on its own until they are back (no help calls: nobody is holding the phone).
       this.autopilots.think(this.sim);
       const events=this.sim.step(now);
+      // exploracao-espera-carregar: until every phone drew the run (or LOAD_WAIT_MS), the Minerva's clock stays full.
+      if(this.loading.holding(now,id=>!!this.sim.players.get(id)?.online))this.sim.run.nests?.holdMinerva(this.sim.tick);
       this.cena.noteStep(this.sim,now);
       this.pushElenco();
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
@@ -1310,7 +1317,10 @@ export class Room {
     }
     // Paused: the run's combat clock (elapsed, the timeout) stands still with the sim.
     const transition=paused?{started:false,finished:false}:this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
-    if(transition.started){this.resetRun();this.syncSpectators();}
+    if(transition.started){
+      this.resetRun();this.syncSpectators();
+      this.loading.arm(this.run.snapshot().members.filter(m=>m.online&&!m.bot&&!m.spectator).map(m=>m.id),now);
+    }
     // The majority's rematch after REMATCH_MAJORITY_TICKS: a new run, the ones who did not vote watch it.
     if(transition.rematch){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();

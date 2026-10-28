@@ -1512,7 +1512,8 @@ export class IslandScene extends Phaser.Scene {
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
     const phase=net.run?.phase;
-    if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
+    // exploracao-espera-carregar: the first combat frame drawn tells the room this phone is in (the Minerva waits for it).
+    if(phase==='combat'&&this.lastPhase!=='combat'){this.you?.showArrow(time);net.loaded();}
     this.lastPhase=phase;
     // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
     const frozen=this.paused||!!net.run?.pause;

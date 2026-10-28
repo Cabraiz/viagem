@@ -927,6 +927,11 @@ export class CoopClient {
   get isOwner(){return !!this.id&&this.run?.owner===this.id;}
   rematch(){this.runCommand({t:'rematch'});}
   /**
+   * Card exploracao-espera-carregar: this phone drew its first frame of the run (scene.ts). The room holds the minuto de
+   * Minerva's clock full until every phone says it (at most 20 s, multiplayer/load-wait.ts); an older room ignores it.
+   */
+  loaded(){this.runCommand({t:'carregou'});}
+  /**
    * Owner's map pick in the lobby (cidade-09): exactly {t:'setMap',map} (no round: map-select validateSetMap). The room
    * answers everyone with {t:'map'}, or the owner with a notice. False when there is no open connection to send it on.
    */

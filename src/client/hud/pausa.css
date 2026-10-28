@@ -24,6 +24,17 @@
   .rh-pausa-titulo{font-size:var(--t-21)}
 }
 
+/* Over the px39 offer (pausa.ts pauseOverOffer, auditoria-ui-menus-28-10 item 1): on top of its veil (z 30), above the
+   title plaque in the room the offer leaves free (offer-centro.css --pausa-reserva). Landscape: one row (title, bar,
+   who is missing), so the cards keep the height. */
+.rh-pausa[data-na-oferta]{z-index:31}
+@media (max-height:500px){
+  .rh-pausa[data-na-oferta]{flex-direction:row;gap:10px;max-width:calc(100vw - 16px);padding:3px 12px}
+  .rh-pausa[data-na-oferta] .rh-pausa-titulo{font-size:var(--t-21)}
+  .rh-pausa[data-na-oferta] .rh-pausa-prazo{align-self:center;min-width:90px;width:90px}
+  .rh-pausa[data-na-oferta] .rh-pausa-linha{white-space:nowrap}
+}
+
 /* ---------- The strip's marks: the portrait's lower-left corner (the state sticker and the robot keep the top) ---------- */
 .rh-member-escolha{position:absolute;top:24px;left:calc(50% - 31px);display:flex;line-height:0}
 .rh-member-escolha[hidden]{display:none}

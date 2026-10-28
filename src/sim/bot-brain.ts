@@ -74,7 +74,7 @@ import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {OPEN_REACH} from './crates.ts';
-import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
+import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /**
@@ -297,6 +297,10 @@ export interface BrainMemory {
   skip?:Record<string,number>;
   /** The goal walked to and the best distance (and its hp) so far, since `tick`. */
   track?:{key:string;d:number;hp:number;tick:number;x:number;y:number};
+  /** The crate or weapon looted at the last decision (bot-loot.ts LOOT_KEEP_HP: kept with critters near), and the hp then. */
+  lootGoal?:string;lootHp?:number;
+  /** The tick an armed bot that left its loot for a critter may start another (bot-loot.ts LOOT_REST). */
+  lootRest?:number;
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -832,12 +836,23 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  // Card bot-nao-trava-entre-casa-e-arma: not for a bot with no weapon at all (it cannot hit; seed 11 held at the car ~60 s
+  // by one critter the Minerva held still 10.6 u off it).
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&hasWeapon(me.weapons)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  const keep=memory.lootGoal,keptHp=memory.lootHp;delete memory.lootGoal;delete memory.lootHp;
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
-    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
-      {skip:id=>skipped(`loot:${id}`),...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    const plan=(kept?:string)=>planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
+      {skip:id=>skipped(`loot:${id}`),keep:kept,...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    let loot=plan(keep);
+    if(loot.goal&&loot.goal.id!==keep&&tick<(memory.lootRest??-Infinity)&&hasWeapon(me.weapons))delete loot.goal;
+    // Card bot-nao-trava-entre-casa-e-arma: a crate opens only for who is not hurt (crates.ts): hurt by it since the last
+    // decision, the bot leaves it out for LOOT_SKIP and goes to another (seed 12: 18 s by one, a critter on it biting).
+    if(loot.goal?.stand&&loot.goal.id===keep&&keptHp!==undefined&&me.hp<keptHp&&dist(at,loot.goal.at)<=OPEN_REACH){
+      (memory.skip??={})[`loot:${keep}`]=tick+LOOT_SKIP;
+      loot=plan();
+    }
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
@@ -847,13 +862,15 @@ export function decide(input:BrainInput):Decision{
     const there=!!loot.goal&&(loot.goal.stand?reached(loot.goal.at,CRATE_STAND,OPEN_REACH*.25):dist(at,loot.goal.at)<=.25);
     if(there)delete memory.track;
     if(loot.goal&&!late&&(there||!stalled(`loot:${loot.goal.id}`,loot.goal.at,0,LOOT_SKIP))){
-      decision.mode='loot';
+      decision.mode='loot';memory.lootGoal=loot.goal.id;memory.lootHp=me.hp;
       const close=there;
       if(!close)want=go(loot.goal.at);
       decision.direction=close?{x:0,y:0}:norm(want);
       return finish(decision,input);
     }
   }
+  if(keep!==undefined&&hasWeapon(me.weapons)&&(carThreat||view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<LOOT_SAFE)))
+    memory.lootRest=tick+LOOT_REST*HZ;
   // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
   if(task?.kind==='clear'&&prepare){
     decision.mode='clear';

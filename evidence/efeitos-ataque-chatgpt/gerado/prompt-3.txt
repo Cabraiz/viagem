@@ -1,0 +1,11 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/efeitos-ataque-chatgpt/evidence/efeitos-ataque-chatgpt/gerado/folha-3.png.
+The attached image is the APPROVED style sheet of this game's attack effects: match its style exactly (hand-painted cartoon VFX, bold dark navy-black outline #1b1726, flat colours with one soft highlight and one shade, light from top-left, same outline weight). Read it ONLY for style; do not copy, edit or reuse any part of it, and do not repeat its items.
+Do not inspect, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+'Lying flat on the ground' means drawn for a 30 degree top-down camera: a circle becomes an ellipse squashed 2:1 (twice as wide as tall).
+Background: solid flat pure magenta #FF00FF everywhere (chroma key), no shadow on the background, no gradient, no floor, no text, no labels, no numbers. Items in a grid, each separated by at least 80 px of background, nothing touching the image edges:
+1. Burp gas cloud: a rolling cartoon cloud of sickly green-yellow gas puffs flowing to the RIGHT, wider at the right end, a few bubbles, mouth/start at the left edge.
+2. Melee aim cone lying flat on the ground: a 90 degree wedge (like a pizza slice, apex on the LEFT, opening to the right) of bright cyan (#4fe6ff) with a brighter thick curved rim at the far edge and a lighter inner fill fading toward the apex.
+3. Danger zone border: a LONG horizontal straight strip (about 1200 x 60 px) of dashes alternating danger red and cream white, with a thin dark outline along both long edges, flat, perfectly horizontal, ends cut straight (it will be tiled).
+4. Shotgun pellet: ONE small dark-lead pellet with a short bright yellow-orange streak to its LEFT (flying right), drawn large (about 300 x 100 px).
+5. Melee knife slash variant 2: a shorter crescent swoosh arc (about 110 degrees) of steel-white and pale cyan, tapered, opening to the right.
+Same palette and outline on every item. Danger red (#e0352b) must read as danger. Items must stay legible over grass, snow, asphalt and water.

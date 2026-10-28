@@ -73,8 +73,8 @@ export const OP_SPRITE=6;
  * target and the burp cloud (flowing right, +x, from the mouth on its left edge). Each replaces today's vector
  * decoration of its kind when the renderer says its texture is in (DecorFrame.art); the zone and its edge never change.
  */
-export const DECOR_ART_IDS=['seta-investida','aviso-explosao','arroto'] as const;
-export const DECOR_ART_ARROW=0,DECOR_ART_BURST=1,DECOR_ART_GAS=2;
+export const DECOR_ART_IDS=['seta-investida','aviso-explosao','arroto','alerta-perigo'] as const;
+export const DECOR_ART_ARROW=0,DECOR_ART_BURST=1,DECOR_ART_GAS=2,DECOR_ART_ALERT=3;
 /** Frames per second of a looping decoration strip. */
 export const DECOR_ART_FPS=8;
 /**

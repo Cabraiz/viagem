@@ -9,7 +9,7 @@
  */
 import type Phaser from 'phaser';
 import {HD_ENEMIES,artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
-import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
+import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PELLET_TEX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
@@ -85,6 +85,10 @@ export const STATIC_ART:readonly StaticArt[]=[
   {key:FX.shadow,group:'efeitos',ids:['sombra','sombra-contato'],mode:'bake',size:[48,18],fit:'fill'},
   {key:FX.puff,group:'efeitos',ids:['poof','morte-poof'],mode:'bake',size:[64,64]},
   {key:FX.warning,group:'efeitos',ids:['aviso-spawn'],mode:'bake',size:[40,40]},
+  // Card efeitos-ataque-chatgpt: the kill stars (layers.ts, 20×20, tinted) and the shotgun pellet (arsenal-fx.ts, 26×10,
+  // pointing right) were drawn in code with no art.
+  {key:FX.star,group:'efeitos',ids:['estrela-abate'],mode:'bake',size:[20,20]},
+  {key:PELLET_TEX.key,group:'efeitos',ids:['chumbo-escopeta'],mode:'bake',size:[PELLET_TEX.w,PELLET_TEX.h]},
 ];
 /**
  * The death poof without a `death` sheet (art-d item 6). The 'bake' above keeps frame 0 under FX.puff (the kill-cam and

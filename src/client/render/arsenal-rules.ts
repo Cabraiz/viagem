@@ -257,13 +257,13 @@ export const handsOnCar=(car:{movers?:readonly string[];rope?:string}|undefined,
  *  - muzzle: the flash at the barrel, along the aim (the bullets are the projectiles' art);
  *  - cone: the strip repeated along the aim, out to `reach` units (the blowtorch's flame, the shotgun's spread);
  *  - blast: at the target (the rojão's burst);
- *  - slash: no art, a Papel arc in front of the hero (the faca).
+ *  - slash: the painted crescent `corte-faca` swung in front of the hero (the faca); without it, today's Papel arc.
  * `size`: CSS px of one frame at the endless map's scale (times the actor scale), `ms`: how long the strip plays.
  */
 export interface FireLook {art?:string;kind:'muzzle'|'cone'|'blast'|'slash';size:number;ms:number;reach?:number}
 export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   // melee-alcance-2x: the faca reaches twice as far, so its arc is twice as big (and SLASH_AHEAD twice as far out).
-  faca:{kind:'slash',size:140,ms:160},
+  faca:{kind:'slash',art:'corte-faca',size:140,ms:160},
   pistola:{art:'clarao-pistola',kind:'muzzle',size:80,ms:110},
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},

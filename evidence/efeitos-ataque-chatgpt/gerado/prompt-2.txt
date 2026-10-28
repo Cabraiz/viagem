@@ -1,0 +1,15 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/efeitos-ataque-chatgpt/evidence/efeitos-ataque-chatgpt/gerado/folha-2.png.
+The attached image is the APPROVED style sheet of this game's attack effects: match its style exactly (hand-painted cartoon VFX, bold dark navy-black outline #1b1726, flat colours with one soft highlight and one shade, light from top-left, same outline weight). Read it ONLY for style; do not copy, edit or reuse any part of it, and do not repeat its items.
+Do not inspect, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+'Lying flat on the ground' means drawn for a 30 degree top-down camera: a circle becomes an ellipse squashed 2:1 (twice as wide as tall).
+Background: solid flat pure green #00FF00 everywhere (chroma key), no shadow on the background, no gradient, no floor, no text, no labels, no numbers. Items in a grid, each separated by at least 80 px of background, nothing touching the image edges:
+1. Skill ring lying flat on the ground: a wide cream-gold (#ffde88) magic circle ring with small rune notches, empty centre.
+2. Spawn warning lying flat on the ground: a red dashed circle ring with 3 small inward arrows, empty centre.
+3. Coach buff ring lying flat on the ground: a thin gold ring with little sparkles, empty centre.
+4. Frost ring lying flat on the ground: a thin cyan (#4fd8ff) ring with small ice shards, empty centre.
+5. Sugar-rush ring lying flat on the ground: a thin candy-pink (#ff7ac8) ring with sprinkles, empty centre.
+6. Small golden crown icon (VIP boss 'Prime'), 3 points with a tiny gem.
+7. Crate-opening burst ring lying flat on the ground: a plain WHITE energy ring with a soft inner glow (it is tinted in code), empty centre.
+8. Friendly shot: a small round glowing yellow-gold orb bullet with a short trail to the LEFT (flying right).
+9. Hostile shot: a small spiky red-purple star bullet with a short trail to the LEFT (flying right).
+Same palette and outline on every item. Danger red (#e0352b) must read as danger. Items must stay legible over grass, snow, asphalt and water.

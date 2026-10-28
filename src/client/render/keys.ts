@@ -68,6 +68,8 @@ export const vehicleTexture=(kind:VehicleKind)=>`horde:pickup:vehicle:${kind}`;
 export const pickupLook=(kind:string,resource?:string)=>
   kind==='vehicle'?isVehicleKind(resource)?vehicleTexture(resource):pickupTexture('item'):pickupTexture(kind);
 
+/** The shotgun pellet's texture (render/arsenal-fx.ts draws it; art/horde-art.ts STATIC_ART bakes 'chumbo-escopeta' over it). */
+export const PELLET_TEX={key:'arsenal:chumbo',w:26,h:10} as const;
 export const FX={
   shadow:'horde:fx:shadow',
   puff:'horde:fx:puff',

@@ -1,0 +1,15 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/efeitos-ataque-chatgpt/evidence/efeitos-ataque-chatgpt/gerado/folha-1.png.
+The attached image is the APPROVED style sheet of this game's attack effects: match its style exactly (hand-painted cartoon VFX, bold dark navy-black outline #1b1726, flat colours with one soft highlight and one shade, light from top-left, same outline weight). Read it ONLY for style; do not copy, edit or reuse any part of it, and do not repeat its items.
+Do not inspect, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+'Lying flat on the ground' means drawn for a 30 degree top-down camera: a circle becomes an ellipse squashed 2:1 (twice as wide as tall).
+Background: solid flat pure green #00FF00 everywhere (chroma key), no shadow on the background, no gradient, no floor, no text, no labels, no numbers. Items in a grid, each separated by at least 80 px of background, nothing touching the image edges:
+1. Molotov bottle falling: a glass bottle with a burning cloth rag in its neck, tilted 30 degrees, small orange flame on the rag.
+2. Molotov target lying flat on the ground: a red-orange reticle ellipse with four short ticks and a small centre cross, empty centre.
+3. Ground fire patch: a cluster of 3-4 chunky orange-yellow-red cartoon flames rising from a flat burning spot, seen from the 30 degree camera.
+4. Bird-poop splat lying flat on the ground: a cream-white and pale-brown cartoon splat with a few droplets, squashed 2:1.
+5. Falling poop drop: a single cartoon white-brown drop with a tiny motion streak upward.
+6. Bureaucrat rubber stamp: a wooden-handle office rubber stamp seen from the side, red ink pad face at the bottom.
+7. Red ink stamp mark lying flat on the ground: a round official stamp imprint ring in danger red with a star in the middle and rough ink texture, squashed 2:1.
+8. Explosion target lying flat on the ground: an orange-red starburst warning marker with a bright centre, squashed 2:1.
+9. Charge chevron: a single bold double-chevron arrow pointing RIGHT, orange-red, flat.
+Same palette and outline on every item. Danger red (#e0352b) must read as danger. Items must stay legible over grass, snow, asphalt and water.

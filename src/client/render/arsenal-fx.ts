@@ -31,6 +31,7 @@ import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
+import {PELLET_TEX} from './keys.ts';
 import {THROW_MS} from '../../rules/index.ts';
 import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
   FLOAT_PX,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
@@ -69,7 +70,7 @@ interface PelletFx {image:Image;born:number;x:number;y:number;ux:number;uy:numbe
  * The pellet's texture (made once): a short hot streak (Amarelo core, Breu edge: it reads on the snow and on the grass),
  * drawn rotated along its flight, PELLET_PX long at body 1.
  */
-const PELLET_KEY='arsenal:chumbo',PELLET_W=26,PELLET_H=10,PELLET_PX=36;
+const PELLET_KEY=PELLET_TEX.key,PELLET_W=PELLET_TEX.w,PELLET_H=PELLET_TEX.h,PELLET_PX=36;
 interface BurstFx {image:Image;born:number;x:number;y:number;rarity:Rarity}
 /** A crate's prize: pending (look undefined) until a view shows what the opener got, then `start` is when it rises. */
 interface PrizeFx {sticker:Image;glow:Image;rays:Image;label:Phaser.GameObjects.Text;born:number;start:number;x:number;y:number;
@@ -135,7 +136,7 @@ export class ArsenalFx{
   private openings=new CrateOpenings();
   private canOpen=new Set<string>();
   private now=0;private body=1;private reduced=false;
-  private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
+  private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number;image?:Phaser.GameObjects.Image}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
   private cone:MeleeCone;
   /** upgrades-megabonk: the Defumador's smoke, and each hero's aura radius from the last view (u), the local one's flagged. */
@@ -353,6 +354,7 @@ export class ArsenalFx{
 
   destroy(){
     this.aura.destroy();
+    for(const s of this.slashes)s.image?.destroy();this.slashes.length=0;
     this.shots.clear();this.pellets.clear();this.bursts.clear();this.prizes.clear();this.hands.clear();
     for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
     this.ringLooks.clear();
@@ -407,7 +409,10 @@ export class ArsenalFx{
     const p=this.options.projector,len=Math.hypot(dx,dy),ux=len>1e-6?dx/len:1,uy=len>1e-6?dy/len:0;
     const a=p.project(x,y,this.q),ax=a.x,ay=a.y,ahead=p.project(x+ux,y+uy,this.q2),angle=Math.atan2(ahead.y-ay,ahead.x-ax);
     if(look.kind==='slash'){
-      if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms});
+      if(this.slashes.length>=8)return;
+      // The painted crescent when its strip is in (card efeitos-ataque-chatgpt), else today's arc.
+      const key=look.art&&fxKey(look.art),image=key&&this.scene.textures.exists(key)?this.scene.add.image(0,0,key,0).setDepth(FX_DEPTH):undefined;
+      this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms,image});
       return;
     }
     const pellets=PELLETS[weapon];
@@ -504,9 +509,15 @@ export class ArsenalFx{
       .setAlpha(s.look.kind==='muzzle'?1:1-.4*age/s.look.ms);
     return true;
   };
-  private drawSlash(s:{born:number;x:number;y:number;angle:number;size:number;ms:number}){
-    const age=this.now-s.born;if(age>=s.ms)return false;
+  private drawSlash(s:{born:number;x:number;y:number;angle:number;size:number;ms:number;image?:Phaser.GameObjects.Image}){
+    const age=this.now-s.born;if(age>=s.ms){s.image?.destroy();return false;}
     const q=this.options.projector.project(s.x,s.y,this.q),b=this.body,u=age/s.ms,r=s.size*b*(.7+.3*u),spread=1.1;
+    if(s.image){
+      // The crescent bulges toward +x in its cell: its middle sits ~.55 r out along the aim, it sweeps ±.35 rad and fades.
+      const a=s.angle-.35+.7*u,h=Math.max(1,s.image.height);
+      s.image.setPosition(q.x+Math.cos(s.angle)*r*.55,q.y-22*b+Math.sin(s.angle)*r*.55).setRotation(a).setScale(2*r*.9/h).setAlpha(Math.min(1,(1-u)*1.6));
+      return true;
+    }
     const from=s.angle-spread*(1-u*.4),to=s.angle+spread*u;
     this.arcs.lineStyle(7*b,this.breu,.8*(1-u)).beginPath().arc(q.x,q.y-22*b,r,from,to,false).strokePath();
     this.arcs.lineStyle(4*b,this.papel,1-u).beginPath().arc(q.x,q.y-22*b,r,from,to,false).strokePath();

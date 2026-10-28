@@ -5,13 +5,18 @@
  * shrunk to fit a small zone, never outside it. Pure module: it appends ops to the decoration buffer (telegraph-look.ts)
  * on the air layer, after the kind's own drawing, so nothing covers it.
  */
-import {HAZARD,LAYER_AIR,type DecorBuffer,type DecorFrame,type ProjectFn} from './telegraph-look.ts';
+import {DECOR_ART_ALERT,HAZARD,LAYER_AIR,type DecorBuffer,type DecorFrame,type ProjectFn} from './telegraph-look.ts';
 import {coneApertureOf,type Pt,type TelegraphShape} from './telegraph-shape.ts';
 
 /** Glyph height and outline in CSS px, and the smallest height still drawn (a tinier zone gets no mark). */
 export const ALERT_CSS={height:18,outline:2.5,min:7} as const;
 /** Each try shrinks the glyph by this much until its box fits inside the drawn zone (at most ALERT_FIT_TRIES). */
 export const ALERT_SHRINK=.85,ALERT_FIT_TRIES=8;
+/**
+ * Imported "!" plate (`alerta-perigo`, card efeitos-ataque-chatgpt): the painted badge is ALERT_ART_SCALE × the glyph
+ * height wide (the plate around the "!"), drawn in place of the vector glyph; the same fit-inside-the-zone rule.
+ */
+export const ALERT_ART_SCALE=1.5;
 
 const P:Pt={x:0,y:0};
 
@@ -35,14 +40,17 @@ export function planAlert(t:TelegraphShape,f:DecorFrame,pts:readonly Pt[],n:numb
   const b=f.bounds;
   if(t.shape==='circle'&&b.maxX>b.minX&&b.maxY>b.minY){P.x=(b.minX+b.maxX)/2;P.y=(b.minY+b.maxY)/2;}
   else{alertAnchor(t,P);project(P.x,P.y,P);}
-  const cx=P.x,cy=P.y,min=ALERT_CSS.min*f.css;
+  const cx=P.x,cy=P.y,min=ALERT_CSS.min*f.css,art=f.art?f.art.frames[DECOR_ART_ALERT]|0:0;
+  const aspect=art?f.art!.aspect[DECOR_ART_ALERT]||1:1;
   let h=ALERT_CSS.height*f.css,o=0;
   for(let i=0;;i++){
     if(!(h>=min)||i>=ALERT_FIT_TRIES)return out.count;
     o=Math.min(ALERT_CSS.outline*f.css,h*.16);
-    if(boxInside(pts,n,cx,cy,h*.17+o,h/2+o))break;
+    const w=h*ALERT_ART_SCALE;
+    if(art?boxInside(pts,n,cx,cy,w/2,w*aspect/2):boxInside(pts,n,cx,cy,h*.17+o,h/2+o))break;
     h*=ALERT_SHRINK;
   }
+  if(art){const w=h*ALERT_ART_SCALE;out.sprite(LAYER_AIR,1,DECOR_ART_ALERT,cx,cy,0,w,w*aspect,0);return out.count;}
   // Bar: a trapezoid from the top down to 64% of the height, wide on top; the dot under it.
   const top=cy-h/2,barEnd=cy+h*.14,wTop=h*.17,wEnd=h*.11,dotY=cy+h*.37,dotR=h*.13;
   // Breu outline first (the same shapes grown by o), then the Papel glyph.

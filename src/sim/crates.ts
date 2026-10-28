@@ -70,7 +70,7 @@ import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
 import {RADIUS,walkable,type TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
-import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
+import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
@@ -125,8 +125,7 @@ const HEADING_KEEP=.9;
 export const NEAR_START_REACH=3,NEAR_START_RADII:readonly number[]=[2.5,2.25,2.75,2,3],NEAR_START_ANGLES=32;
 /** Item 2: near crates keep this far apart (their bodies, CRATE_BODY_RADIUS 1.5, may touch; a hero still tells them apart). */
 export const NEAR_START_SPACING=2;
-/** Item 2: seconds a hero is untouchable at the start unless he opens a crate first. */
-export const START_GRACE_S=20;
+export {START_GRACE_S};
 /** A prize equal to the opener's last one is drawn again (same stream) up to this many times. */
 export const PRIZE_REDRAWS=6;
 /** The match is split in this many stages by round (10 rounds: 1-3, 4-5, 6-8, 9-10); stage s shifts a placed crate by s-1. */

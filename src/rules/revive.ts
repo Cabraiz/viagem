@@ -17,6 +17,8 @@ export const REVIVE_PUSH_RADIUS=2,REVIVE_PUSH_KNOCK=.8;
  * after SOLO_SELF_REVIVE_TICKS (the rescue ring fills meanwhile). SOLO_SECOND_CHANCES per match; the next fall ends it.
  */
 export const SOLO_SECOND_CHANCES=1,SOLO_SELF_REVIVE_TICKS=ticks(5);
+/** Item 2: seconds a hero is untouchable at the start unless he opens a crate first (src/sim/crates.ts; the client blinks him). */
+export const START_GRACE_S=20;
 /** Without a rescuer in range, progress falls back at the base revive speed. */
 export const REVIVE_DECAY_PER_TICK=1/REVIVE_TICKS;
 /**

@@ -27,7 +27,7 @@ const LATE=EVOLUTION_MIN_TICKS;
 const OPEN={runStartTick:0};
 const clone=<T>(v:T):T=>JSON.parse(JSON.stringify(v)) as T;
 /** Every weapon at max, every evolution recipe ready. */
-const allEligible=():PlayerBuild=>({weapons:[{id:'chinelo',level:8},{id:'boleto',level:8},{id:'cafe',level:8}],
+const allEligible=():PlayerBuild=>({weapons:[{id:'boleto',level:8},{id:'cafe',level:8}],
   passives:[{id:'tenis',level:5},{id:'cartao',level:5},{id:'cafe-forte',level:5}]});
 const maxedBuild=():PlayerBuild=>({weapons:WEAPON_IDS.map(id=>({id,level:WEAPON_MAX_LEVEL})),
   passives:['marmita','megafone','bone','oculos'].map(id=>({id,level:PASSIVE_MAX_LEVEL}))});
@@ -148,17 +148,16 @@ test('refreshStats: max HP gain heals standing players only, loss caps hp',()=>{
 // ---------- 4. eligibleEvolutions ----------
 test('eligibleEvolutions: needs base weapon 8 and the matching passive',()=>{
   const ids=(b:PlayerBuild)=>eligibleEvolutions(b).map(r=>r.id);
-  assert.equal(EVOLUTIONS.length,3);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:7}],passives:[{id:'tenis',level:5}]}),[]);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:8}],passives:[]}),[]);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:8}],passives:[{id:'cartao',level:5},{id:'cafe-forte',level:5}]}),[]);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:8}],passives:[{id:'tenis',level:1}]}),['chinelo-evo']);
+  assert.equal(EVOLUTIONS.length,2);
+  assert.deepEqual(ids({weapons:[{id:'boleto',level:7}],passives:[{id:'cartao',level:5}]}),[]);
+  assert.deepEqual(ids({weapons:[{id:'boleto',level:8}],passives:[]}),[]);
+  assert.deepEqual(ids({weapons:[{id:'boleto',level:8}],passives:[{id:'tenis',level:5},{id:'cafe-forte',level:5}]}),[]);
   assert.deepEqual(ids({weapons:[{id:'boleto',level:8}],passives:[{id:'cartao',level:1}]}),['boleto-evo']);
   assert.deepEqual(ids({weapons:[{id:'cafe',level:8}],passives:[{id:'cafe-forte',level:1}]}),['cafe-evo']);
-  assert.deepEqual(ids(allEligible()).sort(),['boleto-evo','cafe-evo','chinelo-evo']);
-  assert.deepEqual(ids({weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:8}],passives:[{id:'tenis',level:5},{id:'cartao',level:2}]}),['boleto-evo']);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:8},{id:'chinelo-evo',level:1}],passives:[{id:'tenis',level:5}]}),[]);
-  assert.deepEqual(ids({weapons:[{id:'chinelo',level:8}],passives:[{id:'tenis',level:0}]}),[]);
+  assert.deepEqual(ids(allEligible()).sort(),['boleto-evo','cafe-evo']);
+  assert.deepEqual(ids({weapons:[{id:'cafe-evo',level:1},{id:'boleto',level:8}],passives:[{id:'cafe-forte',level:5},{id:'cartao',level:2}]}),['boleto-evo']);
+  assert.deepEqual(ids({weapons:[{id:'boleto',level:8},{id:'boleto-evo',level:1}],passives:[{id:'cartao',level:5}]}),[]);
+  assert.deepEqual(ids({weapons:[{id:'boleto',level:8}],passives:[{id:'cartao',level:0}]}),[]);
   for(const r of EVOLUTIONS){assert.equal(itemMaxLevel(r.id),1);assert.equal(itemMaxLevel(r.weapon),8);assert.equal(itemMaxLevel(r.passive),5);}
 });
 
@@ -184,7 +183,7 @@ test('openChest: after 2:00 evolves exactly one recipe in place',()=>{
   for(let seed=1;seed<=40;seed++){
     const {fake,ctx,events}=makeCtx(seed,LATE);
     const build=allEligible();build.weapons.push({id:'pombo',level:3});
-    const p=makePlayer('p1',build,{weaponReady:{chinelo:5,boleto:6,cafe:7,pombo:8}});
+    const p=makePlayer('p1',build,{weaponReady:{boleto:6,cafe:7,pombo:8}});
     const passivesBefore=clone(build.passives);
     const id=addChest(fake);
     const res=openChest(ctx,p,id,OPEN);
@@ -194,18 +193,18 @@ test('openChest: after 2:00 evolves exactly one recipe in place',()=>{
     seen.add(res.to);
     const slot=allEligible().weapons.findIndex(w=>w.id===recipe.weapon);
     assert.deepEqual(p.build.weapons[slot],{id:recipe.id,level:1});
-    assert.equal(p.build.weapons.length,4);
+    assert.equal(p.build.weapons.length,3);
     assert.equal(p.build.weapons.filter(w=>w.id.endsWith('-evo')).length,1);
     assert.ok(!p.build.weapons.some(w=>w.id===recipe.weapon));
     assert.deepEqual(p.build.passives,passivesBefore);
     assert.ok(!(recipe.weapon in p.weaponReady));
     // The evolution gets its own entry (never fires on the evolving tick); the other weapons keep theirs.
     assert.equal(p.weaponReady[recipe.id],LATE+1);
-    assert.equal(Object.keys(p.weaponReady).length,4);
+    assert.equal(Object.keys(p.weaponReady).length,3);
     assert.deepEqual(events.filter(e=>e.type==='evolve'),[{type:'evolve',player:'p1',from:recipe.weapon,to:recipe.id}]);
     assert.equal(events.length,1);
     assert.ok(!fake.pickups.has(id));
-    assert.equal(eligibleEvolutions(p.build).length,2);
+    assert.equal(eligibleEvolutions(p.build).length,1);
   }
   assert.ok(seen.size>1,'different seeds should reach different recipes');
 });
@@ -246,7 +245,7 @@ test('openChest: invalid ids and players that cannot open return null without co
 test('openChest: without evolution it upgrades items within max levels',()=>{
   for(let seed=1;seed<=200;seed++){
     const {fake,ctx,events}=makeCtx(seed,LATE);
-    const build:PlayerBuild={weapons:[{id:'chinelo',level:7},{id:'pombo',level:8},{id:'cafe-evo',level:1},{id:'mystery',level:1}],
+    const build:PlayerBuild={weapons:[{id:'boleto',level:7},{id:'pombo',level:8},{id:'cafe-evo',level:1},{id:'mystery',level:1}],
       passives:[{id:'bone',level:4},{id:'tenis',level:5},{id:'cartao',level:5}]};
     const p=makePlayer('p1',build,{stats:computeStats(build,{luck:2})});
     const before=clone(build);
@@ -271,7 +270,7 @@ test('openChest: luck can give 3 upgrades and a passive level recomputes stats',
   let triple=false;
   for(let seed=1;seed<=300;seed++){
     const {fake,ctx}=makeCtx(seed,0);
-    const build:PlayerBuild={weapons:[{id:'chinelo',level:1}],passives:[{id:'bone',level:1}]};
+    const build:PlayerBuild={weapons:[{id:'boleto',level:1}],passives:[{id:'bone',level:1}]};
     const p=makePlayer('p1',build,{stats:computeStats(build,{luck:5}),classBonus:{luck:5}});
     const res=openChest(ctx,p,addChest(fake),OPEN);
     assert.ok(res&&res.kind==='upgrade');
@@ -281,7 +280,7 @@ test('openChest: luck can give 3 upgrades and a passive level recomputes stats',
   assert.ok(triple,'some seed should roll the luck triple');
 
   const {fake,ctx,events}=makeCtx(9,LATE);
-  const build:PlayerBuild={weapons:[{id:'chinelo',level:8}],passives:[{id:'marmita',level:4}]};
+  const build:PlayerBuild={weapons:[{id:'boleto',level:8}],passives:[{id:'marmita',level:4}]};
   const p=makePlayer('p1',build,{hp:100,classBonus:{maxHp:10}});
   assert.equal(p.stats.maxHp,180);
   const res=openChest(ctx,p,addChest(fake),OPEN);
@@ -304,7 +303,7 @@ test('openChest: fully maxed build heals the opener on the spot, no coxinha on t
   assert.ok(!events.some(e=>e.type==='upgrade'||e.type==='evolve'));
   // Evolved build with nothing else to level also heals.
   const {fake:f2,ctx:c2}=makeCtx(4,LATE);
-  const evo:PlayerBuild={weapons:[{id:'chinelo-evo',level:1}],passives:[{id:'tenis',level:5}]};
+  const evo:PlayerBuild={weapons:[{id:'cafe-evo',level:1}],passives:[{id:'cafe-forte',level:5}]};
   assert.equal(openChest(c2,makePlayer('p2',evo),addChest(f2),OPEN)?.kind,'heal');
 });
 test('openChest: same seed and chest id give the same result',()=>{
@@ -314,7 +313,7 @@ test('openChest: same seed and chest id give the same result',()=>{
     const res=openChest(ctx,p,addChest(fake,chestId),OPEN);
     return clone({res,build:p.build,stats:p.stats,hp:p.hp,events,pickups:[...fake.pickups.values()]});
   };
-  const mixed=():PlayerBuild=>({weapons:[{id:'chinelo',level:3},{id:'boleto',level:5},{id:'audio',level:1}],passives:[{id:'marmita',level:2},{id:'bone',level:3}]});
+  const mixed=():PlayerBuild=>({weapons:[{id:'pombo',level:3},{id:'boleto',level:5},{id:'audio',level:1}],passives:[{id:'marmita',level:2},{id:'bone',level:3}]});
   for(let seed=1;seed<=20;seed++){
     assert.deepEqual(run(seed,'c7',LATE,mixed),run(seed,'c7',LATE,mixed));
     assert.deepEqual(run(seed,'c7',LATE,allEligible),run(seed,'c7',LATE,allEligible));
@@ -326,10 +325,10 @@ test('openChest: same seed and chest id give the same result',()=>{
 test('openChest: duplicated build entries evolve the max copy and never soak upgrades',()=>{
   for(let seed=1;seed<=20;seed++){
     const {fake,ctx}=makeCtx(seed,LATE);
-    const p=makePlayer('p1',{weapons:[{id:'pombo',level:2},{id:'chinelo',level:3},{id:'chinelo',level:8}],passives:[{id:'tenis',level:1}]});
+    const p=makePlayer('p1',{weapons:[{id:'pombo',level:2},{id:'cafe',level:3},{id:'cafe',level:8}],passives:[{id:'cafe-forte',level:1}]});
     const res=openChest(ctx,p,addChest(fake),OPEN);
-    assert.deepEqual(res,{kind:'evolve',from:'chinelo',to:'chinelo-evo'});
-    assert.deepEqual(p.build.weapons,[{id:'pombo',level:2},{id:'chinelo-evo',level:1}]);
+    assert.deepEqual(res,{kind:'evolve',from:'cafe',to:'cafe-evo'});
+    assert.deepEqual(p.build.weapons,[{id:'pombo',level:2},{id:'cafe-evo',level:1}]);
   }
   for(let seed=1;seed<=50;seed++){
     const {fake,ctx}=makeCtx(seed,0);
@@ -393,12 +392,12 @@ test('openChest: a full pickup budget heals directly too, returns pickup:null an
 
 test('openChest: evolving keeps the same build.weapons array and a cooldown later than the current tick',()=>{
   const {fake,ctx}=makeCtx(1,LATE);
-  const weapons:OwnedItem[]=[{id:'pombo',level:2},{id:'chinelo',level:8},{id:'chinelo',level:3}];
-  const p=makePlayer('p1',{weapons,passives:[{id:'tenis',level:1}]},{weaponReady:{chinelo:LATE+50,pombo:LATE+3}});
-  assert.deepEqual(openChest(ctx,p,addChest(fake),OPEN),{kind:'evolve',from:'chinelo',to:'chinelo-evo'});
+  const weapons:OwnedItem[]=[{id:'pombo',level:2},{id:'cafe',level:8},{id:'cafe',level:3}];
+  const p=makePlayer('p1',{weapons,passives:[{id:'cafe-forte',level:1}]},{weaponReady:{cafe:LATE+50,pombo:LATE+3}});
+  assert.deepEqual(openChest(ctx,p,addChest(fake),OPEN),{kind:'evolve',from:'cafe',to:'cafe-evo'});
   assert.equal(p.build.weapons,weapons,'same array reference after evolving');
-  assert.deepEqual(weapons,[{id:'pombo',level:2},{id:'chinelo-evo',level:1}]);
-  assert.deepEqual(p.weaponReady,{pombo:LATE+3,'chinelo-evo':LATE+50},'inherits the later base cooldown');
+  assert.deepEqual(weapons,[{id:'pombo',level:2},{id:'cafe-evo',level:1}]);
+  assert.deepEqual(p.weaponReady,{pombo:LATE+3,'cafe-evo':LATE+50},'inherits the later base cooldown');
 
   for(const base of [undefined,0,LATE-10,LATE,LATE+1,LATE+2]){
     const {fake:f,ctx:c}=makeCtx(1,LATE);
@@ -412,7 +411,7 @@ test('openChest: evolving keeps the same build.weapons array and a cooldown late
 });
 
 test('openChest: options.rng makes the result independent of ctx.rng draws',()=>{
-  const mixed=():PlayerBuild=>({weapons:[{id:'chinelo',level:3},{id:'boleto',level:5},{id:'audio',level:1}],passives:[{id:'marmita',level:2},{id:'bone',level:3}]});
+  const mixed=():PlayerBuild=>({weapons:[{id:'pombo',level:3},{id:'boleto',level:5},{id:'audio',level:1}],passives:[{id:'marmita',level:2},{id:'bone',level:3}]});
   const run=(burn:number,build:()=>PlayerBuild,seed?:number)=>{
     const {fake,ctx,events}=makeCtx(1,LATE);
     for(let i=0;i<burn;i++)fake.rng.next();

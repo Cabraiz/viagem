@@ -112,12 +112,12 @@ export function noiseP(r:number):number{
   return pts[pts.length-1][1];
 }
 /**
- * The automatic game's weapons (sim/weapons/catalog.ts) on the table: the melee ones (chinelo, guarda-chuva) as the
+ * The automatic game's weapons (sim/weapons/catalog.ts) on the table: the melee one (guarda-chuva) as the
  * knife, boleto/pombo/café as the pistol, the áudio its own joke (the loudest of the light ones). Unknown: the pistol.
  * The arsenal of the manual attack (E6, weapons/arsenal.ts) brings its own radii: `weaponNoise` option.
  */
 export const AUTO_WEAPON_NOISE:Readonly<Record<string,{r:number;p:number}>>=Object.freeze({
-  chinelo:{r:6,p:.15},'chinelo-evo':{r:6,p:.15},'guarda-chuva':{r:6,p:.15},
+  'guarda-chuva':{r:6,p:.15},
   boleto:{r:12,p:.25},'boleto-evo':{r:12,p:.25},pombo:{r:12,p:.25},cafe:{r:12,p:.25},'cafe-evo':{r:12,p:.25},
   audio:{r:20,p:.3},
 });

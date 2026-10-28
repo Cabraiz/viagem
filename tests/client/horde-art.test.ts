@@ -150,7 +150,7 @@ test('resources: only the generic recurso replaces the single resource texture (
 });
 
 test('weapon projectiles: each one has its own key; tiro-aliado stays the shared friendly look',()=>{
-  assert.deepEqual([...WEAPON_PROJECTILE_IDS],['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+  assert.deepEqual([...WEAPON_PROJECTILE_IDS],['boleto','cafe','guarda-chuva','pombo','audio','boleto-evo','cafe-evo','garrafa-molotov',
     // D-051 arsenal (armas-caixas-render): the bullets and the rojão's rocket.
     'bala-revolver','bala-metralhadora','bala-fuzil','rojao']);
   for(const id of WEAPON_PROJECTILE_IDS)assert.equal(WEAPON_PROJECTILE_KEY[id],`art:proj:${id}`,id);

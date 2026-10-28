@@ -224,7 +224,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       if(d2<=reach*reach)hits.push({e,t});
     }
     // Orbiters also sweep the spoke from the owner to the ring: an enemy hugging the owner sits inside the ring
-    // (contact ~0.6 vs ring inner edge ~0.9 for the chinelo) and would otherwise never be hit while standing still.
+    // (contact ~0.6 vs ring inner edge ~0.9 for a 1.6 u ring) and would otherwise never be hit while standing still.
     // Only while the orbiter is within the same angular window that its hitbox covers on the ring (asin(reach/r)) of
     // the enemy's bearing, so a hug is hit once per pass, like the ring. Without it every spoke touched a hugging
     // enemy, and with five orbiters there was always one in reach: the old blind spot became the deadliest place.

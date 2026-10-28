@@ -61,7 +61,7 @@ test('a hostile shot without its own art plays tiro-inimigo; a player weapon nev
   full();
   assert.equal(HOSTILE_SHOT_ART,'tiro-inimigo');
   assert.deepEqual(projectileLook(true,'algo-novo'),{key:'art:proj:tiro-inimigo',frames:4,fps:8});
-  assert.equal(projectileLook(true,'chinelo'),undefined,'a player weapon shot by a critter keeps today\'s look');
+  assert.equal(projectileLook(true,'boleto'),undefined,'a player weapon shot by a critter keeps today\'s look');
   assert.ok(artLoads().some(l=>l.key==='art:proj:tiro-inimigo'));
 });
 

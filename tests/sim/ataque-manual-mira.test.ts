@@ -195,8 +195,8 @@ test('manual: hysteresis on the live weapon: a slightly nearer critter does not 
   assert.ok(aimOf(fires(ctx).at(-1)!).y>.99);assert.equal(p.autoTarget,'b');
 });
 
-test('manual: orbit, shield and the cone are effects of the equipped weapon (held, someone to touch), not passives',()=>{
-  for(const id of ['chinelo','guarda-chuva']){
+test('manual: the shield and the cone are effects of the equipped weapon (held, someone to touch), not passives',()=>{
+  for(const id of ['guarda-chuva']){
     const ctx=makeCtx(),held=new Set<string>(),sys=manualSystems(held);
     addPlayer(ctx,'p',10,10,[[id,1]]);
     const {reach}=manualReach(R(id)),e=addEnemy(ctx,'e',10+reach+.3+1,10);
@@ -204,9 +204,9 @@ test('manual: orbit, shield and the cone are effects of the equipped weapon (hel
     held.add('p');run(ctx,sys,30);assert.equal(fires(ctx).length,0,`${id}: held, nobody in its ring`);
     e.x=10+reach-.1;run(ctx,sys,1);assert.equal(fires(ctx,id).length,1,`${id}: held with a critter in its ring: one cycle`);
   }
-  // A passive weapon of the build (orbit behind a boleto) never spins in the manual combat.
+  // A passive weapon of the build (a shield behind a boleto) never opens in the manual combat.
   const ctx=makeCtx(),held=new Set(['p']),sys=manualSystems(held);
-  addPlayer(ctx,'p',10,10,[['boleto',1],['chinelo',1],['guarda-chuva',1]]);addEnemy(ctx,'e',10.5,10);
+  addPlayer(ctx,'p',10,10,[['boleto',1],['guarda-chuva',1]]);addEnemy(ctx,'e',10.5,10);
   run(ctx,sys,100);
   assert.deepEqual([...new Set(fires(ctx).map(f=>(f.event as {weapon:string}).weapon))],['boleto']);
   // The cone turns to the aim (the facing points away): the critter behind is hit.

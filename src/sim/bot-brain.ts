@@ -127,8 +127,8 @@ export const NEST_THREAT_RADIUS=40;
 export const LOOT_CAR_THREAT=12;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
- * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
- * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP). With other weapons,
+ * only orbit weapons (they hit within their `area`; none is in the game since sem-arma-girando-no-chao), inside that ring (ninhos-padrao:
+ * at 2.8 u a lone bot's orbit never reached the siege at the car, so it got no kill and no XP). With other weapons,
  * within the longest `range` of them (carro-cedo-1p: a solo with only the faca, range 1.3, stood at 2.8 u from the
  * two critters at the car and never cut one; they took the car's 120 hits by minute 5 in ~1/5 of the 1p runs).
  */

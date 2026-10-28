@@ -119,7 +119,7 @@ export const poofSheetFrame=(ageMs:number,frames:number)=>frames<=1?0:Math.min(f
  * server, the sandboxes) is today's star (FX.projHostile), whose look is HOSTILE_SHOT_ART under `art:proj:tiro-inimigo`.
  */
 // D-051 arsenal: the bullets and the rojão's rocket (render/arsenal-rules.ts ARSENAL_PROJECTILE_ALIAS names the weapons).
-export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+export const WEAPON_PROJECTILE_IDS=['boleto','cafe','guarda-chuva','pombo','audio','boleto-evo','cafe-evo','garrafa-molotov',
   'bala-revolver','bala-metralhadora','bala-fuzil','rojao'] as const;
 export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 /** The shared look of a hostile shot without its own art (the friendly one is 'tiro-aliado'). */

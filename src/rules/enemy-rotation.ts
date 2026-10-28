@@ -54,6 +54,16 @@ export const ROTATION_SLOTS:readonly RotationSlot[]=Object.freeze([
   {role:'brutamontes',band:'late',min:1,max:2},
 ].map(s=>Object.freeze(s as RotationSlot)));
 export const MINI_COUNT=MINI_ROUNDS.length;
+/**
+ * Art only (card inimigos-variedade, the user 25/10: "muitos inimigos repetidos e iguais"): the early fodder slots the
+ * map's loose sleepers draw from (assemble.ts SLEEPER_ROSTER.solto, the early band) take more entries, so the city is
+ * not five kinds. A role's entries share its numbers (catalog.ts rosterDef: the role's profile), so the mix changes and
+ * the threat does not; these are the lightest sheets of the roster (~1-6 MB decoded each against a ~9 MB median).
+ * Within its role's art entries, like every art-only slot.
+ */
+export const ART_SLOT_WIDEN:Readonly<Partial<Record<EnemyRole,{readonly min:number;readonly max:number}>>>=Object.freeze({
+  corredor:Object.freeze({min:3,max:4}),enxame:Object.freeze({min:2,max:3}),
+});
 
 /** JSON-safe rotation of a run (DirectorState.rotation). */
 export interface Rotation {
@@ -106,8 +116,8 @@ export function slotPools(options:RotationOptions={}):{slots:SlotPool[];mini?:Re
   const bandHasArt=(band:RoundBand)=>ROTATION_SLOTS.some(s=>s.band===band&&have(s.role)>0);
   const slots=ROTATION_SLOTS.map(slot=>{
     if(!bandHasArt(slot.band))return {slot,min:slot.min,max:slot.max};
-    const max=Math.min(slot.max,have(slot.role));
-    return {slot,only:art,min:Math.min(slot.min,max),max};
+    const wide=ART_SLOT_WIDEN[slot.role],max=Math.min(wide?.max??slot.max,have(slot.role));
+    return {slot,only:art,min:Math.min(wide?.min??slot.min,max),max};
   });
   return {slots,...(have('mini-chefe')>=MINI_COUNT?{mini:art}:{})};
 }
@@ -180,13 +190,15 @@ export function isRotation(value:unknown,options:RotationOptions={}):value is Ro
   if(!r.mini.every(id=>role.get(id)==='mini-chefe'))return false;
   if(!Object.keys(r.roles).every(k=>ROTATION_SLOTS.some(s=>s.role===k)))return false;
   // Art only, a slot may be short or empty (its role had no art when the rotation was drawn: a checkpoint keeps its cast
-  // after new art arrives, roundRoster marks the round short); never more than ROTATION_SLOTS' max. Whole roster: the mins.
+  // after new art arrives, roundRoster marks the round short); never more than ROTATION_SLOTS' max (ART_SLOT_WIDEN's for
+  // its slots). Whole roster: the mins.
   const artOnly=options.onlyWithArt??onlyWithArt;
   const ok=slotPools(options).slots.every(({slot:s,min:least})=>{
     const min=artOnly?0:least;
     const ids=r.roles[s.role];
     if(ids===undefined)return min===0;
-    return Array.isArray(ids)&&ids.length>=min&&ids.length<=s.max&&ids.every(id=>role.get(id)===s.role);
+    const max=artOnly?ART_SLOT_WIDEN[s.role]?.max??s.max:s.max;
+    return Array.isArray(ids)&&ids.length>=min&&ids.length<=max&&ids.every(id=>role.get(id)===s.role);
   });
   const all=rotationIds(r);
   return ok&&new Set(all).size===all.length;

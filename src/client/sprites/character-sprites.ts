@@ -7,7 +7,7 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,hasBuild16,buildPlan,type Movement128Plan} from './movement128.ts';
+import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,hasBuild16,buildPlan,hasWork16,workPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -173,7 +173,7 @@ export class CharacterSprites {
     // The flinch (animacao-receber-dano) and the build (animacao-construir-6): 5 small sheets each, there for the first
     // hit and the first obra (a build sheet still coming holds the last pose, facing the wrong way).
     const seen=new Set<string>();
-    for(const d of HERO_DIRECTIONS)for(const plan of [hurtPlan(id,d),buildPlan(id,d)])if(plan&&!seen.has(plan.key)){seen.add(plan.key);this.queueDetailed(plan);}
+    for(const d of HERO_DIRECTIONS)for(const plan of [hurtPlan(id,d),buildPlan(id,d),workPlan(id,d)])if(plan&&!seen.has(plan.key)){seen.add(plan.key);this.queueDetailed(plan);}
   }
   private queueDetailed(plan:Movement128Plan){
     const cache=this.detailed??=movement128Textures(this.scene,this.city);
@@ -300,10 +300,11 @@ export class CharacterSprites {
    * `hp` (card animacao-receber-dano): the hero's hit points; a drop while it rests plays its hurt16 flinch (HurtGate).
    * `build` (card animacao-construir-6): the world direction to an obra going up next to the hero (buildFacing); a class
    * with a build16 standing still faces it and loops its build, the weapon put away. Walking drops it at once.
+   * With `work` (card animacao-trabalhar-6: on a bico's shift, workFacing) the same with its work16 loop instead.
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number;pull?:boolean},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number},build?:{x:number;y:number}){
+    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean}){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
@@ -316,7 +317,7 @@ export class CharacterSprites {
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
     const pulling=!!push?.pull&&alive&&motion!=='attack'&&hasPull16(id),pushing=!!push&&!push.pull&&alive&&motion!=='attack'&&hasPush16(id);
-    const building=!!build&&alive&&motion==='idle'&&!pushing&&!pulling&&hasBuild16(id);
+    const building=!!build&&alive&&motion==='idle'&&!pushing&&!pulling&&(build.work?hasWork16(id):hasBuild16(id));
     const face=pushing||pulling?push:building?build:look??intent;
     const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
     const seen=movement128Visible(sprite,this.scene);
@@ -328,7 +329,7 @@ export class CharacterSprites {
     const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
     // A caído (card parado-respiracao-herois) is its rest, breathing, turned −90° by the scene: the legacy sheet it fell
     // back to was older art (another outfit, a fishing rod in hand).
-    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?buildPlan(id,direction):movementPlan(id,motion,direction)):movementPlan(id,'idle',direction);
+    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):movementPlan(id,'idle',direction);
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -367,7 +368,7 @@ export class CharacterSprites {
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda), or a tool in them (animacao-construir-6):
         // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned: no hand fits.
-        state.hand=pushing||pulling||building&&detailed.motion==='build'||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
+        state.hand=pushing||pulling||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.

@@ -30,7 +30,7 @@ async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;in
     await write(manifestFile,{version:2,group:'personagens',pieces:{aposentado:old}});
     await write(indexFile,{version:2,groups:{personagens:{output:'public/art/sprites',pieces:{aposentado:old}}}});
     for(const [motion,m] of Object.entries(MOVEMENT16_META.motions)){
-      if(motion==='run'&&!run||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build')continue;
+      if(motion==='run'&&!run||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work')continue;
       const bytes=await sheet(m.columns,m.rows,{distinct:motion!=='idle'});
       for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado',motion,d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
     }
@@ -55,7 +55,7 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   assert.deepEqual(Object.keys(entry.files).filter(k=>k.includes('16-')).sort(),
     ['attack','idle','walk'].flatMap(m=>MOVEMENT16_META.directions.map(d=>`${m}16-${d}`)).sort());
   for(const [motion,m] of Object.entries(MOVEMENT16_META.motions))for(const d of MOVEMENT16_META.directions){
-    if(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build')continue;
+    if(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work')continue;
     const f=entry.files[`${motion}16-${d}`],webp=path.join(outRoot,'public/art/sprites',f.file),meta=await sharp(webp).metadata();
     assert.deepEqual([meta.width,meta.height],[m.columns*96,m.rows*96]);assert.equal(f.frames,m.frames);assert.equal(f.durationMs,m.durationMs);assert.equal(f.loop,m.loop);
     assert.equal(f.revision,16);assert.match(f.file,new RegExp(`^aposentado\\.${motion}16-${d.toLowerCase()}\\.[0-9a-f]{12}\\.webp$`));

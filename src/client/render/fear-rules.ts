@@ -40,9 +40,13 @@ export const FEAR_FINAL_TEXT='Volte pro bando!';
 export const fearCountText=(n:number)=>`Escuro: ${n} s`;
 
 /** The run as the client sees it: the minuto de Minerva and the time to explore are on it while they last. */
-export interface FearRun {minervaAteTick?:number;exploraDesdeTick?:number}
-/** Ticks of dark per tick now (sim/fear.ts: FEAR_EXPLORE_RATE while exploring, else 1). */
-export const fearRate=(run:FearRun|undefined)=>run&&(run.minervaAteTick!==undefined||run.exploraDesdeTick!==undefined)?FEAR_EXPLORE_RATE:1;
+export interface FearRun {minervaAteTick?:number;exploraDesdeTick?:number;exploraAteTick?:number}
+/**
+ * Ticks of dark per tick at the room's `tick` (sim/fear.ts: FEAR_EXPLORE_RATE while exploring, else 1). Against the tick,
+ * not the fields' presence: the last {t:'run'} may still carry a window that has ended.
+ */
+export const fearRate=(run:FearRun|undefined,tick:number)=>run&&((run.minervaAteTick!==undefined&&tick<run.minervaAteTick)
+  ||(run.exploraDesdeTick!==undefined&&tick>=run.exploraDesdeTick&&(run.exploraAteTick===undefined||tick<run.exploraAteTick)))?FEAR_EXPLORE_RATE:1;
 
 const clamp01=(v:number)=>v<0?0:v>1?1:v;
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;

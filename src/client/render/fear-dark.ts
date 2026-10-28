@@ -37,7 +37,8 @@ const ARROW_FILL=0xFFB22E;
 /** The countdown's ring: its radius (× the hero's drawn height, at least RING_MIN_PX camera px) and line (camera px). */
 export const RING={share:.62,minPx:34,line:5,edge:3} as const;
 /** The countdown's text (camera px): its size and its gap under the ring. */
-const COUNT_PX=20,COUNT_GAP_PX=4;
+/** The text's size and gap to the ring (camera px); past this sine of the arrow's angle (pointing down) it goes over the ring. */
+const COUNT_PX=20,COUNT_GAP_PX=4,COUNT_FLIP_SIN=.25;
 
 /** A safe spot as drawn: centre in world px and its ground ellipse's half axes (world px). */
 export interface FearSpotPx {x:number;y:number;rx:number;ry:number}
@@ -123,8 +124,11 @@ export class FearDark {
     if(!this.shown)return;
     this.shown=false;this.rt.setVisible(false);this.arrow.setVisible(false);this.drawCount(undefined,0,{x:0,y:0},0);
   }
-  /** The countdown's ring and text around the hero (world px), or none. */
-  private drawCount(count:FearDraw['count'],z:number,hero:{x:number;y:number},heroH:number){
+  /**
+   * The countdown's ring and text around the hero (world px), or none. The text sits under the ring, over it while the
+   * arrow points down (`arrowAngle`, radians, y down), so the two never cover each other.
+   */
+  private drawCount(count:FearDraw['count'],z:number,hero:{x:number;y:number},heroH:number,arrowAngle?:number){
     if(!count){
       if(this.countShown){this.countShown=0;this.ring.clear().setVisible(false);this.countText.setVisible(false);}
       return;
@@ -136,7 +140,8 @@ export class FearDark {
       .lineStyle(RING.line/z,ARROW_FILL,1);
     if(count.share>0){this.ring.beginPath();this.ring.arc(hero.x,hero.y,r,start,start+count.share*Math.PI*2,false);this.ring.strokePath();}
     if(this.countShown!==count.seconds){this.countShown=count.seconds;this.countText.setText(fearCountText(count.seconds));}
-    this.countText.setPosition(hero.x,hero.y+r+(RING.line/2+RING.edge+COUNT_GAP_PX)/z).setScale(1/z).setVisible(true);
+    const up=arrowAngle!==undefined&&Math.sin(arrowAngle)>COUNT_FLIP_SIN,gap=(RING.line/2+RING.edge+COUNT_GAP_PX)/z;
+    this.countText.setOrigin(.5,up?1:0).setPosition(hero.x,up?hero.y-r-gap:hero.y+r+gap).setScale(1/z).setVisible(true);
   }
   draw(d:FearDraw){
     if(d.alpha<=0&&!d.arrow){this.hide();return;}
@@ -160,10 +165,9 @@ export class FearDark {
       // Scroll factor 0 still zooms around the camera's centre: undo the zoom.
       rt.setPosition(W/2,H/2).setDisplaySize(W/z,H/z).setVisible(true);
     }else rt.setVisible(false);
-    this.drawCount(d.count,z,d.hero,d.heroH??0);
-    const a=d.arrow;
-    if(!a){this.arrow.setVisible(false);return;}
-    const angle=Math.atan2(a.y-d.hero.y,a.x-d.hero.x);
+    const a=d.arrow,angle=a?Math.atan2(a.y-d.hero.y,a.x-d.hero.x):undefined;
+    this.drawCount(d.count,z,d.hero,d.heroH??0,angle);
+    if(!a||angle===undefined){this.arrow.setVisible(false);return;}
     const ring=Math.max(ARROW_RING_PX.min,Math.min(ARROW_RING_PX.max,d.hole*Math.hypot(W,H)/2*.7))+6*d.bob;
     this.arrow.setPosition(d.hero.x+Math.cos(angle)*ring/z,d.hero.y+Math.sin(angle)*ring/z).setRotation(angle)
       .setDisplaySize(ARROW_PX/z*ARROW_SIZE/48,ARROW_PX/z*ARROW_SIZE/48).setVisible(true);

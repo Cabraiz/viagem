@@ -1167,7 +1167,7 @@ export class IslandScene extends Phaser.Scene {
     if(raw<=0&&!this.fearOn)return;
     // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
     const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
-    const frame=this.fearClock.step(raw,dt,time,this.reduced,fearRate(net.run));
+    const frame=this.fearClock.step(raw,dt,time,this.reduced,fearRate(net.run,net.tick));
     const lit=frame.look.alpha>0||frame.alone;
     this.fearOn=lit||frame.seconds>0;
     const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);

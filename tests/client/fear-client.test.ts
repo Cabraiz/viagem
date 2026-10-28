@@ -102,10 +102,13 @@ test('the countdown (escuridao-justa item 9): "Escuro: N s" and the ring over th
   assert.equal(slow.step(fearAt(FEAR_SECONDS-9.6),16,99032,false,FEAR_EXPLORE_RATE).count?.seconds,20,'9.6 s of dark = 19.2 real s');
 });
 
-test('the pace of the dark on the client: the minuto de Minerva and the time to explore are on the run while they last',()=>{
-  assert.equal(fearRate(undefined),1);assert.equal(fearRate({}),1);
-  assert.equal(fearRate({minervaAteTick:2400}),FEAR_EXPLORE_RATE);
-  assert.equal(fearRate({exploraDesdeTick:5000}),FEAR_EXPLORE_RATE);
+test('the pace of the dark on the client: the minuto de Minerva and the time to explore, against the room tick',()=>{
+  assert.equal(fearRate(undefined,10),1);assert.equal(fearRate({},10),1);
+  assert.equal(fearRate({minervaAteTick:2400},2399),FEAR_EXPLORE_RATE);
+  assert.equal(fearRate({minervaAteTick:2400},2400),1,'the minute is over: the last run message may still carry it');
+  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},5000),FEAR_EXPLORE_RATE);
+  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},4999),1);
+  assert.equal(fearRate({exploraDesdeTick:5000,exploraAteTick:7400},7400),1);
 });
 
 test('the clock eases the wire and lets go of the dark when company is found',()=>{

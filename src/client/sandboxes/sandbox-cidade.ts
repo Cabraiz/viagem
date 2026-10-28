@@ -95,9 +95,9 @@ import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
 import {unprojectView} from '../projection.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
-import {YouMarkers} from '../render/you.ts';
-import {MapLabel} from '../render/map-labels.ts';
-import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from '../render/enemy-name-rules.ts';
+import {ALLY_DEPTH,YouMarkers} from '../render/you.ts';
+import {MapLabel,stackedLabelOffsetCss} from '../render/map-labels.ts';
+import {ENEMY_NAME_H_CSS,fallenByText} from '../render/enemy-name-rules.ts';
 import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
@@ -727,8 +727,8 @@ class CitySandbox extends Phaser.Scene {
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
-    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true),...(fallenBy?[new MapLabel(this,fallenBy).setCity(true)]:[])];
-    const destination=this.add.graphics().setDepth(100000);
+    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true),...(fallenBy?[new MapLabel(this,fallenBy).setCity(true).setSolid(true).setInside(true)]:[])];
+    const destination=this.add.graphics().setDepth(ALLY_DEPTH-1); // under the fichas, as the scene
     this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
   }
@@ -858,7 +858,7 @@ class CitySandbox extends Phaser.Scene {
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
     lab.labels[0]?.anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
     lab.labels[1]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
-    lab.labels[2]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,zoom),96401).draw(zoom,true);
+    lab.labels[2]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE+stackedLabelOffsetCss(ENEMY_NAME_H_CSS,true,true)/Math.max(.05,zoom),96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){

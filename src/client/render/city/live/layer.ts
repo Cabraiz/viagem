@@ -13,9 +13,10 @@ import {ART_SCALE,frameUv} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
 import type {LiveSheet} from './art.ts';
 import {NEST_SCALE,nestArtId,type LiveNest} from './nests.ts';
+import {CoverFader} from '../occlusion.ts';
 import {
   LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,lightScale,liveMeta,loopFps,loopFrame,loopVisible,
-  matchInsulators,onCamera,polePairs,sagLine,viewIndex,
+  lineHitsRect,matchInsulators,onCamera,polePairs,sagLine,viewIndex,
   type ArtView,type CellFrame,type DecorEntry,type LightKind,type LiveMeta,type Pt,type Rect,
 } from './rules.ts';
 
@@ -90,7 +91,10 @@ function reducedMotion(){
 
 export class CityLive {
   private readonly attached=new Map<string,Attached>();
-  private readonly wires=new Map<string,TriBand>();
+  private readonly wires=new Map<string,{band:TriBand;lines:Pt[][];box:Rect}>();
+  /** Wires and nests drawn over the local hero fade like the buildings (auditoria-arte-mundo items 14 and 15). */
+  private readonly fader=new CoverFader();
+  private readonly covered=new Set<string>();
   /** Every pole pair of the map (rules.polePairs), by pole key. */
   private readonly pairsOf=new Map<string,[string,string][]>();
   private readonly nests=new Map<string,{img:Phaser.GameObjects.Image;art:string}>();
@@ -129,7 +133,7 @@ export class CityLive {
     if(!a)return;
     for(const l of a.loops)l.sprite.destroy();
     if(a.light){a.light.halo.destroy();a.light.pool.destroy();}
-    for(const pair of this.pairsOf.get(key)??[]){const k=pair.join('|');this.wires.get(k)?.destroy();this.wires.delete(k);}
+    for(const pair of this.pairsOf.get(key)??[]){const k=pair.join('|');this.wires.get(k)?.band.destroy();this.wires.delete(k);}
     this.attached.delete(key);
   }
 
@@ -139,8 +143,12 @@ export class CityLive {
     this.reduced=reduced;for(const a of this.attached.values())a.still=false;
   }
 
-  /** Per frame: loops and lights inside the camera step; the rest hide. */
-  update(camera:Rect,nowMs:number){
+  /**
+   * Per frame: loops and lights inside the camera step; the rest hide. `hero`: the local hero's box with its marks
+   * (occlusion.ts marksRect) and its draw depth; a wire or a nest drawn above it and over that box fades.
+   */
+  update(camera:Rect,nowMs:number,hero?:{rect:Rect;depth:number},dtMs=16){
+    this.fadeOver(hero,dtMs);
     for(const a of this.attached.values()){
       const on=onCamera(a.rect,camera);
       if(on!==a.visible){a.visible=on;for(const l of a.loops)l.sprite.setVisible(on);if(a.light){a.light.halo.setVisible(on);a.light.pool.setVisible(on);}}
@@ -182,7 +190,7 @@ export class CityLive {
 
   destroy(){
     for(const k of [...this.attached.keys()])this.detach(k);
-    for(const w of this.wires.values())w.destroy();
+    for(const w of this.wires.values())w.band.destroy();
     this.wires.clear();
     for(const e of this.nests.values())e.img.destroy();
     this.nests.clear();
@@ -239,7 +247,25 @@ export class CityLive {
         g.lineStyle(L.snowWidth,L.snow,L.snowAlpha).strokePoints(pts.map(p=>({x:p.x,y:p.y-L.width/2})),false);
       }
     });
-    this.wires.set(k,band.setDepth(Math.max(a.depth,b.depth)+OVERLAY_DEPTH));
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(const pts of lines)for(const p of pts){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+    const m=L.width;
+    this.wires.set(k,{band:band.setDepth(Math.max(a.depth,b.depth)+OVERLAY_DEPTH),lines,box:{x:x0-m,y:y0-m,w:x1-x0+2*m,h:y1-y0+2*m}});
+  }
+
+  private fadeOver(hero:{rect:Rect;depth:number}|undefined,dtMs:number){
+    const covered=this.covered;covered.clear();
+    if(hero){
+      const r=hero.rect,hit=(b:Rect)=>b.x<r.x+r.w&&r.x<b.x+b.w&&b.y<r.y+r.h&&r.y<b.y+b.h;
+      for(const [k,w] of this.wires)if(w.band.depth>hero.depth&&hit(w.box)&&w.lines.some(pts=>lineHitsRect(pts,r)))covered.add(`w:${k}`);
+      for(const [id,e] of this.nests){
+        const img=e.img,box={x:img.x-img.displayWidth*img.originX,y:img.y-img.displayHeight*img.originY,w:img.displayWidth,h:img.displayHeight};
+        if(img.depth>hero.depth&&hit(box))covered.add(`n:${id}`);
+      }
+    }
+    const alphas=this.fader.update(covered,dtMs);
+    for(const [k,w] of this.wires)w.band.setAlpha(alphas.get(`w:${k}`)??1);
+    for(const [id,e] of this.nests)e.img.setAlpha(alphas.get(`n:${id}`)??1);
   }
 
   /** One white radial gradient, tinted per light. */

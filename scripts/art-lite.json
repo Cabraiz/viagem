@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3240,
-  "bytes": 2248806748,
-  "liteBytes": 784393886,
+  "bytes": 2248806032,
+  "liteBytes": 784393572,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -32233,13 +32233,13 @@
    "psnr": 36.1,
    "shownPsnr": 40
   },
-  "sprites/vendedor-praia.dance.1104d83cfef6.webp": {
-   "source": "1104d83cfef669806ca1b1a04a389b3dc5c64a4dbc03be568c39a1e5b294d7c7",
-   "lite": "00ae1b65f431f177e4e23ddab3ed4c01f236063a07e42e11eca481fc8dd958e6",
-   "bytes": 122138,
-   "liteBytes": 70340,
-   "psnr": 34.6,
-   "shownPsnr": 40.1
+  "sprites/vendedor-praia.dance.216ee30d195f.webp": {
+   "source": "216ee30d195fd9416f2bd56f999a26966d69992c8c42ce124edea6231ebad1e8",
+   "lite": "e7f5451d2e0685115727af517c69732cc2f43a80fab6807f2f1522e50e37fc2c",
+   "bytes": 121422,
+   "liteBytes": 70026,
+   "psnr": 34.8,
+   "shownPsnr": 40.3
   },
   "sprites/vendedor-praia.dir4.webp": {
    "source": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926",

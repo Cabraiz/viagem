@@ -21101,7 +21101,7 @@
           "sha256": "e75d2361973bdd493c18e7e38f182fd564d870b724b0c40997ae7cbc32c8ca9a"
         },
         "dance-loop": {
-          "file": "vendedor-praia.dance.1104d83cfef6.webp",
+          "file": "vendedor-praia.dance.216ee30d195f.webp",
           "revision": 16,
           "cell": [
             96,
@@ -21129,15 +21129,15 @@
           },
           "pages": [
             {
-              "file": "vendedor-praia.dance.1104d83cfef6.webp",
+              "file": "vendedor-praia.dance.216ee30d195f.webp",
               "columns": 6,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 24,
-              "sha256": "1104d83cfef669806ca1b1a04a389b3dc5c64a4dbc03be568c39a1e5b294d7c7"
+              "sha256": "216ee30d195fd9416f2bd56f999a26966d69992c8c42ce124edea6231ebad1e8"
             }
           ],
-          "sha256": "1104d83cfef669806ca1b1a04a389b3dc5c64a4dbc03be568c39a1e5b294d7c7"
+          "sha256": "216ee30d195fd9416f2bd56f999a26966d69992c8c42ce124edea6231ebad1e8"
         },
         "dir4": {
           "file": "vendedor-praia.dir4.webp",
@@ -23761,7 +23761,7 @@
           "sha256": "7f0e9fcc97ee3f8e38243aac98cba7f5245915e92046fb4c54b401776b5b1be5"
         }
       },
-      "sha256": "1582f081a4428593c636017a240fa8254d9e3e90f4b2aea9f7b7bbf1015c9cfb"
+      "sha256": "7c8e5f55403a43e8a9bee4fb95e70bb9c43eaa5627f5cf2a388dd99441a5c49b"
     },
     "viciado-em-bet": {
       "kind": "dir8",

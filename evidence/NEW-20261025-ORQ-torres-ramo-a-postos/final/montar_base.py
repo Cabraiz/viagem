@@ -1,7 +1,7 @@
 # Etapa 2: assemble base1 (pronta, danificada) + base2 (obra-1, obra-2, obra-3, ruina) of one tower into the importer's
 # torres/<id>/base.png (4 views x 6 rows) + base.json. Scale per image: pronta (base1) and obra-3 (base2) median opaque
 # width = WIDTH[fp]. Each view keeps the place Codex drew it in its grid cell (rows stay aligned); base2 is shifted so
-# its obra-3 lines up with base1's pronta (bottom and centre). Anchor = the pronta's median bottom (ground under the
+# its obra-3 lines up with base1's pronta (centre; every row's bottom on the ground). Anchor = the pronta's median bottom (ground under the
 # front post), centre x. Mount comes from mount.json (set by eye on grade-<id>.png), else the deck centre guess.
 #   python montar_base.py <id> <fp>
 import sys, json, os
@@ -40,8 +40,9 @@ s1, s2 = WIDTH / w1, WIDTH / w2
 placed = {}
 for name, row in zip(['pronta', 'danificada'], b1):
     placed[name] = [(c, s1, cx1, bot1) for c in row]
+# each base2 row stands on its own ground: Codex may draw the low obra-1 in the middle of its grid cell
 for name, row in zip(['obra-1', 'obra-2', 'obra-3', 'ruina'], b2):
-    placed[name] = [(c, s2, cx2, bot2) for c in row]
+    placed[name] = [(c, s2, cx2, median_box(row)[2]) for c in row]
 # extents above/below the anchor across everything (alpha > 8, the shadow included)
 top, bottom, half = 0, 0, 0
 for name in ROWS:

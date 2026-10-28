@@ -2,8 +2,9 @@
 # W, NW, N; SE/E/NE mirrored) into the importer's torres/<id>/idle.png + fire.png (8 rows S,SW,W,NW,N,NE,E,SE x 8
 # frames) + meta.json. Scale per sheet: pose 0 (neutral) opaque height = HERO_PX. Every pose stands on the anchor: feet
 # = its lowest opaque row, x = the centre of its lowest 12 % (feet planted, no slide). The parapet in front hides what
-# is below the V line y = feet + DY - 0.5*|x - ax| (DY from cut-<id>.json; none = nothing hidden).
-#   python montar_crew.py <id> <fps fire> [height px]
+# is below the V line y = feet + DY - 0.5*|x - ax|, at most 28 px above the feet (DY from cut-<id>.json; none = nothing
+# hidden).
+#   python montar_crew.py <id> <fps fire> [height px] [cell width px: 256, wider for a crew of three]
 import sys, json, os
 import numpy as np
 from PIL import Image
@@ -11,7 +12,8 @@ from lib import key, grid, bounds, clean_cell, clear_border, sheet_on_grey, HERO
 
 ID, FPS_FIRE = sys.argv[1], int(sys.argv[2])
 HEIGHT = int(sys.argv[3]) if len(sys.argv) > 3 else HERO_PX
-CW = CH = 256
+CH = 256
+CW = int(sys.argv[4]) if len(sys.argv) > 4 else 256
 AX, AY = CW // 2, 220
 DRAWN = ['S', 'SW', 'W', 'NW', 'N']
 MIRROR = {'NE': 'NW', 'E': 'W', 'SE': 'SW'}
@@ -51,7 +53,8 @@ def build(d):
         if DY is not None:
             a = np.array(cell)
             yy, xx = np.mgrid[0:CH, 0:CW]
-            cut = AY + DY - 0.5 * np.abs(xx - AX)
+            # never above AY - 28: the importer wants the drawing's lowest point within 0.12 cell of the anchor
+            cut = np.maximum(AY + DY - 0.5 * np.abs(xx - AX), AY - 28)
             a[..., 3] = (a[..., 3] * np.clip(cut - yy + 0.5, 0, 1)).astype(np.uint8)
             cell = Image.fromarray(a, 'RGBA')
         out.append(clear_border(cell, 2))

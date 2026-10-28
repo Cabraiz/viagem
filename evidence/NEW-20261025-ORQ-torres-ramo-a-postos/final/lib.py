@@ -85,7 +85,8 @@ def sheet_on_grey(cells, cols, scale=1, bg=(150, 150, 150, 255), labels=None):
 def drop_border_pieces(img, thr=6, pad=3):
     """Erase stray pieces besides the biggest: bits of the neighbouring grid cells. A piece touching the crop's bottom
     or sides goes (the next row's helmets); one touching the top goes when flat (< 15 px tall: the feet of the row
-    above; a helmet that jumps off the head is taller); one wholly below the figure's feet goes."""
+    above; a helmet that jumps off the head is taller); one wholly below the figure's feet goes. A piece at least 30 %
+    the size of the biggest is a crew member of its own (the Mirante's pair) and stays."""
     from scipy import ndimage  # noqa
     a = np.array(img)
     lab, n = ndimage.label(a[..., 3] > thr)
@@ -98,7 +99,7 @@ def drop_border_pieces(img, thr=6, pad=3):
     h, w = lab.shape
     kill = []
     for i, sl in enumerate(objs, 1):
-        if i == big or sl is None:
+        if i == big or sl is None or sizes[i - 1] >= 0.3 * sizes[big - 1]:
             continue
         ys, xs = sl
         if ys.stop > h - pad or xs.start < pad or xs.stop > w - pad or (ys.start < pad and ys.stop - ys.start < 15) or ys.start > feet - 5:

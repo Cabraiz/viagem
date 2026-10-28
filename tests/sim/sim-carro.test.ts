@@ -19,6 +19,7 @@ import {RUN_ORDER,playersSystem} from '../../src/sim/systems/players.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {pointAt} from '../../src/sim/chaveiro/route.ts';
+import {PUSH_LEAN_S} from '../../src/sim/chaveiro/car.ts';
 import {CAR_STOP,REPLAN_DRIFT,REPLAN_GAP_SECONDS,createChaveiro,type ChaveiroOptions,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
 
@@ -46,10 +47,14 @@ function addPlayer(world:SimWorld,id:string,p:Point){
     stats:{...BASE_STATS,maxHp:100},weaponReady:{},x:p.x,y:p.y,ack:0,score:0} as SimPlayer;
   world.players.set(id,player);return player;
 }
-/** Players `gap` u from the car's body on the side opposite `dir`, leaning on it (kept there every tick by `lean`). */
+/**
+ * Players `gap` u from the car's body on the side opposite `dir`, leaning on it (kept there every tick by `lean`).
+ * They have leaned PUSH_LEAN_S already (card uno-nao-empurra-sem-querer): a person's push starts on the first step.
+ */
 function pushers(r:Rig,n:number,dir:Point,gap=.3){
   const ids=Array.from({length:n},(_,i)=>`p${i}`);
   for(const id of ids){addPlayer(r.world,id,{x:0,y:0});r.sticks.set(id,dir);}
+  r.sys.state.car.leans={...r.sys.state.car.leans,...Object.fromEntries(ids.map(id=>[id,ticks(PUSH_LEAN_S)]))};
   const lean=()=>{const c=r.sys.state.car;ids.forEach((id,i)=>{const p=r.world.players.get(id)!,side=(i-(n-1)/2)*.15;
     p.x=c.x-dir.x*(CAR_RADIUS+gap)-dir.y*side;p.y=c.y-dir.y*(CAR_RADIUS+gap)+dir.x*side;});};
   lean();
@@ -315,7 +320,7 @@ test('helpers (room bots, autopilot) push only along with a person: alone they l
   team.run(SIM_HZ);
   assert.equal(c.x,x0,'two bots alone');
   assert.equal(r.sys.busy('p0'),false,'a bot that does not move it still fires');
-  bots.delete('p1');
+  bots.delete('p1');c.leans={p1:ticks(PUSH_LEAN_S)};
   team.run(SIM_HZ);
   assert.ok(Math.abs(c.x-x0-carSpeed(2))<1e-9,`a person and a bot: ${c.x-x0}`);
   assert.deepEqual(r.sys.view(r.world.tick).car.movers,['p1','p0'],'the people first, then the helpers');

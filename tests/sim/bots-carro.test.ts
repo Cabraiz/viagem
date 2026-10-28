@@ -12,9 +12,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CAR_ID,CAR_NOSE,CAR_RADIUS,CAR_ROPE_REST,SIM_HZ,carSpeed,ticks} from '../../src/contract/index.ts';
+import {PUSH_LEAN_S} from '../../src/sim/chaveiro/car.ts';
 import {CAR_HELP_BOTS,CAR_HELP_RANGE,carHeading,objectiveTask} from '../../src/sim/bot-brain.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {RoomBots} from '../../multiplayer/room-bots.ts';
+import {BOT_THINK_EVERY,RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 
 type View=Parameters<typeof objectiveTask>[0];
@@ -93,7 +94,6 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   // Asset v4 (mapa-175-com-viaduto): the street east of the car is ~9 u long (a block at x ≈ 92): the car starts 5 u
   // west, where it stands clear to x ≈ 73, so the 3 s and the second at full crew fit before it.
   const start=sim.run.chaveiro!.state.car;start.x-=5;
-  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[3,-4,-6][i];b.y=c.y;});
   let seq=0;
   const lean=(push:boolean)=>{
     if(push){const c=car();ana.x=c.x-(CAR_RADIUS+.3);ana.y=c.y;}
@@ -101,6 +101,14 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   };
   const run=(n:number,push:boolean)=>{for(let i=0;i<n;i++){calm();lean(push);bots.think(sim);sim.step(sim.tick*50);}};
   const x0=car().x;
+  // Card uno-nao-empurra-sem-querer: she leans PUSH_LEAN_S before it rolls (it rolls on the last of those ticks); idle
+  // ticks first keep the bots' thinking on the same beat as before (BOT_THINK_EVERY).
+  const leanTicks=ticks(PUSH_LEAN_S)-1;
+  run((BOT_THINK_EVERY-leanTicks%BOT_THINK_EVERY)%BOT_THINK_EVERY,false);
+  run(leanTicks,true);
+  assert.equal(car().x,x0,'leaning: not yet');
+  assert.equal(car().movers,undefined);
+  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[3,-4,-6][i];b.y=c.y;});
   run(ticks(3),true);
   const movers=car().movers??[];
   assert.ok(movers.includes('ana'),`ana moves it: ${movers}`);

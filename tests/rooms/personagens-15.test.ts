@@ -12,8 +12,8 @@ setRosterOnlyWithArt(false);
 
 /** The 6 active heroes, in the menu's order. */
 const PLAYABLE=['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado'];
-/** The ones a room bot may get: the gato never (gato-no-menu), the vendedor and the aposentado not until their 8-direction walk128 art. */
-const BOTS=['viciado-em-bet','clt-cansado','maromba'];
+/** The ones a room bot may get: the 5 but the gato (gato-no-menu); the vendedor and the aposentado since bots-vendedor-aposentado. */
+const BOTS=['viciado-em-bet','clt-cansado','maromba','vendedor-praia','aposentado'];
 
 function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};}
 type TestPeer=ReturnType<typeof peer>;
@@ -28,7 +28,7 @@ test('the menu\'s list is the 6 active heroes, in the roster\'s order; the 23 le
   assert.ok(LEGACY_CLASS_IDS.includes('mendigo')&&!PLAYABLE_CLASS_IDS.includes('mendigo'),'the Mendigo hero is a legacy (the mendigo on screen is an enemy)');
   assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 6 only');
   for(const role of roles)for(const c of filterClasses('',role))assert.ok(PLAYABLE.includes(c.id),`${role}: ${c.id}`);
-  assert.deepEqual([...BOT_CLASS_IDS],BOTS,'the gato, the vendedor and the aposentado are never bots');
+  assert.deepEqual([...BOT_CLASS_IDS],BOTS,'the gato is never a bot; the other 5 are');
   for(const id of BOT_CLASS_IDS)assert.ok(PLAYABLE.includes(id),`bot ${id} is playable`);
   assert.equal(playableClassId('aposentado'),'aposentado');
   for(const id of [...LEGACY_CLASS_IDS,'tia-festa',42,undefined])assert.equal(playableClassId(id),'viciado-em-bet',String(id));
@@ -36,7 +36,7 @@ test('the menu\'s list is the 6 active heroes, in the roster\'s order; the 23 le
 
 test('a room seats a person\'s legacy class as the viciado, an active one as it is; its bots never draw outside the 6',()=>{
   const seen=new Set<string>();
-  for(let seed=1;seed<=12;seed++){
+  for(let seed=1;seed<=24;seed++){
     const room=new Room(1000,seed),a=peer(),b=peer();
     const ana=join(room,a,'Ana','mendigo',1000),bia=join(room,b,'Bia','clt-cansado',1000);
     assert.equal(room.sim.players.get(ana)!.classId,'viciado-em-bet','a legacy class (the Mendigo hero) plays the viciado');
@@ -47,7 +47,7 @@ test('a room seats a person\'s legacy class as the viciado, an active one as it 
     assert.equal(bots.length,4,`seed ${seed}: 4 bots seated`);
     for(const m of bots){const c=room.sim.players.get(m.id)!.classId;assert.ok(BOTS.includes(c),`seed ${seed}: bot ${c}`);seen.add(c);assert.ok(!/mendigo/i.test(m.name),`seed ${seed}: bot name ${m.name}`);}
   }
-  assert.deepEqual([...seen].sort(),[...BOTS].sort(),'the draw still covers the 3');
+  assert.deepEqual([...seen].sort(),[...BOTS].sort(),'the draw covers the 5');
 });
 
 test('an old room saved with legacy heroes (people and bots) comes back on playable ones, no error',()=>{

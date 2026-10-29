@@ -71,7 +71,8 @@ test('enemies: a small dark soft contact under the soles, as wide as the footing
   assert.ok(CONTACT.alpha>=.6&&CONTACT.alpha<=.8&&CONTACT.height<.42&&CONTACT.width<=1);
   assert.deepEqual([...CONTACT.color],[0x17,0x15,0x1a],'neutral dark, not lilac (card sombras-e-fala-do-uno, item 9)');
   const layers=read('src/client/render/layers.ts'),sil=read('src/client/render/silhouette.ts');
-  assert.match(layers,/a\.contactW=flying\?0:contactWidth\(feet,a\.asleep,/);
+  // An art with its own cast shadow sheet (the saci's) draws no contact either.
+  assert.match(layers,/a\.contactW=flying\|\|sheet\?0:contactWidth\(feet,a\.asleep,/);
   assert.match(layers,/castContact\(a\.contact,a\.image,q\.x,q\.y,a\.contactW,true\)/);
   assert.match(layers,/castContact\(d\.contact,d\.image,gx,gy,d\.contactW,alive\)/);
   assert.match(sil,/createRadialGradient/,'soft edge, not a flat ellipse');

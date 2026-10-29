@@ -40,16 +40,16 @@ test('faceUrl: the imported file; a missing expression falls back to normal; nul
   assert.equal(faceUrl('streamer','rindo'),null);
 });
 
-test('faceLoads / queueFaceTextures: only delivered faces, under rosto:<id>:<expr>; already-loaded keys skipped',()=>{
-  load(['cidadao-comum-normal','cidadao-comum-rindo','mendigo-normal','palhaco-normal']);
+test('faceLoads / queueFaceTextures: only delivered faces of playable classes, under rosto:<id>:<expr>; already-loaded keys skipped',()=>{
+  load(['maromba-normal','maromba-rindo','clt-cansado-normal','mendigo-normal','cidadao-comum-normal','palhaco-normal']);
   assert.deepEqual(faceLoads(),[
-    {key:'rosto:cidadao-comum:normal',url:'/art/rostos/cidadao-comum-normal.webp'},
-    {key:'rosto:cidadao-comum:rindo',url:'/art/rostos/cidadao-comum-rindo.webp'},
-    {key:'rosto:mendigo:normal',url:'/art/rostos/mendigo-normal.webp'},
-  ],'a piece outside the class catalog is never loaded');
-  const s=scene(['rosto:mendigo:normal']);
+    {key:'rosto:clt-cansado:normal',url:'/art/rostos/clt-cansado-normal.webp'},
+    {key:'rosto:maromba:normal',url:'/art/rostos/maromba-normal.webp'},
+    {key:'rosto:maromba:rindo',url:'/art/rostos/maromba-rindo.webp'},
+  ],'a legacy hero (the Mendigo, the Cidadão) or a piece outside the class catalog is never loaded');
+  const s=scene(['rosto:clt-cansado:normal']);
   assert.equal(queueFaceTextures(s.scene),2);
-  assert.deepEqual(s.queued.map(q=>q[0]),['rosto:cidadao-comum:normal','rosto:cidadao-comum:rindo']);
+  assert.deepEqual(s.queued.map(q=>q[0]),['rosto:maromba:normal','rosto:maromba:rindo']);
 });
 
 test('resolveFaceKey: the loaded key, else the normal key, else null',()=>{

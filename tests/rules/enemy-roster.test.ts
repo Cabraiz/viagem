@@ -1,5 +1,6 @@
 /**
- * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 173 (the nine hand-tuned kinds and the 164 pack entries) and
+ * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 174 (the nine hand-tuned kinds, the 164 pack entries and the
+ * extra aberração-saci, NEW-20261029-ORQ-saci-elite-no-jogo) and
  * the 13 role profiles, as data.
  *  - the import is deterministic and complete: the committed file is what scripts/import-roster.mjs writes from the board
  *    packs (when the board is next to the repo) and has every pack row: 164 entries, 41 per pack, ids unique, roles valid
@@ -21,22 +22,23 @@ import {ELITE,ENEMIES,BUFFED_LINES,DEVENDO_LINES,MARMITA_BOOM_LINES,MOTOBOY_HONK
 const repo=resolve(dirname(fileURLToPath(import.meta.url)),'..','..');
 const board=[process.env.VIAGEM_BOARD,join(repo,'..','viagem-board'),join(repo,'..','..','viagem-board')]
   .find(d=>d&&existsSync(join(d,'design','proximos','04-INIMIGOS-1-RUA-E-BOTECO.md')));
-const packs=ROSTER.filter(e=>!e.legacy),p0=packs.filter(e=>e.priority==='P0');
+const packs=ROSTER.filter(e=>!e.legacy&&e.pack<=4),extra=ROSTER.filter(e=>e.pack===5),p0=packs.filter(e=>e.priority==='P0');
 
 test('import: the committed roster is what scripts/import-roster.mjs writes from the board packs (deterministic)',t=>{
   if(!board){t.skip('the board (viagem-board) is not next to the repo');return;}
   for(let run=0;run<2;run++){
     const r:{status:number|null;stdout:string;stderr:string}=spawnSync(process.execPath,[join(repo,'scripts','import-roster.mjs'),'--check',board],{encoding:'utf8'});
     assert.equal(r.status,0,`run ${run}: ${r.stderr}${r.stdout}`);
-    assert.match(r.stdout,/enemy-roster\.ts is current \(173 entries\)/);
+    assert.match(r.stdout,/enemy-roster\.ts is current \(174 entries\)/);
   }
 });
 
-test('complete: 173 entries (the nine + 164 from 4 packs of 41), unique ids, valid roles, cells and priorities, 64 P0',()=>{
-  assert.equal(ROSTER.length,173);assert.equal(packs.length,164);
+test('complete: 174 entries (the nine + 164 from 4 packs of 41 + 1 extra), unique ids, valid roles, cells and priorities, 64 P0',()=>{
+  assert.equal(ROSTER.length,174);assert.equal(packs.length,164);
+  assert.deepEqual(extra.map(e=>[e.id,e.role,e.priority]),[['aberracao-saci','mini-chefe','P1']],'the extra entries: the saci elite');
   assert.deepEqual(ROSTER.slice(0,9).map(e=>e.id),[...LEGACY_KINDS],'the nine come first, as LEGACY_KINDS');
   for(const pack of [1,2,3,4])assert.equal(packs.filter(e=>e.pack===pack).length,41,`pack ${pack}`);
-  assert.equal(new Set(ROSTER_IDS).size,173,'ids unique');
+  assert.equal(new Set(ROSTER_IDS).size,174,'ids unique');
   assert.equal(p0.length,64);
   for(const e of ROSTER){
     assert.match(e.id,/^[a-z0-9]+(-[a-z0-9]+)*$/,e.id);

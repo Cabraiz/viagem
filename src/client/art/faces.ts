@@ -13,7 +13,7 @@
  * Pure: Phaser is a type-only import, so this module runs in node tests.
  */
 import type Phaser from 'phaser';
-import {classes} from '../../rules/index.ts';
+import {playableClasses} from '../../rules/index.ts';
 import {artPages,artPiece,artUrl,type ArtPiece} from './manifest.ts';
 
 /** Expressions, in the brief's order (spec.mjs FACE_EXPRESSIONS). */
@@ -50,10 +50,10 @@ export function faceUrl(id:string,expr:FaceExpression='normal'):string|null{
   return shown?exactUrl(id,shown):null;
 }
 
-/** Every delivered face of the class catalog, as Phaser loads ({key,url}); empty with an empty manifest. */
+/** Every delivered face of the playable classes (a legacy hero never plays: not loaded), as Phaser loads ({key,url}); empty with an empty manifest. */
 export function faceLoads():{key:string;url:string}[]{
   const out:{key:string;url:string}[]=[];
-  for(const {id} of classes)for(const expr of FACE_EXPRESSIONS){
+  for(const {id} of playableClasses)for(const expr of FACE_EXPRESSIONS){
     const url=exactUrl(id,expr);
     if(url)out.push({key:faceKey(id,expr),url});
   }

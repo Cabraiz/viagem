@@ -612,14 +612,26 @@ export function granaReserve(view:Pick<RunView,'objective'>&{players?:readonly P
   return Math.ceil((o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:o.budget*CHAVEIRO_KEEP_SHARE)/seats);
 }
 
+/**
+ * auditoria-economia item 1 (bot-solo-gasta-grana): of its own wallet (view.camp.grana) a bot keeps for the bill at
+ * most CHAVEIRO_KEEP_WALLET (rounded down) when it buys. Alone, granaReserve is the whole bill × 1.3, more than a solo
+ * run earns (R$ 155 for a R$ 300+ bill): the bot never evolved, repaired nor forged, and lost the car in 3 of 4 runs.
+ * A buy now leaves at least half the wallet; the reserve still caps it where it is smaller (3p/6p mostly).
+ */
+export const CHAVEIRO_KEEP_WALLET=.5;
+/** The Grana a bot never spends its wallet below when it buys: granaReserve, at most CHAVEIRO_KEEP_WALLET of the wallet. */
+export function spendReserve(view:Pick<RunView,'objective'|'camp'>&{players?:readonly Pick<PlayerRunView,'spectator'>[]}):number{
+  return Math.min(granaReserve(view),Math.floor(Math.max(0,view.camp?.grana??0)*CHAVEIRO_KEEP_WALLET));
+}
+
 /** Wall share under which the forger repairs it even out of the chaveiro's reserve (review: the bill never beats a defeat). */
 export const WALL_CRITICAL=.5;
 /**
  * What the forger buys with its wallet (view.camp.grana; D-048: the forge is paid in R$, never material), or nothing: repair a
  * hurt wall, then towers up to the forge's cap, then gambiarras. A recipe the forge refused this round (`refused`:
- * recipe -> round index) is skipped; `keep` (default granaReserve: the chaveiro's bill) is never spent.
+ * recipe -> round index) is skipped; `keep` (default spendReserve: the chaveiro's bill, at most half the wallet) is never spent.
  */
-export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=granaReserve(view)):RecipeId|undefined{
+export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=spendReserve(view)):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
   const wall=wallOf(view),round=view.round?.index??0;
   const ok=(id:RecipeId,reserve=keep)=>refused[id]!==round&&canPay((camp.grana??0)-reserve,forgePrice(id,camp.forge));
@@ -912,8 +924,9 @@ export function decide(input:BrainInput):Decision{
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
     const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId;
-    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs below).
-    const keep=granaReserve(view);
+    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs
+    // below), at most half the wallet (spendReserve: a bot alone kept it all and never bought).
+    const keep=spendReserve(view);
     let recipe=forger?pickRecipe(view,memory.refused,keep):undefined;
     // Towers first (torres-sim): only a needed wall repair goes ahead. The caller hands `towers` to the bot that builds
     // (the room bots: the forger, or the forger-to-be). torres-ajustes: the sim takes an order only next to the obra, so
@@ -1308,7 +1321,7 @@ export interface TowerBrainView {
   units:number;
   /** The builder's own wallet, R$ (D-048; NEW-20261014-ORQ-carteira-e-pix): every other evolution and the tower repairs. */
   grana:number;
-  /** Grana the towers never spend (decide fills it with granaReserve: the chaveiro's bill); unset: 0. */
+  /** Grana the towers never spend (decide fills it with spendReserve: the chaveiro's bill, at most half the wallet); unset: 0. */
   granaKeep?:number;
   /** x/y: the site's centre, where the bot walks to give the order (absent: the order goes out from anywhere). */
   sites:readonly {id:string;maxSize:number;x?:number;y?:number}[];
@@ -1356,6 +1369,18 @@ export function orderSpot(v:TowerBrainView,order:TowerOrder):Point|undefined{
 
 /** Branch a bot picks for the root on the n-th site of the plan (cycled): twice A, then B and C. */
 export const BOT_BRANCHES:readonly Branch[]=Object.freeze(['A','B','A','C'] as Branch[]);
+/**
+ * auditoria-economia item 5 (bot-solo-gasta-grana): a root takes branch C (the Holofote: no damage, only a slow) only
+ * once the defenses standing add up to BOT_SUPPORT_DPS (defenseDps); before that BOT_BRANCHES goes on to the next
+ * branch (A or B). The 6p bought the Holofote 3× a run, as often as A2, on teams with little to shoot with. 60: about an
+ * A3, an A2, a B2 and a root (66).
+ */
+export const BOT_SUPPORT_DPS=60;
+/** A defense's damage a second over its targets (damage × shots ÷ cooldown; the area and the slow left out). */
+export function defenseDps(kind:DefenseId):number{
+  const d=DEFENSES[kind];
+  return d.cooldown>0?d.damage*d.shots*HZ/d.cooldown:0;
+}
 /** The forger keeps at least this many defenses standing before it evolves any. */
 export const BOT_MIN_DEFENSES=2;
 /** A defense of the bots at or under this share of its maxHp is repaired first, when the Grana pays it. */
@@ -1430,7 +1455,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
  *     Obuseiro) when its money pays it; towerReserve keeps that step aside for the rest of the rule;
  *  4. the cheapest-tier evolution among the bots' other ready defenses, when what is left pays it (ties: plan order).
  *     Branch at the root: B on a 3×3 site while the bots have no line (on a map with a rail), else BOT_BRANCHES by the
- *     site's index (the next one that fits the site's size); at A3 the main line
+ *     site's index (the next one that fits the site's size; C only from BOT_SUPPORT_DPS standing); at A3 the main line
  *     when the site fits A4, else A4b; at the Obuseiro the Gustavão (laying the rail first), while none was built;
  *  5. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root, when the material left
  *     over is a whole ficha;
@@ -1494,8 +1519,10 @@ function nextStep(v:TowerBrainView,d:BrainDefense,at:number,size:number,startLin
   if(d.kind===ROOT_DEFENSE){
     // The Gustavão's line needs a 3×3 site (the Lança-Foguetes and the Obuseiro).
     if(startLine&&size>=3)return {cost:costOf(pickChild(d.kind,'B')!),order:{upgrade:d.id,branch:'B'}};
+    let support:number|undefined;
     for(let k=0;k<BOT_BRANCHES.length;k++){
       const branch=BOT_BRANCHES[(at+k)%BOT_BRANCHES.length],child=pickChild(d.kind,branch);
+      if(branch==='C'&&(support??=v.defenses.reduce((n,x)=>x.ruined?n:n+defenseDps(x.kind),0))<BOT_SUPPORT_DPS)continue;
       if(child&&fits(child.id))return {cost:costOf(child),order:{upgrade:d.id,branch}};
     }
     return undefined;

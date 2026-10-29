@@ -1,0 +1,174 @@
+✔ every wave chefão waits; a common enemy does not (1.3498ms)
+✔ the run's chefão loads CHEFAO_LEAD_S before Minerva ends, once, and nobody else (1.1891ms)
+✔ Minerva over before the plan saw the lead (a late joiner) or no Minerva at all (0.2324ms)
+✔ his arrival scene names him: he loads then, whatever the clock (0.1909ms)
+✔ out of combat nothing loads, and a rematch starts the clock over (0.1669ms)
+✔ a fallen chefão lets his sheets go CHEFAO_RELEASE_MS later; he loads again on his next scene (0.1789ms)
+✔ the scene skips the HD chefões in the opening elenco loop and frees them on a kill (39.3919ms)
+(node:43764) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ two humans, one takes 15 s to draw the run: the minute of Minerva starts at 15 s, full (1625.4858ms)
+✔ a phone that never says carregou (older client): the cap starts the minute at LOAD_WAIT_MS (1506.5412ms)
+✔ the hold pushes {t:'run'} twice a second at most, not once a tick (845.2381ms)
+✔ LoadWait: a player who leaves is not waited for; no humans, no wait (1.006ms)
+✔ Dançar: the room relays {t:"dancou"} to the team at once, one per DANCE_RELAY_MS per player (143.0743ms)
+(node:14148) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ ninhos room: {t:'run'} carries minervaAteTick through the first minute of combat (one push), then drops it (1519.4362ms)
+✔ a rounds room never sends minervaAteTick (252.8435ms)
+✔ CHAVEIRO_PACE: 2p-3p ride MOTO_RIDE_SECONDS as before, a solo shorter (solo-uno-aguenta-1a-onda); from 2p a bigger room never rides faster, six the longest (1.1747ms)
+✔ the ride follows the room at the first step: the moto rides the route in ride[n] s, the ETA grows by the same share (38.5256ms)
+✔ a checkpoint keeps the ride: restored on a fresh world, the moto rides on at the same pace and ETA (9.0534ms)
+✔ NEST_PACE.crowd: 1p-2p bodies as before (× 1); a bigger room never meets weaker ones, 3p up stronger, six the strongest (0.3576ms)
+✔ solo-uno-aguenta-1a-onda: a solo never pushes, so the hold counts his dead motos at their by-itself time and his first ETA is the same 540 s as a team (8.7899ms)
+chaveiro-no-final: boss at 240 s, opened at 300 s
+✔ the chaveiro ends the match: a perfect team gets him when the clock runs out, the boss first, victory on that tick (2505.5146ms)
+✔ route: drawn from the seed (same seed, same route and stops; restore rebuilds it), entrance to the car, stops apart (108.1789ms)
+✔ map scale: on the city scaled 1.7× the route is 1.7× longer, the stops sit at the same fractions and every timing is the same (24.4798ms)
+✔ car hit: alarm (+1.5 s per hit, at most 8 s ahead), the moto rides around the block and stalls only while it sounds (14.6924ms)
+✔ car hit cap (balanco-1p-3p-carro, rate): at most `rate` hit units a second; past it the blow still rings the alarm and shows (4.14ms)
+✔ car limit: elite 3 and boss 2 hits (one alarm each), parts at 25/50/75/90 %, perda total at the limit (defeat, once) (6.6647ms)
+✔ moto morta: two players push it in 4 s (tranco); alone, or one player, it starts by itself after 75 s (24.8493ms)
+✔ lombada: ~11 s crawling at half the moto speed (a time, so a scaled map keeps it) (3.0222ms)
+✔ delivery: 25 s when an enemy is within 6 u of the point at arrival, 6 s when the team cleared it; the view marks it (7.7918ms)
+✔ tombo: an enemy touching the riding moto knocks it over for 4 s, then not again for 6 s (4.0291ms)
+✔ ETA: the alarm and a fall run out together, so the wait is the later of the two (not their sum), in the ETA and the delivery mark (3.0736ms)
+✔ Dona Cida: the team buys near the moto (refusals: away, stock, grana, phase, item); she sells to an enemy every 20 s (7.2111ms)
+✔ the bill: kills pay the wallets (1/5/50), abrindo 15 s at the car, victory with budget, paid and debt (the vaquinha) (459.0392ms)
+✔ the boss is called once, when the ETA drops below BOSS_ETA_SECONDS (60 s), on the route behind the moto (13.6932ms)
+✔ the boss besieges the car when no player is nearer: one blow (2 hits) every 3 s, players first otherwise (9.6858ms)
+✔ director waves (endlessWaves): no boss in any plan, the run goes past round 10, extra waves repeat it with count × 1.1ⁿ (88.0981ms)
+✔ assembled city run with the objective: the car replaces the wall, and a checkpoint mid-route plays on like the original (868.1383ms)
+✔ a checkpoint taken while the called boss still stands forgets that fight: no free chest, and the chaveiro calls it again (248.5789ms)
+✔ bots and a dead moto: two standing players make a crew and the two nearest bots push; a bot alone stays home (0.7374ms)
+✔ bot-3p-longe-do-carro: in the nests a small team pushes only a moto near the car; four standing push as before (0.2549ms)
+✔ chaveiro-time-cai-onda-4: in the intermission the bots push a dead moto only on a trip back at the car before the wave (0.4433ms)
+✔ clock: the game's opens at 5:00 (etaS 300) with no stops; the rig's 40 s wait, ride the last share, unlock (victory) (9.788ms)
+✔ clock: each hit unit on the car adds perHit s (elite 3 units, the rate cap counts), the alarm sounds but never stops him (3.1005ms)
+✔ clock: hits on the last stretch add nothing; on the unlocking they put abrindoPerHit back (capped); an enemy on him stops it (3.4908ms)
+✔ clock: the car's hit limit is the defeat (the time added has no ceiling of its own) (3.1573ms)
+✖ nobody falls to the dark: a solo hero fetching the start crates within 30 u and then alone for minutes, every seed (2256.8905ms)
+✔ the start beside the Uno: six slots on open ground, clear of the car, all within a few steps of it (2.8507ms)
+✔ mode ninhos: every hero of 1..6 spawns beside the Uno, on every seed, at the run start and after a rematch (1440.3327ms)
+✔ the rounds mode keeps the walk from the wreck (cityRunStart, far from the plaza) (38.1279ms)
+✔ the minuto de Minerva is 30 s and the first wave leaves 35–45 s after the start, a solo too (missao-proteger-uno-tempo: the 5:00 is defence) (1983.7699ms)
+✔ the first wave ends by waveCap at the latest even with its map share still dripping; each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit (inimigos-querem-o-uno) (832.7817ms)
+✔ a goal field that takes a new goal is the same field as a new one toward it (cost and direction on every cell) (142.5442ms)
+✖ twenty bodies walking to twenty homes: at most one whole-grid field a tick (was one per body a tick), and they get home (542.8886ms)
+✔ the end of the minuto de Minerva: the bodies it held stand MINERVA_REACT s more (no hit on the hero at their side), then start one by one over MINERVA_SPREAD s, nearest first (304.3387ms)
+✔ ninhos: a crowd dropped on one spot spreads out to SPACING_GAP between every two bodies; the rounds mode keeps its tuned (gapless) crowd (699.0338ms)
+✔ ninhos: an awake critter steps off a sleeper it stands on, and off a hero (never inside one, still at contact range) (308.6342ms)
+✔ the numbers: hp by size and room, period shrinking with f, outside group by f, round row 2..9, the shares of a wave (1.9563ms)
+✔ a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map share recruited along the entrance's route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over (7.2139ms)
+✔ the time to explore (inicio-no-uno-caixas-120): a wave over (no besieger up) opens NEST_PACE.explore s, at least waveMin s after it left, and the next wave leaves at its end; a wave never holds it past waveCap (17.5546ms)
+✔ the time to explore waits for options.calm (the boss up, a fight at the car); onWave says when a wave left and ran out; onExplore when the time to explore opens (1.995ms)
+✔ the kills: map bodies killed since the last wave come off its quota; past the quota they shrink the outside group (never under the floor) (9.8843ms)
+✔ a trickle under 1 a second adds up: one with the wave, then one every 1/trickle s (solo-uno-aguenta-1a-onda); NEST_PACE 1p trickles under 1, never 0 while warming (1.2434ms)
+✔ the map share trickles out (NEST_PACE.trickle a second, the first batch with the wave), and the wave bodies take the march, hp and damage of NEST_PACE once (2.6053ms)
+✔ the alive cap and the enemy cap: the wave waits RETRY_SECONDS, nobody comes; no entrance: the outside group leaves a live nest (2.2299ms)
+✔ hits: the first wakes the nest, 0 hp fells it: crate and Grana; a fallen nest gives no body to the waves, and a nest sends nothing between waves (17.1867ms)
+✔ the boss spot: the biggest live nest (a yard spot), then the next, none when all fell (0.9919ms)
+✔ assembled mode ninhos: no round from the director, a wave (map, nests, outside), NEST_COUNT nests at their hp, a checkpoint plays on (1112.6021ms)
+✔ assembled mode ninhos: the first hit on a nest wakes its sleepers into the world; dispose lets the index go (268.65ms)
+✔ assembled mode ninhos: the chaveiro's boss leaves from the biggest live nest; without the objective the mode is ignored (352.2389ms)
+✔ the minuto de Minerva: for 30 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk (237.0673ms)
+✔ the quick net: still STILL_S with its hero out of reach, a plan body is pushed, then sleeps again; a group body is pushed; one by the hero is not (648.5794ms)
+✔ calm: no critter alive and awake within r (inclusive); a sleeper or a dead one does not count (1.7332ms)
+✔ bots: the own round of a bot in the nests is a prepare of CALM_WINDOW_S when calm (botR), else a wave that never times out (0.4207ms)
+✔ forge and towers in the nests: refused (phase) with a critter awake within 12 u of who asks, open without one; the rounds mode keeps the intermission (627.2693ms)
+✔ crates in the nests: the nodes refill every 60 s on the clock (no intermission) (340.5685ms)
+✔ boss in the nests: it enrages 90 s after it arrives, not at once (the wave clock is always "over" there) (702.995ms)
+✔ zueira in the nests: on the clock, the first after 60 s, then 100–140 s apart, at most 4; none in the rounds mode's round 1 (6749.7277ms)
+✔ calm checkpoint: every 90 s of calm with no boss, right after a nest falls, never with a critter awake within 20 u of a standing hero, never in the rounds mode (847.3732ms)
+✔ alerta: from the plaza's edge (seed 1's stuck band) it walks the city to its noise 90 u north, instead of standing there (594.7395ms)
+✔ a group body walks through a nest's ring of sleepers (×20: the push off them stays under its walk) (900.7509ms)
+✔ the safety net: still for STUCK_S with no hero within STUCK_FAR, a plan body sleeps again and a group body is gone; near a hero or the car both stay (476.2246ms)
+✖ the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an armed hero from VISIT_FROM s, caçando, and they walk up to him and hit him (486.5111ms)
+✔ an unarmed hero (manual combat, no weapon yet) gets no visitor (688.3425ms)
+✖ a team that just killed something gets no visitor until VISIT_QUIET s after the kill (583.6444ms)
+✔ STARTER_HIT is the faca verde (0.8927ms)
+✔ every body of a role has the role hp; the boss keeps its own (2.0563ms)
+✔ start of a ninhos run, solo: each role takes its ROLE_HITS of the faca verde (0.8408ms)
+✔ no common enemy dies to one faca verde or pistola verde hit, 1-6 players, every ninhos phase (5.0827ms)
+✔ fewer, sturdier bodies pay more XP (0.2094ms)
+ℹ tests 88
+ℹ suites 0
+ℹ pass 84
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24676.5419
+
+✖ failing tests:
+
+test at tests\sim\escuridao-justa.test.ts:90:1
+✖ nobody falls to the dark: a solo hero fetching the start crates within 30 u and then alone for minutes, every seed (2256.8905ms)
+  AssertionError [ERR_ASSERTION]: seed 1: the darkest held 58.85 s of live run
+      at TestContext.<anonymous> (file:///D:/Gits/viagem-wt/missao-proteger-uno-tempo/tests/sim/escuridao-justa.test.ts:106:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests\sim\minerva-acordar.test.ts:77:1
+✖ twenty bodies walking to twenty homes: at most one whole-grid field a tick (was one per body a tick), and they get home (542.8886ms)
+  AssertionError [ERR_ASSERTION]: they still walk home and sleep (14 of 20 within 1 u)
+      at TestContext.<anonymous> (file:///D:/Gits/viagem-wt/missao-proteger-uno-tempo/tests/sim/minerva-acordar.test.ts:109:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests\sim\ninhos-visitas.test.ts:63:1
+✖ the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an armed hero from VISIT_FROM s, caçando, and they walk up to him and hit him (486.5111ms)
+  AssertionError [ERR_ASSERTION]: the minute lasts past two visits
+      at TestContext.<anonymous> (file:///D:/Gits/viagem-wt/missao-proteger-uno-tempo/tests/sim/ninhos-visitas.test.ts:66:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests\sim\ninhos-visitas.test.ts:100:1
+✖ a team that just killed something gets no visitor until VISIT_QUIET s after the kill (583.6444ms)
+  AssertionError [ERR_ASSERTION]: the visit comes once the team is quiet
+  
+  0 !== 2
+  
+      at TestContext.<anonymous> (file:///D:/Gits/viagem-wt/missao-proteger-uno-tempo/tests/sim/ninhos-visitas.test.ts:111:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

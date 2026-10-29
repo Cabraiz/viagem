@@ -1,0 +1,181 @@
+# style.css: 179 seletores removidos (23.655 → 8.728 bytes), por scripts de escopo/uso; ver o card
+.masthead
+.wordmark
+.wordmark small
+.chapter
+.chapter>span
+.chapter strong
+.version-badge
+.creation-window
+.creation-window:before
+.window-title
+.window-title>div
+.window-title h1
+.step
+.step i
+.window-content
+.portrait-panel
+.portrait-panel:before
+.portrait-index
+.portrait-star
+.portrait
+.portrait-caption
+.portrait-caption>span
+.portrait-caption blockquote
+.portrait-navigation
+.portrait-navigation>div
+.portrait-navigation strong
+.portrait-navigation small
+.character-sheet
+.eyebrow
+.sheet-heading h2
+.sheet-heading p
+.identity-row
+.sprite-preview
+.tiny-label
+.sprite-preview>.tiny-label
+.sprite-preview .class-art
+.sprite-shadow
+.identity-fields label
+.identity-fields input
+.identity-fields input::placeholder
+.class-meta
+.class-meta span
+.class-meta strong
+.palette
+.palette legend
+.palette>div
+.swatch
+.swatch[aria-pressed=true]
+.swatch[aria-pressed=true]:after
+.stats-and-story
+.stats-box
+.stats-box h3
+.radar-wrap
+.radar-wrap svg
+.radar-grid
+.radar-axis
+#radar-shape
+.stat-label
+.stat-label b
+.power
+.agility
+.wits
+.charm
+.stats-note
+.story>p
+.skill-box
+.skill-icon
+.skill-box h3
+.skill-box p
+.selection-footer
+.selection-footer p
+.selection-footer strong
+.roster
+.roster-heading
+.roster h2
+.search
+.search>span
+.search input
+.search input::placeholder
+.roster-tools
+.role-filters
+.filter
+.filter[aria-pressed=true]
+.roster-tools>span
+.card-number
+.card-label
+.card-label strong
+.card-label small
+.selected-mark
+.class-card[aria-pressed=true] .selected-mark
+.roster-pagination
+.roster-pagination>span
+.roster-pagination nav
+.roster-pagination button
+.page-footer
+.empty-state
+.coming-next
+@media(min-width:1500px) .masthead
+@media(min-width:1500px) .portrait-panel
+@media(min-width:1500px) .character-sheet
+@media(min-width:1500px) .identity-row
+@media(min-width:1500px) .stats-and-story
+@media(min-width:1500px) .roster
+@media(max-width:900px) .chapter
+@media(max-width:900px) .chapter strong
+@media(max-width:900px) .chapter>span
+@media(max-width:900px) .version-badge
+@media(max-width:900px) .window-content
+@media(max-width:900px) .character-sheet
+@media(max-width:900px) .sheet-heading h2
+@media(max-width:900px) .portrait-panel
+@media(max-width:900px) .identity-row
+@media(max-width:900px) .palette
+@media(max-width:900px) .palette legend
+@media(max-width:900px) .palette>div
+@media(max-width:900px) .swatch
+@media(max-width:900px) .stats-and-story
+@media(max-width:900px) .story>p
+@media(max-width:900px) .roster
+@media(max-width:900px) .card-label strong
+@media(max-width:900px) .window-title
+@media(max-width:900px) .step
+@media(max-width:900px) .selection-footer
+@media(max-width:900px) .selection-footer .primary-button
+@media(max-width:900px) .roster h2
+@media(max-width:620px) .masthead
+@media(max-width:620px) .wordmark
+@media(max-width:620px) .wordmark small
+@media(max-width:620px) .chapter
+@media(max-width:620px) .chapter>span
+@media(max-width:620px) .chapter strong
+@media(max-width:620px) .window-title
+@media(max-width:620px) .window-title h1
+@media(max-width:620px) .step
+@media(max-width:620px) .window-content
+@media(max-width:620px) .portrait-panel
+@media(max-width:620px) .portrait
+@media(max-width:620px) .portrait-caption
+@media(max-width:620px) .portrait-caption blockquote
+@media(max-width:620px) .portrait-index
+@media(max-width:620px) .portrait-caption>span
+@media(max-width:620px) .portrait-star
+@media(max-width:620px) .portrait-navigation
+@media(max-width:620px) .portrait-navigation strong
+@media(max-width:620px) .character-sheet
+@media(max-width:620px) .sheet-heading h2
+@media(max-width:620px) .eyebrow
+@media(max-width:620px) .sheet-heading p
+@media(max-width:620px) .identity-row
+@media(max-width:620px) .identity-fields input
+@media(max-width:620px) .sprite-preview
+@media(max-width:620px) .palette legend
+@media(max-width:620px) .swatch
+@media(max-width:620px) .stats-and-story
+@media(max-width:620px) .stats-box
+@media(max-width:620px) .stats-box h3
+@media(max-width:620px) .radar-wrap
+@media(max-width:620px) .stats-note
+@media(max-width:620px) .story>p
+@media(max-width:620px) .skill-box p
+@media(max-width:620px) .skill-box h3
+@media(max-width:620px) .selection-footer
+@media(max-width:620px) .selection-footer p
+@media(max-width:620px) .roster
+@media(max-width:620px) .roster-heading
+@media(max-width:620px) .roster h2
+@media(max-width:620px) .search
+@media(max-width:620px) .search input
+@media(max-width:620px) .roster-tools
+@media(max-width:620px) .role-filters
+@media(max-width:620px) .filter
+@media(max-width:620px) .card-label strong
+@media(max-width:620px) .card-label small
+@media(max-width:620px) .card-number
+@media(max-width:620px) .roster-pagination
+@media(max-width:620px) .roster-pagination>span
+@media(max-width:620px) .roster-pagination button
+@media(max-width:620px) .page-footer
+.portrait
+

@@ -16,7 +16,7 @@ const page=await ctx.newPage();await page.addInitScript(()=>performance.setResou
 page.on('pageerror',e=>console.log('pageerror',String(e).slice(0,200)));
 await page.goto('https://viagem.cyou/?perf=1',{waitUntil:'load'});
 await page.waitForSelector('#confirm',{timeout:120000});
-await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Sonda';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card')?.click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Sonda';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card[data-hero]:not([data-bloqueado])')?.click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
 await page.waitForSelector('#enter-island',{state:'visible'});await page.waitForTimeout(800);
 await page.evaluate(keys=>{document.getElementById('enter-island').click();
   // t=0: the first frame __partidaPronta is up, count the stickers in and point the camera at the nearest crate.

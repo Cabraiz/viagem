@@ -157,7 +157,7 @@ export const CONSUMABLES:Readonly<Record<ConsumableId,ConsumableDef>>={
   brigadeiro:consumable('brigadeiro','Brigadeiro','Mais rápido por 30 s.'),
   pacoca:consumable('pacoca','Paçoca','Mais dano por 30 s.'),
   cocada:consumable('cocada','Cocada','Toma menos dano por 30 s.'),
-  'kit-torre':consumable('kit-torre','Kit de Torre','Vira 1 ficha de torre do time.'),
+  'kit-torre':consumable('kit-torre','Kit de Torre','Vira 1 ficha de torre da turma.'),
 };
 export const isConsumableId=(id:string):id is ConsumableId=>(CONSUMABLE_IDS as readonly string[]).includes(id);
 

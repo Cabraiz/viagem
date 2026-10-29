@@ -106,7 +106,7 @@ test('every refusal code has its own short pt-BR reason',()=>{
   assert.equal(new Set(Object.values(OBRA_REFUSALS)).size,Object.keys(OBRA_REFUSALS).length,'no two codes say the same');
   // D-048: 'balance' is fichas short (a Vigia, the Gustavão), 'grana' is R$ short (an evolution, a repair).
   assert.deepEqual(['balance','grana','limit','rail','unique','wall-down','phase'].map(refusalText),
-    ['Falta ficha de torre','Falta grana','Limite de 12 defesas','Precisa do trilho','Só 1 Gustavão','Muralha caída','Só fora da briga']);
+    ['Falta ficha de torre','Falta grana','Limite de 12 torres','Precisa do trilho','Só 1 Gustavão','Barricada caída','Só fora da briga']);
   assert.equal(refusalText('away'),'Chegue mais perto','torres-ajustes: too far from the obra');
   assert.equal(refusalText('whatever'),OBRA_REFUSED);assert.equal(refusalText(undefined),OBRA_REFUSED);assert.equal(refusalText('toString'),OBRA_REFUSED);
   assert.equal(unreachableText({connected:false,spectator:false}),OBRA_OFFLINE);

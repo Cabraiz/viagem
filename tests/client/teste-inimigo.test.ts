@@ -13,12 +13,16 @@ test('teste ?inimigo=mendigo: lê a chave da URL e ignora ids desconhecidos',()=
   assert.equal(testeInimigo('?inimigo=outro'),undefined);
   assert.equal(testeInimigo(''),undefined);
 });
-test('teste ?inimigo=mendigo: troca todos os inimigos pelo parado do mendigo, com camada de elite, e deixa o resto',()=>{
+test('teste ?inimigo=mendigo: troca todos os inimigos pelo parado e o andar de 8 direções do mendigo, com camada de elite, e deixa o resto',()=>{
   const idx=trocarInimigos(parseArtIndex(raw),'mendigo');
   for(const id of ['a','b']){
     const p=idx.groups.inimigos.pieces[id];
-    assert.deepEqual(Object.keys(p.files).sort(),['elite/idle','idle']);
+    assert.deepEqual(Object.keys(p.files).sort(),['elite/idle','elite/walk','idle','walk']);
     assert.equal(p.files.idle.file,'teste-mendigo/idle.webp');
+    const w=p.files.walk;
+    assert.equal(w.directions,8);assert.equal(w.frames,16);
+    assert.deepEqual(w.pages?.map(pg=>[pg.file,pg.firstFrame,pg.frameCount]),
+      ['S','SW','W','NW','N','NE','E','SE'].map((d,i)=>[`teste-mendigo/walk-${d}.webp`,i*16,16]));
   }
   assert.deepEqual(idx.groups.itens,parseArtIndex(raw).groups.itens);
 });

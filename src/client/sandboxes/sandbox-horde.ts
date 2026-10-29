@@ -2,14 +2,17 @@
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
  * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0, cull=0 (no off-camera culling, for the A/B), parados=1 (critters stay where they spawned),
  * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
- * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
- * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
+ * elenco=1 (NEW-20261029-E3-sandbox-elenco-ativo): today's cast (rules/inimigos-liberados.ts: the mendigo, the elite saci
+ * and, once he is liberated, the sanfoneiro) standing still around the default hero, each with its own telegraph
+ * (elenco-ativo.ts); the first player wears the slow chip. Use with n=0 for a clean screenshot.
+ * elenco=legado (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
+ * telegraphs, the agiota's boletos and the "DEVENDO" tag). D-036: the line-up
  * shows one telegraph of every kind (arroto, molotov, fogo, cocô, explosão and the boss's pancada, investida, varredura,
  * carimbo, plus one without a kind) and the first player wears the slow and slip status chips. Elenco P1: the coach
  * lecturing (phase 1, his gold ring) with two buffed critters (phase 2) beside him, the influencer posing (phase 1,
  * reflect ring, shots bouncing back) and the motoboy aiming (phase 1, headlight) with his investida line ending in an
  * explosão; above and below the cast in portrait, left and right of it in landscape.
- * aliado=1 (with elenco=1): the second player stands beside the first, so hero, ally and cast sizes compare at a glance.
+ * aliado=1 (with elenco=1 or legado): the second player stands beside the first, so hero, ally and cast sizes compare at a glance.
  * arte=<kind>:<roster id>,… draws a roster enemy's imported art in that kind's slot (artist preview of pack 04…).
  * andar=<id>,<id>… (with elenco=1; card monstros-sem-deslizar): those enemies walk to and fro across the screen, one lane
  * each around the first player (who stands still, so the camera does too), at `vel` heights of their figure a second
@@ -47,6 +50,7 @@ import {ENEMY_DRAW_SCALE} from '../render/draw-scale.ts';
 import {artPiece} from '../art/manifest.ts';
 import {enemyKind} from '../render/keys.ts';
 import {artReady} from '../ui/art-boot.ts';
+import {ALIADO_SLOT,AVISO,elencoAtivo,elencoMode,heroiDoJogador,type ElencoMode} from './elenco-ativo.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number;lane?:{a:Point;b:Point;toB:boolean;hold:number}};
 type FakePickup=PickupView&{until:number};
@@ -79,6 +83,9 @@ const BARKS:Record<string,string[]>={
   influencer:['Bom dia, família! Tá pago!','Shape não se faz, se posta'],
 };
 const PLAYER_COUNT=6;
+/** The fake players' heroes: the liberated ones on today's line-up, the old spread of every class elsewhere. */
+const playerClass=(i:number,mode?:ElencoMode)=>mode==='ativo'?heroiDoJogador(i):classes[(i*5)%classes.length].id;
+const ELENCO=elencoMode(new URLSearchParams(location.search).get('elenco'));
 /** ?roster=1: one new (non-legacy) P0 roster enemy per role, in roster order, for the fallback-look line-up. */
 const rosterSample=()=>{const seen=new Set<string>(),out:string[]=[];for(const r of ROSTER)if(r.priority==='P0'&&!r.legacy&&r.role!=='chefe'&&!seen.has(r.role)){seen.add(r.role);out.push(r.id);}return out;};
 /**
@@ -91,7 +98,7 @@ const lineupRoster=()=>{
   return mode==='1'?rosterSample():mode==='arte'?rosterArt(Number(q.get('de'))||0):undefined;
 };
 /**
- * ?elenco=1 line-up: [kind, elite, screen offset x, y] of each critter's feet from the first player's feet, in world px
+ * ?elenco=legado line-up: [kind, elite, screen offset x, y] of each critter's feet from the first player's feet, in world px
  * at view 0 (x right, y down), so the whole D-033 cast fits a phone in portrait and landscape.
  */
 const LINEUP:[string,boolean,number,number][]=[
@@ -149,23 +156,27 @@ class FakeHorde {
   private moto?:FakeEnemy;private motoHome?:Point;private posing?:FakeEnemy;
   /** `parados=1`: the critters stay where they spawned, spread over the island (most off camera: the culling A/B). */
   private still=new URLSearchParams(location.search).get('parados')==='1';
-  constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false,private portrait=true){
+  constructor(private field:TerrainField,private target:number,seed:number,readonly lineup?:ElencoMode,private portrait=true){
     this.rng=new Rng(seed);
-    for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:classes[(i*5)%classes.length].id,x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
+    for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:playerClass(i,lineup),x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
     this.movePlayers();
     if(lineup)this.lineUp();
     for(let i=0;i<target;i++)this.spawn(this.landPoint(2.5,9.5));
     if(!lineup){const boss=this.spawn({x:12,y:8.5},'chefe');boss.hp=boss.maxHp*.62;}
   }
-  /** D-033 cast line-up: still critters around the first player; the other players wait off screen. */
+  /** The line-up (today's cast, or D-033's with `elenco=legado`): still critters around the first player; the other players wait off screen. */
   private lineUp(){
     const me=this.players[0];me.x=12;me.y=12.5;
     this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
     if(ANDAR.length){this.walkers(me);return;}
     if(CERCO.length){CERCO.forEach((id,i)=>{const a=i/CERCO.length*Math.PI*2+.4,e=this.spawn({x:me.x+Math.cos(a)*2.6,y:me.y+Math.sin(a)*2.6},id);e.speed=.9;e.phase=undefined;e.wobble=i;});return;}
     // `aliado=1`: the second player stands beside the hero (hero, ally and the cast side by side, for size checks).
-    if(new URLSearchParams(location.search).get('aliado')==='1'){const p=fromScreen(me,-95,15);this.players[1].x=p.x;this.players[1].y=p.y;}
-    // `roster=1` (papeis-de-inimigo): the same slots filled with new P0 roster enemies of different roles, drawn with
+    if(new URLSearchParams(location.search).get('aliado')==='1'){const p=fromScreen(me,...ALIADO_SLOT);this.players[1].x=p.x;this.players[1].y=p.y;}
+    if(this.lineup==='ativo'){
+      for(const {id,elite,sx,sy} of elencoAtivo()){const e=this.spawn(fromScreen(me,sx,sy),id);e.speed=0;e.elite=elite||undefined;e.phase=undefined;}
+      return;
+    }
+    // `roster=1` (papeis-de-inimigo, with elenco=legado): the same slots filled with new P0 roster enemies of different roles, drawn with
     // their role's fallback look until their art exists.
     // `roster=arte`: the slots show the imported roster pieces instead (empty manifest: today's cast).
     const found=lineupRoster(),roster=found?.length?found:undefined;
@@ -219,6 +230,15 @@ class FakeHorde {
     });
   }
   private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
+  /** Today's cast: each enemy's own warning (elenco-ativo.ts AVISO) at his feet, cones aimed at the hero, back as soon as it fires. */
+  private castDanger(me:Point){
+    for(const e of this.enemies){
+      const aviso=AVISO[e.kind],id=`a:${e.id}:`;if(!aviso||this.telegraphs.some(t=>t.id.startsWith(id)))continue;
+      const [kind,shape,radius,width,ticks]=aviso,d=Math.hypot(me.x-e.x,me.y-e.y)||1;
+      const v:TelegraphView={id:`${id}${this.next++}`,shape,kind,x:e.x,y:e.y,radius,dx:(me.x-e.x)/d,dy:(me.y-e.y)/d,width,fireTick:this.tick+ticks};
+      this.telegraphs.push(v);this.emit({type:'telegraph',telegraph:v.id});
+    }
+  }
   /**
    * Line-up danger (D-036): one telegraph of every kind, each one coming back as soon as it fires (staggered delays,
    * so a screenshot catches them at different fill-ups): the burp cone, the molotov's target, fire, poop, explosion,
@@ -226,6 +246,7 @@ class FakeHorde {
    */
   private lineUpDanger(){
     const me=this.players[0];
+    if(this.lineup==='ativo'){this.castDanger(me);return;}
     for(let i=0;i<DANGER.length;i++){
       const id=`d${i}`;if(this.telegraphs.some(t=>t.id.startsWith(`${id}:`)))continue;
       const [kind,shape,sx,sy,radius,width,ax,ay,ticks]=DANGER[i],p=fromScreen(me,sx,sy),dir=screenDir(ax||1,ay);
@@ -299,7 +320,7 @@ class FakeHorde {
       for(const b of this.projectiles){b.x+=b.vx/SIM_HZ;b.y+=b.vy/SIM_HZ;} // vx/vy in units per second, like the sim and the wire
       this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
       this.telegraphs=this.telegraphs.filter(t=>t.fireTick>this.tick);
-      if(this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);this.emit({type:'bark',enemy:e.id,line:this.rng.pick(BARKS[e.kind]??BARKS.bebado)});}
+      if(this.lineup==='legado'&&this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);this.emit({type:'bark',enemy:e.id,line:this.rng.pick(BARKS[e.kind]??BARKS.bebado)});}
       return;
     }
     this.movePlayers();
@@ -374,7 +395,7 @@ class HordeSandboxScene extends Phaser.Scene {
   paused=false;
   reduced:boolean;
   private projector!:Projector;
-  /** ?elenco=1: the first player's "você" marks with both D-036 status chips (slowed by a burp, slipping on poop). */
+  /** The line-up: the first player's "você" marks with the D-036 status chips (slowed by a burp; slipping on poop with elenco=legado). */
   private you?:YouMarkers;
   private youMark?:HeroMark;private youMarks:HeroMark[]=[];
   /** Follow camera on the first fake player (the game camera); `overview` keeps the old whole-island framing. */
@@ -388,7 +409,7 @@ class HordeSandboxScene extends Phaser.Scene {
     // Imported art v2 (scripts/import-art-v2.mjs) previews here too; without a manifest the procedural art stays.
     queueHordeArt(this);
     for(const tree of treeCatalog.slice(0,6))this.load.spritesheet(`tree:${tree.id}`,treeUrl(tree.id),{frameWidth:256,frameHeight:384});
-    for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(classes[(i*5)%classes.length].id);
+    for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(playerClass(i,ELENCO));
   }
   create(){
     this.cameras.main.setBackgroundColor(token('--cena-mar'));
@@ -400,7 +421,7 @@ class HordeSandboxScene extends Phaser.Scene {
       const image=this.add.image(p.x,p.y,`tree:${tree.id}`,this.view).setOrigin(.5,353/384).setScale(tree.height/tree.pixelHeight).setDepth(this.depth(o));
       this.props.push({point:o,image});
     }
-    const lineup=new URLSearchParams(location.search).get('elenco')==='1';
+    const lineup=ELENCO;
     this.horde=new FakeHorde(this.field,this.count,this.seed,lineup,this.scale.height>=this.scale.width);
     this.projector=new Projector(this.view,this.field);
     // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
@@ -417,7 +438,7 @@ class HordeSandboxScene extends Phaser.Scene {
     for(let k=0;k<PLAYER_COUNT;k++)this.actors.push(this.add.sprite(0,0,'__DEFAULT').setOrigin(.5,.88));
     if(lineup){
       this.you=new YouMarkers(this,this.reduced);
-      this.youMark={id:'p0',sprite:this.actors[0],self:true,feet:{x:0,y:0},covered:false,hp:70,maxHp:100,downed:false,slow:true,slip:true};
+      this.youMark={id:'p0',sprite:this.actors[0],self:true,feet:{x:0,y:0},covered:false,hp:70,maxHp:100,downed:false,slow:true,slip:lineup==='legado'};
     }
     this.layers.push(this.horde.view());
     this.scale.on('resize',this.fit,this);this.fit();

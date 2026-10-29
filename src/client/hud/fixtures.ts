@@ -27,13 +27,14 @@ export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?
   'camp-forge':{x:12,y:15},'camp-horn':{x:40,y:52,bearing:-120},'camp-wave':{x:12,y:15},
 };
 
+/** The team: only liberated heroes (rules/personagens-liberados.ts), the first one the default (NEW-20261029-E3-sandbox-elenco-ativo). */
 const roster=[
-  {id:'p1',name:'Mateus',classId:'cidadao-comum'},
-  {id:'p2',name:'Tia Cleide',classId:'merendeira'},
-  {id:'p3',name:'Zé do Pix',classId:'viciado-em-bet'},
-  {id:'p4',name:'Bruninha',classId:'motogirl'},
+  {id:'p1',name:'Mateus',classId:'viciado-em-bet'},
+  {id:'p2',name:'Tia Cleide',classId:'vendedor-praia'},
+  {id:'p3',name:'Zé do Pix',classId:'clt-cansado'},
+  {id:'p4',name:'Bruninha',classId:'maromba'},
   {id:'p5',name:'Seu Jorge',classId:'aposentado'},
-  {id:'p6',name:'Kaique Mil Grau',classId:'streamer'},
+  {id:'p6',name:'Kaique Mil Grau',classId:'gato-nada-pra-comer'},
 ];
 const builds=[
   {weapons:[{id:'audio',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},

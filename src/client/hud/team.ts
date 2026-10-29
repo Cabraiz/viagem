@@ -5,7 +5,7 @@
  */
 import {putData,putHidden} from './dom-put.ts';
 import type {PlayerRunView,RunView} from '../../contract/index.ts';
-import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
+import {reviveBanner,lastChanceUntil,LAST_CHANCE_TEXT,LAST_CHANCE_TICKS,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
@@ -129,7 +129,13 @@ export function createReviveAlerts():HudPart{
   const cause=el('span','rh-alert-cause',row);cause.hidden=true;
   const causeIcon=el('img','rh-alert-cause-icon',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
   const causeText=el('span','rh-alert-cause-text',cause);
+  // Card solo-segunda-chance: the tick the "Última chance" line goes, set by the view carrying the solo get-up.
+  let lastChance=-Infinity;
   return {el:root,update(view:RunView,ctx:HudContext){
+    // A new match restarts the clock: a line left from the last one never shows at its start.
+    if(lastChance-view.tick>LAST_CHANCE_TICKS)lastChance=-Infinity;
+    const rose=lastChanceUntil(view,ctx.localId);
+    if(rose!==undefined){lastChance=rose;live.textContent=LAST_CHANCE_TEXT;}
     const all=reviveAlerts(view,ctx.localId);
     const down=new Set(all.map(alert=>alert.playerId));
     for(const id of announced)if(!down.has(id))announced.delete(id);
@@ -138,7 +144,7 @@ export function createReviveAlerts():HudPart{
       for(const alert of fresh)announced.add(alert.playerId);
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
-    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching,ctx.worldRescue);
+    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching,ctx.worldRescue,lastChance);
     putHidden(row,!banner);
     if(!banner)return;
     if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;

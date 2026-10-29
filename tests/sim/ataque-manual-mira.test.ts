@@ -195,8 +195,8 @@ test('manual: hysteresis on the live weapon: a slightly nearer critter does not 
   assert.ok(aimOf(fires(ctx).at(-1)!).y>.99);assert.equal(p.autoTarget,'b');
 });
 
-test('manual: orbit, shield and the cone are effects of the equipped weapon (held, someone to touch), not passives',()=>{
-  for(const id of ['chinelo','guarda-chuva']){
+test('manual: the shield and the cone are effects of the equipped weapon (held, someone to touch), not passives',()=>{
+  for(const id of ['guarda-chuva']){
     const ctx=makeCtx(),held=new Set<string>(),sys=manualSystems(held);
     addPlayer(ctx,'p',10,10,[[id,1]]);
     const {reach}=manualReach(R(id)),e=addEnemy(ctx,'e',10+reach+.3+1,10);
@@ -204,9 +204,9 @@ test('manual: orbit, shield and the cone are effects of the equipped weapon (hel
     held.add('p');run(ctx,sys,30);assert.equal(fires(ctx).length,0,`${id}: held, nobody in its ring`);
     e.x=10+reach-.1;run(ctx,sys,1);assert.equal(fires(ctx,id).length,1,`${id}: held with a critter in its ring: one cycle`);
   }
-  // A passive weapon of the build (orbit behind a boleto) never spins in the manual combat.
+  // A passive weapon of the build (a shield behind a boleto) never opens in the manual combat.
   const ctx=makeCtx(),held=new Set(['p']),sys=manualSystems(held);
-  addPlayer(ctx,'p',10,10,[['boleto',1],['chinelo',1],['guarda-chuva',1]]);addEnemy(ctx,'e',10.5,10);
+  addPlayer(ctx,'p',10,10,[['boleto',1],['guarda-chuva',1]]);addEnemy(ctx,'e',10.5,10);
   run(ctx,sys,100);
   assert.deepEqual([...new Set(fires(ctx).map(f=>(f.event as {weapon:string}).weapon))],['boleto']);
   // The cone turns to the aim (the facing points away): the critter behind is hit.
@@ -242,6 +242,8 @@ test('manual Simulation: damagePlayer records who hit me (enemies only); the aut
 
 test('manual Simulation: the skill is ignored (taps refused, held skill does nothing), the held attack fires the kit weapon',()=>{
   const s=new Simulation(11,{combat:'manual'}),p=s.addBot('b','B','viciado-em-bet');s.resetRun();
+  // Empty-handed start (torre-limite-rebocar-sem-arma): the ilha has no crates, so the bot gets a Faca de Pão.
+  s.step();p.build.weapons.push({id:'faca',level:1});
   assert.equal(s.tap('b',1),false);
   const tough=createEnemy(s.world,'bebado',{x:p.x+2,y:p.y});tough.hp=tough.maxHp=1e6;
   s.setBotInput('b',{x:0,y:0},true,false);
@@ -290,6 +292,8 @@ test('manual room: the room bots attack (equipped weapon only, no skill) and an 
   const ana=messages.find(m=>m.t==='welcome').id as string,bots=[...room.sim.bots];
   say({t:'cast',round:round(),id:1});
   assert.deepEqual(messages.filter(m=>m.t==='cast'),[{t:'cast',seq:1,ok:false,readyTick:0}]);
+  // Empty-handed start (torre-limite-rebocar-sem-arma), no crates on the ilha: each bot gets a Faca de Pão.
+  room.advance(t+=50);for(const id of bots)room.sim.players.get(id)!.build.weapons.push({id:'faca',level:1});
   const weapons=new Map<string,Set<string>>();
   for(let i=0;i<1600&&room.run.snapshot().phase==='combat';i++){
     t+=50;if(i%20===0)say({t:'ack',seq:0});

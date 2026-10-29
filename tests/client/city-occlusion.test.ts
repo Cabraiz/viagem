@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type {BlockKind,CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {type Pt,VIEW_PIVOT,depth,project,unrotate} from '../../src/client/render/city/projection.ts';
 import {FADE_ALPHA,FADE_MS,HERO_SCREEN,HOLD_MS,OUTLINE_FADE_ALPHA,CoverFader,type ColumnRef,type Occluder,covers,coveringColumns,heroRect,
-  heroRelativeDepth,actorDepth,isBehind,occluderFor,outlineAlpha,propCovers,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
+  heroRelativeDepth,actorDepth,isBehind,MARKS_PAD,marksRect,occluderFor,outlineAlpha,propCovers,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
 
 const VIEWS=[0,1,2,3] as const;
 const PIVOTS:Pt[]=[VIEW_PIVOT,{x:5.3,y:-2}];
@@ -290,4 +290,12 @@ test('actorDepth insideBehind (effects in the air, render/towers): inside the fo
     const [frontA,frontE]=at(x1+.3,(y0+y1)/2);assert.ok(frontA>key&&frontE>key,`${tag}: in front, both above`);
     const [backA,backE]=at(x0-.3,(y0+y1)/2);assert.ok(backA<key&&backE<key,`${tag}: behind, both below`);
   });
+});
+
+test('marksRect widens the hero box to the sides and down to his ring and bar (item 15)',()=>{
+  const r={x:100,y:50,w:40,h:80},m=marksRect(r);
+  assert.equal(m.y,r.y,'the top stays: no fading for a wire over his head');
+  assert.equal(m.x,r.x-r.w*MARKS_PAD.side);
+  assert.equal(m.x+m.w,r.x+r.w+r.w*MARKS_PAD.side);
+  assert.equal(m.y+m.h,r.y+r.h*(1+MARKS_PAD.below));
 });

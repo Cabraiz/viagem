@@ -7,7 +7,7 @@
    - .rh-forge: an intermission window like the round offer (same place, never both open): price tags. */
 
 /* ---------- Base ficha ---------- */
-.rh-camp{order:2;position:static;display:flex;flex-direction:row;align-items:center;gap:6px;min-height:40px;padding:3px 8px;
+.rh-camp{order:2;position:static;display:flex;flex-direction:row;align-items:center;gap:12px;min-height:40px;padding:3px 8px;
   border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);
   box-shadow:var(--s-2);text-shadow:var(--s-texto);color:var(--c-papel)}
 .rh-camp b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
@@ -16,7 +16,12 @@
 .rh-camp-wall{flex:0 1 auto;min-width:0}
 .rh-camp-wall>.ic,.rh-camp-num{flex:none}
 .rh-camp-barra{display:flex;align-items:center;flex:0 1 auto;min-width:16px}
-.rh-camp-num{display:flex;align-items:center}
+.rh-camp-num{display:flex;align-items:center;gap:2px}
+/* resultado-e-topo-com-rotulo: a sticker before each number (the heart, the wallet; the tower is in its ring). */
+.rh-camp .rh-camp-num-ic{width:18px;height:18px}
+.rh-camp .rh-camp-grana-ic{width:22px;height:22px;margin-right:3px}
+/* The phone's minimal top writes the life over the bar (fone.css): no room for the heart there. */
+.rh[data-hud=fone] .rh-camp .rh-camp-num-ic{display:none}
 /* Grana (D-048): "R$ 120", the number in the poster face like the other counts, never wrapping. */
 .rh-camp-grana{flex:none;display:flex;align-items:center;white-space:nowrap}
 .rh-camp .ic{width:22px;height:22px}
@@ -25,6 +30,9 @@
    the ring is drawn over the sticker's paper edge, never under it. */
 .rh-camp-token{flex:none;white-space:nowrap}
 .rh-camp-token b{min-width:1ch}
+/* No PC (NEW-20261029-ORQ-hud-pc-sem-torre-e-cabana) a barra do topo fica sem o anel da torre e sem o adesivo da cabana:
+   display:none tira o item do flex, sem buraco no gap. O celular (fone.css) segue como está. */
+.rh:not([data-hud=fone]) :is(.rh-camp-token,.rh-camp-wall>.ic){display:none}
 .rh-camp-anel{position:relative;flex:none;display:grid;place-items:center;width:30px;height:30px}
 .rh-camp .rh-camp-anel .ic{width:20px;height:20px}
 .rh-camp-anel-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform:rotate(-90deg);pointer-events:none}
@@ -65,7 +73,7 @@
 
 /* ---------- Forge window ----------
    The round offer's place and frame (system window: Lilás body, Breu edge, Papel inner line), holding price tags. */
-.rh-forge{position:absolute;z-index:1;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+.rh-forge{position:absolute;z-index:1;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px);
   max-width:440px;margin:0 0 0 auto;padding:6px 8px 7px;border-radius:var(--r-janela);display:flex;flex-direction:column;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
   pointer-events:auto;touch-action:manipulation;text-align:left}
@@ -169,7 +177,7 @@
 }
 /* Desktop: the window may grow up to the top band (it holds three one-line tags, ~210 px; 32svh left 139 px of list). */
 @media (min-height:501px) and (orientation:landscape){
-  .rh-forge{max-height:calc(100svh - var(--rh-t) - 56px - (max(24px,env(safe-area-inset-bottom)) + 112px + 24px))}
+  .rh-forge{max-height:calc(100svh - var(--rh-t) - 56px - (max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px))}
   .rh .rh-forge-tag{min-height:44px;padding:2px 8px 2px 26px}
 }
 /* Portrait (card forja-cobre-heroi-retrato): the round's camera puts the hero's body at the viewport centre, and the
@@ -182,7 +190,9 @@
    tags and the hero ± HERO_MARGIN (zones.ts) both fit at 100% and 125% (360x800 at 125%: window 468–646, hero ± 40 to
    468). */
 @media (min-height:501px) and (orientation:portrait){
-  .rh-forge{padding:0 6px;bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(112px,var(--botao-habilidade)) + 24px)}
+  /* 16 px over the thumbs, not 24 (FORGE_THUMB_GAP): with the phone's 20 % bigger stick (joystick-maior-inventario-direita)
+     the 24 px reached the hero ± 40 by 2–6 px. The forge is off in the game since 18/10 (arrows.ts HUD_SWITCH). */
+  .rh-forge{padding:0 6px;bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(var(--joystick),var(--botao-habilidade)) + 16px)}
   .rh .rh-forge-close{margin:-4px 0 4px}
   .rh-forge-tags{gap:6px;padding:4px 8px;margin:-4px -6px 0}
   .rh .rh-forge-tag{--tilt:-.3deg;min-height:38px;padding:1px 8px 1px 22px}
@@ -193,5 +203,5 @@
   .rh-forge-fall .rh-window-fall-hint{display:none}
 }
 @media (min-height:501px) and (orientation:portrait) and (max-width:370px){
-  .rh-forge{bottom:calc(max(16px,env(safe-area-inset-bottom)) + max(96px,var(--botao-habilidade)) + 24px)}
+  .rh-forge{bottom:calc(max(16px,env(safe-area-inset-bottom)) + max(var(--joystick-justo),var(--botao-habilidade)) + 16px)}
 }

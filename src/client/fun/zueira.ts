@@ -4,12 +4,12 @@
  */
 import type {HappeningKind} from '../../contract/index.ts';
 import type {ShameKey,ShameMoment} from '../../contract/index.ts';
-import {entryLines} from '../../rules/index.ts';
+import {FEAR_SOURCE,entryLines} from '../../rules/index.ts';
 
-/** Street banner of an event (the round banner's faixa: title + one dry line). */
-export const HAPPENING_COPY:Readonly<Record<HappeningKind,{title:string;subtitle:string}>>={
+/** Street banner of an event (the round banner's faixa: title + one dry line). The flash sale is retired with its
+ * coxinhas (NEW-20261025-ORQ-sem-coxinha-no-chao): no banner, even if an old server still sends it. */
+export const HAPPENING_COPY:Readonly<Partial<Record<HappeningKind,{title:string;subtitle:string}>>>={
   boletos:{title:'Chuva de boleto!',subtitle:'Cata, que vira XP.'},
-  promo:{title:'Promoção relâmpago!',subtitle:'Coxinha grátis por 8 s.'},
   apagao:{title:'Apagão!',subtitle:'Os olhos no escuro são os bichos.'},
 };
 
@@ -75,17 +75,22 @@ export function killcamCaption(byName:string|undefined,kind:string,seed:number,u
  */
 export type ShameWhen='round'|'onda'|'ninhos';
 export function shameText(m:ShameMoment,name:string,when:ShameWhen='round'):{text:string;line:string;joke:string}{
-  const the=critter(m.source),at=when==='ninhos'?'':when==='onda'?`na Onda ${m.round}`:`na rodada ${m.round}`,r=at?` ${at}`:'';
+  const the=critter(m.source),at=when==='ninhos'?'':when==='onda'?`na onda ${m.round}`:`na rodada ${m.round}`,r=at?` ${at}`:'';
   const lines:Record<ShameKey,()=>{verb:string;joke:string}>={
     recaida:()=>({verb:`levantou e caiu de novo em ${m.seconds??1} s.`,joke:'O resgate pediu reembolso.'}),
     apagao:()=>({verb:`caiu no apagão${r}.`,joke:'Disse que tropeçou no fio.'}),
     coxinha:()=>({verb:`caiu com uma coxinha do lado${r}.`,joke:'Tava ali. Do ladinho.'}),
     pombos:()=>({verb:`caiu pra um pombo${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
-    cedo:()=>({verb:when==='ninhos'?`caiu logo no começo pra ${the.one}.`:`caiu ${when==='onda'?'na Onda':'na rodada'} 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
+    cedo:()=>({verb:when==='ninhos'?`caiu logo no começo pra ${the.one}.`:`caiu ${when==='onda'?'na onda':'na rodada'} 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
     'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
     'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia${r}.`,joke:'Era só fome mesmo.'}),
     caiu:()=>({verb:`caiu pra ${the.one}${r}.`,joke:'Escorregou no chão molhado. Não tinha placa.'}),
   };
+  // The dark (fear, rules/fear.ts) took them: no critter to blame, the dark is the thing.
+  if(m.source===FEAR_SOURCE&&(m.key==='cedo'||m.key==='caiu')){
+    lines.cedo=()=>({verb:'se afastou do bando logo no começo e a escuridão levou.',joke:'Tinha luz no Uno. Era só voltar.'});
+    lines.caiu=()=>({verb:`ficou longe do bando e a escuridão levou${r}.`,joke:'Tinha luz no Uno. Era só voltar.'});
+  }
   const {verb,joke}=(lines[m.key]??lines.caiu)();
   return {text:`${name} ${verb}`,line:verb.charAt(0).toUpperCase()+verb.slice(1),joke};
 }

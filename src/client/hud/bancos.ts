@@ -1,12 +1,12 @@
 /**
  * Bancos on the HUD (card NEW-20261014-ORQ-bancos-e-veiculos), pure:
- * - the ATMs on the WC3 minimap, as its extras (wc-minimap draws kind 'banco' as a "$" square): Cartolina with notes,
+ * - the ATMs on the WC3 minimap, as its extras (wc-minimap draws kind 'banco' as its "$" icon, by `state`): Cartolina with notes,
  *   Cone while a critter robs it, dim when empty ("SEM CÉDULAS");
  * - the row of the announcement slot "Bicho sacando no Juros & Juros!" when a critter starts robbing a bank (once per
  *   robbery, and not again for the same bank within BANK_ALERT_REPEAT_MS).
  */
 import type {BankView} from '../../contract/index.ts';
-import {BANK_SHORT} from '../../rules/index.ts';
+import {bicoRobberyText} from './bicos.ts';
 import type {MmExtra} from './wc-minimap/minimap.ts';
 import {token} from '../ui/tokens.ts';
 
@@ -23,9 +23,13 @@ export const BANK_ALERT_MS=3500,BANK_ALERT_REPEAT_MS=20000;
 
 export function bankExtras(banks:readonly BankView[]|undefined):MmExtra[]{
   const c=BANK_MM_COLORS;
-  return (banks??[]).map(b=>({kind:'banco',x:b.x,y:b.y,color:b.state==='bicho'?c.bicho:b.state==='sem-cedulas'||b.saldo<=0?c.vazio:c.cheio}));
+  return (banks??[]).map(b=>{
+    const state=b.state==='bicho'?'bicho':b.state==='sem-cedulas'||b.saldo<=0?'vazio':'cheio';
+    return {kind:'banco',x:b.x,y:b.y,color:c[state],state};
+  });
 }
-export const robberyText=(b:Pick<BankView,'name'>)=>`Bicho sacando no ${BANK_SHORT[b.name]}!`;
+/** Bicos: the shop's gig names the robbery ("Bicho no caixa do Telemarketing!", hud/bicos.ts). */
+export const robberyText=(b:Pick<BankView,'bico'>)=>bicoRobberyText(b);
 
 /** Calls a robbery once when it starts (a bank turning 'bicho'), at most once per BANK_ALERT_REPEAT_MS per bank. */
 export class BankAlert {

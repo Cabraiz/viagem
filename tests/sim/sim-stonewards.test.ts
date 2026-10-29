@@ -464,7 +464,7 @@ test('the forge works only inside the camp',()=>{
 });
 
 test('D-013: the forge says one line per player every 2 s; purchases still apply',()=>{
-  const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:1}],passives:[]}}),b=player('b',12.4,17);
+  const a=player('a',12,17,{build:{weapons:[{id:'audio',level:1}],passives:[]}}),b=player('b',12.4,17);
   const ctx=fakeCtx([a,b]),sys=system();
   fund(ctx,PLENTY);sys.state.wall.hp=10;
   assert.ok(sys.buy(ctx,'a','reparo').ok);assert.ok(sys.buy(ctx,'a','gambiarra').ok);assert.ok(sys.buy(ctx,'b','torre-chinelo').ok);
@@ -598,16 +598,18 @@ test('the release workflow checks the protocol this client speaks',()=>{
   assert.equal(config.protocol,PROTOCOL_VERSION);
 });
 
-test('inflação (D-048 balance): each gambiarra or chinelo bought this run raises its price by its base; the repair never inflates',async()=>{
-  const {forgePrice,RECIPES,INFLATING}=await import('../../src/rules/index.ts');
+test('inflação (economia-caixa-e-forja): each gambiarra or chinelo bought this run adds half its base, up to 2× the base; the repair never inflates',async()=>{
+  const {forgePrice,RECIPES,INFLATING,INFLATION_STEP,INFLATION_CAP}=await import('../../src/rules/index.ts');
   assert.deepEqual([...INFLATING],['gambiarra','torre-chinelo']);
+  assert.equal(INFLATION_STEP,.5);assert.equal(INFLATION_CAP,2);
   const g=RECIPES.gambiarra.cost,c=RECIPES['torre-chinelo'].cost,r=RECIPES.reparo.cost;
-  assert.equal(forgePrice('gambiarra'),g);assert.equal(forgePrice('gambiarra',{gambiarra:1}),2*g);assert.equal(forgePrice('gambiarra',{gambiarra:3,'torre-chinelo':9}),4*g);
-  assert.equal(forgePrice('torre-chinelo',{'torre-chinelo':2}),3*c);assert.equal(forgePrice('reparo',{gambiarra:5,reparo:5}),r,'defence keeps its price');
+  assert.equal(forgePrice('gambiarra'),g);assert.equal(forgePrice('gambiarra',{gambiarra:1}),Math.round(1.5*g));
+  assert.equal(forgePrice('gambiarra',{gambiarra:2}),2*g);assert.equal(forgePrice('gambiarra',{gambiarra:9,'torre-chinelo':9}),2*g,'the cap');
+  assert.equal(forgePrice('torre-chinelo',{'torre-chinelo':1}),Math.round(1.5*c));assert.equal(forgePrice('torre-chinelo',{'torre-chinelo':2}),2*c);assert.equal(forgePrice('reparo',{gambiarra:5,reparo:5}),r,'defence keeps its price');
   assert.equal(forgePrice('gambiarra',{gambiarra:-3}),g,'never below the base');
 });
 
-test('inflação in the sim: two gambiarras charge base then 2× base, a reparo its base whatever was bought; reset forgets it',()=>{
+test('inflação in the sim: two gambiarras charge base then 1.5× base, a reparo its base whatever was bought; reset forgets it',()=>{
   const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:1},{id:'cafe',level:1}],passives:[]}});
   const ctx=fakeCtx([a]),sys=system();
   fund(ctx,PLENTY);sys.state.wall.hp=10;
@@ -615,7 +617,7 @@ test('inflação in the sim: two gambiarras charge base then 2× base, a reparo 
   const paid=(id:string)=>{const g=purse(ctx);assert.equal(sys.buy(ctx,'a',id).ok,true,id);return g-purse(ctx);};
   assert.equal(paid('gambiarra'),GAMBIARRA,'the first at the base');
   assert.deepEqual(sys.state.forgeBought,{gambiarra:1});
-  assert.equal(paid('gambiarra'),2*GAMBIARRA,'the second at 2× the base');
+  assert.equal(paid('gambiarra'),Math.round(1.5*GAMBIARRA),'the second at 1.5× the base');
   assert.deepEqual(sys.state.forgeBought,{gambiarra:2});
   assert.equal(paid('torre-chinelo'),CHINELO,'each recipe inflates on its own');
   assert.equal(paid('reparo'),REPARO,'the repair keeps its base');

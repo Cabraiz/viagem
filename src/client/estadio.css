@@ -48,6 +48,28 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   box-shadow: var(--s-1);
 }
 
+/* Full screen (celular-deitado-tela-cheia, ui/tela-cheia.ts): the gear's twin, left of it; hidden where the page can't. */
+.estadio .menu-tela-cheia {
+  position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: calc(max(10px, env(safe-area-inset-right)) + 58px);
+  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+  border: 3px solid var(--c-breu); border-radius: var(--r-circulo); background: var(--c-lilas); color: var(--c-papel-claro);
+  box-shadow: var(--s-1);
+}
+.estadio .menu-tela-cheia[hidden] { display: none; }
+.estadio .menu-tela-cheia:active { transform: translateY(2px); }
+
+/* The privacy policy (anuncios-h5-games, AdSense) and the about page (site-textos-404-sobre): quiet links in the
+   bottom-left corner, under the choice column (centred) and away from the hero's feet. */
+.estadio .menu-rodape {
+  position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; gap: 12px;
+}
+.estadio .menu-rodape a {
+  padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
+  text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);
+}
+.estadio .menu-rodape a:hover, .estadio .menu-rodape a:focus-visible { opacity: 1; text-decoration: underline; }
+
 /* The choice: title, class, row, name, button. Left column on a wide screen. */
 .estadio-escolha {
   position: absolute; z-index: 5; top: 0; bottom: 0; left: max(3vw, 16px, env(safe-area-inset-left)); width: min(46vw, 640px);
@@ -107,8 +129,21 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    room for. The file (1423 px) is never shown above 1x: 56.4vh is 1218 px on a 4K screen. */
 .estadio-titulo.com-letreiro { transform: none; }
 .estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh); max-width: none; max-height: none; height: auto; }
+/* letreiro-alto (gato-no-menu: the collar drawn far up, "caso precise descer"): --sw is the width the sign alone gets in
+   each layout below (--sinal-ar = the sign's height / width); the picture is that wide and pulled up by the collar's
+   height, so the sign sits where a plain letreiro would and the collar leaves through the top of the screen. */
+.estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto {
+  --sw: min(33.2vw, 56.4vh); width: var(--sw); max-width: none; max-height: none; height: auto;
+  margin-top: calc(var(--sw) * (var(--sinal-ar) - var(--alto-ar)));
+}
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
+/* selecao-miniatura-rosto: colourful faces side by side, so the chosen one stands out by more than his border: the
+   others a step quieter (never as dark as a locked tile), his border thicker. */
+.estadio .card-rosto { object-position: 50% 50%; transition: filter .12s; }
+.estadio .class-card[aria-pressed=false] .card-rosto { filter: saturate(.75) brightness(.8); }
+.estadio .class-card[aria-pressed=false]:hover .card-rosto { filter: none; }
+.estadio .class-card[aria-pressed=true]:has(.card-rosto) { border-width: 4px; }
 .estadio #nickname {
   flex: 1; min-width: 0; width: auto; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: var(--r-pilula);
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
@@ -151,13 +186,18 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio .estadio-confirmar:active { transform: translateY(2px); }
 
-/* PC (stadium.ts CUTOUT_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
-   approved screen's layout (tela-1080p), the sign
-   from the top, the row and the button right under it. */
-@media (orientation: landscape) and (min-height: 521px) {
+/* Every landscape screen (stadium.ts CUTOUT_QUERY: the PC and the phone on its side, celular-deitado-foto): the hero's
+   own picture stands in for the dance, on E6's stadium. */
+@media (orientation: landscape) {
   /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
      it is never cut; `cover` around its middle until then. */
   .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
+}
+
+/* PC (stadium.ts PC_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
+   approved screen's layout (tela-1080p), the sign
+   from the top, the row and the button right under it. */
+@media (orientation: landscape) and (min-height: 521px) {
   /* fileira-botao-maiores-embaixo (the user, 22/10: "em 1080p isso deve ir para baixo (? e o selecionar) e ficar 30%
      maior"): only the row and the button grow 30% (button 640x108 → 832x140, tiles 80 → 104 px, in vh so every PC
      screen is the 1080p one scaled). The title and the pill stay where they were (round 2, "por que você desceu?"). The
@@ -189,6 +229,12 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
      title box (above). */
   .estadio-titulo.com-letreiro { flex: none; width: 100%; height: 100%; max-width: none; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: 100%; height: 100%; object-fit: contain; object-position: 0 100%; }
+  /* The sign contained in the box, bottom left like the others; the collar over the box, out of the flow. */
+  .estadio-titulo.com-letreiro:has(.letreiro-alto) { position: relative; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto {
+    --sw: min(var(--lw) * 1.13, var(--lw) * 1698 / 2436 / var(--sinal-ar));
+    position: absolute; left: 0; bottom: 0; height: auto; margin: 0;
+  }
 }
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
@@ -196,6 +242,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-escolha { gap: 6px; width: min(50vw, 560px); }
   .estadio-titulo { font-size: calc(clamp(30px, 11vh, 60px) * var(--titulo-fit, 1)); }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 38vh; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 38vh / var(--sinal-ar)); }
   .estadio-classe { font-size: 18px; border-width: 2px; }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
@@ -220,12 +267,24 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-titulo { font-size: calc(clamp(30px, 10vw, 46px) * var(--titulo-fit, 1)); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
   .estadio-titulo span { display: inline; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 16vh / var(--sinal-ar)); }
   .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
   /* A letreiro picture hides the plaque: the row (or the name) takes its push down under the bar. */
   .estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }
   .estadio .class-card { width: 58px; }
   .estadio-fileira, .estadio-nome { max-width: 520px; }
 }
+
+/* teclado-cobre-nome-bora (the user, 24/10: "o 'bora' e o input text deveriam ficar cima do teclado"): while the phone's
+   keyboard is up on the name field, the column is the box the keyboard leaves (ui/teclado.ts writes --tec-top / --tec-h
+   from the visual viewport). Its bottom, the field then BORA!, sits right above the keys; what does not fit slides up
+   out of it (overflow on the start side). The title box would only be cut there, so it steps out. */
+.estadio .estadio-escolha[data-teclado] {
+  top: var(--tec-top); bottom: auto; height: var(--tec-h); justify-content: flex-end; overflow: hidden;
+  padding-top: 0; padding-bottom: 8px;
+}
+.estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
+.estadio:has(.estadio-escolha[data-teclado]) .menu-rodape { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }
 #explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

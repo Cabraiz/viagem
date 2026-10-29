@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {MURALHA_ALTURA,MURALHA_ESTADOS,MURALHA_PILARES,MURALHA_RETOS,cellKey,muralhaColumn,muralhaEstado,muralhaHalf,muralhaPlan,muralhaScale,retoOf,type MuralhaSquare} from '../../src/client/render/muralha-rules.ts';
+import {MURALHA_ALTURA,MURALHA_ESTADOS,MURALHA_GROSSURA,MURALHA_PILARES,MURALHA_RETOS,cellKey,muralhaColumn,muralhaEstado,muralhaGroups,muralhaHalf,muralhaPlan,muralhaScale,retoOf,type MuralhaSquare} from '../../src/client/render/muralha-rules.ts';
 import {Projector} from '../../src/client/render/projector.ts';
 import {BARRICADA_CELLS} from '../../src/rules/towers.ts';
 import {BASE_ART} from '../../src/client/art/base-art.ts';
@@ -52,8 +52,29 @@ test('pieces: seeded by the cell (the same on every client), all of them used, n
   for(let i=1;i<pieces.length;i++)assert.notEqual(pieces[i],pieces[i-1],`cells ${i-1},${i}`);
   for(const p of a)for(const d of p)assert.ok(Number.isInteger(d.piece)&&d.piece>=0&&d.piece<(d.kind==='reto'?MURALHA_RETOS:MURALHA_PILARES));
   assert.equal(retoOf(3,5,'c',undefined,N),retoOf(3,5,'c',undefined,N));
-  // The junk wall's layer draws its squares BARRICADA_CELLS wide (render/muralha.ts TRALHA_SHEETS.size; Phaser: read as text).
-  assert.match(readFileSync(new URL('../../src/client/render/muralha.ts',import.meta.url),'utf8'),/TRALHA_SHEETS:MuralhaSheets=Object\.freeze\(\{[^}]*size:BARRICADA_CELLS\}/);
+  // The junk wall's layer draws its pieces BARRICADA_CELLS long, one whole piece along each one's rot
+  // (render/muralha.ts TRALHA_SHEETS: size, oriented; barricada-tocar-no-mapa; Phaser: read as text).
+  assert.match(readFileSync(new URL('../../src/client/render/muralha.ts',import.meta.url),'utf8'),/TRALHA_SHEETS:MuralhaSheets=Object\.freeze\(\{[^}]*size:BARRICADA_CELLS,thick:MURALHA_GROSSURA,oriented:true\}/);
+});
+
+test('barricada-grossura-e-contorno: thicker but not longer, inside the square the sim blocks',()=>{
+  // Two rows ± MURALHA_GROSSURA of the side across the line: thicker; the scale along the line is untouched (muralhaScale).
+  assert.ok(MURALHA_GROSSURA>0&&MURALHA_GROSSURA<.25,'a bit thicker, the rows stay well inside the square (± half a side)');
+  assert.deepEqual(muralhaScale(64,128),{x:.5,y:.5*MURALHA_ALTURA});
+});
+
+test('barricada-grossura-e-contorno: squares touching on a side are one wall (one gold outline), corners and gaps are not',()=>{
+  const N2=BARRICADA_CELLS;
+  // An L of 3 (N2-cell squares), a lone square two squares off, and one touching only by a corner.
+  const cells=new Set([cellKey(0,0),cellKey(N2,0),cellKey(N2,N2),cellKey(4*N2,0),cellKey(2*N2,2*N2)]);
+  const g=muralhaGroups(cells,N2);
+  assert.equal(g.size,5);
+  assert.equal(g.get(cellKey(0,0)),g.get(cellKey(N2,0)));assert.equal(g.get(cellKey(N2,0)),g.get(cellKey(N2,N2)));
+  assert.notEqual(g.get(cellKey(4*N2,0)),g.get(cellKey(0,0)),'a gap: its own wall');
+  assert.notEqual(g.get(cellKey(2*N2,2*N2)),g.get(cellKey(N2,N2)),'only a corner touching: its own wall');
+  assert.equal(new Set(g.values()).size,3);
+  // The muro's 1-cell squares: step 1.
+  assert.equal(new Set(muralhaGroups(new Set([cellKey(0,0),cellKey(1,0),cellKey(2,0)])).values()).size,1);
 });
 
 test('column and half from the projection, in the 4 camera views; scale: the cell across, the height × MURALHA_ALTURA',()=>{

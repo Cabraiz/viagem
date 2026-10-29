@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {LABEL_CSS,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from '../../src/client/render/map-label-rules.ts';
+import {LABEL_BORDER_CSS,LABEL_CSS,LABEL_STACK_GAP_CSS,allyLabelText,plateRings,ringReachCss,stackedLabelOffsetCss,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from '../../src/client/render/map-label-rules.ts';
 
 test('place names leave the screen during a wave; ally names stay before the run and for who is caído',()=>{
   for(const phase of [undefined,'lobby','countdown','interval','result'])assert.equal(mapLabelVisible('place',phase),true,String(phase));
@@ -43,4 +43,14 @@ test('place fichas step aside near a caído ficha (160 px CSS)',()=>{
   assert.equal(placeYieldsToSos({x:100,y:100},[{x:200,y:180}]),true);
   assert.equal(placeYieldsToSos({x:100,y:100},[{x:300,y:100}]),false);
   assert.equal(placeYieldsToSos({x:100,y:100},[]),false);
+});
+
+test('a stacked ficha clears the ring of the one above it plus a gap (item 12)',()=>{
+  for(const city of [false,true])for(const sos of [false,true]){
+    const reach=Math.max(0,...plateRings(sos,city).map(r=>(r.out+.5)*LABEL_BORDER_CSS));
+    assert.equal(ringReachCss(sos,city),reach);
+    assert.equal(stackedLabelOffsetCss(20,sos,city),20+reach+ringReachCss(false,city)+LABEL_STACK_GAP_CSS);
+  }
+  assert.ok(ringReachCss(true,true)>=ringReachCss(false,true),'the SOS ring reaches at least as far');
+  assert.ok(stackedLabelOffsetCss(20,true,true)>20+LABEL_STACK_GAP_CSS);
 });

@@ -164,7 +164,7 @@ test('other errors keep the old messages; no watch or a dev build (inert watch) 
 });
 
 test('the notice text: pt-BR, the line the card asks for, and a short joke for out of the round',()=>{
-  assert.equal(UPDATE_TITLE,'Saiu versão nova do jogo! Toque para atualizar.');
+  assert.equal(UPDATE_TITLE,'Saiu versão nova do jogo. Toca pra atualizar.');
   assert.ok(UPDATE_LINE.length>0&&UPDATE_LINE.length<=40,UPDATE_LINE);
 });
 
@@ -181,7 +181,12 @@ test('main.ts: watch and notice in the entry chunk, every lazy-import catch asks
   assert.match(main,/inMatch:\(\)=>inMatchOf\(document\)/);
   assert.match(main,/onAvailable:\(\)=>showUpdateToast\(document\)/);
   assert.match(main,/beforeReload:\(\)=>saveResume\(session\(\),resumeOf\(document,Date\.now\(\)\)\)/);
-  assert.match(main,/linkWatch\(startVersionWatch\(/);
+  assert.match(main,/const versionWatch=startVersionWatch\(/);
+  assert.match(main,/linkWatch\(versionWatch\);/);
+  // arrastar-atualiza-versao-nova: one check at startup (a page from the HTTP cache reloads into the site's build),
+  // and the menus' pull-to-refresh goes through the watch's tap.
+  assert.match(main,/void versionWatch\.check\(\);/);
+  assert.match(main,/startPullToRefresh\(\{doc:document,win:window,inMatch:\(\)=>inMatchOf\(document\),refresh:\(\)=>updateNow\(\)\}\)/);
   // The two old messages only when it was not a stale chunk.
   assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível abrir as salas\.'\)/);
   assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível carregar a ilha\. Tente novamente\.'\)/);

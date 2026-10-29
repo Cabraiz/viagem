@@ -14,12 +14,14 @@
  */
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
-import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {BARRACA_LONAS,BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS,pieceCells} from '../../rules/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
-import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
+import {barracaColumn,barracaLona} from './stonewards-rules.ts';
+import {HIT_FLASH_MS,RUN_OVER_MS,WALL_LOW,ranOver,runOverPieces,type RunOverPiece,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
+import {artPiece} from '../art/manifest.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
@@ -29,7 +31,7 @@ import {TriBand} from './city/tri-band.ts';
 import {INTERATIVO_COR} from '../hud/tralha/model.ts';
 import {MuralhaLayer} from './muralha.ts';
 import {towerArtScale} from './towers/tower-rules.ts';
-import {UsableGlow,glowPieces} from './usable-glow.ts';
+import {UsableGlow,WallGlow} from './usable-glow.ts';
 
 const LIGHT=lightEnabled();
 
@@ -50,6 +52,10 @@ const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,
 const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
 
 interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
+/** A tralha square the Uno ran over: its junk flies apart (uno-atravessa-tralha). */
+/** A flying cut of the run-over art: where it is (scene px), its speed (px/s), spin, the ground line it lands on, its width. */
+interface BurstPiece {img:Phaser.GameObjects.Image;key:string;x:number;y:number;vx:number;vy:number;spin:number;land:number;w:number;g:number}
+interface Burst {g:Phaser.GameObjects.Graphics;x:number;y:number;born:number;last:number;pieces:BurstPiece[]}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
@@ -89,12 +95,17 @@ export class StonewardsRenderer {
   private muralha:MuralhaLayer;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on what the player uses here (barricades, loot crates). */
   private glow:UsableGlow;
+  /** The junk wall's pieces this frame, glowed per wall (one outline around the squares that touch). */
+  private wallGlow=new WallGlow();
   /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
   private marks=new Map<string,NodeMark>();
   private pops:Pop[]=[];
+  private bursts:Burst[]=[];
   private structures:StructureView[]=[];
+  /** barracas-no-caminho: a feirinha barraca's footprint drawn without the art (its art is an image in `images`). */
+  private barracaGround=new Map<string,Phaser.GameObjects.Graphics>();
   private prepare=false;
   /** D-047: the chaveiro objective runs: the Quadradão stands in the wall's place (render/chaveiro), the wall is not drawn. */
   private objective=false;
@@ -124,7 +135,9 @@ export class StonewardsRenderer {
 
   /** A new authoritative view: structures, nodes, phase; "+N" pops for the units that came out since the last one. */
   push(view:RunView){
+    const was=new Map(this.structures.map(s=>[s.id,s]));
     this.tick=view.tick;this.structures=view.structures;this.objective=objectiveOf(view)!==undefined;
+    if(!this.options.reduced)for(const s of ranOver(was,this.structures,objectiveOf(view)?.car))this.burst(s);
     this.prepare=view.round?.phase==='prepare'&&!view.camp?.wallDown;
     const nodes=this.prepare?view.nodes??[]:[];
     const before=new Map([...this.marks].map(([id,m])=>[id,m.view]));
@@ -145,7 +158,7 @@ export class StonewardsRenderer {
     this.lastHp=new Map(this.structures.map(s=>[s.id,s.hp]));
     for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
     const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
-    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));
+    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));prune(this.barracaGround,of('barraca'));
     this.muralha.prune(of('barricade'));
     this.muralha.setSquares(this.structures.filter(s=>structureRole(s.kind)==='barricade'&&isFreeBarricade(s)));
     for(const id of [...this.pileKeys.keys()])if(!this.piles.has(id))this.pileKeys.delete(id);
@@ -166,8 +179,10 @@ export class StonewardsRenderer {
     for(const s of this.structures){
       const role=structureRole(s.kind);
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
+      else if(role==='barraca')this.drawBarraca(s,k,u);
     }
-    this.drawPops(k);
+    this.wallGlow.flush(this.glow,k);
+    this.drawPops(k);this.drawBursts(k);
     this.glow.end();
   }
 
@@ -175,11 +190,13 @@ export class StonewardsRenderer {
     this.ground.destroy();this.wall.destroy();
     for(const g of this.towers.values())g.destroy();this.towers.clear();
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
+    for(const g of this.barracaGround.values())g.destroy();this.barracaGround.clear();
     for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
     this.muralha.destroy();this.glow.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
+    for(const b of this.bursts)this.endBurst(b);this.bursts=[];
   }
 
   private project(x:number,y:number){return this.options.projector.project(x,y,this.q);}
@@ -337,13 +354,15 @@ export class StonewardsRenderer {
     }
     // barricada-construir part 2: the square under the mouse or tapped wears the gold outline (the alert's red wins).
     if(!alert&&isFreeBarricade(s)&&s.id===this.outline){
-      const c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,side=CITY_BUILD_CELL*BARRICADA_CELLS,pts=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]]
+      // barricada-tocar-no-mapa: the piece's own footprint (2 cells long, 1 thick, along its rot).
+      const [fw,fh]=pieceCells('barricada',s.rot===1?1:0),c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,sw=CITY_BUILD_CELL*fw,sh=CITY_BUILD_CELL*fh;
+      const pts=[[c0,r0],[c0+sw,r0],[c0+sw,r0+sh],[c0,r0+sh]]
         .map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
       g.lineStyle(5*k,this.c.breu,.6).strokePoints(pts,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(pts,true);
     }
     if(junk){
       for(const i of junk){if(flash)i.setTintFill(this.c.claro);else if(alert)i.setTint(ALERT_RED);else i.clearTint();}
-      if(!down)glowPieces(this.glow,s.id,junk,k);
+      if(!down)this.wallGlow.add(s.id,this.muralha.groupOf(s),junk);
       pile?.setVisible(false);
     }else if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
@@ -458,6 +477,92 @@ export class StonewardsRenderer {
   private pop(n:NodeView,amount:number){
     const text=this.scene.add.text(0,0,`+${amount}`,{...this.labelStyle,fontSize:'21px'}).setOrigin(.5,1).setDepth(96000);
     this.pops.push({text,x:n.x,y:n.y,born:this.now});
+  }
+  /**
+   * A feirinha's barraca (NEW-20261023-ORQ-barracas-no-caminho): the stall's art (its lona from the id, always inteira:
+   * scenery, never hurt), at its ground centre, scaled so one build cell of the sheet (meta.celula) spans one projected
+   * CITY_BUILD_CELL. Without the art: a Papel square on its 2×2 footprint.
+   */
+  private drawBarraca(s:StructureView,k:number,u:number){
+    const c=artPiece('base',BASE_ART.barraca)?.meta?.celula,celula=typeof c==='number'&&c>0?c:undefined;
+    const img=celula?this.art(s.id,BASE_ART.barraca,`${barracaLona(s.id,BARRACA_LONAS)}:inteira`,barracaColumn(this.options.projector.view,s.id),u):undefined;
+    const depth=this.options.projector.depth(s.x,s.y);
+    if(img&&celula){
+      this.barracaGround.get(s.id)?.clear();
+      const a=this.project(s.x,s.y),bx=this.project(s.x+CITY_BUILD_CELL,s.y).x,cx=this.project(s.x,s.y+CITY_BUILD_CELL).x;
+      img.setScale((Math.abs(bx-a.x)+Math.abs(cx-a.x))/2/celula).setPosition(a.x,a.y).setDepth(depth-BAR_OVER_ART).clearTint();
+      return;
+    }
+    let g=this.barracaGround.get(s.id);
+    if(!g){g=this.scene.add.graphics().setName('base-barraca');this.barracaGround.set(s.id,g);}
+    const side=CITY_BUILD_CELL*2,c0=s.c!==undefined?s.c*CITY_BUILD_CELL:s.x-side/2,r0=s.r!==undefined?s.r*CITY_BUILD_CELL:s.y-side/2;
+    const corners=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]].map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
+    g.clear().setDepth(depth).fillStyle(this.c.papel,.9).fillPoints(corners,true).lineStyle(2*k,this.c.breu,1).strokePoints(corners,true);
+  }
+  /**
+   * uno-atravessa-tralha: the square's own art (the junk wall's images, or its base art) cut into 8–14 pieces that fly
+   * out, spin, fall back on the ground with a shadow and fade. Called before the square's images are pruned.
+   */
+  private burst(s:StructureView){
+    const g=this.scene.add.graphics().setName('tralha-atropelada');
+    const own=this.images.get(s.id),src=[...this.muralha.shown(s.id),...(own?.visible?[own]:[])];
+    const seed=s.id.length*31+Math.round(s.x*7+s.y*13),ground=this.project(s.x,s.y),gx=ground.x,gy=ground.y,pieces:BurstPiece[]=[],tex=this.scene.textures;
+    // Pieces about a third of the art's side (a 3×3 cut of each image), the solid ones, at most 14 over the square.
+    const cuts=src.flatMap((img,n)=>{
+      const f=img.frame,key=img.texture.key;
+      const crop=img.isCropped?(img as unknown as {_crop:{x:number;y:number;width:number;height:number}})._crop:undefined;
+      const rect=crop&&crop.width>0?{x:crop.x,y:crop.y,w:crop.width,h:crop.height}:{x:0,y:0,w:f.realWidth,h:f.realHeight};
+      return runOverPieces(rect,9,seed+n*977).filter(p=>[[.5,.5],[.3,.3],[.7,.3],[.3,.7],[.7,.7]].some(([u,v])=>
+        tex.getPixelAlpha(Math.floor(p.x+p.w*u),Math.floor(p.y+p.h*v),key,f.name)>40)).map(p=>({img,p,rect}));
+    });
+    const step=Math.max(1,cuts.length/14);
+    for(let i=0;i<cuts.length&&pieces.length<14;i+=step){
+      const {img,p,rect}=cuts[Math.floor(i)],f=img.frame,fw=f.realWidth,fh=f.realHeight;
+      const key=this.shardTexture(img,p,`tralha-caco-${seed}-${this.now|0}-${pieces.length}`);
+      if(!key)continue;
+      const sx=Math.abs(img.scaleX),H=rect.h*Math.abs(img.scaleY),cx=p.x+p.w/2,cy=p.y+p.h/2;
+      const x=img.x+(cx-img.originX*fw)*img.scaleX,y=img.y+(cy-img.originY*fh)*img.scaleY;
+      const piece=this.scene.add.image(x,y,key).setName('tralha-pedaco').setScale(img.scaleX,img.scaleY).setDepth(img.depth+.01);
+      const side=Math.max(-1,Math.min(1,(x-gx)/Math.max(1,rect.w*sx/2)));
+      pieces.push({img:piece,key,x,y,vx:(side+(p.out-1.05))*p.out*H*1.2,vy:-p.up*H*1.9,spin:p.spin,land:gy+(p.land-.04)*H,w:p.w*sx,g:H*12});
+    }
+    this.bursts.push({g,x:s.x,y:s.y,born:this.now,last:this.now,pieces});
+  }
+  /** One shard of `img`'s frame: the piece's rect clipped to its polygon on a canvas (the sprite's own alpha kept). */
+  private shardTexture(img:Phaser.GameObjects.Image,p:RunOverPiece,key:string):string|undefined{
+    const f=img.frame,source=f.source.image as CanvasImageSource|undefined;
+    const w=Math.max(1,Math.round(p.w)),h=Math.max(1,Math.round(p.h)),canvas=this.scene.textures.createCanvas(key,w,h);
+    if(!canvas||!source)return undefined;
+    const ctx=canvas.getContext();
+    ctx.beginPath();p.shard.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();ctx.clip();
+    // Frame px (untrimmed) → the source image: the cut's corner minus the trim offset.
+    ctx.drawImage(source,f.cutX+p.x-(f.trimmed?f.x:0),f.cutY+p.y-(f.trimmed?f.y:0),w,h,0,0,w,h);
+    canvas.refresh();
+    return key;
+  }
+  private endBurst(b:Burst){
+    b.g.destroy();
+    for(const p of b.pieces){p.img.destroy();if(this.scene.textures.exists(p.key))this.scene.textures.remove(p.key);}
+  }
+  /** The run-over pieces fly, bounce once on their ground line, settle and fade; a dust ring and their shadows on the ground. */
+  private drawBursts(k:number){
+    this.bursts=this.bursts.filter(b=>{
+      const age=this.now-b.born;
+      if(age>=RUN_OVER_MS){this.endBurst(b);return false;}
+      const t=age/RUN_OVER_MS,dt=Math.min(.05,Math.max(0,(this.now-b.last)/1000)),fade=t<.65?1:1-(t-.65)/.35,q=this.project(b.x,b.y);
+      b.last=this.now;
+      b.g.clear().setDepth(this.options.projector.depth(b.x,b.y)-.01);
+      const r=(18+60*Math.sqrt(t))*k;
+      b.g.fillStyle(this.c.claro,.45*(1-t)).fillEllipse(q.x,q.y,r*2,r);
+      for(const p of b.pieces){
+        p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.img.rotation+=p.spin*dt;
+        if(p.y>=p.land&&p.vy>0){p.y=p.land;p.vy=Math.abs(p.vy)>p.g*.08?-p.vy*.3:0;p.vx*=.45;p.spin*=.35;}
+        const high=Math.max(0,Math.min(1,(p.land-p.y)/(p.g*.05)));
+        b.g.fillStyle(this.c.breu,.3*fade*(1-.6*high)).fillEllipse(p.x,p.land,p.w*(.9-.4*high),p.w*(.3-.12*high));
+        p.img.setPosition(p.x,p.y).setAlpha(fade);
+      }
+      return true;
+    });
   }
   private drawPops(k:number){
     this.pops=this.pops.filter(p=>{

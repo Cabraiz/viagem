@@ -8,7 +8,10 @@
 //      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then the right button held: attacks, never walks, no browser menu),
 //      and a burst of short keyboard walks in open ground (every stop sampled: idle↔walk back and forth = tremor);
 //   2b. the phone (isMobile + hasTouch, 390×844, a match of its own): the hero standing, the joystick dragged by a
-//      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground;
+//      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground, then turned (844×390) standing;
+//   2c. the HUD's contrast over the map under the standing hero and after the burst (scripts/folha-contraste.mjs:
+//      body/edge < 3:1 or text
+//      < 4.5:1 against the snow, roads or horde under it fails);
 //   3. modo foto scenes (src/client/dev/foto.ts, no room): a box opening (arsenal), beside towers (torres=1), shadows,
 //      the hero beside a house (silhouette);
 // each at 1280×720 and 390×844 (DPR 1). Out: <out>/folha-<sha>.png (every frame with its caption), <out>/folha.json
@@ -25,6 +28,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {HOLD_BASE,HOLD_SAMPLE,PREDICTED,SETTLE,SETTLE_MAX_MS,SETTLE_MS,rightVerdict} from './folha-direito.mjs';
+import {measure} from './folha-contraste.mjs';
 
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const outDir=resolve(process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')))??'folha-out');
@@ -34,9 +38,10 @@ const VIEWPORTS=[{w:1280,h:720},{w:390,h:844}];
 /** Modo foto scenes (name, extra query, caption). Extras pass through to the sandbox (foto.ts fotoSearch). */
 const FOTOS=[
   ['arsenal','','caixa abrindo (arsenal)'],
-  ['cidade-praca','&torres=1&hero=100,124','ao lado das torres (A3 atrás do prédio)'],
+  ['cidade-praca','&torres=1&hero=76,86','ao lado das torres (A3 atrás do prédio)'],
   ['sombra','','sombras do elenco'],
   ['cidade-regua','','herói ao lado da casa (silhueta)'],
+  ['minimapa','&perfis=3','perfis de inimigo novo em leque'],
 ];
 const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS'],SW:['KeyS','KeyA'],W:['KeyA'],NW:['KeyW','KeyA']};
 /**
@@ -159,7 +164,7 @@ async function playing(p){
   await p.evaluate(TAKE_OFFER).catch(()=>{});
 }
 
-const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
+const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={},contraste={};
 /** scripts/abertura-ci.mjs's result in <out> (it runs before this script), or null. */
 let abertura=null;
 const secs=ms=>Number.isFinite(ms)?`${(ms/1000).toFixed(1).replace('.',',')} s`:'—';
@@ -191,6 +196,7 @@ async function standing(p,vp){
   }
   await clearOffer(p);
   for(let i=1;i<=3;i++){await shot(p,`parado${i}`,`parado ${i}/3`,vp);await sleep(120);}
+  await contrast(p,vp);
   const seen=await p.evaluate(SAMPLE,[STAND_FRAMES,STAND_MAX_MS]).catch(()=>[]);
   let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
   const walks=seen.filter(isWalk).length,keys=[...new Set(seen)];
@@ -198,6 +204,15 @@ async function standing(p,vp){
   if(!seen.length)fails.push(`${vp.w}×${vp.h}: herói não encontrado (window.__perfScene.actor)`);
   else if(flips)fails.push(`${vp.w}×${vp.h}: herói parado trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor; ${walks} de walk)`);
   else if(walks)fails.push(`${vp.w}×${vp.h}: herói parado com textura de walk (${walks}/${seen.length} quadros)`);
+}
+/** The HUD over the map under the standing hero (scripts/folha-contraste.mjs): body/edge < 3:1 or text < 4.5:1 fails. */
+async function contrast(p,vp,when='parado'){
+  try{
+    const m=await measure(p);
+    contraste[`${vp.w}x${vp.h} ${when}`]=m.parts;
+    fails.push(...m.fails.map(f=>`${vp.w}×${vp.h} ${when}: contraste: ${f}`));
+    if(!m.parts.length)avisos.push(`${vp.w}×${vp.h} ${when}: contraste: nenhuma peça do HUD na tela`);
+  }catch(e){avisos.push(`${vp.w}×${vp.h} ${when}: contraste não medido (${String(e).split('\n')[0]})`);}
 }
 async function keyboardWalk(p,vp){
   for(const [dir,keys] of Object.entries(KEYS)){
@@ -238,6 +253,7 @@ async function burst(p,vp){
   }
   const b=tremor[`${vp.w}x${vp.h}`]?.burst??[];
   await shot(p,'rajada',`rajada: ${b.filter(f=>f>STOP_FLIPS_FAIL).length}/${b.length} paradas com tremor`,vp);
+  await contrast(p,vp,'depois da rajada');
 }
 /** Moved: the hero's world spot is more than 6 px from where it was. */
 const moved=(a,b)=>!!(a&&b)&&Math.hypot(a.x-b.x,a.y-b.y)>6;
@@ -360,7 +376,7 @@ async function match(browser,base){
 async function openMenu(p,base,label){
   matchPages.set(p,{base,label,left:4});
   await p.addInitScript(LATENCY);
-  await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
+  await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud,.rh-perfis{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
 }
@@ -404,6 +420,9 @@ async function phone(browser,base){
     const got=await walkByPress(p,vp,(x,y)=>p.touchscreen.tap(x,y),'celular: toque');
     await shot(p,'cel-toque',got?`celular: toque em (${got.x},${got.y}) 1/2`:'celular: toque (não andou)',vp);
     await sleep(400);await shot(p,'cel-toque2','celular: toque 2/2',vp);
+    // The phone turned (844×390): the HUD's other layout over the map, later in the match (more of the horde).
+    await p.setViewportSize({width:844,height:390});await sleep(800);
+    await standing(p,{w:'celular-844',h:390});
   }finally{await ctx.close().catch(()=>{});}
 }
 
@@ -475,7 +494,7 @@ try{
 }finally{
   restore();preview?.stop();await Promise.resolve(worker?.stop()).catch(()=>{});
 }
-const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames,
+const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,contraste,frames,
   abertura:abertura&&{ok:abertura.ok,linha:aberturaLine(),mediana:abertura.mediana,piora:abertura.piora,desvio:abertura.desvio,baseSha:abertura.baseSha}};
 writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;

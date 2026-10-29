@@ -88,7 +88,14 @@ export function mountAudioControls(container:HTMLElement,engine:AudioEngine):()=
     return render;
   });
 
+  // The engine emits on every sound it plays too (dozens a second in a match: steps, the alarm, the fear's heartbeat):
+  // the rows write only when the settings changed, or the page restyled the HUD on every frame
+  // (BUG-20261025-ORQ-celular-travando, Chrome invalidation trace).
+  let shown='';
   const render=()=>{
+    const key=JSON.stringify([BUSES.map(bus=>engine.settings[bus]),engine.settings.vibration]);
+    if(key===shown)return;
+    shown=key;
     for(const renderRow of rows)renderRow();
     if(vibe){
       const on=engine.settings.vibration;

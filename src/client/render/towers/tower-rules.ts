@@ -22,7 +22,8 @@ import {artPiece,type ArtFile} from '../../art/manifest.ts';
 import {ART_CELL} from '../city/art-plan.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {TILE_X} from '../city/projection.ts';
-import {CITY_MAP_SCALE,DEFENSES} from '../../../rules/index.ts';
+import {HERO_DRAW_SCALE} from '../draw-scale.ts';
+import {CITY_DISTANCE_SCALE,DEFENSES} from '../../../rules/index.ts';
 
 export type TowerKind=
   | 'vigia-do-predio'
@@ -74,11 +75,11 @@ export const TOWER_LOOK:Readonly<Record<TowerKind,TowerLook>>=Object.freeze({
   'morteiro':look('B','morteiro',[2,2],9,2.2,.7,{minRange:2,hits:'ground',area:1.6}),
   'lanca-foguetes':look('B','foguete',[3,2],10,3,.9,{minRange:2,hits:'ground',shots:4,area:1.6}),
   'obuseiro':look('B','obus',[3,3],12,3.5,1,{minRange:3,hits:'ground',area:2.4}),
-  'gustavao':look('B','gustavao',[12,4],60*CITY_MAP_SCALE,20,.6,{minRange:6,hits:'ground',area:6}),
+  'gustavao':look('B','gustavao',[12,4],60*CITY_DISTANCE_SCALE,20,.6,{minRange:6,hits:'ground',area:6}),
   'holofote':look('C','holofote',[1,1],6,.5,1.2,{area:2}),
   'arame-e-sirene':look('C','arame',[1,2],4,.5,.6,{hits:'ground'}),
   'antiaerea-quadrupla':look('C','antiaerea',[2,2],9,.3,.8,{hits:'air',shots:4}),
-  'posto-de-radar':look('C','radar',[2,2],0,1,1.6),
+  'posto-de-radar':look('C','radar',[2,2],8,1.5,1.6,{area:1.6}),
 });
 export const TOWER_KINDS=Object.freeze(Object.keys(TOWER_LOOK) as TowerKind[]);
 export const isTowerKind=(k:string):k is TowerKind=>Object.prototype.hasOwnProperty.call(TOWER_LOOK,k);
@@ -268,7 +269,7 @@ export function firedNow(prevFireTick:number|undefined,d:Pick<TowerView,'fireTic
 }
 
 /** Shot drawing kinds: a fast streak, a lobbed shell, a rocket with smoke, a light beam, a spark ring, nothing. */
-export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'none';
+export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'pulse'|'none';
 export type CraterSize='p'|'m'|'g'|'gustavao';
 export interface CalibreLook {
   /** Muzzle flash radius (CSS px at zoom 1 × actor scale) and life (ms); 0 = no flash. */
@@ -278,6 +279,8 @@ export interface CalibreLook {
   speed:number;arc:number;
   /** Trail length (u) behind the shot; 0 = none. */
   trail:number;
+  /** A tracer's glowing core (torres-polimento): yellow by default, white-hot for the long guns, red for the flak. */
+  core?:'branco'|'vermelho';
   /** Explosion radius (u) and life (ms) at the impact; 0 = a small spark only. */
   blast:number;blastMs:number;
   crater?:CraterSize;
@@ -292,17 +295,18 @@ export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
   fuzil:cal({shot:'tracer',flash:6,flashMs:90,speed:42,trail:1.3,barrel:.4}),
   metralhadora:cal({shot:'tracer',flash:8,flashMs:80,speed:46,trail:1.4,barrel:.5}),
   rotativa:cal({shot:'tracer',flash:10,flashMs:80,speed:50,trail:1.6,barrel:.55}),
-  sniper:cal({shot:'tracer',flash:8,flashMs:90,speed:90,trail:2.6,barrel:.75}),
-  antimaterial:cal({shot:'tracer',flash:12,flashMs:110,speed:80,trail:3,blast:.35,blastMs:220,barrel:.85}),
+  sniper:cal({shot:'tracer',flash:8,flashMs:90,speed:90,trail:2.6,core:'branco',barrel:.75}),
+  antimaterial:cal({shot:'tracer',flash:12,flashMs:110,speed:80,trail:3,blast:.35,blastMs:220,core:'branco',barrel:.85}),
   rojao:cal({shot:'rocket',flash:7,flashMs:90,speed:9,arc:.9,trail:1.2,blast:1.2,blastMs:320,crater:'p',barrel:.3}),
   morteiro:cal({shot:'shell',flash:10,flashMs:120,speed:8,arc:3.2,blast:1.6,blastMs:380,crater:'m',barrel:.45}),
   foguete:cal({shot:'rocket',flash:10,flashMs:110,speed:13,arc:1.4,trail:1.8,blast:1.6,blastMs:360,crater:'m',barrel:.6}),
   obus:cal({shot:'shell',flash:16,flashMs:160,speed:14,arc:3.6,trail:.6,blast:2.4,blastMs:480,crater:'g',shake:3,shakeMs:220,barrel:.9}),
-  gustavao:cal({shot:'shell',flash:40,flashMs:320,speed:18,arc:9,trail:2.2,blast:6,blastMs:900,crater:'gustavao',shake:14,shakeMs:900,barrel:3.2}),
+  gustavao:cal({shot:'shell',flash:40,flashMs:320,speed:18,arc:9,trail:2.2,blast:6,blastMs:900,crater:'gustavao',shake:12,shakeMs:1000,barrel:3.2}),
   holofote:cal({shot:'beam',flash:0,flashMs:0,speed:0,blastMs:260,barrel:.3}),
   arame:cal({shot:'aura',blastMs:300,barrel:0}),
-  antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
-  radar:cal({shot:'none',barrel:.3}),
+  antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,core:'vermelho',barrel:.5}),
+  // The radar's pulse (torres-animacao-idle-tiro): a blue ring of its area on the group it hit.
+  radar:cal({shot:'pulse',flash:5,flashMs:120,blastMs:420,barrel:.3}),
 });
 /** Crater decal radius (u) and how long it stays on the snow (ms). */
 export const CRATER:Readonly<Record<CraterSize,{radius:number;ms:number}>>=Object.freeze({
@@ -327,9 +331,16 @@ export function shakeAt(c:Pick<CalibreLook,'shake'|'shakeMs'>,ms:number,reduced:
   const k=1-ms/c.shakeMs;
   return c.shake*k*k;
 }
-/** Shake offset (px) at `ms`: the amplitude on a fixed two-frequency wobble (deterministic, no random). */
+/** The impact's first ms push the screen down (the slam) before the wobble takes over. */
+export const SHAKE_SLAM_MS=80;
+/**
+ * Shake offset (px) at `ms`: the amplitude on a fixed wobble of two unrelated frequencies per axis (a fine tremor, not
+ * a regular circle), the vertical one starting as a slam downward (deterministic, no random). |x| ≤ a, |y| ≤ 0.6 a.
+ */
 export function shakeOffset(amplitude:number,ms:number,out:{x:number;y:number}={x:0,y:0}){
-  out.x=amplitude*Math.sin(ms*.09);out.y=amplitude*.6*Math.sin(ms*.13+1.3);
+  out.x=amplitude*(.72*Math.sin(ms*.083)+.28*Math.sin(ms*.231+.9));
+  const wobble=.7*Math.sin(ms*.121+1.3)+.3*Math.sin(ms*.297+.4),slam=Math.max(0,1-ms/SHAKE_SLAM_MS);
+  out.y=amplitude*.6*(wobble*(1-slam)+slam);
   return out;
 }
 
@@ -342,19 +353,57 @@ export function shakeOffset(amplitude:number,ms:number,out:{x:number;y:number}={
  */
 export const ART_CELL_U=ART_CELL;
 export const towerArtScale=(diamondPx:number,cell:number=ART_CELL)=>diamondPx/(2*TILE_X)/ART_SCALE*cell/ART_CELL;
+/**
+ * The ramo A posts (card torres-ramo-a-postos, the user's option B, 28/10): base and crew drawn together at the hero's
+ * size instead of the scenery's, so a soldier stands as tall as the hero drawn now (96 world px reference × actor scale
+ * × HERO_DRAW_SCALE). One parameter: their crews stand RAMO_A_CREW_PX art px in the sheets (one ruler for the 7, the
+ * Andaime's at 155), so the posts follow HERO_DRAW_SCALE alone when it changes.
+ */
+export const RAMO_A_POSTS:ReadonlySet<TowerKind>=new Set<TowerKind>(['vigia-do-predio','vigias-armados','atiradores-do-telhado',
+  'ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper','equipe-antimaterial']);
+export const RAMO_A_CREW_PX=155;
+/** World px per art px of a defense's delivered sheets: the scenery's (`artScale`), or the hero's for the ramo A posts. */
+export const towerKindScale=(kind:TowerKind,artScale:number,actorScale:number)=>
+  RAMO_A_POSTS.has(kind)?96*actorScale*HERO_DRAW_SCALE/RAMO_A_CREW_PX:artScale;
 /** Texture px per art px of a sheet: its lite copy's cell (scripts/art-lite.mjs) over the delivered cell. */
 export const textureRatio=(file:Pick<ArtFile,'cell'|'liteCell'>)=>file.liteCell?file.liteCell[0]/file.cell[0]:1;
 
-/** Imported art of a defense (manifest group `torres`): the base sheet, the weapon idle sheet and the mount (px, view 0°). */
-export interface TowerArt {base?:ArtFile;idle?:ArtFile;mount?:readonly [number,number]}
+/**
+ * Imported art of a defense (manifest group `torres`): the base sheet, the weapon's idle and fire sheets (8 rows ×
+ * frames) and the mount (px, view 0°).
+ */
+export interface TowerArt {base?:ArtFile;idle?:ArtFile;fire?:ArtFile;mount?:readonly [number,number];
+  /** Where the shot leaves the weapon sheet per direction row (cell fractions; meta.muzzle, read on the idle's frame 0). */
+  muzzle?:readonly (readonly [number,number])[]}
 export function towerArt(kind:TowerKind):TowerArt|undefined{
   const piece=artPiece('torres',kind);
   if(!piece)return undefined;
   const m=piece.meta?.mount;
   const mount=Array.isArray(m)&&m.length===2&&m.every(n=>Number.isFinite(n))?[m[0] as number,m[1] as number] as const:undefined;
-  const base=piece.files.base,idle=piece.files.idle;
+  const base=piece.files.base,idle=piece.files.idle,fire=piece.files.fire,mz=piece.meta?.muzzle;
   if(!base)return undefined;
-  return {base,...(idle?{idle}:{}),...(mount?{mount}:{})};
+  const muzzle=Array.isArray(mz)&&mz.length===8&&mz.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isFinite(n)&&n>=0&&n<=1))
+    ?(mz as [number,number][]).map(p=>[p[0],p[1]] as const):undefined;
+  return {base,...(idle?{idle}:{}),...(idle&&fire?{fire}:{}),...(mount?{mount}:{}),...(idle&&muzzle?{muzzle}:{})};
 }
+/** Frames and pace of a weapon sheet (ArtFile frames/fps; idle 4 at 4 fps, fire at 12 when the manifest says nothing). */
+export interface WeaponClip {frames:number;fps:number}
+export const clipOf=(f:Pick<ArtFile,'frames'|'fps'>|undefined,fps:number):WeaponClip|undefined=>
+  f?{frames:Math.max(1,f.frames??1),fps:typeof f.fps==='number'&&f.fps>0?f.fps:fps}:undefined;
+/**
+ * The weapon's pose now (card torres-animacao-idle-tiro): the fire sheet from its first frame at the volley (`fireAt`,
+ * the sim's shot: the flash frame on the shot's tick, restarted by each volley) to its last, then the idle sheet in a loop,
+ * offset by `seedMs` so a row of the same defense does not breathe in step. Reduced motion: the idle stands on frame 0.
+ */
+export function weaponPose(nowMs:number,fireAt:number,seedMs:number,idle:WeaponClip,fire?:WeaponClip,reduced=false):{fire:boolean;frame:number}{
+  if(fire){
+    const e=nowMs-fireAt;
+    if(e>=0&&e<fire.frames*1000/fire.fps)return {fire:true,frame:Math.min(fire.frames-1,Math.floor(e*fire.fps/1000))};
+  }
+  if(reduced||idle.frames<2)return {fire:false,frame:0};
+  return {fire:false,frame:Math.floor(Math.max(0,nowMs+seedMs)*idle.fps/1000)%idle.frames};
+}
+/** A defense's idle offset (ms, 0..999) from its id: stable across snapshots. */
+export const weaponSeed=(id:string)=>{let h=0;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;return ((h%1000)+1000)%1000;};
 /** Weapon frame in an idle sheet of 8 rows × `frames` columns. */
 export const weaponFrame=(dir:Dir8,frame:number,frames:number)=>dir*Math.max(1,frames)+(Math.max(1,frames)>1?((frame%frames)+frames)%frames:0);

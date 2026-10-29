@@ -186,11 +186,13 @@ const strip=(cell,frames,priority=P0)=>({priority,kind:'frames',cell:Array.isArr
 const ITENS=Object.freeze({
   'gema-pequena':strip(64,4),'gema-media':strip(64,4),'gema-grande':strip(64,4),
   coxinha:strip(64,4),ima:strip(64,4),bau:strip(64,4),'recurso-coco':strip(64,4),'recurso-pedra':strip(64,4),
-  'boleto-chuva':strip(64,8,P1),
 });
 const PROJETEIS=Object.freeze({
   'tiro-aliado':strip(32,4),'garrafa-molotov':strip(64,8),'coco-pombo':strip(48,6),'coco-pombo-poca':strip(96,6),
   'boleto-juros':strip(48,8),
+  // The Rojão de Réveillon's rocket (BUG-20261023-ORQ-armas-sem-projetil): six 64 px frames; guessed as one 384 px frame it
+  // flew as a row of six rockets.
+  rojao:strip(64,6),
   // Any other critter shot (today's hostile star, keys.ts FX.projHostile); P1: the inventory has no row for it yet.
   'tiro-inimigo':strip(32,[1,4],P1),
   ...Object.fromEntries(['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo']
@@ -209,9 +211,11 @@ const EFEITOS=Object.freeze({
   'anel-alvo':strip(128,4),'anel-habilidade':strip(128,4),'marcador-destino':strip(128,4),
   'heroi-voce':strip(128,1),'caido-resgate':strip([128,256],6),'sombra-contato':strip([128,64],1),
   'olhos-escuro':strip([64,32],4,P1),'veu-apagao':{priority:P1},
-  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery: the balloon's left/bottom corner
-  // keeps its tail whole; the bars keep their 3–4 px frame.
-  'balao-fala':{priority:P0,kind:'nineslice',cell:[96,64],slice:[28,25,20,24]},
+  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery; the bars keep their 3–4 px frame.
+  // The balloon is its body only, edge to edge (card heroi-fala-cade-amigos): the 16/10 cell had 12–19 px of empty
+  // margin and its own tail inside the slices, so the body sized to the text shrank to a thin strip; the code draws the
+  // tail (layers.ts drawBubble, pointing at the speaker).
+  'balao-fala':{priority:P0,kind:'nineslice',cell:[74,28],slice:[10,9,10,9]},
   'etiqueta-devendo':{priority:P0,kind:'nineslice',cell:[96,64],slice:[16,24,16,24]},
   ...Object.fromEntries(['moldura','preenchimento','moldura-elite','preenchimento-elite']
     .map(p=>[`barra-vida-${p}`,{priority:P0,kind:'nineslice',cell:[64,12],slice:[4,3,4,3]}])),
@@ -246,14 +250,13 @@ const UI=(()=>{
 
 // ---------------------------------------------------------------- face avatars (board design/PACOTE-ROSTOS.md, §4b)
 /**
- * The 35 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
+ * The 29 classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
  * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
  */
-export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','pedreiro',
-  'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
-  'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
-  'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
-  'conspiracionista','gamer-mobile','rainha-bateria']);
+export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl',
+  'pedreiro','vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira',
+  'concurseira','vendedor-praia','pagodeiro','gambiarreiro','universitario','passageira','porteiro','merendeira',
+  'rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','conspiracionista','gato-nada-pra-comer']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
 export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
 /** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */
@@ -318,14 +321,15 @@ export {ENEMY_ROLES,ENEMY_TABLE};
  * Towers (board design/proximos/08-TORRES.md), folder `torres/<id>/`, kind 'tower':
  *  - `base.png` + `base.json` {"kind":"views","cell":[W,H],"views":4,"rows":[…],"anchor":[0.5,Y],"meta":{"footprint":[a,b],"mount":[x,y]}}:
  *    4 views (VIEW_NAMES) × the rows TOWER_ROWS (a wall: TOWER_WALL_ROWS, and no weapon);
- *  - weapon + crew `idle.png` (TOWER_IDLE_FRAMES frames), `fire.png`, `reload.png` (any frame count): 8 rows
+ *  - weapon + crew `idle.png` (one of TOWER_IDLE_FRAMES frame counts), `fire.png`, `reload.png` (any frame count): 8 rows
  *    (DIRECTIONS) of `meta.json` {"cell":[W,H],"anchor":[0.5,0.88],"fps":{…}} cells. Absent animations are notes.
  * Like the enemies, each animation may come as one PNG per direction `<anim>-<DIR>.png` (assembled by the importer).
  */
 export const TOWER_ROWS=Object.freeze(['obra-1','obra-2','obra-3','pronta','danificada','ruina']);
 export const TOWER_WALL_ROWS=Object.freeze(['pronta','danificada','ruina']);
 export const TOWER_ANIMS=Object.freeze(['idle','fire','reload']);
-export const TOWER_IDLE_FRAMES=4;
+/** Idle frame counts: the 4-frame breath, or 8 for a crew with a gag (ramo A, card torres-ramo-a-postos). */
+export const TOWER_IDLE_FRAMES=Object.freeze([4,8]);
 /**
  * Accepted formats per group; `kind` is the default when the piece has no sidecar saying otherwise. `character`: the
  * messages talk about feet and the figure ("boneco"); other groups talk about the drawing and its base.

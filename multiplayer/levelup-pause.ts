@@ -19,8 +19,12 @@ import type {RunPause} from '../src/contract/index.ts';
 import {SIM_HZ} from '../src/contract/index.ts';
 
 export const PAUSE_FIRST_MS=12_000,PAUSE_EXTRA_MS=4_000,PAUSE_MAX_MS=20_000;
-/** Combat between two pauses (20 s): a busy late game would otherwise stop every few seconds. */
-export const PAUSE_GAP_TICKS=20*SIM_HZ;
+/**
+ * Combat between two pauses (30 s): a busy late game would otherwise stop every few seconds. levelup-espalhado: was 20 s,
+ * which in a nest burst (5-6 levels in ~100 s) opened a pause every 20 s; at 30 s the levels in between join the next
+ * pause (one pause, "+2 escolhas").
+ */
+export const PAUSE_GAP_TICKS=30*SIM_HZ;
 /** A room bot's reaction in a pause. */
 export const BOT_PICK_MS=1_000;
 

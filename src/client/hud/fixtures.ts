@@ -19,8 +19,8 @@ import type {RunResult} from './model.ts';
  * 6 units, 0 fichas de torre); the other scenarios hold 156 units (3 fichas, the ring at 90%: the "falta pouco" look);
  * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave'|'offer-tomos';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave','offer-tomos'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave'|'offer-tomos'|'offer-sem-xp';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave','offer-tomos','offer-sem-xp'];
 /** Where the fixtures put the wall, and the hero spots the sandbox hands the HUD (in the camp / far away). */
 export const FIXTURE_WALL={x:12,y:12};
 export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?:number}>>={
@@ -33,13 +33,13 @@ const roster=[
   {id:'p3',name:'Zé do Pix',classId:'viciado-em-bet'},
   {id:'p4',name:'Bruninha',classId:'motogirl'},
   {id:'p5',name:'Seu Jorge',classId:'aposentado'},
-  {id:'p6',name:'Kaique Mil Grau',classId:'gamer-mobile'},
+  {id:'p6',name:'Kaique Mil Grau',classId:'streamer'},
 ];
 const builds=[
-  {weapons:[{id:'chinelo',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},
+  {weapons:[{id:'audio',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},
   {weapons:[{id:'boleto',level:4},{id:'pombo',level:2}],passives:[{id:'cartao',level:3}]},
   {weapons:[{id:'audio',level:2},{id:'guarda-chuva',level:1},{id:'pombo',level:1},{id:'cafe',level:1}],passives:[{id:'bone',level:4},{id:'cartao',level:1},{id:'megafone',level:1}]},
-  {weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:2}],passives:[{id:'tenis',level:5},{id:'oculos',level:2}]},
+  {weapons:[{id:'cafe-evo',level:1},{id:'boleto',level:2}],passives:[{id:'tenis',level:5},{id:'oculos',level:2}]},
   {weapons:[{id:'guarda-chuva',level:6}],passives:[{id:'marmita',level:5},{id:'cafe-forte',level:2}]},
   {weapons:[{id:'pombo',level:7},{id:'audio',level:3}],passives:[{id:'oculos',level:4},{id:'megafone',level:2},{id:'cartao',level:3}]},
 ];
@@ -71,8 +71,8 @@ export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunV
 export const FIXTURE_INTERMISSION_SECONDS=17;
 function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferView{
   return source==='round'
-    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'chinelo',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
-    :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'chinelo',level:6}],deadlineTick,defaultIndex:0}
+    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'guarda-chuva',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
+    :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'guarda-chuva',level:6}],deadlineTick,defaultIndex:0}
     :{id:`lvl-${level}-p1`,source,level,choices:[{itemId:'tenis',level:3},{itemId:'audio',level:1},{itemId:'cartao',level:2}],deadlineTick,defaultIndex:2};
 }
 
@@ -102,6 +102,8 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
       // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
       :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]
       // upgrades-megabonk: the manual combat's tomes (+1 projétil, the aura, the shot speed, damage), in the pause.
+      // ofertas-sem-xp-e-icones: the user's print of 25/10 (two of its stickers came as an empty frame; the cartão said XP).
+      :scenario==='offer-sem-xp'?[{id:'lvl-2-p1',source:'level',level:2,choices:[{itemId:'estilingue',level:1},{itemId:'cartao',level:1},{itemId:'cafe-forte',level:1}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]
       :scenario==='offer-tomos'?[{id:'lvl-12-p1',source:'level',level:12,choices:[{itemId:'pente',level:2},{itemId:'defumador',level:1},{itemId:'estilingue',level:1},{itemId:'oculos',level:3}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]:[],
     events:[],
   };
@@ -110,7 +112,7 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
 
 /** Late-run worst case: 6 weapons + 6 passives each (the most a build can hold), for layout stress tests. */
 const FULL_BUILD={
-  weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
+  weapons:[{id:'boleto-evo',level:1},{id:'rojao',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
   passives:[{id:'cafe-forte',level:5},{id:'marmita',level:5},{id:'tenis',level:4},{id:'megafone',level:3},{id:'bone',level:2},{id:'cartao',level:1}],
 };
 

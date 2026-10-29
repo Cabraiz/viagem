@@ -21,12 +21,14 @@ import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.
  * tall; the sun is ~40° up) at its opacity, and building art tinted warm on the sun side, cold on the shade side.
  */
 const LIGHT=lightEnabled();
-const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha}):undefined;
+/** Soft edge of the cast shadows (card chao-da-cidade-sem-emenda): nested layers, penumbra in cells, core cut by `fade`. */
+export const CAST_SHADOW_SOFT=Object.freeze({layers:4,penumbra:.22,fade:.4});
+const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha,soft:CAST_SHADOW_SOFT}):undefined;
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
 import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,texelOf,type CityArtPlan,type CityLot} from './art-plan.ts';
-import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
+import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,heroRect,marksRect,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,rectsOverlap,type Pt,type Rect} from './projection.ts';
@@ -55,8 +57,12 @@ const GLINT_DEPTH=CITY_GROUND_DEPTH+2;
 const FOG_DEPTH=CITY_GROUND_DEPTH-1;
 /** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
 const GLINT_PERIOD_MS=4000;
-/** Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. */
-export const GROUND_RESOLUTION=0.75;
+/**
+ * Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. Fixed, not following
+ * the zoom (no re-bake mid-match): 1 keeps the setts sharp at the phone's zoom (~0.9) for +43 MB of GPU texture over
+ * 0.75 at the spawn (card chao-pedra-nitida, evidence/medidas.log).
+ */
+export const GROUND_RESOLUTION=1;
 export const GROUND_RT_MAX_PX=2048;
 
 /** Fills a polygon with the current fill style: a convex one as a triangle fan (fan.ts, no earcut), any other through Phaser. */
@@ -89,6 +95,8 @@ const columnFade=(pieceId:string)=>`c:${pieceId}`;
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
   camera:Rect;
+  /** Card inimigos-querem-o-uno: a second camera's rect (the Uno's live window), its chunks kept built too. */
+  also?:Rect;
   view:number;
   /**
    * Local hero feet (world units) or undefined when there is none (spectating). In city mode the scene draws every
@@ -410,7 +418,7 @@ export class CityLayer {
   update(frame:CityFrame){
     const view=normalizeView(frame.view);
     if(view!==this.view){this.view=view;this.fader.reset();this.faded.clear();this.cellColumns.clear();this.drawFog(view);}
-    const {show,hide}=this.tracker.update(frame.camera,view);
+    const {show,hide}=this.tracker.update(frame.camera,view,frame.also);
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
     let old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);
@@ -418,7 +426,8 @@ export class CityLayer {
     if(old===undefined&&!show.length)for(const key of this.lateArt){const c=this.chunksByKey.get(key);if(c&&!rectsOverlap(this.tracker.bounds(c,view),frame.camera)){old=key;break;}}
     if(old!==undefined){const t0=perfNow();this.dropChunk(old);this.buildChunk(old,view);perfSpan('chunk',t0);}
     this.applyOcclusion(frame,view);
-    this.vivo?.update(frame.camera,performance.now());
+    const h=frame.hero;
+    this.vivo?.update(frame.camera,performance.now(),h&&{rect:marksRect(heroRect(h.x,h.y,h.z,view,this.pivot,this.actorBox)),depth:this.actorDepth(h.x,h.y,h.z)},frame.dtMs);
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
       this.clock=(this.clock+frame.dtMs)%GLINT_PERIOD_MS;
       const alpha=0.55+0.45*Math.sin(this.clock/GLINT_PERIOD_MS*Math.PI*2);
@@ -681,9 +690,9 @@ export class CityLayer {
     // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
     const decor:DecorPrim[]=[];
     const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
-    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
+    for(const q of quads)if(!own(q)&&this.decorOn(q.kind)&&!bare(q.cx,q.cy))
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot,!this.relief))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
+    decor.push(...(painted.size||this.cliffs||this.relief?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
@@ -751,7 +760,7 @@ export class CityLayer {
     let glintCells=0;
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
-      if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
+      if(!this.decorOn(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
       let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot,!this.relief);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
@@ -761,6 +770,13 @@ export class CityLayer {
     }
     return quads.flatMap(q=>byCell.get(`${q.cx},${q.cy}`)??[]);
   }
+
+  /**
+   * Whether the procedural ground decor goes over a kind: not over painted art (decorOver), and not the cobble joints over
+   * the relief, whose shader draws its own stones and joints (card chao-da-cidade-sem-emenda: the drawn 1 px joints, a
+   * fifth of them snow white, read as a dashed white grid over the relief's stones).
+   */
+  private decorOn(kind:GroundKind){return this.materials.decorOver(kind)&&!(this.relief&&kind==='cobble');}
 
   /** Painted ground cells of one texture as a Mesh: projected cell corners, UVs from world position (materials.ts). */
   private groundMesh(quads:readonly GroundQuad[],key:string):Phaser.GameObjects.Mesh{

@@ -6,6 +6,11 @@
  * - Kill-cam: a second Phaser camera drawn inside the HUD's kill-cam window (hud/killcam.ts) for KILLCAM_MS, pointed at
  *   where the last critter fell, where a copy of it gets knocked out in slow motion and flies off (only that camera
  *   sees the copy). The main camera, the hero and the controls never change.
+ * - Level-up burst (card levelup-estouro-e-tremida): a ring of light and a short confetti on the local hero when the
+ *   team levels up, before the offer opens (hud.ts holds it LEVELUP_BURST_MS); the ring alone, still, with reduced
+ *   motion (render/levelup-fx-rules.ts).
+ * - Hurt shake: a hit above 10 % of the local player's max hp shakes the camera 2 px for 120 ms, with the towers' rule
+ *   (tower-rules.ts shakeAt); the scene adds shakeOffset after centring its camera. None with reduced motion.
  */
 import Phaser from 'phaser';
 import type {RunView} from '../../contract/index.ts';
@@ -17,6 +22,8 @@ import {applyEnemyArt,enemyArtId} from '../art/horde-art.ts';
 import {deathLine,kindStyle} from './jokes.ts';
 import {killcamFrame} from './killcam-rules.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
+import {HURT_SHAKE,LEVELUP_DEPTH,burstFrame,hurtOn,hurtShakes} from './levelup-fx-rules.ts';
+import {shakeAt,shakeOffset} from './towers/tower-rules.ts';
 
 type Pt={x:number;y:number};
 export interface Rect {x:number;y:number;width:number;height:number}
@@ -36,6 +43,11 @@ export interface ZueiraFxOptions {
    * its art-size copy as the endless map does (killcam-rules.ts actorScale). Default 1.
    */
   actorScale?:()=>number;
+  /** The local hero's feet (scene px, where its sprite stands) for the level-up burst, and its height (scene px) to size it. */
+  heroAt?:()=>Pt|undefined;
+  heroHeight?:()=>number;
+  /** The local player's id: only hits on it shake the camera. */
+  localId?:()=>string|undefined;
 }
 
 /** Depth of the knocked-out copy, its poof and its line (seen only by the kill-cam camera). */
@@ -56,8 +68,16 @@ export class ZueiraFx {
   private lastEventId=-1;
   private viewTick=0;
   private now=0;
+  /** The level-up burst: when it started and the level it celebrates (one burst per level, from the event or the pause). */
+  private burst?:{start:number};
+  private burstLevel=0;
+  private burstGfx?:Phaser.GameObjects.Graphics;
+  private burstColors?:{amarelo:number;papel:number;breu:number;confetti:number[]};
+  /** The hurt shake's start (scene ms), and the damage events already read. */
+  private shakeBorn=-Infinity;
+  private hurtSeen=-1;
   /** Last frame, for the acceptance probe (dev) and tests of the wiring. */
-  readonly last={dark:0,happening:undefined as HappeningKind|undefined,killcam:false,killcamKind:'' as string,killcamCamera:false};
+  readonly last={dark:0,happening:undefined as HappeningKind|undefined,killcam:false,killcamKind:'' as string,killcamCamera:false,burst:false,bursts:0,shakes:0};
 
   constructor(scene:Phaser.Scene,options:ZueiraFxOptions){
     this.scene=scene;this.options=options;
@@ -67,8 +87,9 @@ export class ZueiraFx {
 
   push(view:RunView){
     // A new run (rematch) or a fresh server: event ids may start over, and nothing of the old run stays on screen.
-    if(view.tick<this.viewTick){this.lastEventId=-1;this.blackout=undefined;this.stopKillcam();}
+    if(view.tick<this.viewTick){this.lastEventId=-1;this.blackout=undefined;this.stopKillcam();this.resetHero();}
     this.viewTick=view.tick;
+    this.pushHurt(view);
     for(const e of view.events){
       if(e.eventId<=this.lastEventId)continue;
       this.lastEventId=e.eventId;
@@ -76,12 +97,36 @@ export class ZueiraFx {
         this.last.happening=e.kind;
         if(e.kind==='apagao')this.blackout={start:this.now,end:this.now+Math.max(0,e.endsTick-view.tick)*this.options.tickMs};
       }else if(e.type==='last-bicho')this.startKillcam(e.kind,`${e.round}:${e.kind}:${e.eventId}`,{x:e.x,y:e.y});
+      else if(e.type==='levelup')this.levelUp(e.level);
     }
     // The dark goes with the wave: a round that ends (or a run) never stays dark.
     if(this.blackout&&view.round?.phase!=='wave')this.blackout.end=Math.min(this.blackout.end,this.now);
   }
   /** New run or a fresh server: event ids start over. */
-  resetEvents(){this.lastEventId=-1;this.viewTick=0;this.blackout=undefined;this.stopKillcam();}
+  resetEvents(){this.lastEventId=-1;this.viewTick=0;this.blackout=undefined;this.stopKillcam();this.resetHero();}
+  private resetHero(){this.burst=undefined;this.burstLevel=0;this.shakeBorn=-Infinity;this.hurtSeen=-1;this.burstGfx?.clear().setVisible(false);}
+
+  /**
+   * The team reached `level`: the burst on the local hero, once per level (the levelup event and the room's pause both
+   * call it, whichever arrives first).
+   */
+  levelUp(level:number){
+    if(!(level>this.burstLevel))return;
+    this.burstLevel=level;this.burst={start:this.now};this.last.bursts++;
+  }
+  /** A hit on the local player above HURT_SHAKE_SHARE of its max hp (this view's new events) starts the shake. */
+  private pushHurt(view:RunView){
+    const id=this.options.localId?.();if(!id)return;
+    const hurt=hurtOn(view,id,this.hurtSeen);this.hurtSeen=hurt.last;
+    const me=view.players.find(p=>p.id===id);
+    if(me&&hurtShakes(hurt.amount,me.maxHp,this.options.reduced)){this.shakeBorn=this.now;this.last.shakes++;}
+  }
+  /** The hurt shake's camera offset now (world px at camera `zoom`), added by the scene after centring its camera. */
+  shakeOffset(zoom:number,out:Pt):Pt{
+    const ms=this.now-this.shakeBorn,amp=shakeAt(HURT_SHAKE,ms,this.options.reduced);
+    if(!amp){out.x=0;out.y=0;return out;}
+    return shakeOffset(amp/(zoom||1),ms,out);
+  }
 
   update(now:number){
     this.now=now;
@@ -94,6 +139,36 @@ export class ZueiraFx {
       this.dark.setPosition(v.x-m,v.y-m).setSize(v.width+2*m,v.height+2*m).setAlpha(level).setVisible(true);
     }else if(this.dark.visible)this.dark.setVisible(false);
     this.updateKillcam(now);
+    this.updateBurst(now);
+  }
+
+  private updateBurst(now:number){
+    const b=this.burst,g=this.burstGfx;
+    const feet=b&&this.options.heroAt?.();
+    const f=b&&feet?burstFrame(now-b.start,this.options.reduced,this.colors().confetti):undefined;
+    this.last.burst=!!f&&f.ring.alpha>0;
+    if(!f||!feet||f.ring.alpha<=0){if(b&&now-b.start>1000)this.burst=undefined;if(g?.visible)g.clear().setVisible(false);return;}
+    const gfx=g??(this.burstGfx=this.scene.add.graphics().setDepth(LEVELUP_DEPTH));
+    // Sized by the hero on screen, centred on its chest (three quarters of its body above the feet).
+    const h=Math.max(24,this.options.heroHeight?.()??60),cx=feet.x,cy=feet.y-h*.75;
+    const {amarelo,papel,breu}=this.colors();
+    gfx.clear().setVisible(true);
+    const r=f.ring.radius*h,w=Math.max(3,f.ring.width*h);
+    gfx.lineStyle(w+3,breu,f.ring.alpha*.6).strokeCircle(cx,cy,r);
+    gfx.lineStyle(w,amarelo,f.ring.alpha).strokeCircle(cx,cy,r);
+    gfx.lineStyle(Math.max(1,w*.35),papel,f.ring.alpha).strokeCircle(cx,cy,r);
+    const size=Math.max(5,h*.22);
+    for(const c of f.confetti){
+      const x=cx+c.x*h,y=cy+c.y*h,cos=Math.cos(c.rotation)*size,sin=Math.sin(c.rotation)*size*.5;
+      gfx.fillStyle(c.color,f.confettiAlpha).fillTriangle(x-cos,y-sin,x+cos,y+sin,x-sin,y+cos*.6);
+    }
+  }
+  /** Burst colours: an Amarelo Encarte ring (the choice to come) with a Papel core and a Breu outline; mixed confetti. */
+  private colors(){
+    return this.burstColors??=(()=>{
+      const [amarelo,papel,breu,cartolina,lilas,cone]=['--c-amarelo','--c-papel','--c-breu','--c-cartolina','--c-lilas','--c-cone'].map(c=>tokenColor(c));
+      return {amarelo,papel,breu,confetti:[amarelo,cartolina,lilas,cone,papel]};
+    })();
   }
 
   private startKillcam(kind:string,id:string,at:Pt){
@@ -153,5 +228,5 @@ export class ZueiraFx {
 
   /** Depth of the blackout and what it covers now (audit, dev probe). */
   blackoutDepth(){return this.dark.depth;}
-  destroy(){this.stopKillcam();this.dark.destroy();}
+  destroy(){this.stopKillcam();this.dark.destroy();this.burstGfx?.destroy();}
 }

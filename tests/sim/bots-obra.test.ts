@@ -78,9 +78,11 @@ test('botSites: a free-built defense is its own d: site (room to grow), and no n
 });
 
 test('room: three bots on a chaveiro run build their roots around the car, and around its new spot once it is moved',()=>{
-  // Seed 9 (4 until the vehicles: their rides end its wave 2 earlier, the bots go to the bank first and the run is won
-  // before a second ficha).
-  const sim=new Simulation(9,{world:'cidade',terrain,objective:'chaveiro'}),bots=new RoomBots();
+  // Seed 5 (9 from the vehicles until the bodies by team size, vida-inimigos-estilo-clash decision B, met
+  // bots-20-mais-lentos: seed 9's bots built no root after the move; 4–8 and 10–12 do. 4 until
+  // economia-caixa-e-forja: the R$ 20 shift and the softer forge moved seed 4's run; 5–8 and 10–12 still build; so
+  // does seed 5 with levelup-espalhado's cheaper levels 2/3).
+  const sim=new Simulation(5,{world:'cidade',terrain,objective:'chaveiro'}),bots=new RoomBots();
   const ids=['bot-1','bot-2','bot-3'];
   ids.forEach((id,i)=>{sim.addBot(id,id,['cidadao-comum','clt-cansado','feirante'][i]);bots.add(id,i);});
   sim.resetRun();

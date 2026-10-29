@@ -12,7 +12,9 @@ import {icon} from './icon.ts';
 import type {UpdateReason} from './version-watch.ts';
 
 /** The notice, one line: in a match it is all there is (the joke below shows only out of the round, UX B5). */
-export const UPDATE_TITLE='Saiu versão nova do jogo! Toque para atualizar.';
+/** The one "new version" line (T9 of the texts audit): the notice, the retry window, the lobby and the map reuse it. */
+export const UPDATE_NEWS='Saiu versão nova do jogo.';
+export const UPDATE_TITLE=`${UPDATE_NEWS} Toca pra atualizar.`;
 /** Optional second line (the joke), outside the HUD slot only. */
 export const UPDATE_LINE='Saiu ajuste fresquinho.';
 /** How long the notice may hold the HUD's announcement slot: a whole run (30 min); danger notices still go first. */
@@ -114,6 +116,11 @@ export function linkWatch(watch:WatchLink|undefined){link=watch;}
 export const chunkFailed=(e:unknown)=>!!link?.chunkFailed(e);
 /** True once the page is reloading for a new version: only then may a caller skip leaving the room (the resume rejoins). */
 export const reloadUnderway=()=>reloading||!!link?.reloading;
+/**
+ * "Atualizar agora" and the pull-to-refresh (BUG-20261024-ORQ-arrastar-atualiza-versao-nova): the watch's tap (resume
+ * saved, guard recorded, reload); without a watch, a plain reload.
+ */
+export function updateNow(target:{reload():void}=location){if(link)link.update();else reloadPage(target);}
 /** The reload the watch calls: marks the page as leaving so nothing re-shows the notice while it unloads. */
 export function reloadPage(target:{reload():void}){reloading=true;target.reload();}
 

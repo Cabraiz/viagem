@@ -27,8 +27,11 @@ import {cityTerrainFrom,type CityTerrain} from '../../src/maps/city/terrain.ts';
 import {buildPlanFor,type CellRect} from '../../src/maps/index.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {CAR_BUILD_GAP,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
-import {FREE_CELL,MURO_BLOCK_R,gridSize,onGround,pieceDrag,type FreeBuildHooks} from '../../src/sim/towers/free-build.ts';
+import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
+import {cityFlowGrid} from '../../src/sim/city/grid.ts';
+import {RADIUS} from '../../src/maps/world.ts';
+import {BUILD_REACH} from '../../src/sim/towers/system.ts';
+import {BARRICADA_BLOCK_R,BARRICADA_DISCS,FREE_CELL,MURO_BLOCK_R,blockReach,gridSize,onGround,pieceDrag,type FreeBuildHooks} from '../../src/sim/towers/free-build.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -93,8 +96,8 @@ function ring(k:number,at:{x:number;y:number}=CAR):{c:number;r:number}[]{
 }
 /** A free walkable cell clear of the car (Chebyshev 5 cells around it). */
 const spot=(i=0)=>ring(5)[i];
-/** barricada-2x: the i-th cell of that ring whose 2×2 square (it the top-left) is all walkable. */
-const spot2=(i=0)=>ring(5).filter(o=>onGround(city,o,2,2))[i];
+/** barricada-tocar-no-mapa: the i-th cell of that ring whose 2×1 piece (it the left cell) is all walkable. */
+const spot2=(i=0)=>ring(5).filter(o=>onGround(city,o,2,1))[i];
 
 test('rules: the muro and the barricada (D-052 numbers), footprints and rot', ()=>{
   assert.deepEqual({...FREE_PIECE_DEFS.muro,footprint:[...FREE_PIECE_DEFS.muro.footprint]},
@@ -102,8 +105,8 @@ test('rules: the muro and the barricada (D-052 numbers), footprints and rot', ()
   const b=FREE_PIECE_DEFS.barricada;
   // NEW-20261021-ORQ-barricada-construir: a square of the muralha de tralha, solid to the enemies.
   assert.deepEqual([b.price,b.hp,b.limit,b.blocks,b.drag],[5,200,40,true,1]);
-  // NEW-20261022-ORQ-barricada-2x: twice as wide and long, 2×2 cells (a square: rot changes nothing).
-  assert.deepEqual(pieceCells('barricada'),[2,2]);assert.deepEqual(pieceCells('barricada',1),[2,2]);
+  // barricada-tocar-no-mapa: 2 cells long (barricada-2x's length), 1 thick, turned by rot.
+  assert.deepEqual(pieceCells('barricada'),[2,1]);assert.deepEqual(pieceCells('barricada',1),[1,2]);
   assert.deepEqual(pieceCells('muro',1),[1,1]);assert.deepEqual(pieceCells(ROOT_DEFENSE),[1,1]);
   assert.deepEqual(pieceCells('ninho-de-metralhadora'),[3,3]);
 });
@@ -123,7 +126,9 @@ test('a root on a free cell: at any phase, centred on its cell, one ficha; the o
   const {cols}=gridSize(city);
   assert.deepEqual(order(g,'muro',cols,0),{ok:false,reason:'fora'});
   let wallCell:{c:number;r:number}|undefined;
-  for(let c=0;!wallCell&&c<cols;c++)if(!onGround(city,{c,r:Math.floor(CAR.y/FREE_CELL)},1,1)&&Math.abs((c+.5)*FREE_CELL-CAR.x)<30)wallCell={c,r:Math.floor(CAR.y/FREE_CELL)};
+  // Rows around the car's (asset v4: the car's own row runs through the plaza's O and L doors, open for 30 u).
+  for(let dr=0;!wallCell&&dr<=8;dr++)for(const r of [Math.floor(CAR.y/FREE_CELL)-dr,Math.floor(CAR.y/FREE_CELL)+dr])
+    for(let c=0;!wallCell&&c<cols;c++)if(!onGround(city,{c,r},1,1)&&Math.abs((c+.5)*FREE_CELL-CAR.x)<30)wallCell={c,r};
   assert.ok(wallCell,'a cell off the walkable ground near the plaza');
   assert.deepEqual(order(g,'muro',wallCell!.c,wallCell!.r),{ok:false,reason:'fora'});
   // Next to the car's body.
@@ -160,6 +165,50 @@ test('a root on a free cell: at any phase, centred on its cell, one ficha; the o
   // A downed hero builds nothing.
   g.ana.hp=0;g.ana.downed=true;
   assert.deepEqual(order(g,'muro',spot(9).c,spot(9).r),{ok:false,reason:'player'});
+});
+
+/**
+ * barricada-tocar-no-mapa: N pieces end to end on open ground (rot 0: a row along x; rot 1: along y), clear of the car;
+ * the first piece's cell and the line's world coordinate.
+ */
+function barricadeRow(rot:0|1,n=4){
+  const [w,h]=pieceCells('barricada',rot),len=2*n;
+  for(let k=8;k<30;k++)for(const o of ring(k)){
+    const ok=rot?onGround(city,{c:o.c-2,r:o.r-1},5,len+2):onGround(city,{c:o.c-1,r:o.r-2},len+2,5);
+    if(!ok)continue;
+    const g=rig(),cells=Array.from({length:n},(_,i)=>rot?{c:o.c,r:o.r+i*h}:{c:o.c+i*w,r:o.r});
+    if(cells.every(c=>order(g,'barricada',c.c,c.r,undefined,rot).ok))return {g,cells,line:rot?(o.c+.5)*FREE_CELL:(o.r+.5)*FREE_CELL};
+  }
+  throw new Error('no open ground for the row');
+}
+
+for(const rot of [0,1] as const)test(`a row of barricadas end to end (rot ${rot}) has no gap: the enemies' flow grid is shut in every column it crosses, and no body squeezes through`, ()=>{
+  const {g,cells,line}=barricadeRow(rot),grid=cityFlowGrid(g.terrain),cs=grid.cellSize,enemies=g.terrain.forEnemies();
+  // Along the row: from the first piece's start to the last one's end (world u).
+  const a=(rot?cells[0].r:cells[0].c)*FREE_CELL,b=a+2*cells.length*FREE_CELL;
+  for(let i=Math.ceil(a/cs-.5);i+.5<=b/cs;i++){
+    // The flow cell whose centre is nearest the line, in this column (row) of the grid: shut.
+    const j=Math.round(line/cs-.5),cx=rot?j:i,cy=rot?i:j;
+    assert.equal(grid.walkable(cx,cy),false,`flow cell ${cx},${cy} on the line stays open`);
+  }
+  // No body, however small, stands on the line anywhere along it (the joints between pieces included).
+  for(let t=a;t<=b;t+=.05)assert.equal(enemies.clearDisc(rot?line:t,rot?t:line,.1),false,`a gap at ${t.toFixed(2)}`);
+  // Whatever the row's offset to the flow grid: the band a hero-size probe (the grid's own, RADIUS) cannot enter is at
+  // least a flow cell wide all along it, so some cell centre always falls in it.
+  for(let t=a+.05;t<=b-.05;t+=.05)for(let off=0;off<cs/2;off+=.02)for(const side of [-1,1]){
+    const u=line+side*off;
+    assert.equal(enemies.clearDisc(rot?u:t,rot?t:u,RADIUS),false,`the band is thin at ${t.toFixed(2)} (${(side*off).toFixed(2)} off the line)`);
+  }
+});
+
+test('kit reach (barricada-tocar-no-mapa): a kit is placed up to KIT_PLACE_REACH from the hero; farther, away; the build menu keeps BUILD_REACH', ()=>{
+  const at=spot2(0),r={x:at.c*FREE_CELL,y:at.r*FREE_CELL,w:2*FREE_CELL,h:FREE_CELL};
+  const place=(dx:number)=>{const g=rig();g.ana.x=r.x+r.w+dx;g.ana.y=r.y+r.h/2;return g.sys.buildKit(g.ctx,'ana',{piece:'barricada',c:at.c,r:at.r});};
+  assert.equal(KIT_PLACE_REACH,8);
+  assert.equal(place(KIT_PLACE_REACH-.1).ok,true,'7.9 u away');
+  assert.deepEqual(place(KIT_PLACE_REACH+.1),{ok:false,reason:'away'});
+  const g=rig(),m=spot(0);g.ana.x=(m.c+.5)*FREE_CELL+BUILD_REACH+1;g.ana.y=(m.r+.5)*FREE_CELL;
+  assert.deepEqual(g.sys.build(g.ctx,'ana',{piece:'muro',c:m.c,r:m.r}),{ok:false,reason:'away'},'a bought muro still needs the hero by it');
 });
 
 test('limits: DEFENSE_LIMIT roots, 40 muros, 8 barricadas', ()=>{
@@ -245,21 +294,34 @@ test('tranca: the moto keeps a way to the car (a ring around the moto, far from 
   assert.ok(run({car:()=>({...CAR,radius:CAR_R})}).every(x=>x==='ok'));
 });
 
-test('barricada (barricada-construir, barricada-2x): a 2×2 square, a blocker to the enemies, a blocking siege target; never within UNO_BUILD_CELLS of the car', ()=>{
+test('barricada (barricada-construir, barricada-tocar-no-mapa): a 2×1 piece, a row of discs to the enemies as big as the drawing, a blocking siege target; never within UNO_BUILD_CELLS of the car', ()=>{
   const g=rig(),at=spot2(0);
   const done=order(g,'barricada',at.c,at.r);
   assert.equal(done.ok,true,JSON.stringify(done));
   const p=g.sys.state.defenses!.pieces![0];
-  assert.deepEqual({x:p.x,y:p.y},centre(at.c+.5,at.r+.5),'centred on its 2×2 square');
-  assert.equal(g.terrain.blockers().length,1,'its blocker disc');
-  // barricada-2x: the disc is twice the muro's, centred on the square (its corners inside it).
-  const disc=g.terrain.blockers()[0];
-  assert.deepEqual({x:disc.x,y:disc.y,r:disc.r},{x:p.x,y:p.y,r:2*MURO_BLOCK_R});
-  assert.ok(Math.SQRT2*FREE_CELL<disc.r,"the square's corners are inside the disc");
+  assert.deepEqual({x:p.x,y:p.y},centre(at.c+.5,at.r),'centred on its 2×1 cells');
+  // barricada-tocar-no-mapa: BARRICADA_DISCS discs along its length, not one 3 u disc.
+  const discs=g.terrain.blockers();
+  assert.equal(discs.length,BARRICADA_DISCS,'its blocker discs');
+  for(const d of discs){assert.equal(d.y,p.y,'on its line');assert.equal(d.r,BARRICADA_BLOCK_R);}
+  const xs=discs.map(d=>d.x).sort((a,b)=>a-b),reach=xs.at(-1)!+BARRICADA_BLOCK_R-p.x;
+  assert.ok(Math.abs(xs[1]-p.x)<1e-9&&Math.abs(reach-blockReach('barricada',2,1))<1e-9);
+  // As big as the drawing: about its 2 cells long (≤ 0.3 u past each end) and ≤ 1.2 u across (the old disc was 3 u).
+  assert.ok(reach<=FREE_CELL+.3,`reaches ${reach.toFixed(2)} u from its centre`);
+  assert.ok(2*BARRICADA_BLOCK_R<=1.2+1e-9);
+  const enemies=g.terrain.forEnemies();
+  assert.equal(enemies.clearDisc(p.x,p.y+BARRICADA_BLOCK_R+.36,.35),true,'a body beside it stands where the old disc stopped it');
+  assert.equal(enemies.clearDisc(p.x,p.y+BARRICADA_BLOCK_R+.3,.35),false);
+  // Turned: the discs along y.
+  const t=rig(),at1=ring(5).filter(o=>onGround(city,o,1,2))[0];
+  assert.equal(order(t,'barricada',at1.c,at1.r,undefined,1).ok,true);
+  const q=t.sys.state.defenses!.pieces![0];
+  assert.deepEqual({x:q.x,y:q.y,rot:q.rot},{...centre(at1.c,at1.r+.5),rot:1});
+  for(const d of t.terrain.blockers())assert.equal(d.x,q.x,'along y');
   assert.equal(pieceDrag(g.sys.state,{x:p.x,y:p.y}),1,'no drag: they walk around it');
   assert.equal(structureTargets(g.sys.state,false).find(x=>x.id===p.id)!.blocking,true);
   // Too close to the car's body: refused 'carro' (a muro there is fine as before).
-  const near=[2,3,4,5].flatMap(k=>ring(k)).filter(o=>onGround(city,o,2,2)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:2*FREE_CELL,h:2*FREE_CELL};
+  const near=[2,3,4,5].flatMap(k=>ring(k)).filter(o=>onGround(city,o,2,1)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:2*FREE_CELL,h:FREE_CELL};
     const gap=Math.hypot(Math.max(r.x-CAR.x,0,CAR.x-(r.x+r.w)),Math.max(r.y-CAR.y,0,CAR.y-(r.y+r.h)));
     return gap>=CAR_R+CAR_BUILD_GAP&&gap<CAR_R+UNO_BUILD_CELLS*FREE_CELL;})!;
   assert.ok(near);

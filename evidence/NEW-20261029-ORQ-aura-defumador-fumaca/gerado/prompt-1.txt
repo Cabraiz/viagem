@@ -1,0 +1,14 @@
+Generate ONE image (1536x1024, landscape) with the image generation tool and save it as /mnt/d/Gits/viagem-wt/aura-defumador-fumaca/evidence/NEW-20261029-ORQ-aura-defumador-fumaca/gerado/folha-1.png.
+The attached image is the APPROVED style sheet of this game's effects: match its style (hand-painted cartoon VFX, dark navy-black outline #1b1726, flat colours with one soft highlight and one shade, light from top-left). Read it ONLY for style; do not copy, edit or reuse any part of it, and do not repeat its items.
+Do not inspect, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+Subject: the life of ONE puff of incense smoke (a herbal smoker's aura that drifts up around a hero's feet), as 6 animation frames for a sprite sheet.
+Layout: a grid of 3 columns x 2 rows of equal cells (512 x 512 px each), frames read left to right, top row first. ONE puff per cell, centred in its cell, nothing crossing into another cell, at least 60 px of background around each puff, nothing touching the image edges.
+Frames:
+1. Birth: a small low dense puff just leaving the ground, 2 small round lobes, about 140 px wide.
+2. Growing: a rounder puff of 3 lobes, about 220 px wide, a little taller.
+3. Full: a big billowy cumulus puff of 4-5 round lobes with real volume (bright top-left highlight, soft cool shade underneath), about 300 px wide.
+4. Swelling and lighter: about 330 px wide, lobes looser, a couple of small holes starting between lobes, outline thinner.
+5. Breaking up: the puff splits into 3 separate soft wisps with curling tails, lighter colour, outline thin and broken.
+6. Vanishing: 2-3 tiny faint curling wisps, very light, almost no outline.
+Colour: light ash grey and off-white smoke (#e9e7ee highlight, #b9b6c4 body, #8e8a9e shade), the faintest warm lavender tint only in the shade; NOT brown, NOT yellow, NOT purple. Same light direction and outline colour in every frame; the outline gets thinner as the puff ages.
+Background: solid flat pure green #00FF00 everywhere (chroma key), no shadow on the background, no gradient, no floor, no ground, no text, no labels, no numbers, no grid lines.

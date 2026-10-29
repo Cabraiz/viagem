@@ -62,7 +62,7 @@ for(const seed of seeds)for(const n of players){
         const t=String(e.enemy),f=first.get(t);
         m.kills++;if(f!==undefined)m.ttk.push((sim.tick-f)/HZ);m.hits.push(count.get(t)??1);first.delete(t);count.delete(t);
       }else if(e.type==='levelup')m.level=Number(e.level);
-      else if(e.type==='down')m.downs++;
+      else if(e.type==='downed')m.downs++;
     }
   };
   const t0=Date.now();

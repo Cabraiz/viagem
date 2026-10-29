@@ -26,5 +26,8 @@ artifacts/
 !/docs/modelo07-animations.md
 !/docs/movement128.md
 !/docs/movement16.md
+!/docs/proporcao-herois.md
 !/docs/playtest-ux.md
+!/docs/seo.md
+!/docs/anuncios.md
 /scripts/check-multiplayer-artifact.mjs

@@ -88,9 +88,72 @@ export function soloNext(plan:SoloPlan,room:SoloRoom,mem:SoloMemory,now:number):
 }
 
 /** The pt-BR line under the buttons when the solo start fails: our own messages pass, platform ones do not. */
-export const SOLO_FAILED='Não foi possível começar a partida. Tente novamente.';
+export const SOLO_FAILED='Deu ruim ao começar a partida. Tenta de novo.';
 export function soloErrorText(error:unknown):string{
   return error instanceof Error&&error.name==='Error'&&error.message?error.message:SOLO_FAILED;
 }
+/**
+ * auditoria de jogabilidade 14: a cold room Worker can miss the first "Jogar sozinho" (the room or the join fails) and the
+ * player saw the error at once. One more try, silent, SOLO_RETRY_GAP_MS later; `retryable` says no for an answer that a
+ * second try cannot change (the room's fatal word, e.g. an old version).
+ */
+export const SOLO_RETRY_GAP_MS=800;
+/** `attempt` gets the try's index (0, then 1): the first one runs on the short times below. */
+export async function soloOneRetry<T>(attempt:(tryIndex:number)=>Promise<T>,retryable:(error:unknown)=>boolean,
+  wait:(ms:number)=>Promise<unknown>=ms=>new Promise(done=>setTimeout(done,ms))):Promise<T>{
+  try{return await attempt(0);}
+  catch(error){if(!retryable(error))throw error;await wait(SOLO_RETRY_GAP_MS);return attempt(1);}
+}
+/**
+ * solo-tenta-de-novo: the first try does not wait the usual 10 s for the room and 2 × 8 s for the socket (the audit's
+ * cold Worker took 13.8 s and never opened it; the second try came in 2.3 s). Its POST /rooms gets SOLO_FIRST_CREATE_MS
+ * and its join SOLO_FIRST_JOIN_MS, unless the room already answered and the city is coming down (the download has its
+ * own timeout). The second try has today's times.
+ */
+export const SOLO_CREATE_MS=10000,SOLO_FIRST_CREATE_MS=5000,SOLO_FIRST_JOIN_MS=6000;
+export const soloCreateMs=(tryIndex:number)=>tryIndex===0?SOLO_FIRST_CREATE_MS:SOLO_CREATE_MS;
+/**
+ * `job`, or a 'SoloSlow' error when it has not settled after `ms` and `stillWaiting()` (nothing of the room heard yet).
+ * Never shown: only the first try is cut (soloErrorText would give SOLO_FAILED anyway).
+ */
+export function soloWithin<T>(job:Promise<T>,ms:number,stillWaiting:()=>boolean,
+  after:(ms:number,run:()=>void)=>()=>void=(ms,run)=>{const t=setTimeout(run,ms);return ()=>clearTimeout(t);}):Promise<T>{
+  return new Promise<T>((resolve,reject)=>{
+    const cancel=after(ms,()=>{if(stillWaiting())reject(Object.assign(new Error('A sala demorou a responder.'),{name:'SoloSlow'}));});
+    job.then(value=>{cancel();resolve(value);},error=>{cancel();reject(error);});
+  });
+}
+/**
+ * The room Worker said no (a 4xx: CREATE_LIMIT's "Aguarde um minuto…", a bad request): a second POST cannot change it
+ * and spends one more of the 5 rooms a minute, so it is shown at once (its own text, soloErrorText).
+ */
+export const soloRefused=(message:string)=>Object.assign(new Error(message),{refused:true});
+/** Worth the second try: not the room's fatal word (`fatal`, e.g. an old version), not a refusal (soloRefused). */
+export const soloRetryable=(error:unknown,fatal:boolean)=>!fatal&&!(error instanceof Error&&(error as {refused?:unknown}).refused===true);
 /** `?ilha=1` (tests only): "Jogar sozinho" opens the old island exploration, without a room. */
 export const islandFlag=(search:string)=>new URLSearchParams(search).get('ilha')==='1';
+
+/**
+ * "Jogar sozinho"'s steps on the card while the match opens (auditoria-ui-menus 5: only "Preparando…" for seconds). Each
+ * weighs its share of the bar and has its own line; the bar reaches a step's share only when it really finished (the
+ * game's code and the city's map download side by side, so either may end first).
+ */
+export type SoloStep='code'|'city'|'room'|'join';
+export const SOLO_STEPS:readonly {step:SoloStep;weight:number;text:string}[]=Object.freeze([
+  {step:'code',weight:.35,text:'Baixando o jogo…'},
+  {step:'city',weight:.35,text:'Baixando a cidade…'},
+  {step:'room',weight:.15,text:'Abrindo a sala…'},
+  {step:'join',weight:.15,text:'Entrando…'},
+]);
+/**
+ * The bar (0..1) and the line for how far each step got (0..1; a missing step has not moved): the line is the first
+ * step not done yet. The city's map reports its bytes, the others only their end.
+ */
+export function soloProgress(parts:Partial<Record<SoloStep,number>>):{fraction:number;text:string}{
+  const got=(s:SoloStep)=>Math.max(0,Math.min(1,parts[s]??0));
+  const fraction=SOLO_STEPS.reduce((sum,s)=>sum+s.weight*got(s.step),0);
+  const next=SOLO_STEPS.find(s=>got(s.step)<1);
+  return {fraction:Math.min(1,Math.round(fraction*100)/100),text:next?.text??SOLO_STEPS.at(-1)!.text};
+}
+/** The ready button of a solo room during the countdown: "Ops, peraí" (un-ready) read as an error in a match alone. */
+export const SOLO_STARTING='Começando…';

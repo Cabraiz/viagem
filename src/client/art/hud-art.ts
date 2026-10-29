@@ -12,7 +12,8 @@
  */
 import type Phaser from 'phaser';
 import {artPages,artPiece,artUrl} from './manifest.ts';
-import {ENEMY_ART_ID,chooseAnim,enemyFrameAt,liteEnemyUrl} from './horde-art.ts';
+import {ENEMY_ART_ID,chooseAnim,enemyFrameAt,enemyFileUrl} from './horde-art.ts';
+import {gameEnemyArt} from './mendigo.ts';
 import {markArt,markFrame,placeMark,sliceArt,type MarkArt,type SliceArt} from './frames-art.ts';
 import {uiArtUrl} from '../ui/icon.ts';
 import {ENEMY_KINDS,isEnemyKind,type EnemyKind} from '../render/keys.ts';
@@ -23,8 +24,8 @@ export const CRITTER_ICON_IDS:Readonly<Record<EnemyKind,string>>=Object.fromEntr
 
 /** Where a critter's icon comes from: an imported UI file (`url`), or a frame of a loaded enemy texture (`key`, `frame`). */
 export type CritterIconSource={url:string}|{key:string;frame:number};
-/** Art id of a critter: a legacy kind's ENEMY_ART_ID, any other id (a roster id, D-040/D-045) is its own (enemyArtId). */
-const critterArtId=(id:string)=>isEnemyKind(id)?ENEMY_ART_ID[id]:id;
+/** Art id of a critter: a legacy kind's ENEMY_ART_ID, any other id (a roster id, D-040/D-045) is its own (enemyArtId); a common one is the mendigo (art/mendigo.ts). */
+const critterArtId=(id:string)=>gameEnemyArt(isEnemyKind(id)?ENEMY_ART_ID[id]:id);
 /**
  * Imported source of the critter `id`'s HUD icon (a legacy kind or a roster id, with its own art), or undefined (today's
  * procedural texture). A roster id never borrows its base kind's art; unknown ids ('bichos') have none.
@@ -50,7 +51,8 @@ export function critterSheetFrame(id:string):CritterSheetFrame|undefined{
   const page=file&&Array.isArray(file.cell)?artPages(file).find(p=>p.firstFrame===0&&p.frameCount>0):undefined;
   const url=page&&artUrl('inimigos',page.file);
   if(!file||!page||!url)return undefined;
-  return {url:liteEnemyUrl(url),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
+  // The chefão's face comes from the file his body draws, at its cell (horde-art enemyFileUrl).
+  return {url:enemyFileUrl(art,url,file),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
 }
 
 /**

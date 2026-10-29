@@ -1,10 +1,11 @@
 // Card NEW-20261022-ORQ-corrida-proporcao-contorno: does a movement sheet draw the hero at the same size as standing?
 // For each drawn direction, the rest pose (idle16-<dir>, or an R06 class's idle8 column: corrida-clt) is the reference, and every pose of the walk (walk16) and the
-// run (run16) is compared at the same game scale (each clip draws its cell at 96/height):
+// run (run16) and the push of the Uno (push16, card empurrar-uno) is compared at the same game scale (each clip draws its
+// cell at 96/height):
 //   - head: the rest pose's head (cap included, top down to the neck) fitted on the pose's head over scales 0.6–1.4
 //     (soft alpha, IoU); `head` is that scale (1 = same head), robust to arms passing by and to the lean;
 //   - height: the figure's height (alpha > 128) over the rest pose's; only the stance poses of a run (its phase table
-//     moves the sprite: v ≠ 0) and all of a walk, since the flight and the crouch change it;
+//     moves the sprite: v ≠ 0) and all of a walk and a push (one foot always down), since the flight and the crouch change it;
 //   - torso: the widest solid stretch of the rows under the neck (shoulders and chest, arms touching included), median
 //     over that band, over the rest pose's;
 //   - area: √(opaque area ratio), the whole figure's size whatever the pose ("magro" shows here first).
@@ -153,6 +154,16 @@ export function seam(frames,shapes){
   return {seam:+last.toFixed(3),median:+med.toFixed(3),max:+Math.max(...inner).toFixed(3),ratio:+ratio.toFixed(2),steps:d.map(x=>+x.toFixed(3))};
 }
 
+/**
+ * A clip that leaves the rest and comes back to it (hurt16, card animacao-receber-dano): rest → its first pose and its
+ * last pose → rest against the median step inside it; the worse of the two is the ratio (≤ SEAM_MAX as a loop seam).
+ */
+export function joins(rest,restShape,frames,shapes){
+  const d=[];for(let i=0;i+1<frames.length;i++)d.push(poseDistance(frames[i],frames[i+1],shapes[i],shapes[i+1]));
+  const med=median(d),a=poseDistance(rest,frames[0],restShape,shapes[0]),b=poseDistance(frames.at(-1),rest,shapes.at(-1),restShape),worst=Math.max(a,b);
+  return {in:+a.toFixed(3),out:+b.toFixed(3),median:+med.toFixed(3),ratio:+(med>0?worst/med:worst>0?Infinity:0).toFixed(2),steps:d.map(x=>+x.toFixed(3))};
+}
+
 /** The sprite manifest's M16 clips of class `id`, by key. */
 export function clipsOf(manifest,id){return manifest.pieces?.[id]?.files??{};}
 /** R06's idle8: one rest pose per direction, in this column order (sprite-motion.ts HERO_DIRECTIONS). */
@@ -163,10 +174,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&files[`run16-${d}`])return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]||files[`build16-${d}`]||files[`work16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('build16-')||k.startsWith('work16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -177,22 +188,27 @@ export async function measureClass(manifest,id,dir=SPRITES){
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
     const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
-    const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
-    const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
+    // A breathing rest (card parado-respiracao-herois) stands up to ~4 % taller as it breathes in: the reference is its
+    // lowest pose, breathed out, the pose the actions are drawn from (a held rest: all its poses are that one).
+    const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
+    const band=Math.round(restH*.25),restTorso=torsoWidth(low,band);
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run']){
+    for(const motion of ['idle','walk','run','push','pull','hurt','build','work']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
       const rows=frames.map((a,i)=>{
-        const sh=shapes[i],head=headScale(rest[0],r0,a,sh);
+        const sh=shapes[i],head=headScale(rest0,r0,a,sh);
         const stance=motion!=='run'||!clip.phase||clip.phase.v[i].some(v=>v!==0);
         return {frame:i,stance,head:+(head.scale*k).toFixed(3),headIou:head.iou,height:+(sh.H*k/restH).toFixed(3),
           torso:+(torsoWidth(sh,Math.round(band/k))*k/restTorso).toFixed(3),area:+(Math.sqrt(sh.area/restArea)*k).toFixed(3)};
       });
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
-      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
-        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{})};
+      // A pose the head template cannot read (HEAD_UNREAD_FRAMES) stays out of the head's median too.
+      const unread=HEAD_UNREAD_FRAMES[`${id} ${motion}16-${d}`]??[],head=median(rows.filter(r=>!unread.includes(r.frame)).map(r=>r.head));
+      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+head.toFixed(3),height:+pick('height',true).toFixed(3),
+        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{}),
+        ...(motion==='hurt'?{joins:joins(rest0,r0,frames,shapes)}:{})};
     }
     out.dirs[d]=entry;
   }
@@ -205,14 +221,83 @@ export async function measureClass(manifest,id,dir=SPRITES){
  * chest, legs folded) and are reported, not gated.
  */
 export const GATED=['head','height'];
+/**
+ * The push (empurrar-uno, ORQ 23/10): leaning 15° on the car with the knees bent, the figure is lower by design; the head
+ * never changes. Its height only has to stay at least PUSH_MIN_HEIGHT of the rest's (the same rule as a crouched run).
+ */
+export const PUSH_MIN_HEIGHT=.88;
+/**
+ * Pushing away from the camera (push16-N) the palms rise beside the head on the screen and the head template locks on
+ * hands and hair together (it reads 1.24–1.26 on heads drawn the rest's size: evidence/NEW-20261022-ORQ-empurrar-uno/
+ * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
+ */
+export const PUSH_HEAD_UNREAD=['N'];
+/**
+ * Build16 poses (card animacao-construir-6) the head template cannot read: the tool hand raised beside the head (the
+ * template locks on the cap and the hammer together: viciado S pose 6 reads 1.40 on a head drawn its neighbours' size,
+ * SE 0.77), a paw over the face, or the head turned to stare at the camera (the gato's gag, a frontal face against a side view's template:
+ * W 8-13 read 1.17-1.28, IoU 0.72, on a head the rest's size). Those frames are left out of the head fit check and of
+ * the clip's head median.
+ */
+export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'viciado-em-bet build16-SE':[6],
+  // the gato licking a paw over its face (S 7-8, N 6-7), staring over its shoulder (N 8-12), paws up beside the ears (N 1-4, NW 4)
+  'gato-nada-pra-comer build16-W':[8,9,10,11,12,13],'gato-nada-pra-comer build16-S':[7,8],
+  'gato-nada-pra-comer build16-N':[1,2,3,4,6,7,8,9,10,11,12],'gato-nada-pra-comer build16-NW':[4],
+  // the maromba's beam pressed above the head (3, 5) and the biceps flexed and kissed beside the face (S 9-11)
+  'maromba build16-S':[3,5,9,10,11],'maromba build16-N':[3,5],'maromba build16-NW':[3,5],'maromba build16-SE':[5],
+  // the vendedor's popsicle or hammer raised beside the hat while it sits on its cooler
+  'vendedor-praia build16-S':[6],'vendedor-praia build16-W':[3,5,6,8,10,12,14],'vendedor-praia build16-NW':[3,6,14],
+  'vendedor-praia build16-SE':[3,4,7],
+  // the aposentado's hammer raised above the hat (7) and its back locked, bent forward (W 10-11, NW 11, SE 8-12)
+  'aposentado build16-S':[7],'aposentado build16-N':[7],'aposentado build16-W':[10,11],'aposentado build16-NW':[11],
+  'aposentado build16-SE':[7,8,9,10,12],
+  // work16 (card animacao-trabalhar-6): the viciado's arms up with both phones beside the cap (the green, 5-6); the gato
+  // staring at the camera over its mug (its gag: N 1-10, W 2-9, NW 2-10, SE 2-12, a frontal face on a side/back template)
+  'viciado-em-bet work16-W':[5,6],'viciado-em-bet work16-NW':[5],'viciado-em-bet work16-SE':[5,6],
+  'gato-nada-pra-comer work16-N':[1,2,3,4,5,6,7,8,9,10],'gato-nada-pra-comer work16-W':[2,3,4,5,6,7,8,9],
+  'gato-nada-pra-comer work16-NW':[2,3,4,5,6,7,8,9,10],'gato-nada-pra-comer work16-SE':[2,3,4,5,6,7,8,9,10,11,12],
+  // the aposentado dozing off chin on chest, then jolting awake (W 3, 10; SE 3-5, 8-10)
+  'aposentado work16-W':[3,10],'aposentado work16-SE':[3,4,5,8,9,10],
+  // the vendedor waving its flyer above the hat (8-9) and wiping its forehead (W 4)
+  'vendedor-praia work16-W':[4,8,9],'vendedor-praia work16-NW':[9],'vendedor-praia work16-SE':[8,9],'vendedor-praia work16-N':[9]});
+/**
+ * A class that builds SITTING (card animacao-construir-6: the vendedor on its cooler box, the joke the user approved):
+ * its build16 height may drop to this share of the rest's (0.86-0.95 measured), never above 1 + TOL.height; the head
+ * keeps ±TOL.head (its sheets are scaled by the head, remontar/montar-build.mjs ESCALA=cabeca).
+ */
+export const BUILD_SEATED_MIN_HEIGHT=Object.freeze({'vendedor-praia':.84});
+/**
+ * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
+ * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the
+ * sheets read 0.80–1.02); the head keeps ±4 %.
+ */
+export const PULL_MIN_HEIGHT=.78;
+/**
+ * Loop seams accepted over SEAM_MAX per clip, each with its reason (card BUG-20261025-ORQ-vendedor-push-pull-sn, ORQ 25/10:
+ * "a perna passa a trocar, que é o que o usuário pediu"). The vendedor's push N and pull S kept one leg in front; remade by
+ * half a stride + mirror (the cooler box put back on his left hip), they change legs, but no 8-pose window of the image
+ * tool's cycles ends where the mirror starts: the seam stays ~2× (the jump where the legs swap).
+ */
+export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    if(motion!=='idle')for(const key of keys){
-      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
+    // The pull (puxar-uno-corda): leaning forward on the rope, the fists behind the hips: the push's rule (its head is
+    // read in every direction, the hands never beside it).
+    if(motion==='push'||motion==='pull'){
+      const unread=motion==='push'&&PUSH_HEAD_UNREAD.includes(d);
+      if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} ${motion}16-${d} head ${c.head} (±${TOL.head*100}%)`);
+      const min=motion==='pull'?PULL_MIN_HEIGHT:PUSH_MIN_HEIGHT;
+      if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
+      if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
+    }else if(motion!=='idle')for(const key of keys){
+      const seated=motion==='build'?BUILD_SEATED_MIN_HEIGHT[m.id]:undefined;
+      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:key==='height'&&seated!==undefined?1-seated:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
     }
-    if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
+    if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);
+    const seamMax=SEAM_MAX_BY_CLIP[`${m.id} ${motion}16-${d}`]??SEAM_MAX;
+    if(c.loop&&c.loop.ratio>seamMax&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${seamMax}×)`);
   }
   return bad;
 }
@@ -222,7 +307,7 @@ export function table(m){
   const lines=[`### ${m.id}`,'','| direção | clipe | cabeça | altura (apoio) | tronco | área | emenda 16→1 |','|---|---|---|---|---|---|---|'];
   const pc=x=>`${x>=1?'+':''}${((x-1)*100).toFixed(1)} %`;
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
+    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:c.joins?`parado ${c.joins.ratio}× (${c.joins.in}/${c.joins.out} / ${c.joins.median})`:'—'} |`);
   }
   return lines.join('\n');
 }
@@ -237,7 +322,7 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
   const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
-    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...Array.from({length:files[`run16-${d}`]?.frames??0},(_,i)=>['run',i])].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
+    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...['run','push','pull'].flatMap(m=>Array.from({length:files[`${m}16-${d}`]?.frames??0},(_,i)=>[m,i]))].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
     const comps=[];
     for(let k=0;k<list.length;k++){
       const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);

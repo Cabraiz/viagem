@@ -7,12 +7,12 @@ import {SPEED,clearSegment,heroSpeed,moveDirection,walkable,type Point} from '..
 import {STAT_KEYS,STAT_LIMITS,computeStats} from '../../src/rules/stats.ts';
 import {WEAPON_IDS} from '../../src/sim/evolutions.ts';
 import {DEFAULT_KIT,KITS,classBonusOf,kitFor,startingBuild} from '../../src/rules/kits.ts';
-import {ANNUL_IMMUNITY_SECONDS,FOUND_PICKUP_SECONDS,REFUNDERS,REFUND_FLOOR_SHARE,SKILL_PICKUP_CAP,castSkill,hasSkill,resetSkill,skillReadyTick,type DiceOutcome,type SkillCast,type SkillPlayer,type TauntedEnemy} from '../../src/sim/skills.ts';
+import {ANNUL_IMMUNITY_SECONDS,REFUNDERS,REFUND_FLOOR_SHARE,castSkill,hasSkill,resetSkill,skillReadyTick,type DiceOutcome,type SkillCast,type SkillPlayer,type TauntedEnemy} from '../../src/sim/skills.ts';
 import {classes,getClass,roles} from '../../src/rules/classes.ts';
 import {BLEED_OUT_TICKS} from '../../src/sim/revive.ts';
 
 // ---------- Fakes ----------
-const FIXED_WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
+const FIXED_WEAPONS=['boleto','cafe','guarda-chuva','pombo','audio'];
 const SKILL_IDS=['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira'];
 interface Hit {id:string;amount:number;src?:string;weapon?:string;killed:boolean}
 interface FakeCtx {tick:number;rng:Rng;players:Map<string,SimPlayer>;enemies:Map<string,EnemyState>;pickups:Map<string,PickupState>;
@@ -62,8 +62,8 @@ const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
 
 // ---------- 1. Kit data ----------
-test('kits: 35 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
-  assert.equal(KITS.length,35);
+test('kits: 29 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
+  assert.equal(KITS.length,29);
   assert.deepEqual([...WEAPON_IDS].sort(),[...FIXED_WEAPONS].sort());
   for(const kit of KITS){
     assert.ok(getClass(kit.classId),`class ${kit.classId} exists`);
@@ -75,13 +75,14 @@ test('kits: 35 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
     assert.equal(kitFor(kit.classId),kit);
     assert.ok(hasSkill(kit.classId),kit.classId);
   }
-  assert.equal(new Set(KITS.map(k=>k.classId)).size,35);
+  assert.equal(new Set(KITS.map(k=>k.classId)).size,29);
   assert.deepEqual(KITS.map(k=>k.classId).sort(),classes.map(c=>c.id).sort());
   for(const id of SKILL_IDS)assert.ok(kitFor(id),id);
 });
 test('kits: all 4 roles covered, every fixed weapon is a starting weapon for 4-7 classes, required classes present',()=>{
   assert.deepEqual([...new Set(KITS.map(k=>k.role))].sort(),[...roles].sort());
-  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=4&&n<=7,`${w} starts ${n} classes`);}
+  // The audio also took the chinelo's classes when it left the game (sem-arma-girando-no-chao): up to 11.
+  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=4&&n<=(w==='audio'?11:7),`${w} starts ${n} classes`);}
   for(const id of ['cidadao-comum','mendigo','viciado-em-bet'])assert.ok(kitFor(id),id);
 });
 test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
@@ -92,7 +93,7 @@ test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
     assert.equal(kit.skill.name,getClass(kit.classId)!.skill,kit.classId);
   }
   // Every card class with the same skill name maps 1:1.
-  assert.equal(classes.filter(c=>kitFor(c.id)).length,35);
+  assert.equal(classes.filter(c=>kitFor(c.id)).length,29);
   // Lines fit the phone balloon and never repeat across classes.
   const all=KITS.flatMap(k=>k.lines.map(l=>l.trim().toLocaleLowerCase('pt-BR')));
   assert.equal(new Set(all).size,all.length,'no line repeated across classes');
@@ -130,7 +131,7 @@ test('kits: classBonusOf returns a copy, unknown class falls back, startingBuild
     bonus.might=5;
     assert.deepEqual(classBonusOf(id),{});
     assert.deepEqual(DEFAULT_KIT.classBonus,{});
-    assert.deepEqual(startingBuild(id),{weapons:[{id:'chinelo',level:1}],passives:[]});
+    assert.deepEqual(startingBuild(id),{weapons:[{id:'audio',level:1}],passives:[]});
     assert.equal(kitFor(id),undefined);assert.equal(hasSkill(id),false);
   }
   const a=startingBuild('mendigo'),b=startingBuild('mendigo');
@@ -251,37 +252,10 @@ test('mendigo: heals 20 and shields 1 s standing allies within 3.5, never downed
   assert.deepEqual(res.helped,['p1','p2','p3']);
   assert.deepEqual(res.hits,[]);
 });
-test('mendigo: during a wave finds one heal(30) pickup that expires, never xp nor a magnet (D-054); none at the cap',()=>{
-  const kinds=new Set<string>();
-  for(let seed=1;seed<=80;seed++){
-    const {fake,ctx,events}=makeCtx(seed,100);
-    const p=addPlayer(fake,'p1','mendigo',7,9);
-    const res=cast(ctx,p);
-    assert.ok(res&&res.pickup);
-    assert.equal(fake.pickups.size,1);
-    const pick=fake.pickups.get(res.pickup)!;
-    assert.ok(pick);assert.equal(pick.id,res.pickup);
-    assert.equal(pick.kind,'heal');
-    assert.equal(pick.value,30);
-    kinds.add(pick.kind);
-    assert.ok(dist(pick,p)<=1,`pickup near player: ${dist(pick,p)}`);
-    assert.equal(pick.spawnTick,100);
-    assert.equal(pick.expiresTick,100+ticks(FOUND_PICKUP_SECONDS));
-    assert.equal(events.filter(e=>e.type==='fire').length,1);
-  }
-  assert.deepEqual([...kinds],['heal']);
-  const {fake,ctx}=makeCtx(4,100);
-  for(let i=0;i<SKILL_PICKUP_CAP;i++)fake.pickups.set(`x${i}`,{id:`x${i}`,kind:'xp',value:1,x:0,y:0,spawnTick:0});
-  const p=addPlayer(fake,'p1','mendigo');p.hp=10;
-  const res=cast(ctx,p);
-  assert.ok(res);assert.equal(res.pickup,undefined);
-  assert.equal(fake.pickups.size,SKILL_PICKUP_CAP);
-  assert.equal(p.hp,30);
-});
-test('mendigo: no pickup during the prepare phase (cannot be farmed between rounds)',()=>{
-  for(let seed=1;seed<=20;seed++){
+test('mendigo: heals and shields around it, and never drops a coxinha, in a wave or between rounds (sem-coxinha-no-chao)',()=>{
+  for(const phase of ['wave','prepare'] as const)for(let seed=1;seed<=20;seed++){
     const {fake,ctx}=makeCtx(seed,100);
-    fake.round.phase='prepare';
+    fake.round.phase=phase;
     const p=addPlayer(fake,'p1','mendigo');p.hp=10;
     const res=cast(ctx,p);
     assert.ok(res);assert.equal(res.pickup,undefined);
@@ -360,6 +334,30 @@ test('clt-cansado: 2.5 s invulnerable and taunts enemies within 5 for 4 s',()=>{
   assert.equal((c as TauntedEnemy).taunt,undefined);assert.equal((d as TauntedEnemy).taunt,undefined);
   assert.deepEqual(res.hits,['a','b']);assert.deepEqual(res.helped,['p1']);
   assert.equal(hits.length,0);
+});
+
+// gato-no-menu: 'Miado de Fome' = burst (4 damage, 1.2 s freeze, radius 5) then taunt (1.5 s shield, 3.5 s, radius 5).
+test('gato-nada-pra-comer: hits and freezes the enemies within 5, then they chase the cat; shielded 1.5 s; alone it still shields',()=>{
+  const {fake,ctx,hits}=makeCtx(7,200);
+  const p=addPlayer(fake,'p1','gato-nada-pra-comer',10,10);
+  const a=addEnemy(fake,'a',12,10),b=addEnemy(fake,'b',10,15),c=addEnemy(fake,'c',15.1,10),weak=addEnemy(fake,'w',11,10,3);
+  const res=cast(ctx,p);
+  assert.ok(res);
+  assert.equal(p.invulnerableUntil,200+ticks(1.5));
+  for(const e of [a,b]){
+    assert.equal(e.hp,96,e.id);
+    assert.ok((e.frozenUntil??0)>=200+ticks(1.2),`${e.id} frozen`);
+    assert.deepEqual((e as TauntedEnemy).taunt,{player:'p1',untilTick:200+ticks(3.5)},e.id);
+  }
+  assert.ok(!fake.enemies.has(weak.id),'the 4 damage killed the weak one: nothing left to taunt');
+  assert.equal(c.hp,100);assert.equal((c as TauntedEnemy).taunt,undefined);
+  assert.deepEqual([...res.hits].sort(),['a','b','w']);assert.deepEqual(res.helped,['p1']);
+  assert.equal(hits.length,3);
+  assert.equal(kitFor('gato-nada-pra-comer')!.skill.cooldown,16);
+  assert.deepEqual(classBonusOf('gato-nada-pra-comer'),{moveSpeed:0.15,luck:0.15,maxHp:-10});
+  const alone=makeCtx(7,200),q=addPlayer(alone.fake,'q','gato-nada-pra-comer',10,10);
+  const solo=cast(alone.ctx,q);
+  assert.ok(solo);assert.deepEqual(solo.hits,[]);assert.equal(q.invulnerableUntil,200+ticks(1.5));
 });
 
 // ---------- 6. motogirl ----------
@@ -676,7 +674,7 @@ const shot=(fake:FakeCtx,id:string,x:number,y:number,hostile:boolean)=>{
   fake.projectiles.set(id,{id,owner:hostile?'e':'p',source:'t',x,y,vx:0,vy:0,radius:.2,damage:5,pierce:0,untilTick:999,hostile,hit:[]});
 };
 const armed=(fake:FakeCtx,id:string,classId:string,x:number,y:number,ready=900)=>
-  addPlayer(fake,id,classId,x,y,{weaponReady:{chinelo:ready}},{weapons:[{id:'chinelo',level:1}],passives:[]});
+  addPlayer(fake,id,classId,x,y,{weaponReady:{audio:ready}},{weapons:[{id:'audio',level:1}],passives:[]});
 
 test('cone (Maromba): heavy hit only in the front arc, pushes survivors away; nothing in front = no cooldown',()=>{
   const {fake,ctx,hits}=makeCtx(1,100);
@@ -692,17 +690,17 @@ test('cone (Maromba): heavy hit only in the front arc, pushes survivors away; no
   assert.equal(cast(lone.ctx,q),null);assert.equal(skillReadyTick(q),0);
 });
 
-test('cone with clearShots (Goleira, Faxineira, Pedreiro): swats hostile shots in the arc only and shields',()=>{
+test('cone with clearShots (Faxineira, Pedreiro): swats hostile shots in the arc only and shields',()=>{
   const {fake,ctx}=makeCtx(2,100);
   shot(fake,'hostile-front',11.5,10.2,true);shot(fake,'hostile-behind',8,10,true);shot(fake,'friendly-front',11,10,false);
-  const p=addPlayer(fake,'p1','goleira',10,10);
-  const ally=addPlayer(fake,'p2','mendigo',10,12.5),far=addPlayer(fake,'p3','mendigo',10,15);
+  const p=addPlayer(fake,'p1','pedreiro',10,10);
+  const ally=addPlayer(fake,'p2','mendigo',10,12.5);
   const res=cast(ctx,p)!;
   assert.equal(res.blocked,1);
   assert.deepEqual([...fake.projectiles.keys()].sort(),['friendly-front','hostile-behind']);
-  assert.ok((ally.invulnerableUntil??0)>100&&(p.invulnerableUntil??0)>100);
-  assert.equal(far.invulnerableUntil,undefined);
-  assert.deepEqual(res.helped.sort(),['p1','p2']);
+  assert.ok((p.invulnerableUntil??0)>100);
+  assert.equal(ally.invulnerableUntil,undefined,'the Pedreiro shields only himself');
+  assert.deepEqual(res.helped,['p1']);
   // Pedreiro shields himself even with nothing around, so the cast is never wasted.
   const empty=makeCtx(2,100);const ped=addPlayer(empty.fake,'p1','pedreiro',10,10);
   const built=cast(empty.ctx,ped)!;
@@ -752,7 +750,7 @@ test('burst variants: Aposentado pushes and freezes one, Gambiarreiro traps the 
 });
 
 
-test('rally (Pagodeiro, Caça-Promoção, Feirante): refunds the others\' skills and readies everyone\'s weapons',()=>{
+test('rally (Pagodeiro, Feirante): refunds the others\' skills and readies everyone\'s weapons',()=>{
   const {fake,ctx}=makeCtx(7,100);
   const p=armed(fake,'p1','pagodeiro',10,10);(p as SkillPlayer).skillReady=0;
   const friend=armed(fake,'p2','mendigo',11,10);(friend as SkillPlayer).skillReady=300;
@@ -762,11 +760,11 @@ test('rally (Pagodeiro, Caça-Promoção, Feirante): refunds the others\' skills
   assert.equal(skillReadyTick(soon),100,'never earlier than now');
   assert.equal(skillReadyTick(p),100+ticks(18*p.stats.cooldown),'the caster pays the full cooldown');
   const c=makeCtx(7,100);
-  const promo=armed(c.fake,'p1','caca-promocao',10,10),mate=armed(c.fake,'p2','mendigo',12,10),out=armed(c.fake,'p3','mendigo',20,10);
+  const promo=armed(c.fake,'p1','feirante',10,10),mate=armed(c.fake,'p2','mendigo',12,10),out=armed(c.fake,'p3','mendigo',20,10);
   cast(c.ctx,promo);
-  assert.equal(promo.weaponReady.chinelo,100);assert.equal(mate.weaponReady.chinelo,100);assert.equal(out.weaponReady.chinelo,900);
+  assert.equal(promo.weaponReady.audio,100);assert.equal(mate.weaponReady.audio,100);assert.equal(out.weaponReady.audio,900);
   const f=makeCtx(7,100);const fe=armed(f.fake,'p1','feirante',10,10,50);
-  cast(f.ctx,fe);assert.equal(fe.weaponReady.chinelo,50,'an already ready weapon is not delayed');
+  cast(f.ctx,fe);assert.equal(fe.weaponReady.audio,50,'an already ready weapon is not delayed');
 });
 
 test('rally mostHurt (Merendeira): feeds only the most hurt ally; nobody hurt = no cooldown',()=>{
@@ -780,53 +778,22 @@ test('rally mostHurt (Merendeira): feeds only the most hurt ally; nobody hurt = 
   assert.equal(cast(full.ctx,m),null);assert.equal(skillReadyTick(m),0);
 });
 
-test('volley: Sensei combos one target and stuns it; Streamer starts on the tapped enemy and readies weapons',()=>{
-  const s=makeCtx(9,100);
-  const tough=addEnemy(s.fake,'tough',11,10,100),near2=addEnemy(s.fake,'near',10.5,10,100);
-  const sen=cast(s.ctx,addPlayer(s.fake,'p1','sensei',10,10))!;
-  assert.deepEqual(sen.hits,['near','near','near']);
-  assert.equal(near2.hp,64);assert.ok((near2.frozenUntil??0)>100);assert.equal(tough.hp,100);
-  const weak=makeCtx(9,100);const w=addEnemy(weak.fake,'w',10.5,10,20);
-  assert.deepEqual(cast(weak.ctx,addPlayer(weak.fake,'p1','sensei',10,10))!.hits,['w','w'],'stops when the target dies');
-  assert.equal(w.frozenUntil,undefined);
+test('volley: the Streamer starts on the tapped enemy and readies weapons',()=>{
   const st=makeCtx(9,100);
   for(let i=0;i<6;i++)addEnemy(st.fake,`e${i}`,10.5+i*0.5,10,100);
   const streamer=armed(st.fake,'p1','streamer',10,10);streamer.target='e5';
   const res=cast(st.ctx,streamer)!;
   assert.deepEqual(res.hits,['e5','e0','e1','e2']);
-  assert.equal(streamer.weaponReady.chinelo,100);
+  assert.equal(streamer.weaponReady.audio,100);
 });
 
-test('rescue (Salva-Vidas): pulls the most hurt ally closer over walkable ground, heals and shields; alone = no cooldown',()=>{
-  const {fake,ctx}=makeCtx(10,100);
-  const p=addPlayer(fake,'p1','salva-vidas',10,10);
-  const hurt=addPlayer(fake,'p2','mendigo',16,10,{hp:20}),fine=addPlayer(fake,'p3','mendigo',12,10);
-  const before=dist(hurt,p);
-  const res=cast(ctx,p)!;
-  assert.deepEqual(res.helped,['p2']);
-  assert.ok(near(before-dist(hurt,p),3,0.11),`pulled ${before-dist(hurt,p)}`);
-  assert.ok(walkable(hurt));assert.equal(hurt.hp,30);assert.ok((hurt.invulnerableUntil??0)>100);
-  assert.equal(fine.x,12);
-  // Never through obstacles: the rock at (11,12) stops the pull short.
-  const rock=makeCtx(10,100);const guard=addPlayer(rock.fake,'p1','salva-vidas',11,10);
-  const behind=addPlayer(rock.fake,'p2','mendigo',11,14.5,{hp:20});
-  cast(rock.ctx,guard);
-  assert.ok(walkable(behind)&&behind.y>12.5&&behind.y<14.5,`stopped at ${behind.y}`);
-  const alone=makeCtx(10,100);const lone=addPlayer(alone.fake,'p1','salva-vidas',10,10);
-  assert.equal(cast(alone.ctx,lone),null);assert.equal(skillReadyTick(lone),0);
-  const close=makeCtx(10,100);const lifeguard=addPlayer(close.fake,'p1','salva-vidas',10,10);
-  const next=addPlayer(close.fake,'p2','mendigo',10.5,10,{hp:20});
-  cast(close.ctx,lifeguard);assert.equal(next.x,10.5,'already close: not pulled on top');
-});
-
-test('fetch (Mãe de Pet): coxinha next to the most hurt ally during a wave only',()=>{
+test('fetch (Mãe de Pet): heals the most hurt ally on the spot during a wave only, no coxinha on the ground',()=>{
   const {fake,ctx}=makeCtx(11,100);
   const p=addPlayer(fake,'p1','mae-pet',10,10);
   const hurt=addPlayer(fake,'p2','mendigo',14,10,{hp:20});
   const res=cast(ctx,p)!;
-  const coxinha=fake.pickups.get(res.pickup!)!;
-  assert.equal(coxinha.kind,'heal');assert.equal(coxinha.value,30);
-  assert.ok(dist(coxinha,hurt)<=0.5+1e-9);assert.equal(coxinha.expiresTick,100+ticks(FOUND_PICKUP_SECONDS));
+  assert.equal(res.pickup,undefined);assert.deepEqual(res.helped,['p2']);
+  assert.equal(fake.pickups.size,0);assert.equal(hurt.hp,50);
   const prep=makeCtx(11,100);prep.fake.round.phase='prepare';
   addPlayer(prep.fake,'p2','mendigo',14,10,{hp:20});
   const pet=addPlayer(prep.fake,'p1','mae-pet',10,10);
@@ -847,7 +814,7 @@ test('reused effects with new numbers: Passageira dashes ~3 and only shields her
   assert.equal((e as TauntedEnemy).taunt?.player,'p1');assert.ok((e.slowUntil??0)>100);
 });
 
-test('no real-betting vocabulary anywhere in the 35 kits',()=>{
+test('no real-betting vocabulary anywhere in the 29 kits',()=>{
   const banned=/\b(aposta\w*|apostar|bet|cassino|odds?|tigrinho|roleta|jackpot|loteria|bingo)\b/i;
   for(const kit of KITS){
     for(const text of [kit.skill.effect,...kit.lines])assert.ok(!banned.test(text),`${kit.classId}: ${text}`);
@@ -857,7 +824,7 @@ test('no real-betting vocabulary anywhere in the 35 kits',()=>{
 // ---------- VGM-044B review regressions ----------
 test('refunds cannot chain: refunders never refund each other and nobody drops below half the paid cooldown',()=>{
   const {fake,ctx}=makeCtx(21,0);
-  const team=['caca-promocao','caca-promocao','pagodeiro','pagodeiro','coach','coach'].map((c,i)=>
+  const team=['pagodeiro','pagodeiro','pagodeiro','pagodeiro','coach','coach'].map((c,i)=>
     addPlayer(fake,`p${i}`,c,10+(i%3)*0.4,10+Math.floor(i/3)*0.4,{},{weapons:[],passives:[{id:'cafe-forte',level:5}]}));
   const casts=new Map<string,number>();let shielded=0;const span=ticks(60);
   for(fake.tick=0;fake.tick<span;fake.tick++){
@@ -893,28 +860,17 @@ test('Concurseira annuls only the soonest attack, once per enemy every 6 s, so s
   assert.deepEqual([...fake.telegraphs.keys()],['late']);
 });
 
-test('freeze traps skip the boss first; Salva-Vidas needs a hurt ally and leaves rescuers in place',()=>{
+test('freeze traps skip the boss first',()=>{
   const g=makeCtx(23,100);
   addEnemy(g.fake,'boss',10.5,10,4000);(g.fake.enemies.get('boss')!).boss=true;
   for(let i=0;i<4;i++)addEnemy(g.fake,`m${i}`,11+i*0.5,10);
   assert.deepEqual(cast(g.ctx,addPlayer(g.fake,'p1','gambiarreiro',10,10))!.hits,['m0','m1','m2','m3']);
-  const s=makeCtx(23,100);
-  const guard=addPlayer(s.fake,'p1','salva-vidas',10,10);
-  addPlayer(s.fake,'p2','mendigo',15,10);
-  assert.equal(cast(s.ctx,guard),null,'nobody hurt: no pull, no cooldown');assert.equal(skillReadyTick(guard),0);
-  const r=makeCtx(23,100);
-  const lifeguard=addPlayer(r.fake,'p1','salva-vidas',10,10);
-  const rescuer=addPlayer(r.fake,'p2','mendigo',15,10,{hp:20});
-  addPlayer(r.fake,'p3','mendigo',15.8,10,{hp:0,downed:{sinceTick:50,bleedOutTick:650,progress:0.6}});
-  const res=cast(r.ctx,lifeguard)!;
-  assert.deepEqual(res.pulled,{player:'p2',x:15,y:10},'healed in place');
-  assert.equal(rescuer.hp,30);assert.equal(res.movedTo,undefined,'movedTo is only for the caster');
 });
 
 
 test('a refunded skill never comes back before half of the cooldown its owner paid',()=>{
   const {fake,ctx}=makeCtx(25,100);
-  const coach=addPlayer(fake,'p1','coach',10,10),promo=addPlayer(fake,'p2','caca-promocao',10.5,10);
+  const coach=addPlayer(fake,'p1','coach',10,10),promo=addPlayer(fake,'p2','pagodeiro',10.5,10);
   assert.ok(cast(ctx,coach));
   const paid=ticks(kitFor('coach')!.skill.cooldown*coach.stats.cooldown);
   for(let i=0;i<10;i++){resetSkill(promo);cast(ctx,promo);}

@@ -1,6 +1,6 @@
 /**
  * Waiting-room sandbox (cidade-09): `?sandbox=sala&papel=dono|convidado&players=1..6[&fase=countdown|combate][&mapa=cidade-nevada]
- * [&baixando=0.4][&offline=1][&liberada=1]`. The real waiting room (lobby.ts mountWaitingRoom) with the map selector, over a
+ * [&baixando=0.4][&offline=1][&liberada=1]`. The real waiting room (lobby.ts mountWaitingRoom; no map selector since topo-sem-icone-contagem-exploracao), over a
  * mock island inside the explore shell's real markup (camera buttons, gear, joystick, skill button, the controls etiqueta)
  * with explore.css/coop.css, so overlaps and the phase's controls (controls-phase.ts) look as in production in portrait
  * and landscape. `fase=combate` shows the round's controls in the same boxes (the waiting window hides, as in the room).
@@ -23,7 +23,7 @@ const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const owner=params.get('papel')!=='convidado';
 const NAMES=['Capivara Turbo','Pastel de Feira','Zé do Pix Parcelado','Tia da Festa Junina','Pombo Sem Wi-Fi','Marmita Brabo'];
 /** Each one's class, for the chip's face (rostos-hud). */
-const CLASSES=['cidadao-comum','rei-pastel','viciado-em-bet','merendeira','aposentado','gamer-mobile'];
+const CLASSES=['cidadao-comum','rei-pastel','viciado-em-bet','merendeira','aposentado','streamer'];
 const CITY:MapRef={id:'cidade-nevada',version:2,hash:'7a3695e553d80e111a2dfb846a6723373b35399eadd1445c4aadc95db803e21e'};
 const refOf=(id:MapId)=>id==='cidade-nevada'?CITY:INFINITO_REF;
 

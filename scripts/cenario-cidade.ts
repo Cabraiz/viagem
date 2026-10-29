@@ -7,11 +7,12 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset} from '../src/maps/city-asset.ts';
+import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAssetData,type CityDecor} from '../src/maps/city-asset.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
 import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
-import {LUGARES,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
+import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
+import {cityEntradas,estreitaBoca} from '../src/maps/city/entradas.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -37,6 +38,9 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
   const keepOutRects=[
     ...plan.sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL)),
     ...(plan.rail?[railRect(plan.rail,CITY_SITE_CELL)]:[]),
+    // The viaducts (deck and ramp, a cell around): the street under the deck keeps its sidewalk, no place stands there.
+    ...asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>({x:(c-1)*asset.unitsPerCell,y:(r-1)*asset.unitsPerCell,w:(w+2)*asset.unitsPerCell,h:(h+2)*asset.unitsPerCell})),
+
     // A nest in a building keeps its whole block (and a margin) for the nest's own art.
     ...CITY_NEST_POOL.filter(n=>n.block).map(n=>{
       const b=asset.blocks.find(x=>x.id===n.block)!.bbox,m=KEEP.nestBlock;
@@ -46,8 +50,33 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
   const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects});
   const data=cityAssetToData(asset),sw=asset.samples.w;
   for(const [c,r] of blocked)for(let j=0;j<SAMPLES_PER_CELL;j++)for(let i=0;i<SAMPLES_PER_CELL;i++)data.walkable[(r*SAMPLES_PER_CELL+j)*sw+c*SAMPLES_PER_CELL+i]=0;
-  data.decor=decor;data.version=asset.version+1;
+  // Nothing of the ground's scenery under or beside a viaduct (deck and ramp, a cell around): a lamp, a wire or a car
+  // there stood through the deck on screen (the deck is drawn over the ground, the scenery by its own cells).
+  const near=asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>[c-1,r-1,c+w+1,r+h+1] as const);
+  data.decor=decor.filter(q=>!near.some(([c0,r0,c1,r1])=>q.c<c1&&q.c+q.w>c0&&q.r<r1&&q.r+q.h>r0));data.version=asset.version+1;
   return encodeCityAsset(data);
+}
+
+const CALCADA=new Set([...OBJETOS_1,...OBJETOS_2].map(id=>id.replace(/-\d$/,'')));
+/** A sidewalk object (OBJETOS_1/OBJETOS_2 of city-decor.ts), by its placed id. */
+export const isCalcada=(id:string)=>CALCADA.has(id.replace(/-\d$/,''));
+/** How far (u, from its footprint) from an entrance a sidewalk object is checked. */
+export const BOCA_DECOR_RAIO=6;
+/**
+ * NEW-20261029-ORQ-sem-tralha-nas-entradas (the user, 29/10: the mouths read narrower than they are): the sidewalk
+ * objects in the middle of an entrance (maps/city/entradas.ts estreitaBoca) go; nothing takes their place and every other
+ * piece stays. The objects block nothing, so the entrances are those of the grid as it is. Changes `data`, returns the
+ * pieces taken.
+ */
+export function semDecorNasBocas(data:CityAssetData):CityDecor[]{
+  const d=decodeCityAsset(encodeCityAsset(data));
+  if(!d.ok)throw new Error(d.error);
+  const a=d.asset,u=a.unitsPerCell,bocas=cityEntradas(a);
+  const gap=(q:CityDecor,e:{x:number;y:number})=>Math.hypot(Math.max(q.c*u-e.x,0,e.x-(q.c+q.w)*u),Math.max(q.r*u-e.y,0,e.y-(q.r+q.h)*u));
+  const inMouth=(q:CityDecor)=>isCalcada(q.id)&&bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO&&estreitaBoca(a,e,q));
+  const taken=(data.decor??[]).filter(inMouth);
+  data.decor=(data.decor??[]).filter(q=>!inMouth(q));
+  return taken;
 }
 
 /**

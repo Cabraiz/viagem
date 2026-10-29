@@ -29,7 +29,7 @@ function fakeCtx(players:SimPlayer[],phase:RoundPhase='wave'):FakeCtx{
     enemies:new Map(),pickups:new Map(),projectiles:new Map(),telegraphs:new Map(),offers:new Map(),
     team:{xp:0,level:1,nextXp:5},
     round:{index:1,total:10,phase,phaseEndsTick:9999,remaining:0},
-    enemyIndex:{rebuild:unused,query:unused,nearest:unused},
+    enemyIndex:{rebuild:unused,query:()=>[],nearest:unused},
     nextId:prefix=>`${prefix}${++id}`,
     emit:e=>{events.push(e);},
     damageEnemy:unused,damagePlayer:unused,
@@ -52,7 +52,7 @@ test('downPlayer replaces respawn, is idempotent and skips spectators',()=>{
   assert.deepEqual(ctx.events,[{type:'downed',player:'a',by:'e1'}]);
 });
 
-test('an ally within 1.2 for 3 s revives with 40% hp and 2 s of invulnerability',()=>{
+test('an ally within 1.2 for 3 s revives with 40% hp and 3.5 s of invulnerability',()=>{
   const a=player('a',5,5),b=player('b',5+REVIVE_RADIUS,5);
   const ctx=fakeCtx([a,b]),sys=createReviveSystem();
   downPlayer(ctx,a);
@@ -313,7 +313,7 @@ test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceit
   for(const seed of [7,12345,0x042a5eed]){
     const sim=new Simulation(seed);
     const ids=Array.from({length:6},(_,i)=>`bot${i}`);
-    ids.forEach((id,i)=>sim.add(id,`Bot ${i}`,['cidadao-comum','sensei','pedreiro','roqueira','feirante','goleira'][i]));
+    ids.forEach((id,i)=>sim.add(id,`Bot ${i}`,['cidadao-comum','rei-pastel','pedreiro','maromba','feirante','clt-cansado'][i]));
     sim.resetRun();
     // Unarmed and standing still: the horde downs everyone, through contact, telegraphs and projectiles.
     const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;p.build.weapons=[];p.weaponReady={};}};

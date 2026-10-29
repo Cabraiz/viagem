@@ -97,7 +97,7 @@ function withDocument(run:(doc:EventTarget&{visibilityState:string})=>void){
 
 // ---- 1. recipes ----
 test('recipes cover exactly SOUND_IDS and stay within budget',()=>{
-  assert.equal(SOUND_IDS.length,13);
+  assert.equal(SOUND_IDS.length,16);
   for(const id of ['buzina','boing','risada'] as const)assert.ok(SOUND_IDS.includes(id));
   assert.deepEqual(Object.keys(RECIPES).sort(),[...SOUND_IDS].sort());
   assert.ok(Object.isFrozen(RECIPES));
@@ -523,13 +523,20 @@ test('noise sounds use a filled, looping buffer',()=>{
 const ME='p1',OTHER='p2';
 test('soundForEvent maps sim events to sounds for the local player',()=>{
   const cases:[SimEvent,SoundId|undefined][]=[
-    [{type:'damage',target:'e1',amount:3,source:ME},'golpe'],
-    [{type:'damage',target:ME,amount:3,source:'e1'},'golpe'],
+    [{type:'damage',target:'e1',amount:3,source:ME},'bicho-acerto'],
+    [{type:'damage',target:'e1',amount:3,source:ME,weapon:'faca'},'golpe'],
+    [{type:'damage',target:'e1',amount:3,source:ME,weapon:'peixeira-lendario'},'golpe'],
+    [{type:'damage',target:ME,amount:3,source:'e1'},'dano-heroi'],
     [{type:'damage',target:'e1',amount:3,source:OTHER},undefined],
     [{type:'damage',target:OTHER,amount:3,source:'e1'},undefined],
     [{type:'damage',target:'e1',amount:3},undefined],
     [{type:'pickup',player:ME,pickup:'g1',kind:'xp',value:1},'gema'],
-    [{type:'pickup',player:ME,pickup:'c1',kind:'chest',value:1},'buzina'],
+    [{type:'pickup',player:ME,pickup:'c1',kind:'chest',value:1},'bau-comum'],
+    [{type:'pickup',player:ME,pickup:'c3',kind:'chest',value:3},'bau-raro'],
+    [{type:'pickup',player:ME,pickup:'c4',kind:'chest',value:4},'bau-epico'],
+    [{type:'pickup',player:ME,pickup:'c5',kind:'chest',value:5},'bau-lendario'],
+    [{type:'pickup',player:ME,pickup:'k1',kind:'heal',value:30},'coxinha'],
+    [{type:'pickup',player:ME,pickup:'v1',kind:'vehicle',value:1},'buzina'],
     [{type:'pickup',player:OTHER,pickup:'g2',kind:'xp',value:1},undefined],
     [{type:'pickup',player:OTHER,pickup:'c2',kind:'chest',value:1},undefined],
     [{type:'levelup',level:2},'nivel'],
@@ -538,6 +545,10 @@ test('soundForEvent maps sim events to sounds for the local player',()=>{
     [{type:'upgrade',player:OTHER,item:'x',level:2},undefined],
     [{type:'downed',player:OTHER},'queda'],
     [{type:'revived',player:OTHER,by:ME},'resgate'],
+    [{type:'revived',player:ME,by:OTHER},'ufa'],
+    [{type:'kill',enemy:'e1',kind:'bebado',by:ME,x:0,y:0},'bicho-morte'],
+    [{type:'kill',enemy:'e1',kind:'bebado',by:OTHER,x:0,y:0},undefined],
+    [{type:'kill',enemy:'b1',kind:'chefe',by:OTHER,x:0,y:0},'chefe-morte'],
     [{type:'eliminated',player:ME},'risada'],
     [{type:'boss-phase',enemy:'b1',phase:2},'chefe'],
     [{type:'round',index:1,phase:'wave'},'round-inicio'],
@@ -545,8 +556,12 @@ test('soundForEvent maps sim events to sounds for the local player',()=>{
     [{type:'round',index:0,phase:'prepare'},undefined],
     [{type:'round',index:5,phase:'end'},'round-fim'],
     [{type:'bark',enemy:'e1',line:'oi'},undefined],
-    [{type:'fire',player:ME,weapon:'w',x:0,y:0},undefined],
-    [{type:'spawn-warning',x:0,y:0,atTick:10,count:3},undefined],
+    [{type:'fire',player:ME,weapon:'escopeta',x:0,y:0},'escopeta'],
+    [{type:'fire',player:ME,weapon:'cafe-evo',x:0,y:0},'cafe'],
+    [{type:'fire',player:ME,weapon:'pandeiro',x:0,y:0},'p12-orbita'],
+    [{type:'fire',player:ME,weapon:'skill:clt',x:0,y:0},undefined],
+    [{type:'fire',player:OTHER,weapon:'escopeta',x:0,y:0},undefined],
+    [{type:'spawn-warning',x:0,y:0,atTick:10,count:3},'chefe-passo'],
   ];
   for(const [event,want] of cases)assert.equal(soundForEvent(event,ME),want,JSON.stringify(event));
 });
@@ -557,7 +572,7 @@ test('soundForEvent without a local player never treats a sourceless hit as own 
 
 test('playEvents counts successful plays and respects engine throttling',()=>{
   const r=rig();r.setNow(100);
-  const hits:SimEvent[]=Array.from({length:30},()=>({type:'damage',target:'e1',amount:1,source:ME}));
+  const hits:SimEvent[]=Array.from({length:30},()=>({type:'damage',target:'e1',amount:1,source:ME,weapon:'faca'}));
   const events:SimEvent[]=[...hits,{type:'levelup',level:3},{type:'bark',enemy:'e',line:'x'},{type:'damage',target:'e1',amount:1,source:OTHER}];
   assert.equal(playEvents(r.engine,events,ME),2);
   const ids:SoundId[]=[];

@@ -1,27 +1,32 @@
 /**
  * Kits de torre (card NEW-20261020-ORQ-torre-pela-caixa), pure rules kept apart from the DOM so node tests import them.
- * construir-no-botao (the user, 23/10): no window. A tap on the kit's slot (hud/inventory.ts {t:'kit'}) selects it, the
- * attack button turns into Construir with the kit's sticker (hud/skill.ts), and pressing it builds.
- * - The ghost stays KIT_AHEAD u in front of the hero (the way it last walked; at first towards the camera) and walks
- *   with it (follow, every frame), with the room's own footprint (rules pieceCells: the root takes 1 cell, a 3×2 tower
- *   its 3×3 square).
+ * barricada-tocar-no-mapa (the user, 25/10: "clicar no inventário da barricada e clicar no mapa, e você segura após o
+ * clique para pôr a direção"): a tap on the kit's slot (hud/inventory.ts {t:'kit'}) selects it; the hero no longer
+ * walks to the spot nor presses Construir.
+ * - The map's press (hud/kit-place/gesture.ts) puts the ghost there (press), with the room's own footprint (rules
+ *   pieceCells: the root takes 1 cell, a 3×2 tower its 3×3 square); the mouse hovering shows it before the press.
+ * - Held and dragged past KIT_TURN_DRAG u, a barricade turns to the drag's axis (rot 0 along x, 1 along y); the ghost
+ *   stays where the press was. R turns it on the PC.
+ * - Letting go builds there (release → confirm); a red ghost says why instead and the mode stays.
  * - Its colour: the room's answer for that very cell wins, else the local check (render/fortify-rules ghostRefusal:
- *   the car, a nest, a standing piece) plus the reach (KIT_REACH from the hero, the room's BUILD_REACH).
- * - Tapping the kit again, or a weapon, puts the weapon back in the button (Atacar); Esc does it on the PC.
+ *   the car, a nest, a standing piece) plus the reach (KIT_REACH from the hero, the room's KIT_PLACE_REACH).
+ * - Tapping the kit again, or a weapon, ends the mode; Esc does it on the PC.
  * - One {t:'place',slot,c,r,rot?} per confirm (net.place); the room answers {t:'built'}. A tower kit is done when the
  *   room takes it; a wall kit stays in the mode while it has charges. The kit leaving its slot (spent, dropped) ends it.
  */
 import type {BuildRot} from '../../../contract/index.ts';
 import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/index.ts';
-import {kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
+import {KIT_PLACE_REACH,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
 import {fortRefusalText} from '../fortify/model.ts';
 
-/** How far ahead of the hero (u) the ghost starts. */
-export const KIT_AHEAD=1.8;
-/** The room's reach (sim/towers/system.ts BUILD_REACH; a test keeps them equal): farther, the ghost is red. */
-export const KIT_REACH=3;
+/** The room's reach for a kit (rules KIT_PLACE_REACH, from the hero to the footprint's edge): farther, the ghost is red. */
+export const KIT_REACH=KIT_PLACE_REACH;
+/** A press dragged this far (world u) turns a barricade to the drag's axis; shorter, a tap keeps its rot. */
+export const KIT_TURN_DRAG=.35;
+/** What the HUD says when a kit is picked: where to tap now (the phone has no hover to show the ghost first). */
+export const KIT_TAP_HINT='Toca no mapa pra pôr; segura e arrasta pra girar';
 /** A request without an answer stops counting as pending after this. */
 export const KIT_PENDING_MS=3000;
 /** What the phone says before the first aim, and the kit's own refusals (sim/inventory.ts PlaceResult). */
@@ -64,42 +69,52 @@ export class KitPlace {
   cell:{c:number;r:number}|undefined;
   /** Why the last ghost (ghost()) is red, a refusal reason for kitRefusalText; undefined when it is green. */
   blocked:string|undefined;
-  /** The hero's last walking direction (unit), for the ghost's first place. */
-  private dir={x:0,y:1};
-  private last:{x:number;y:number}|undefined;
+  /** The map point of the press being held (the ghost's place while the drag turns it), undefined when none. */
+  private anchor:{x:number;y:number}|undefined;
   private readonly answers=new Map<string,{ok:boolean;reason?:string}>();
   private readonly sent=new Map<number,{key:string;at:number;tower:boolean}>();
   private readonly now:()=>number;
   constructor(now:()=>number=()=>performance.now()){this.now=now;}
 
   get active(){return !!this.kit;}
-  /**
-   * Each frame: the hero's position (the way it walks turns the ghost). `intent`, the walk the player asks for (the
-   * scene's heroIntent), wins over the position's change: the reconciled position may step back when the hero stops.
-   */
-  hero(at:{x:number;y:number}|undefined,intent?:{x:number;y:number}){
-    if(!at)return;
-    if(intent){const d=Math.hypot(intent.x,intent.y);if(d>1e-3)this.dir={x:intent.x/d,y:intent.y/d};this.last={x:at.x,y:at.y};return;}
-    if(this.last){const dx=at.x-this.last.x,dy=at.y-this.last.y,d=Math.hypot(dx,dy);if(d>.02){this.dir={x:dx/d,y:dy/d};}}
-    this.last={x:at.x,y:at.y};
-  }
-  /** Each frame while placing: the ghost KIT_AHEAD u in front of the hero, the way it faces. */
-  follow(at:{x:number;y:number}|undefined,cell:number){
-    if(this.kit&&at)this.point({x:at.x+this.dir.x*KIT_AHEAD,y:at.y+this.dir.y*KIT_AHEAD},cell);
-  }
+  /** A press on the map is held (its release builds). */
+  get pressing(){return !!this.anchor;}
   footprint():[number,number]{return this.kit?pieceCells(this.kit.piece,this.rot) as [number,number]:[1,1];}
-  /** A tap on the kit's slot: the mode for that kit, the ghost ahead of the hero. Undefined when the id is no kit. */
-  start(slot:number,id:string,hero:{x:number;y:number}|undefined,cell:number):boolean{
+  /** A tap on the kit's slot: the mode for that kit, no ghost until the map is pressed (or hovered). False: no kit. */
+  start(slot:number,id:string):boolean{
     const piece=kitPiece(id);
     if(!piece)return false;
-    this.kit={slot,id,piece};this.rot=0;this.cell=undefined;this.answers.clear();
-    if(hero)this.point({x:hero.x+this.dir.x*KIT_AHEAD,y:hero.y+this.dir.y*KIT_AHEAD},cell);
+    this.kit={slot,id,piece};this.rot=0;this.cell=undefined;this.anchor=undefined;this.answers.clear();
     return true;
   }
-  cancel(){this.kit=undefined;this.cell=undefined;this.blocked=undefined;}
+  cancel(){this.kit=undefined;this.cell=undefined;this.blocked=undefined;this.anchor=undefined;}
+  /** The map pressed at world point p: the ghost goes there and waits for the drag (turn) or the release (build). */
+  press(p:{x:number;y:number},cell:number){
+    if(!this.kit)return;
+    this.anchor={x:p.x,y:p.y};this.point(p,cell);
+  }
+  /**
+   * The pointer at world point p: while pressed, a drag past KIT_TURN_DRAG turns a barricade to its axis (the ghost
+   * stays on the press); otherwise (the mouse hovering) the ghost follows it.
+   */
+  move(p:{x:number;y:number},cell:number){
+    if(!this.kit)return;
+    const a=this.anchor;
+    if(!a){this.point(p,cell);return;}
+    const dx=p.x-a.x,dy=p.y-a.y;
+    if(this.canTurn()&&Math.hypot(dx,dy)>=KIT_TURN_DRAG){const rot=Math.abs(dx)>=Math.abs(dy)?0:1;if(rot!==this.rot){this.rot=rot;this.point(a,cell);}}
+  }
+  /** The press let go: true when it should build (a press was held and the ghost has a cell). */
+  release():boolean{const held=!!this.anchor;this.anchor=undefined;return held&&!!this.kit&&!!this.cell;}
   /** Only a barricade turns (the towers are squares, the muro one cell). */
   canTurn(){return this.kit?.piece==='barricada';}
-  turn(){if(this.canTurn())this.rot=this.rot===1?0:1;}
+  /** R on the PC: the other axis, the ghost centred where it was. */
+  turn(cell?:number){
+    if(!this.canTurn())return;
+    const at=cell!==undefined?this.rect(cell):undefined;
+    this.rot=this.rot===1?0:1;
+    if(at&&cell!==undefined)this.point(this.anchor??{x:at.cx,y:at.cy},cell);
+  }
   /** The pointer is over world point p: the ghost centres the footprint under it. */
   point(p:{x:number;y:number},cell:number){const [w,h]=this.footprint();this.cell=cellUnder(p.x,p.y,w,h,cell);}
   rect(cell:number):CellRect|undefined{

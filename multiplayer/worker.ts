@@ -23,6 +23,14 @@ export function createOptions(v:unknown):RoomCreateOptions{
   const o=storedOptions(v);
   return {...(o.map?{map:o.map}:{}),...(o.solo?{solo:true as const}:{}),...(o.objective==='chaveiro'?{objective:'chaveiro' as const}:{}),mode:'ninhos',combat:'manual'};
 }
+/**
+ * The phone's own id in a create body (sala-aguenta-cidade, achado 5): a random string the client keeps, 8-64 of
+ * [A-Za-z0-9_-]; anything else is none. Never stored: it only keys the create limit with the IP.
+ */
+export function createDevice(v:unknown):string|undefined{
+  const d=(v as {device?:unknown}|null)?.device;
+  return typeof d==='string'&&/^[\w-]{8,64}$/.test(d)?d:undefined;
+}
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
@@ -32,10 +40,10 @@ export {RoomIndex};
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
  * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
- * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,boletos"
+ * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,promo"
  * plays those zueira events one per round from round 2 (VGM-053B proofs); LAB_SEED n gives every new room that seed (the
  * same city plan in each run of a before/after); LAB_ASLEEP n caps each client's sleeping bodies at n, 'sem' = no cap
- * (card horda-visivel-capacidade).
+ * (card horda-visivel-capacidade); LAB_DOURADA 0..1 is the caixa-gamble's hidden dourada chance (1 = always, for a video).
  */
 /** What the room needs of a server-side WebSocket (the tests pass a fake one). */
 export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
@@ -43,7 +51,7 @@ export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
  * BUILD_SHA: the commit this Worker was published from (scripts/deploy-rooms.mjs passes it with `--var`); /health answers
  * it, so a deploy from a stale checkout shows at once (after 4e771dc went up from the lote's worktree without it).
  */
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; LAB_SEED?:string; LAB_ASLEEP?:string; }
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; CREATE_LIMIT_IP?:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; LAB_SEED?:string; LAB_ASLEEP?:string; LAB_DOURADA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -83,17 +91,22 @@ export default {
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/rooms'&&request.method==='POST'){
-      const limit=await env.CREATE_LIMIT.limit({key:request.headers.get('CF-Connecting-IP')??'unknown'});
+      // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada), {device}.
+      // None or junk (an old cached site): createOptions' own default, the nests with the manual combat.
+      let body:unknown=null;
+      // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
+      const length=Number(request.headers.get('content-length')??'0');
+      if(length>0&&length<=CREATE_BODY_MAX)try{body=JSON.parse(await request.text());}catch{/* junk: a plain room */}
+      // sala-aguenta-cidade, achado 5: a school or a 4G carrier puts many phones behind one IP. A phone that sends its
+      // device id has its own CREATE_LIMIT (IP + device) and all of them share CREATE_LIMIT_IP's higher ceiling; one
+      // without it (an old cached site) keeps the IP's own CREATE_LIMIT, as before.
+      const ip=request.headers.get('CF-Connecting-IP')??'unknown',device=createDevice(body);
+      let limit=await env.CREATE_LIMIT.limit({key:device?`${ip}|${device}`:ip});
+      if(limit.success&&device&&env.CREATE_LIMIT_IP)limit=await env.CREATE_LIMIT_IP.limit({key:ip});
       if(!limit.success)return Response.json({error:'Aguarde um minuto antes de criar outra sala.'},{status:429,headers});
       const code=crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
-      // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada).
-      // None or junk (an old cached site): createOptions' own default, the nests with the manual combat.
-      let asked:RoomCreateOptions=createOptions(null);
-      // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
-      const length=Number(request.headers.get('content-length')??'0');
-      if(length>0&&length<=CREATE_BODY_MAX)try{asked=createOptions(JSON.parse(await request.text()));}catch{/* junk: a plain room */}
-      await stub.init(code,asked);return Response.json({code},{status:201,headers});
+      await stub.init(code,createOptions(body));return Response.json({code},{status:201,headers});
     }
     // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.
     const lab=url.pathname.match(/^\/lab\/([A-F0-9]{10})$/);
@@ -123,6 +136,8 @@ export class GameRoom extends DurableObject<Env>{
   /** The room code (stored at init) and creation time: this room's row in the RoomIndex. */
   private code?:string;
   private created=0;
+  /** When the room closes once a run renewed it (Room.closesAt, stored as 'closesAt'); 0: created + ROOM_LIFETIME_MS. */
+  private closesAt=0;
   /** Whether the last row sent said "in a match" (rows go only when that changes). */
   private indexed?:boolean;
   /** The roster's last word: a match is on (the run is in combat). */
@@ -138,7 +153,7 @@ export class GameRoom extends DurableObject<Env>{
     const running=this.matchOn&&this.peers.size>0;
     if(running===this.indexed)return;
     this.indexed=running;
-    this.index({running,players:this.rosterPlayers,until:this.created+ROOM_LIFETIME_MS});
+    this.index({running,players:this.rosterPlayers,until:this.closesAt||this.created+ROOM_LIFETIME_MS});
   }
   /** One stub for the index (calls on the same stub arrive in order) and the chain of reports in flight. */
   private indexStub?:DurableObjectStub<RoomIndex>;
@@ -186,6 +201,13 @@ export class GameRoom extends DurableObject<Env>{
     const log=(line:string)=>console.log(line);
     // E5-checkpoint-por-round: the run at each round's intermission, in its own row (the roster links it).
     const onCheckpoint=(checkpoint:RoomCheckpoint)=>{void this.ctx.storage.put('checkpoint',checkpoint);this.checkpointStored=true;};
+    // sala-aguenta-cidade: a run renewed the room's end. It is stored (a restart keeps it), the alarm moves with it and
+    // the index row is sent again with the new until (a deploy waits for this match, not for the old end).
+    const onLifetime=(closesAt:number)=>{
+      this.closesAt=closesAt;void this.ctx.storage.put('closesAt',closesAt);void this.ctx.storage.setAlarm(closesAt+60_000);
+      this.indexed=undefined;this.syncIndex();
+    };
+    const lifetime={...(this.closesAt?{closesAt:this.closesAt}:{}),onLifetime};
     const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
     // sala-solo-privada: the map it was opened on and a solo room, as created (the defaults otherwise); D-047: the
     // objective the creator asked for: ?modo=chaveiro (the city's default anyway) or ?modo=muralha (the old wall mode).
@@ -194,10 +216,11 @@ export class GameRoom extends DurableObject<Env>{
     // nests instead of the waves (the room plays them only with the chaveiro in the city).
     const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{}),...(this.asked.combat?{combat:this.asked.combat}:{}),
       ...(this.asked.mode?{mode:this.asked.mode}:{})};
-    if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
+    if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...lifetime,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
-    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA),
-      labAsleep:this.env.LAB_ASLEEP==='sem'?Number.MAX_SAFE_INTEGER:Number(this.env.LAB_ASLEEP)||undefined});
+    return new Room(created,seed,{onRoster,onCheckpoint,log,...lifetime,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA),
+      labAsleep:this.env.LAB_ASLEEP==='sem'?Number.MAX_SAFE_INTEGER:Number(this.env.LAB_ASLEEP)||undefined,
+      ...(this.env.LAB_DOURADA!==undefined&&this.env.LAB_DOURADA!==''?{labGold:Number(this.env.LAB_DOURADA)}:{})});
   }
   /**
    * A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. A run that
@@ -208,6 +231,7 @@ export class GameRoom extends DurableObject<Env>{
     return this.loading??=(async()=>{
       this.city??=await loadCity();
       this.code??=await this.ctx.storage.get<string>('code');this.created=created;
+      this.closesAt=(await this.ctx.storage.get<number>('closesAt'))??0;
       this.asked=storedOptions(await this.ctx.storage.get('options'));
       const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
       const roster=await this.ctx.storage.get<RoomRoster>('roster');
@@ -229,7 +253,8 @@ export class GameRoom extends DurableObject<Env>{
   lab(){if(!local(this.env)||!this.room)return null;return {...this.room.lab(),clock:this.loop.clock.stats};}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
-    if(!created||Date.now()-created>ROOM_LIFETIME_MS)return new Response('Sala inexistente ou encerrada.',{status:404});
+    const closesAt=created?(await this.ctx.storage.get<number>('closesAt'))??created+ROOM_LIFETIME_MS:0;
+    if(!created||Date.now()>closesAt)return new Response('Sala inexistente ou encerrada.',{status:404});
     const room=this.room??await this.load(created);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
     this.attach(server,room);

@@ -22,9 +22,9 @@ function assertCovers(classId:string){
   assert.ok(f.left+side>=100-1e-3&&f.top+side>=100-1e-3,`${classId}: image ends at or after the circle`);
 }
 
-test('FACE_CROP: one entry per playable class (all 35), sorted by id, every value a sane crop',()=>{
+test('FACE_CROP: one entry per class (all 29), sorted by id, every value a sane crop',()=>{
   const ids=classes.map(c=>c.id);
-  assert.equal(ids.length,35);
+  assert.equal(ids.length,29);
   assert.deepEqual(Object.keys(FACE_CROP).sort(),[...ids].sort(),'same ids as src/rules/classes.ts');
   assert.deepEqual(Object.keys(FACE_CROP),[...Object.keys(FACE_CROP)].sort(),'the table is kept sorted by id');
   for(const id of ids){
@@ -149,9 +149,9 @@ test('faceSource px: the 768 portrait when the thumb crop would upscale past 1.2
     for(const px of [26,24])assert.equal(needsLargePortrait(id,px),false,`${id} at ${px}`);
   }
   // The rule itself: px × 3 > size × 256 × 1.2.
-  const edge=faceCrop('rainha-bateria').size*256*1.2/3;
-  assert.equal(needsLargePortrait('rainha-bateria',Math.floor(edge)),false);
-  assert.equal(needsLargePortrait('rainha-bateria',Math.ceil(edge+.01)),true);
+  const edge=faceCrop('maromba').size*256*1.2/3;
+  assert.equal(needsLargePortrait('maromba',Math.floor(edge)),false);
+  assert.equal(needsLargePortrait('maromba',Math.ceil(edge+.01)),true);
   assert.equal(faceSource('mendigo').src,'/art/portraits/mendigo-thumb.webp','no px: the thumb');
   assert.equal(faceSource('mendigo',{px:64,portraitLarge:id=>`/big/${id}.webp`}).src,'/big/mendigo.webp');
   assert.equal(portrait768('motogirl'),'/art/portraits/motogirl-768.webp');
@@ -188,7 +188,7 @@ test('portraitClass: the class id of a portrait URL (edge arrows get a URL only)
   assert.equal(portraitClass('/art/portraits/merendeira-thumb.webp'),'merendeira');
   assert.equal(portraitClass('/art/portraits/merendeira.webp'),'merendeira');
   assert.equal(portraitClass('/art/portraits/merendeira-768.webp'),'merendeira');
-  assert.equal(portraitClass('https://x.test/art/portraits/gamer-mobile-thumb.webp?v=2'),'gamer-mobile');
+  assert.equal(portraitClass('https://x.test/art/portraits/streamer-thumb.webp?v=2'),'streamer');
   assert.equal(portraitClass('/art/lite/sprites/mendigo.webp'),undefined);
   assert.equal(portraitClass(undefined),undefined);
 });

@@ -10,7 +10,7 @@
  */
 import {artPiece,artUrl} from '../art/manifest.ts';
 
-export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','pronto','relogio','boia','sem-linha','pipoca','saiu',
+export const ICON_NAMES=['config','girar','girar-camera','bussola','agulha','aviao','fechar','pronto','relogio','boia','sem-linha','pipoca','saiu',
   'balao','sacola','risada','chamar','suor','dado','coracao','cadeado','voltar','som','mudo','vibrar','sem-vibrar','letra-n',
   // Fora da tela e minimapa (UX-bordas-fora-da-tela, ORQ-minimapa): base, chefe, bichos chegando e baú.
   'base','chefe','onda','bau',
@@ -25,7 +25,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // Ficha de torre (D-048): the team's one material pile shows as fichas (torre) and a price in material (material, a crate).
   'torre','material',
   // Bancos (card bancos-e-veiculos): o Caixa 24 h com a nota de 2, na seta de borda e no minimapa (provisório; 'caixa-eletronico', o adesivo de arte 'banco' é da UI).
-  'caixa-eletronico'] as const;
+  'caixa-eletronico',
+  // torre-limite-rebocar-sem-arma: the rope on the action button ("Rebocar"/"Soltar" near the Uno's rope).
+  'corda'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

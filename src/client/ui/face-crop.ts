@@ -10,7 +10,8 @@
  * The expression follows the player's state (faceExpression); with no imported art every expression shows the same crop
  * (the downed/eliminated greys of the team strip stay in CSS).
  *
- * Minimap marks (6-12 px) and emote balloons (drawn over the hero itself) get no face on purpose.
+ * Emote balloons (drawn over the hero itself) get no face on purpose; the minimap has its own small faces
+ * (hud/wc-minimap/art.ts).
  *
  * Pure (no DOM globals: the DOM helpers take the document), so it runs in node tests.
  * Superseded in part by src/client/art/faces.ts (E7, importar-arte-d) once merged: its `faceUrl` is the same lookup as
@@ -33,7 +34,6 @@ export const DEFAULT_FACE:FaceCrop=Object.freeze({cx:.5,cy:.2,size:.42});
 export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze({
   'aposentado':{cx:.509,cy:.178,size:.334},
   'astrologa':{cx:.52,cy:.217,size:.435},
-  'caca-promocao':{cx:.463,cy:.23,size:.46},
   'cidadao-comum':{cx:.474,cy:.195,size:.391},
   'clt-cansado':{cx:.487,cy:.221,size:.441},
   'coach':{cx:.466,cy:.217,size:.435},
@@ -42,8 +42,7 @@ export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze
   'faxineira':{cx:.491,cy:.202,size:.403},
   'feirante':{cx:.478,cy:.227,size:.454},
   'gambiarreiro':{cx:.467,cy:.176,size:.353},
-  'gamer-mobile':{cx:.499,cy:.242,size:.435},
-  'goleira':{cx:.456,cy:.21,size:.359},
+  'gato-nada-pra-comer':{cx:.48,cy:.25,size:.5},
   'mae-pet':{cx:.42,cy:.214,size:.429},
   'maromba':{cx:.475,cy:.227,size:.454},
   'mendigo':{cx:.505,cy:.224,size:.447},
@@ -53,12 +52,8 @@ export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze
   'passageira':{cx:.541,cy:.224,size:.447},
   'pedreiro':{cx:.484,cy:.186,size:.372},
   'porteiro':{cx:.493,cy:.23,size:.46},
-  'rainha-bateria':{cx:.495,cy:.161,size:.321},
   'rei-arraia':{cx:.522,cy:.202,size:.403},
   'rei-pastel':{cx:.504,cy:.224,size:.447},
-  'roqueira':{cx:.491,cy:.249,size:.498},
-  'salva-vidas':{cx:.483,cy:.192,size:.384},
-  'sensei':{cx:.467,cy:.23,size:.46},
   'streamer':{cx:.466,cy:.23,size:.46},
   'tecnico-ti':{cx:.476,cy:.197,size:.395},
   'tio-do-churrasco':{cx:.517,cy:.23,size:.46},

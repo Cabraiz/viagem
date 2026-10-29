@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from '../../src/client/render/shadow-rules.ts';
+import {CONTACT,CONTACT_MIN,SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,ENEMY_SILHOUETTE,SOFT_SHADOW,castOffset,conjugateEllipse,contactWidth} from '../../src/client/render/shadow-rules.ts';
 import {ENEMY_FEET} from '../../src/client/art/enemy-feet.ts';
 import {SUN_VIEW} from '../../src/client/render/light.ts';
 
@@ -33,12 +33,12 @@ test('every figure casts its frame, never the ellipse; in every quality; it fade
   const layers=read('src/client/render/layers.ts'),scene=read('src/client/scene.ts'),sil=read('src/client/render/silhouette.ts');
   // The silhouette copies the body's texture and frame, and its opacity.
   assert.match(sil,/sil\.setTexture\(key,name\)/);
-  assert.match(sil,/setAlpha\(SILHOUETTE\.alpha\*body\.alpha\)/);
+  assert.match(sil,/alpha:number=SILHOUETTE\.alpha\)/);assert.match(sil,/setAlpha\(alpha\*body\.alpha\)/);
   // Enemies: no contact shadow in the actor, the silhouette always on (economy, flyers), and on their death animation.
   const enemy=layers.slice(layers.indexOf('interface EnemyActor{'),layers.indexOf('}',layers.indexOf('interface EnemyActor{')));
   assert.doesNotMatch(enemy,/shadow:Image/);
-  assert.match(layers,/castSilhouette\(a\.sil,a\.image,q\.x,q\.y,true\)/);
-  assert.match(layers,/castSilhouette\(d\.sil,d\.image,gx,gy,alive\)/);
+  assert.match(layers,/castSilhouette\(a\.sil,a\.image,q\.x,q\.y,true,undefined,artShadowLength\(a\.art\)\*ENEMY_SILHOUETTE\.length,ENEMY_SILHOUETTE\.alpha\)/);
+  assert.match(layers,/castSilhouette\(d\.sil,d\.image,gx,gy,alive,undefined,artShadowLength\(d\.art\)\*ENEMY_SILHOUETTE\.length,ENEMY_SILHOUETTE\.alpha\)/);
   assert.doesNotMatch(layers,/fx\.silhouettes/);
   // The hero and the allies: the frame on the ground, no ellipse, in every world and quality.
   assert.match(scene,/castSilhouette\(this\.heroSil,this\.actor,p\.x,p\.y,true,depth-2\)/);
@@ -57,4 +57,39 @@ test('the weapon in the hand casts with the hero: a point above the feet falls a
   // The side sticker's offset (or the held hand's, card arma-na-mao-viciado) is what the silhouette casts.
   assert.match(src,/dx=HAND_DX\*b,dy=HAND_DY\*b/);
   assert.match(src,/castOffset\(dx,dy/);
+});
+
+// Card NEW-20261023-ORQ-inimigos-v5a-padrao (study inimigos-flutuando, V2): enemies keep the silhouette and get back a
+// contact shadow under the soles, small, dark and soft (the Breu 38 % hard ellipse was lighter than the body on the snow).
+test('enemies: a small dark soft contact under the soles, as wide as the footing, none for a flyer',()=>{
+  const feet={from:'walk' as const,feetY:.9,footW:.2,figureH:.75,sleepW:.5};
+  assert.equal(contactWidth(feet,false,100,60),26,'footing × cell × CONTACT_PAD');
+  assert.equal(contactWidth(feet,true,100,60),60,'asleep: the lying footing, capped by the kind');
+  assert.equal(contactWidth({...feet,footW:.05},false,100,60),60*CONTACT_MIN,'never under CONTACT_MIN of the kind');
+  assert.equal(contactWidth(undefined,false,100,60),60,'no row: the kind');
+  // Darker than the figure on the snow (study: Breu ~70 % at the centre), smaller than the old ellipse (×0.42 tall).
+  assert.ok(CONTACT.alpha>=.6&&CONTACT.alpha<=.8&&CONTACT.height<.42&&CONTACT.width<=1);
+  assert.deepEqual([...CONTACT.color],[0x17,0x15,0x1a],'neutral dark, not lilac (card sombras-e-fala-do-uno, item 9)');
+  const layers=read('src/client/render/layers.ts'),sil=read('src/client/render/silhouette.ts');
+  assert.match(layers,/a\.contactW=flying\?0:contactWidth\(feet,a\.asleep,/);
+  assert.match(layers,/castContact\(a\.contact,a\.image,q\.x,q\.y,a\.contactW,true\)/);
+  assert.match(layers,/castContact\(d\.contact,d\.image,gx,gy,d\.contactW,alive\)/);
+  assert.match(sil,/createRadialGradient/,'soft edge, not a flat ellipse');
+  assert.match(sil,/setAlpha\(body\.alpha\)/,'it fades with the body');
+});
+
+// Card NEW-20261028-ORQ-sombras-e-fala-do-uno (auditoria-arte-mundo items 3 and 9).
+test('enemies: a neutral, shorter, fainter silhouette than the hero; vehicles: a soft ellipse through the footprint',()=>{
+  assert.ok(ENEMY_SILHOUETTE.length<1&&ENEMY_SILHOUETTE.alpha<SILHOUETTE.alpha&&ENEMY_SILHOUETTE.color===0x17151a);
+  const layers=read('src/client/render/layers.ts');
+  assert.match(layers,/ENEMY_SILHOUETTE\.length,ENEMY_SILHOUETTE\.alpha\)/);
+  // A square seen straight on: a circle; the iso footprint of the Uno: an ellipse tilted along the street.
+  const c=conjugateEllipse(10,0,0,10);
+  assert.ok(Math.abs(c.rx-10)<1e-9&&Math.abs(c.ry-10)<1e-9);
+  const e=conjugateEllipse(42,21,-21,21);
+  assert.ok(e.rx>e.ry&&e.ry>0&&e.rotation>0&&e.rotation<Math.PI/2);
+  assert.ok(SOFT_SHADOW.x>0&&SOFT_SHADOW.y>0,'pushed right and down, away from the sun');
+  const r=read('src/client/render/chaveiro/renderer.ts');
+  assert.match(r,/fillSoftShadow\(this\.ground,/);
+  assert.doesNotMatch(r,/LIT_SHADOW/,'no lilac box under the Uno');
 });

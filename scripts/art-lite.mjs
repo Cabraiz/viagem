@@ -25,6 +25,14 @@
  * the client uses as the cell (art/manifest.ts). A reimport drops `liteCell`; this script puts it back, and --check
  * fails until it does.
  *
+ * Enemies on the computer (NEW-20261023-ORQ-inimigos-v5a-padrao, family `enemies-pc`): the computer's fixed camera
+ * draws the hero at HERO_DESKTOP_SCREEN_PX on the 390 px reference, ~105 CSS px on a full HD screen, where the phone's
+ * copy is stretched ~1.6-1.9× and blurs. Each piece with a smaller phone copy gets a second one, from the same approved
+ * files (pseudo-shadow already baked, public/art/enemies/pseudo-sombra.json), keeping LITE_TEXELS per CSS px of a PLAIN
+ * enemy there (an elite would make it the full sheet, ~4×), at public/art/lite/enemies-pc/<id>/; its cell goes to the
+ * file as `pcCell` (manifest and index). Only the files a match downloads (not the rest rows), and only when the phone
+ * copy is smaller: else that copy is the full sheet already.
+ *
  * Quality, measured per file and kept in scripts/art-lite.json:
  *   - `psnr`: the whole sheet, premultiplied colour and alpha (what the GPU blends), at full size (a smaller enemy
  *     copy: against the source scaled the same way, so it measures the encoding);
@@ -41,7 +49,9 @@ import {GROUPS} from './art-v2/spec.mjs';
 import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
-import {HERO_MIN_SCREEN_PX} from '../src/contract/offscreen.ts';
+import {HD_ENEMIES} from '../src/client/art/manifest.ts';
+import {WAVE_BOSS} from '../src/rules/index.ts';
+import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../src/contract/offscreen.ts';
 import {cityLiteFiles} from '../src/client/render/city/art-plan.ts';
 
 const require=createRequire(import.meta.url);
@@ -60,6 +70,10 @@ const SHOWN_SCALE=.35;
  * ≤ 18 MB (1 gave 18.2 MB median, 20.8 MB p90 over 300 rotations).
  */
 export const LITE_TEXELS=.9;
+/** Short side of the computer screen the PC copy is sized for: full HD (hero 38 × 1080 / 390 = 105 CSS px). */
+export const PC_SHORT_SIDE_PX=1080;
+/** Hero CSS px on that screen (the computer's zoom is fixed: camera-zoom.ts ZOOM_DESKTOP). */
+export const PC_HERO_SCREEN_PX=HERO_DESKTOP_SCREEN_PX*PC_SHORT_SIDE_PX/REFERENCE_SHORT_SIDE_PX;
 /**
  * Towers: every cell × this. At the city scenery's scale (tower-rules towerArtScale: 0.85 world px per art px on the
  * real Cidade Nevada's 1.496 u cells) a phone draws a tower at ~0.57 CSS px per art px at the closest zoom
@@ -75,24 +89,35 @@ export const CITY_LITE_MIN_BYTES=64*1024;
 const CITY_MIN_PSNR=36;
 /** The art groups the city draws from (art-plan.ts), by their GROUPS key. */
 const CITY_GROUPS=['predios','base','props','cenario'];
-const KINDS=['trees','sprites','enemies','menu','towers','city'];
+const KINDS=['trees','sprites','enemies','enemies-pc','menu','towers','city'];
 const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 /**
- * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base and the
- * weapon's idle), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
+ * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base, the
+ * weapon's idle and its fire, torres-animacao-idle-tiro), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
  * order, `views` or `frames` columns), every cell scaled by TOWER_LITE_SCALE; `liteCell` goes to the file in
  * public/art/towers/manifest.json and the index. The delivered art is drawn at the city scenery's scale
  * (tower-rules towerArtScale), ~0.57 CSS px per art px on a phone at the closest zoom (see TOWER_LITE_SCALE).
  */
-const TOWER_LITE_FILES=['base','idle'];
+const TOWER_LITE_FILES=['base','idle','fire'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 /**
  * Menu (BUG-20261022-ORQ-art-lite-menu): only what the page loads from /art/lite/menu gets a copy, the dance pages
- * (ui/menu-dance.ts) and the heroes' backgrounds `fundo-*` (estadio.css, ui/stadium.ts). The button, the cut-out heroes,
- * the letreiros and the mureta are light WebPs already (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
+ * (ui/menu-dance.ts), the heroes' backgrounds `fundo-*` (estadio.css, ui/stadium.ts) and the phone's profile screen `insta/`
+ * (ui/insta.ts, scripts/insta-arte.mjs), the row's faces `rosto/` (ui/miniatura.ts, scripts/miniatura-rosto.mjs) and the
+ * letreiros `letreiro/` (ui/apelidos.ts). The button, the cut-out heroes and the mureta are light WebPs already
+ * (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
  */
-const MENU_LITE=/^(danca\/|fundo-[^/]+\.webp$)/;
+const MENU_LITE=/^(danca\/|insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/;
+/**
+ * The menu's 2 biggest first-visit files, scaled down to the width a screen draws them at (NEW-20261029-ORQ-primeira-visita-leve):
+ * the letreiro is at most ~810 px wide (estadio.css --lw x 1.13 on a 1440p PC; 637 px at 1080p), so 960 at q90 (its
+ * fine highlights cost ~31 dB at any lossy quality, the same at q100; prints show no change at the drawn size); the
+ * landscape backgrounds (2560x1707 bleeds) at 1920, q80 (~200 KB, ≥ 39 dB shown). Same aspect (±1 px): the page sizes
+ * them in the bleed's own px (main.ts frameStage).
+ */
+const MENU_SIZE=[[/^letreiro\//,{width:960,quality:90}],[/^fundo-[^/]+\.webp$/,{width:1920,quality:80}]];
+export const menuLiteSize=name=>MENU_SIZE.find(([re])=>re.test(name))?.[1];
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -139,7 +164,7 @@ async function shrink({data,width,height},[cw,ch],[lw,lh]){
 
 const options=process.argv.slice(2),args=new Set(options),kindArg=options.indexOf('--kinds');
 const kinds=kindArg<0?KINDS:[...new Set((options[kindArg+1]??'').split(',').map(k=>k.trim()).filter(Boolean))];
-if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,menu,towers.');
+if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,enemies-pc,menu,towers,city.');
 const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{webp:WEBP,files:{}};
 manifest.enemyFigures??={};
 
@@ -147,6 +172,8 @@ manifest.enemyFigures??={};
 const enemies=existsSync(ENEMIES)?JSON.parse(readFileSync(ENEMIES,'utf8')):{pieces:{}};
 /** `enemies/<file>` → its cell and the smaller cell of its copy (only for files whose copy is smaller). */
 const liteCells=new Map();
+/** `enemies/<file>` → its cell and the cell of its computer copy (enemies-pc), for the files that have one. */
+const pcCells=new Map();
 const figures={};
 for(const [id,piece] of Object.entries(enemies.pieces)){
   const anim=chooseAnim(piece,false,false),file=anim&&piece.files[anim];if(!file)continue;
@@ -158,38 +185,79 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
     fig={source,cell:file.cell,drawn};
   }
   figures[id]=fig;
-  const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
+  // The 1st wave's chefão (manifest.ts HD_ENEMIES) is drawn × WAVE_BOSS.drawScale from his approved cell: his computer
+  // copy keeps that cell (horde-art enemyFileUrl loads it on both screens, ~half the bytes), and the phone copy no screen
+  // loads stays at his role's size (BUG-20261025-ORQ-art-lite-chefoes-velho: at × 3 it would be the full sheet).
+  const boss=HD_ENEMIES.has(id),height=artTargetHeight(id)/(boss?WAVE_BOSS.drawScale:1);
+  const need=height*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
   const scale=fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*need/fig.drawn)/file.cell[1]):1;
   if(scale>=1)continue;
+  const needPc=height*PC_HERO_SCREEN_PX/HERO_FIGURE_PX*LITE_TEXELS;
+  const pcScale=boss?1:fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*needPc/fig.drawn)/file.cell[1]):1;
   for(const [name,f] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue; // the rest rows no match downloads (the nests' card) keep their cell
-    const cell=[Math.ceil(f.cell[0]*scale),Math.ceil(f.cell[1]*scale)];
-    for(const p of f.pages?.length?f.pages.map(x=>x.file):[f.file])liteCells.set(`enemies/${p}`,{cell:f.cell,lite:cell});
+    const cell=[Math.ceil(f.cell[0]*scale),Math.ceil(f.cell[1]*scale)],pc=[Math.ceil(f.cell[0]*pcScale),Math.ceil(f.cell[1]*pcScale)];
+    for(const p of f.pages?.length?f.pages.map(x=>x.file):[f.file]){
+      liteCells.set(`enemies/${p}`,{cell:f.cell,lite:cell});
+      pcCells.set(`enemies/${p}`,{cell:f.cell,lite:pc});
+    }
   }
 }
 manifest.enemyFigures=Object.fromEntries(Object.entries(figures).sort(([a],[b])=>a.localeCompare(b)));
 
 const stale=[];
+/** One lite copy of `source`, every cell from `cell` to `liteCell` (the same cell, or none: the whole sheet re-encoded). */
+async function liteCopy(source,cell,liteCell,size){
+  if(size){
+    const meta=await sharp(source).metadata(),w=Math.min(size.width,meta.width),h=Math.round(meta.height*w/meta.width);
+    const {data}=await sharp(source).ensureAlpha().resize(w,h,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer({resolveWithObject:true});
+    return {lite:await sharp(data,{raw:{width:w,height:h,channels:4}}).webp({...WEBP,quality:size.quality}).toBuffer(),full:data};
+  }
+  if(String(cell)===String(liteCell))return {lite:await sharp(source).webp(WEBP).toBuffer(),full:await rgba(source)};
+  const s=await shrink(await decode(source),cell,liteCell);
+  return {lite:await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer(),full:s.data};
+}
+// ---------- enemies-pc: the computer's copy of every file a match downloads, at pcCell ----------
+if(kinds.includes('enemies-pc')){
+  for(const key of Object.keys(manifest.files))if(key.startsWith('enemies-pc/')&&!pcCells.has(key.replace(/^enemies-pc\//,'enemies/'))){
+    stale.push(key);if(!args.has('--check')){delete manifest.files[key];save();}
+  }
+  for(const [from,{cell,lite:liteCell}] of [...pcCells].sort(([a],[b])=>a.localeCompare(b))){
+    const source=readFileSync(join(ROOT,'public/art',from)),key=from.replace(/^enemies\//,'enemies-pc/'),entry=manifest.files[key];
+    const out=join(ROOT,'public/art/lite',key);
+    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+    stale.push(key);
+    if(args.has('--check'))continue;
+    const meta=await sharp(source).metadata(),w=Math.round(meta.width*SHOWN_SCALE),h=Math.round(meta.height*SHOWN_SCALE);
+    const {lite,full}=await liteCopy(source,cell,liteCell);
+    mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
+    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,liteCell,
+      psnr:psnr(full,await rgba(lite)),shownPsnr:psnr(await rgba(source,w,h),await rgba(lite,w,h))};
+    const e=manifest.files[key];
+    console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,`cell ${liteCell.join('×')}`,`psnr ${e.psnr} dB, shown ${e.shownPsnr} dB`);
+    save();
+  }
+}
 for(const kind of kinds){
   const dir=join(ROOT,'public/art',kind);
   if(!existsSync(dir))continue;
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
   if(kind==='towers'||kind==='city')continue; // joined per file / smaller per cell below
+  // A source that left (a hero moved to legado/, a sheet reimported under a new hash) takes its entry with it.
+  const present=new Set(names);
+  if(!args.has('--check'))for(const key of Object.keys(manifest.files))
+    if(key.startsWith(`${kind}/`)&&!present.has(key.slice(kind.length+1))){delete manifest.files[key];console.error(key,'dropped (no source)');}
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())&&(kind!=='menu'||MENU_LITE.test(n))).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
-    const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;
-    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+    const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite,size=kind==='menu'?menuLiteSize(name):undefined;
+    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&entry.liteWidth===size?.width&&entry.liteQuality===size?.quality&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
     stale.push(key);
     if(args.has('--check'))continue;
     const meta=await sharp(source).metadata(),w=Math.round(meta.width*SHOWN_SCALE),h=Math.round(meta.height*SHOWN_SCALE);
-    let lite,full;
-    if(small){
-      const s=await shrink(await decode(source),small.cell,small.lite);
-      lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer();full=s.data;
-    }else{lite=await sharp(source).webp(WEBP).toBuffer();full=await rgba(source);}
+    const {lite,full}=await liteCopy(source,small?.cell,small?.lite,size);
     mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
-    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,...(liteCell?{liteCell}:{}),
+    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,...(liteCell?{liteCell}:{}),...(size?{liteWidth:size.width,liteQuality:size.quality}:{}),
       psnr:psnr(full,await rgba(lite)),shownPsnr:psnr(await rgba(source,w,h),await rgba(lite,w,h))};
     const e=manifest.files[key];
     console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,liteCell?`cell ${liteCell.join('×')}`:'',`psnr ${e.psnr} dB, shown ${e.shownPsnr} dB`);
@@ -288,16 +356,19 @@ if(cityMoved.size){
 // ---------- `liteCell` on the enemy files (manifest and index): what the client takes as the cell ----------
 let moved=0;
 for(const piece of Object.values(enemies.pieces))for(const f of Object.values(piece.files)){
-  const first=f.pages?.length?f.pages[0].file:f.file,cell=liteCells.get(`enemies/${first}`)?.lite;
-  if(String(f.liteCell)===String(cell))continue;
-  moved++;
-  if(cell)f.liteCell=cell;else delete f.liteCell;
+  const first=f.pages?.length?f.pages[0].file:f.file;
+  for(const [field,cells] of [['liteCell',liteCells],['pcCell',pcCells]]){
+    const cell=cells.get(`enemies/${first}`)?.lite;
+    if(String(f[field])===String(cell))continue;
+    moved++;
+    if(cell)f[field]=cell;else delete f[field];
+  }
 }
-if(moved&&args.has('--check')){console.error(`art-lite: ${moved} enemy files with a stale liteCell in public/art/enemies/manifest.json (node scripts/art-lite.mjs)`);process.exit(1);}
+if(moved&&args.has('--check')){console.error(`art-lite: ${moved} enemy files with a stale liteCell or pcCell in public/art/enemies/manifest.json (node scripts/art-lite.mjs)`);process.exit(1);}
 if(moved){
   writeFileSync(ENEMIES,`${JSON.stringify(enemies,null,2)}\n`);
   await writeIndex({inimigos:GROUPS.inimigos},{outRoot:ROOT});
-  console.error('art-lite:',moved,'enemy files got a new liteCell (manifest and index)');
+  console.error('art-lite:',moved,'enemy liteCell/pcCell changes (manifest and index)');
 }
 
 function save(){

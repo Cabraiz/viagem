@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, columnRight, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameHero, frameMoved, headRoom, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
-import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
+import {barTop, columnRight, CUTOUT_QUERY, cutoutFile, PC_QUERY, SHORT_MAX_H, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameHero, frameMoved, headRoom, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIRO_ALTO, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
 
@@ -27,7 +27,9 @@ test('the CSS shows the stadium files that exist, the tall crop on a phone held 
   assert.ok(css.includes(`@media ${STADIUM_TALL_QUERY} {`),'the CSS and main.ts agree on when the tall crop shows');
   for(const [file,art] of [['estadio-1920',STADIUM.wide],['estadio-1280',undefined],['estadio-retrato-768',STADIUM.tall]] as const){
     assert.ok(css.includes(`/art/ui-extra/${file}.webp`),file);
-    assert.match(html,new RegExp(`<link rel="preload" href="/art/ui-extra/${file}\\.webp" as="image"`),file);
+    // primeira-visita-leve: the phone held upright opens on the profile screen (insta.css hides the stadium): no preload of its crop.
+    if(file==='estadio-retrato-768')assert.ok(!html.includes(file),file);
+    else assert.match(html,new RegExp(`<link rel="preload" href="/art/ui-extra/${file}\\.webp" as="image"`),file);
     const meta=await sharp(new URL(`../../public/art/ui-extra/${file}.webp`,import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1')).metadata();
     if(art)assert.deepEqual([meta.width,meta.height],[art.w,art.h],`${file} matches STADIUM`);
   }
@@ -76,7 +78,7 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
 test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
   // Nobody has the new row face yet (every tile a "?"); only the viciado (menu-arte-viciado) and the CLT
   // (letreiro-clt-na-cena) have their letreiro picture.
-  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado']);
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
   for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(!(hero.id in LETREIROS))assert.equal(letreiroOf(hero.id),undefined);}
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
@@ -130,15 +132,17 @@ test('nome-depois-de-selecionar: Enter in the field enters, Escape goes back, th
 });
 
 const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1');
+/** The approved file behind a lite copy the page loads (primeira-visita-leve: the letreiros are 960 px copies). */
+const approvedFile=(url:string)=>publicFile(url.replace(/^\/art\/lite\//,'/art/'));
 
 test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
   // The files exist, light, the sizes the code says.
-  const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
+  const sign=await sharp(approvedFile(letreiroOf('viciado-em-bet')!)).metadata();
   // letreiro-na-cena: cut out of the stadium Codex redrew with the sign inside, 2x the most the PC shows (56.4vh of 2160
   // = 1218 px), so a 200 % zoom on a 4K screen still has a pixel per pixel.
   assert.deepEqual([sign.width,sign.height],[2436,1698]);assert.ok(sign.hasAlpha);assert.ok(2*Math.floor(.564*2160)<=2436&&2*.332*3840<=2436*1.05);
   // letreiro-clt-na-cena: the CLT's office plaque, cut out of his sunset the same way, as wide (flatter, so shorter).
-  const clt=await sharp(publicFile(letreiroOf('clt-cansado')!)).metadata();
+  const clt=await sharp(approvedFile(letreiroOf('clt-cansado')!)).metadata();
   assert.deepEqual([clt.width,clt.height],[2436,1368]);assert.ok(clt.hasAlpha);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[953,19,793,1058],'the box scripts/menu-arte.mjs checks against the art');
@@ -158,17 +162,21 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   const pc=placeCutout({w:1280,h:800},STADIUM.wide,cut)!,s=800/1080,ox=(1280-1920*s)/2;
   assert.ok(Math.abs(pc.x-(ox+953*s))<1e-9&&Math.abs(pc.y-23*s)<1e-9&&Math.abs(pc.h-1058*s)<1e-9);
   assert.equal(placeCutout({w:0,h:0},STADIUM.wide,cut),undefined);
-  // PC only: the phone (upright or on its side, under 521 px tall) keeps the dance; the dance is held while he stands.
-  assert.equal(CUTOUT_QUERY,'(orientation: landscape) and (min-height: 521px)');
-  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`),'the CSS and main.ts agree on what a PC is');
+  // celular-deitado-foto (the user, 23/10): every landscape screen, the PC and the phone on its side, shows his picture;
+  // only the phone held upright keeps the dance. The dance is held while he stands.
+  assert.equal(CUTOUT_QUERY,'(orientation: landscape)');
+  assert.equal(PC_QUERY,'(orientation: landscape) and (min-height: 521px)');
+  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`)&&css.includes(`@media ${PC_QUERY} {`),'the CSS and main.ts agree on what a PC is');
+  assert.ok(css.includes(`@media (max-height: ${SHORT_MAX_H}px) and (orientation: landscape) {`),'the phone on its side: columnRight measures its column');
   assert.match(main,/const cut=cutoutScreen\.matches\?cutoutOf\(selected\.id\):undefined;/);
   assert.match(main,/if\(spot&&!cutoutHold\) cutoutHold=menuDance\.hold\(\);/);
-  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n\s*showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
+  // selecao-mobile-instagram: the phone upright shows the profile instead of the portrait (tests/client/insta.test.ts).
+  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n[^\n]*\n\s*if\(instaScreen\.matches\) renderInsta\(\); else showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
   assert.ok(css.includes('.estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }'));
   // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
   assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
-  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet','clt-cansado']);
+  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
 });
 
 test("tela-clt-pose2: the CLT cut out of his scene, on his own background without him (a bleed like the stadium's)",async()=>{
@@ -179,11 +187,11 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
     const meta=await sharp(publicFile(file)).metadata();
     assert.equal(meta.width,w,file);assert.ok(Math.abs(meta.height!-cut.h*w/cut.w)<1,file);assert.ok(meta.hasAlpha,file);
   }
-  // His background has the stadium bleed's geometry, so frameArt/placeCutout(STADIUM.bleed) fit it as they are.
-  for(const file of [cut.fundo!,cut.fundo!.replace('/lite/','/')]){
-    const meta=await sharp(publicFile(file)).metadata();
-    assert.deepEqual([meta.width,meta.height],[STADIUM.bleed.w,STADIUM.bleed.h],file);
-  }
+  // His background has the stadium bleed's geometry, so frameArt/placeCutout(STADIUM.bleed) fit it as they are; the page
+  // draws its 1920 px lite copy (primeira-visita-leve) at the bleed's px size, so the copy keeps the shape.
+  const approved=await sharp(publicFile(cut.fundo!.replace('/lite/','/'))).metadata(),lite=await sharp(publicFile(cut.fundo!)).metadata();
+  assert.deepEqual([approved.width,approved.height],[STADIUM.bleed.w,STADIUM.bleed.h],cut.fundo);
+  assert.ok(Math.abs(lite.height!/lite.width!-STADIUM.bleed.h/STADIUM.bleed.w)<.001,`${cut.fundo}: ${lite.width}x${lite.height}`);
   assert.equal(cutoutOf('viciado-em-bet')!.fundo,undefined,'the viciado keeps the stadium');
   // Every window keeps him whole (contain) with his feet on the plateau (clt-mesmo-lugar: in the viciado's place).
   for(const [w,h] of [[1920,1080],[1920,950],[1590,903],[1366,768],[1280,720],[1024,768],[2560,1080]]){
@@ -280,8 +288,11 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
 
 test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved picture is whole and no edge shows',async()=>{
   const art=STADIUM.bleed,f=art.focal!;
-  const meta=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).metadata();
+  const meta=await sharp(publicFile('/art/menu/fundo-estadio-viciado.webp')).metadata();
   assert.deepEqual([meta.width,meta.height],[art.w,art.h],'the file is the size STADIUM.bleed says');
+  // The page draws the 1920 px lite copy (primeira-visita-leve) at the bleed's px size (frameStage): same shape.
+  const lite=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).metadata();
+  assert.ok(Math.abs(lite.height!/lite.width!-art.h/art.w)<.001,`${lite.width}x${lite.height}`);
   for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[1024,768],[2560,1080],[3440,1440],[1600,521]]){
     const box={w,h},{s,ox,oy}=frameArt(box,art),e=1e-9;
     assert.ok(ox<=e&&oy<=e&&ox+art.w*s>=w-e&&oy+art.h*s>=h-e,`${w}x${h}: the file covers the box`);
@@ -320,7 +331,10 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.ok(css.includes(".estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }"));
   assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
-  assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
+  assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\)" \/>/);
+  // No landscape screen preloads the plain stadium (the bleed shows there) nor the dance (his picture shows there).
+  for(const m of html.matchAll(/<link rel="preload" href="\/art\/ui-extra\/estadio-(?:1920|1280)\.webp"[^>]*media="([^"]*)"/g))assert.ok(!m[1].includes('landscape')&&!m[1].includes('max-height'),m[1]);
+  assert.ok(html.includes("matchMedia('(orientation: landscape)').matches||"),'the dance preload skips landscape');
 });
 
 test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 9% under the top (menu-folga-topo), his feet on the bar',()=>{
@@ -356,9 +370,18 @@ test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his
   // 720 and 1080 from the same rule: the hero fills the same share of the window, not the same px.
   const share=(w:number,h:number)=>placeCutout({w,h},art,cutoutOf('viciado-em-bet')!)!.h/h;
   assert.ok(Math.abs(share(1280,720)-share(1920,1080))<.01,`${share(1280,720).toFixed(3)} × ${share(1920,1080).toFixed(3)}`);
-  // The window wider than the bleed and the 4:3 ones keep what they had (never smaller: the file must cover the box).
-  for(const [w,h] of [[2560,1080],[3440,1440],[1280,1024],[1024,768]])for(const id of Object.keys(RECORTES))
-    assert.deepEqual(frameHero({w,h},art,cutoutOf(id)!),frameMoved({w,h},art,moveOf(cutoutOf(id)!)),`${id} ${w}x${h}`);
+  // The window wider than the bleed and the 4:3 ones keep what they had (never smaller: the file must cover the box);
+  // only a hero narrow enough to fit right of the column grows there (the maromba at 5:4, the aposentado at 4:3), by the
+  // same rule: about his soles, his head headRoom under the top, the picture still covering the box.
+  const crescem:Record<string,string[]>={maromba:['1280x1024','1024x768'],aposentado:['1024x768']};
+  for(const [w,h] of [[2560,1080],[3440,1440],[1280,1024],[1024,768]])for(const id of Object.keys(RECORTES)){
+    const cut=cutoutOf(id)!,hero=frameHero({w,h},art,cut),was=frameMoved({w,h},art,moveOf(cut));
+    if(!crescem[id]?.includes(`${w}x${h}`)){assert.deepEqual(hero,was,`${id} ${w}x${h}`);continue;}
+    const at=placeCutout({w,h},art,cut)!,feet0=was.oy+(art.focal!.y+cut.y+cut.h)*was.s;
+    assert.ok(hero.s>=was.s-e&&Math.abs(at.y+at.h-feet0)<1e-6&&at.y>=headRoom(h)-1e-6,`${id} ${w}x${h}: grown about his soles`);
+    assert.ok(hero.ox<=e&&hero.oy<=e&&hero.ox+art.w*hero.s>=w-e&&hero.oy+art.h*hero.s>=h-e,`${id} ${w}x${h}: covers the box`);
+    assert.ok(at.x>=columnRight({w,h})-1e-6&&at.x+at.w<=.98*w+1e-6,`${id} ${w}x${h}: right of the column`);
+  }
   // The column the hero keeps off: estadio.css's PC block.
   assert.ok(css.includes('.estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }'));
   assert.ok(css.includes('.estadio-escolha > :is(.estadio-fileira, .estadio-nome, .estadio-confirmar) { flex: none; width: min(77vh, 60vw);'));
@@ -435,11 +458,11 @@ test('mureta-camada-frente: the stadium bar cut out of the background, drawn ove
   assert.ok(front.x<=cut.x&&front.x+front.w>=cut.x+cut.w&&front.y+front.h>=cut.y+cut.desce!+cut.h,'the layer covers his box');
   const edges=Array.from({length:front.w},(_,i)=>muretaTopo(front.x+i));
   assert.ok(front.y<=Math.min(...edges)-4&&front.y+front.h>=Math.max(...edges)+4,'the whole edge inside the layer');
-  // The file: the background's own px (the lite one the page draws), transparent above the edge, opaque under it.
+  // The file: the background's own px (the approved one; the page draws its 1920 px copy at this size), transparent above the edge, opaque under it.
   const meta=await sharp(publicFile(front.file)).metadata();
   assert.deepEqual([meta.width,meta.height],[front.w,front.h]);assert.ok(meta.hasAlpha);
   const layer=await sharp(publicFile(front.file)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  const bg=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).extract({left:STADIUM.bleed.focal!.x+front.x,top:STADIUM.bleed.focal!.y+front.y,width:front.w,height:front.h}).removeAlpha().raw().toBuffer();
+  const bg=await sharp(publicFile('/art/menu/fundo-estadio-viciado.webp')).extract({left:STADIUM.bleed.focal!.x+front.x,top:STADIUM.bleed.focal!.y+front.y,width:front.w,height:front.h}).removeAlpha().raw().toBuffer();
   let diff=0,n=0;
   for(let x=10;x<front.w;x+=40){
     const edge=muretaTopo(front.x+x+.5)-front.y,above=Math.floor(edge)-3,below=Math.ceil(edge)+3;
@@ -522,13 +545,15 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
 });
 
 test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger, right under each title, the sign off the top, the block 2vw right; phones as they were',async()=>{
-  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const pc=css.slice(css.indexOf(`@media ${PC_QUERY} {`)).split('\n}')[0];
   const vh=(re:RegExp)=>{const m=pc.match(re);assert.ok(m,String(re));return Number(m![1])/100;};
   // In the column's flow (fileira-botao-maiores-embaixo had them pinned to the bottom; the user: "é para ficar embaixo do
   // título da pessoa"), 2.5vh under whatever is above (the column's own gap + a margin).
   const flow='.estadio-escolha > :is(.estadio-fileira, .estadio-nome, .estadio-confirmar) { flex: none; width: min(77vh, 60vw); margin-top: calc(2.5vh - clamp(8px, 1.8vh, 18px)); }';
   assert.ok(pc.includes(flow),'the row and the button in the flow, right under the title');
-  assert.ok(!/position: absolute/.test(pc)&&!/[ ;{]bottom: /.test(pc),'nothing pinned to the bottom');
+  // (The gato's tall letreiro is absolute inside its own title box, letreiro-alto: not the row nor the button.)
+  const flowOnly=pc.replace(/\.estadio-titulo\.com-letreiro \.estadio-letreiro\.letreiro-alto \{[^}]*\}/,'');
+  assert.ok(!/position: absolute/.test(flowOnly)&&!/[ ;{]bottom: /.test(flowOnly),'nothing pinned to the bottom');
   assert.ok(pc.includes('.estadio .estadio-confirmar { --bh: max(52px, 13vh); max-width: none; }'));
   const bh=vh(/--bh: max\(52px, ([.\d]+)vh\); max-width: none;/),colW=.77,gapVh=vh(/margin-top: calc\(([.\d]+)vh - clamp/);
   const tile=vh(/\.estadio \.class-card \{ width: ([.\d]+)vh; \}/),arrow=vh(/\.estadio \.round-button \{ width: ([.\d]+)vh;/);
@@ -546,7 +571,7 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
   // A small, even gap (2–3% of the height) title → row and row → button; the sign 5–6% off the top ("não curto ele
   // ficar colado na parte de cima").
   assert.ok(gapVh>=.02&&gapVh<=.03&&signTop>=.05&&signTop<=.06,`gap ${gapVh}, sign top ${signTop}`);
-  const signs=await Promise.all(['viciado-em-bet','clt-cansado'].map(async id=>{const m=await sharp(publicFile(letreiroOf(id)!)).metadata();return [id,m.height!/m.width!] as const;}));
+  const signs=await Promise.all(['viciado-em-bet','clt-cansado'].map(async id=>{const m=await sharp(approvedFile(letreiroOf(id)!)).metadata();return [id,m.height!/m.width!] as const;}));
   for(const [w,h] of [[1920,1080],[1920,1000],[1366,768],[2560,1440],[1280,720],[1280,800],[1600,521]] as const){
     const left=Math.max(.03*w,16)+.02*w,width=Math.min(colW*h,.6*w),g=Math.min(Math.max(8,.018*h),18);
     const row=tile*h/.82+14,button=Math.max(52,bh*h),gap=gapVh*h;
@@ -574,7 +599,7 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
 });
 
 test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as big as the viciado, the row never moves',async()=>{
-  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const pc=css.slice(css.indexOf(`@media ${PC_QUERY} {`)).split('\n}')[0];
   // The title and the pill in one box (a plain wrapper elsewhere: the phones keep their layout).
   assert.match(main,/<div class="estadio-caixa-titulo"><h1 id="screen-title"[^]*?<h2 id="class-name" class="estadio-classe"><\/h2><\/div>/);
   assert.ok(css.includes('.estadio-caixa-titulo { display: contents; }'));
@@ -584,17 +609,44 @@ test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as bi
   assert.ok(box&&/display: flex; flex: none; flex-direction: column; justify-content: center;/.test(pc),'a fixed box, the HTML title in its middle');
   assert.ok(pc.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: 100%; height: 100%; object-fit: contain; object-position: 0 100%; }'),'contain, bottom left');
   const wide=Number(box![1]),tall=Number(box![2])/Number(box![3]);
-  const sizes=Object.fromEntries(await Promise.all(Object.entries(LETREIROS).map(async([id,url])=>{const m=await sharp(publicFile(url)).metadata();return [id,m] as const;})));
+  // A letreiro taller than its sign (the gato's collar) counts by its sign: the collar leaves the box over the top.
+  const sizes=Object.fromEntries(await Promise.all(Object.entries(LETREIROS).map(async([id,url])=>{
+    const m=await sharp(approvedFile(url)).metadata(),tall=LETREIRO_ALTO[id];
+    return [id,tall?{width:m.width,height:tall.sinal}:m] as const;
+  })));
   // The box is the viciado sign's height (the tallest picture) and every picture fits it without distortion.
   const vic=sizes['viciado-em-bet'];
   assert.equal(tall,vic.height!/vic.width!,'the box as tall as the viciado sign');
   for(const [id,m] of Object.entries(sizes)){
     const k=Math.min(wide/m.width!,tall/m.height!),w=m.width!*k,h=m.height!*k;
     assert.ok(w<=wide+1e-9&&h<=tall+1e-9,`${id} inside the box`);
-    assert.ok(h/tall>=.9,`${id}: ${(100*h/tall).toFixed(1)}% of the box's height (>= 90%)`);
-    assert.ok(Math.abs(w*h/(1*tall)-1)<=.1,`${id}: area like the viciado's (${(100*w*h/tall).toFixed(0)}%)`);
+    // The aposentado's workshop plank (tela-aposentado, the user's pick of 8) is 2:1: as wide as the box, 79% of its height.
+    const baixo=id==='aposentado'?.78:.9;
+    assert.ok(h/tall>=baixo,`${id}: ${(100*h/tall).toFixed(1)}% of the box's height (>= ${100*baixo}%)`);
+    // The maromba's iron plate is round: a disc leaves more of the box empty (86%), never more than 15% off; the plank 22%.
+    assert.ok(Math.abs(w*h/(1*tall)-1)<=(id==='maromba'?.15:id==='aposentado'?.22:.1),`${id}: area like the viciado's (${(100*w*h/tall).toFixed(0)}%)`);
   }
   // Nothing under the box depends on the hero: the row and the button follow it with fixed gaps (measured in Chrome on 9
   // PC screens, the row's Y equal to ±0.5 px for all 15 heroes: evidence/NEW-20261022-ORQ-titulo-mesmo-espaco).
   assert.ok(!/\.estadio-escolha > [^{]*\{[^}]*margin-bottom/.test(pc));
+});
+
+test('letreiro-alto (gato-no-menu): the collar tag is the sign, the collar runs off the top of the screen',async()=>{
+  for(const [id,tall] of Object.entries(LETREIRO_ALTO)){
+    assert.ok(id in LETREIROS,id);
+    const m=await sharp(approvedFile(LETREIROS[id])).metadata();
+    assert.deepEqual([m.width,m.height],[tall.w,tall.h],`${id}: the file is the size apelidos.ts says`);assert.ok(m.hasAlpha);
+    assert.ok(tall.sinal<tall.h*.5,`${id}: more collar than sign (the user: "bem muito para cima")`);
+    // The top row of the picture still has the collar in it (it leaves through the top edge, nothing floats).
+    const {data,info}=await sharp(approvedFile(LETREIROS[id])).extract({left:0,top:0,width:tall.w,height:1}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    let solid=0;for(let x=0;x<info.width;x++)if(data[x*4+3]>200)solid++;
+    assert.ok(solid>.05*tall.w,`${id}: the collar reaches the top edge (${solid} px)`);
+  }
+  assert.deepEqual(Object.keys(LETREIRO_ALTO),['gato-nada-pra-comer']);
+  // Every layout gives the sign its width (--sw) and the picture is pulled up by the collar; on the PC it sits bottom left
+  // in the title box, out of the flow.
+  assert.ok(css.includes('margin-top: calc(var(--sw) * (var(--sinal-ar) - var(--alto-ar)));'));
+  assert.ok(css.includes('--sw: min(var(--lw) * 1.13, var(--lw) * 1698 / 2436 / var(--sinal-ar));')&&css.includes('position: absolute; left: 0; bottom: 0; height: auto; margin: 0;'));
+  assert.ok(css.includes('--sw: min(100%, 38vh / var(--sinal-ar));')&&css.includes('--sw: min(100%, 16vh / var(--sinal-ar));'));
+  assert.ok(main.includes("sign.classList.toggle('letreiro-alto',!!tall)"));
 });

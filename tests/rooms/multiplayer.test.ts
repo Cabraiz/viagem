@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {STEP,reconcile,simulate} from '../../src/maps/prediction.ts';
 import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.ts';
-import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
+import {Room,LAB_REACH,ROOM_MAX_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,MSG_BURST,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
@@ -87,7 +87,7 @@ test('delta can reconstruct full state and removes departed players',()=>{
   assert.deepEqual([...players.values()],after.players);assert.ok(JSON.stringify(patch).length<JSON.stringify(after).length+100);
 });
 test('message flooding and oversized payloads close connection',()=>{
-  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<50;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
+  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<=MSG_BURST;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
   const b=peer();join(r,b,'B',1000);r.receive(b,'a'.repeat(1025),1000);assert.equal(b.closes[0].code,1009);
 });
 
@@ -191,7 +191,8 @@ test('boss kill sends one result message to every player and stays stable',()=>{
 });
 test('victory or defeat on the last tick beats the timeout; otherwise the timeout is announced once',()=>{
   const duration=8;
-  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer();join(race,a);startRun(race,[a]);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4, levanta-seguro.test.ts).
+  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer(),a2=peer();join(race,a);join(race,a2,'A2');startRun(race,[a,a2]);
   for(let i=0;i<duration-1;i++)race.advance(4200+i*50);
   assert.equal(race.run.snapshot().phase,'combat');assert.equal(race.run.snapshot().remaining,1);
   downAll(race);race.advance(5000);
@@ -222,17 +223,23 @@ test('pending offers are pushed once per change on broadcast ticks',()=>{
 test('choose applies only the oldest real offer once; forged, repeated and out-of-order picks are refused',()=>{
   const {room,a,b,calls,offers}=offerRoom(),id=idOf(a),p=room.sim.players.get(id)!;
   const build=()=>JSON.stringify(p.build),initial=build();
+  // N1-choose-no-tick: a pick waits for the next tick (room.advance), where it is applied and answered.
+  let t=4300;const pick=(offer:string)=>{command(room,a,{t:'choose',round:1,offer,index:0},t);room.advance(t+=50);};
+  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},t);
+  assert.equal(calls(),0,'queued, not applied between ticks');
+  room.sim.clearOffers();
   // Another player's offer, a later offer and an unknown level reach the simulation and are refused there.
   for(const offer of [`lvl-2-${idOf(b)}`,`lvl-3-${id}`,`lvl-9-${id}`]){
-    command(room,a,{t:'choose',round:1,offer,index:0},4300);
+    pick(offer);
     assert.equal(offers(a).at(-1).offers.length,2);assert.equal(build(),initial);
   }
-  assert.equal(calls(),3);
-  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
+  assert.equal(calls(),3);assert.deepEqual(room.sim.offerLog,[],'refused picks are not logged');
+  const tick=room.sim.tick;pick(`lvl-2-${id}`);
+  assert.deepEqual(room.sim.offerLog,[{t:'choose',id,offer:`lvl-2-${id}`,index:0,tick,ok:true}],'the pick is logged with its tick');
   // The next card is lvl-3, re-rolled at once ("~tick") when the pick made it stale (D-050: no step() in a pause to do it).
   assert.equal(calls(),4);assert.deepEqual(offers(a).at(-1).offers.map((o:any)=>o.id.split('~')[0]),[`lvl-3-${id}`]);
   assert.notEqual(build(),initial);const afterPick=build();
-  command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
+  pick(`lvl-2-${id}`);
   assert.equal(calls(),5);assert.equal(offers(a).at(-1).offers.length,1);assert.equal(build(),afterPick);
   assert.equal(room.sim.offers(idOf(b)).length,2);
 });
@@ -248,10 +255,11 @@ test('choose drops malformed ids, bad indexes and stale rounds before the simula
   assert.equal(calls(),0);assert.equal(room.sim.offers(id).length,2);
 });
 test('choose outside combat is refused (lobby and result)',()=>{
-  const room=new Room(1000),a=peer();join(room,a);const id=idOf(a);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4).
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');const id=idOf(a);
   let calls=0;const choose=room.sim.choose.bind(room.sim);room.sim.choose=(pid,offer,index)=>{calls++;return choose(pid,offer,index);};
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0});assert.equal(calls,0);
-  startRun(room,[a]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
+  startRun(room,[a,b]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
   downAll(room);room.advance(4200);assert.equal(room.run.snapshot().phase,'result');
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);assert.equal(calls,0);
 });
@@ -354,21 +362,22 @@ test('a late spectator alone does not keep an empty combat alive (review 1)',()=
 });
 
 test('no new run starts without time for a whole run; a run near the room end is closed as a timeout (review 2)',()=>{
-  const created=1000,lateAt=created+ROOM_LIFETIME_MS-RUN_START_WINDOW_MS+1;
-  const room=new Room(created),a=peer(),b=peer();join(room,a);join(room,b,'B');
+  // At the end of a room's renewals (sala-aguenta-cidade: before it, a ready or a rematch renews the room instead).
+  const created=1000,end=created+ROOM_MAX_LIFETIME_MS,lateAt=end-RUN_START_WINDOW_MS+1;
+  const room=new Room(created,undefined,{closesAt:end}),a=peer(),b=peer();join(room,a);join(room,b,'B');
   command(room,a,{t:'ready',round:1,ready:true},lateAt);
   assert.ok(room.run.snapshot().members.every(m=>!m.ready),'ready refused');
   assert.deepEqual(a.messages.filter(m=>m.t==='notice').map(m=>m.message),[ROOM_CLOSING_NOTICE]);
   assert.equal(a.closes.length,0,'a notice never closes the connection');
   command(room,a,{t:'ready',round:1,ready:false},lateAt);assert.equal(a.messages.filter(m=>m.t==='notice').length,1,'un-ready is always fine');
   // Inside the window everything works, and a run still going near the end gets a result before the 4004.
-  const ok=new Room(created),c=peer();join(ok,c);startRun(ok,[c]);
+  const ok=new Room(created,undefined,{closesAt:end}),c=peer();join(ok,c);startRun(ok,[c]);
   // Pings keep the peer fresh across the jump in time (a stale peer would be dropped and the run lost instead).
   const at=(t:number)=>{command(ok,c,{t:'ping',at:t},t);ok.advance(t);};
-  at(created+ROOM_LIFETIME_MS-60_000);assert.equal(ok.run.snapshot().phase,'combat');
-  at(created+ROOM_LIFETIME_MS-29_000);
+  at(end-60_000);assert.equal(ok.run.snapshot().phase,'combat');
+  at(end-29_000);
   assert.equal(ok.run.snapshot().outcome,'timeout');assert.deepEqual(results(c).map(m=>m.outcome),['timeout']);
-  command(ok,c,{t:'rematch',round:1},created+ROOM_LIFETIME_MS-28_000);
+  command(ok,c,{t:'rematch',round:1},end-28_000);
   assert.equal(ok.run.snapshot().phase,'result','rematch refused too');
   assert.equal(c.messages.filter(m=>m.t==='notice').length,1);
 });
@@ -448,6 +457,16 @@ test('lab commands (down, move) only work in a lab room and only in combat',()=>
   command(lab,b,{t:'lab',to:{x:start.x+.5,y:start.y}},4000);assert.ok(Math.abs(q.x-(start.x+.5))<1e-9);
   command(lab,b,{t:'lab',to:{x:1e6,y:0}},4000);assert.ok(q.x<100,'never into the void');
   command(lab,b,{t:'lab',down:true},4000);assert.ok(q.downed);
+});
+test('lab hurt (animacao-receber-dano): the sender takes the hit, never its last hp; a deployed room ignores it',()=>{
+  const prod=new Room(1000),a=peer();join(prod,a);startRun(prod,[a]);
+  const p=prod.sim.players.get(idOf(a))!,hp=p.hp;
+  command(prod,a,{t:'lab',hurt:5},4000);assert.equal(p.hp,hp);
+  const lab=new Room(1000,undefined,{lab:true}),b=peer();join(lab,b);startRun(lab,[b]);
+  const q=lab.sim.players.get(idOf(b))!,full=q.hp;
+  command(lab,b,{t:'lab',hurt:5},4000);assert.equal(q.hp,full-5);
+  command(lab,b,{t:'lab',hurt:1e9},4000);assert.equal(q.hp,1,'never the last hp');
+  for(const hurt of [-3,0,Number.NaN,'5'])command(lab,b,{t:'lab',hurt},4000);assert.equal(q.hp,1);
 });
 
 test('VGM-046B: forge taps through the room respect the balance, the camp and a resent request; frames carry the camp',()=>{

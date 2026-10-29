@@ -10,6 +10,7 @@
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
+import {GOLD_LEVEL} from '../ui/sticker.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
 export type Rarity=1|2|3|4|5;
@@ -34,6 +35,38 @@ export const CRATE_OPEN_ROWS=6;
 export function crateRow(progress:number):string{
   if(!(progress>0))return 'fechada';
   return `abrindo-${Math.min(CRATE_OPEN_ROWS,Math.max(1,Math.ceil(progress*CRATE_OPEN_ROWS)))}`;
+}
+/**
+ * Card caixa-icone-torre-arma (the user, 23/10: "vamos pôr o item flutuando e girando"): a crate whose view names its
+ * item (PickupView.resource, sim/crates.ts rolls it when the crate appears) is drawn as that item's own sticker instead
+ * of the crate sheet, floating over the spot and turning like a coin (its width is the cosine of the turn: no new art),
+ * with no rarity colour (the rarity shows only when it opens). FLOAT_PX: the sticker's size at body 1 (CSS px, about
+ * half the crate's width, so it reads on a phone); FLOAT_LIFT ± FLOAT_BOB: its centre over the ground; one bob in
+ * FLOAT_BOB_MS, one turn in FLOAT_TURN_MS, FLOAT_TURN_OPEN× faster when a hero has it all but open.
+ */
+export const FLOAT_PX=120,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
+/**
+ * On a phone (the user, 23/10: "aumentar o item flutuando no celular até ficar legível") the floating item grows with the
+ * square of the horde's legibility multiplier over the body scale (framing.ts hordeUiScale: 1 on the PC, ~1.25 at a
+ * phone's zoom, so ~1.55×: the plain multiplier read too small), capped at FLOAT_PHONE_MAX; its lift and shadow grow with it.
+ */
+export const FLOAT_PHONE_MAX=1.8;
+export const floatLegible=(ui:number,body:number)=>Math.max(1,Math.min(FLOAT_PHONE_MAX,(ui/Math.max(1e-6,body))**2));
+/** The thinnest the coin gets (edge on): a sliver, never gone (its glow and its shadow stay). */
+export const FLOAT_EDGE=.08;
+/** The turn after `dt` ms at opening `progress` (0..1): the angle advances, faster as the opening fills. */
+export const floatSpin=(angle:number,dt:number,progress:number)=>
+  (angle+Math.max(0,dt)*Math.PI*2/FLOAT_TURN_MS*(1+FLOAT_TURN_OPEN*Math.max(0,Math.min(1,progress))))%(Math.PI*2);
+/**
+ * The floating item's pose: `lift` (CSS px over the ground at body 1), `turn` (its horizontal scale: the coin's width,
+ * negative when its back faces us) and `shadow` (the ground shadow's scale: narrower as the coin turns edge on and as
+ * the item rises). Reduced motion: still, facing us, at FLOAT_LIFT.
+ */
+export function floatPose(now:number,phase:number,angle:number,reduced=false):{lift:number;turn:number;shadow:number}{
+  if(reduced)return {lift:FLOAT_LIFT,turn:1,shadow:1};
+  const bob=Math.sin(now*Math.PI*2/FLOAT_BOB_MS+phase*Math.PI*2),c=Math.cos(angle);
+  const turn=(c<0?-1:1)*Math.max(FLOAT_EDGE,Math.abs(c));
+  return {lift:FLOAT_LIFT+FLOAT_BOB*bob,turn,shadow:(.55+.45*Math.abs(c))*(1-.12*bob)};
 }
 /** Opening progress (0..1) of a hero standing still `stillMs` within reach of a crate of `rarity`. */
 export const crateProgress=(stillMs:number,rarity:number)=>Math.max(0,Math.min(1,stillMs/1000/crateOpenSeconds(rarity)));
@@ -139,7 +172,7 @@ export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5
 /** The prize as the crate shows it: its inventory sticker, its name in the crate's rarity colour, the glow behind. */
 export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
   const item=itemDisplay(id);
-  return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
+  return {id,icon:goldIcon(item.icon,rarity),name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
 }
 /** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
 export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
@@ -178,17 +211,17 @@ export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number
 /**
  * Pack 12 fatia A1 (arsenal-completo-no-bau, sim/weapons/pack12.ts A1_PLAYABLE): the weapons on the sim's own patterns.
  * Their shots wear their `projeteis` piece (PACK12_A1_ALIAS); the thrown ones (traque, tijolo) burst with an `efeitos`
- * strip (FIRE_LOOK); the straight shots and the rings show no flash.
+ * strip (FIRE_LOOK); the straight shots show no flash (the rings left the game: sem-arma-girando-no-chao).
  */
-export const PACK12_A1_ITEMS:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa',
-  'vela-esoterica','tijolo-baiano','taro-vencido'];
+export const PACK12_A1_ITEMS:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','buscape','traque',
+  'tijolo-baiano','taro-vencido'];
 /** Every Pack 12 weapon the client shows (fatia A1 and A2). */
 export const PACK12_ITEMS:readonly string[]=[...PACK12_A1_ITEMS,...A2_ITEMS];
 /** Weapon id → its `projeteis` piece (the Pack's id; the two renamed beside their tomes wear the Pack's art). */
 const PACK12_A1_ALIAS:readonly (readonly [string,string])[]=PACK12_A1_ITEMS.map(id=>[id,id==='baladeira'?'estilingue':id==='tampa-voadora'?'tampa-de-panela':id] as const);
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
-  'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
+  'boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
   'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente',
   // Kits de torre (torre-pela-caixa): the tower's sticker on the ground.
   ...KIT_IDS,
@@ -198,8 +231,18 @@ export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','subme
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */
 export const iconKey=(icon:string)=>`arsenal:ui:${icon}`;
-/** The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. */
-export const itemIcon=(id:string|undefined):string|undefined=>id?KNOWN.get(id)?.icon:undefined;
+/**
+ * The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. A weapon at the
+ * dourada level (4) wears its `<icon>-dourada` edition when that ui piece is in (caixa-gamble-raridade).
+ */
+export const itemIcon=(id:string|undefined,level=1):string|undefined=>{
+  const icon=id?KNOWN.get(id)?.icon:undefined;
+  return icon?goldIcon(icon,level):undefined;
+};
+/** An icon at a level: its dourada edition at level 4 when the art index has `ui/<icon>-dourada`, else itself. */
+export const goldIcon=(icon:string,level:number)=>level===GOLD_LEVEL&&fileOf('ui',`${icon}-dourada`)?`${icon}-dourada`:icon;
+/** The plain weapon icon of a sticker that may be its dourada edition (the hand's grip table is by the plain one). */
+export const plainIcon=(icon:string)=>icon.endsWith('-dourada')?icon.slice(0,-'-dourada'.length):icon;
 /** Whether an item on the ground is a weapon (its `value` is then its rarity; a consumable's is its stack). */
 export const isWeaponItem=(id:string|undefined)=>{const kind=id?KNOWN.get(id)?.kind:undefined;return kind==='weapon'||kind==='evolution';};
 /**
@@ -224,7 +267,8 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   pistola:{art:'clarao-pistola',kind:'muzzle',size:80,ms:110},
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
-  escopeta:{art:'clarao-espingarda',kind:'cone',size:70,ms:170,reach:1.6},
+  // BUG-20261023-ORQ-armas-sem-projetil: the shotgun's flash stays at the barrel; its pellets fly (render/shot-flight.ts).
+  escopeta:{art:'clarao-espingarda',kind:'muzzle',size:80,ms:130},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
   // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
@@ -253,7 +297,7 @@ export const coneSteps=(reach:number)=>Math.max(1,Math.round((reach-.5)/.6)+1);
  */
 export const ARSENAL_PROJECTILE_ALIAS:readonly (readonly [string,string])[]=[
   ['pistola','bala-revolver'],['submetralhadora','bala-metralhadora'],['rifle','bala-fuzil'],['rojao','rojao'],
-  ['chinelo-lendario','chinelo-evo'],['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
+  ['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
   ['guarda-chuva-lendario','guarda-chuva'],['pombo-lendario','pombo'],['audio-lendario','audio'],
   ...PACK12_A1_ALIAS,...A2_PROJECTILE_ALIAS,
 ];
@@ -273,15 +317,21 @@ export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set([...PACK12_A1_A
  * ~20 px across); ×5 its 20 px thickness is that circle, so the sim's hit area stays. Critters' shots never grow.
  */
 export const DEFAULT_SHOT_DRAW_SCALE=5;
-const DEFAULT_SHOT_SOURCES:ReadonlySet<string>=new Set(['pistola']);
+/**
+ * BUG-20261023-ORQ-armas-sem-projetil (usuário 23/10: "nem aparece o projétil indo"): the other firearms' bullets were
+ * as thin as the pistol's before ×5. The rifle ×4 and the metralhadora ×3 (a burst of many, smaller); look only.
+ */
+const DEFAULT_SHOT_SOURCES:ReadonlyMap<string,number>=new Map([['pistola',DEFAULT_SHOT_DRAW_SCALE],['rifle',4],['submetralhadora',3]]);
 /**
  * Pack 12 fatia A1: the lobbed ones (traque, tijolo) land as a zone as wide as their burst, and the zone wears the thrown
  * object's piece: drawn at the burst's size it was a giant brick. This factor brings the object back to its size (the
  * layer scales a piece by the zone's radius, up to 3×); the burst itself is FIRE_LOOK's blast.
  */
-const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35]]);
-/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, a lobbed object's, else 1. */
-export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:LOBBED_DRAW_SCALE.get(source)??1;
+const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35],
+  // BUG-20261023-ORQ-armas-sem-projetil: the rocket now flies (render/shot-flight.ts), at about a firework's size.
+  ['rojao',.35]]);
+/** Draw-scale factor of a projectile (layers.ts): a hero's firearm bullet's (DEFAULT_SHOT_SOURCES), a lobbed object's, else 1. */
+export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.get(source)??LOBBED_DRAW_SCALE.get(source)??1;
 
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}
@@ -289,14 +339,19 @@ const firstPageUrl=(group:'ui'|'efeitos',file:ArtFile|undefined)=>{const page=fi
 const fileOf=(group:'ui'|'efeitos',id:string)=>{const piece=artPiece(group,id);if(!piece)return undefined;return piece.files.sheet??Object.values(piece.files)[0];};
 /**
  * The arsenal's textures in the current manifest (an absent piece is skipped): every item sticker and every shot strip.
- * Queued once, the first time a view shows the manual combat (render/arsenal-fx.ts), never in the preload: a match with
- * the automatic weapons downloads none of it.
+ * The stickers come with the scene's preload of a manual room (scene.ts: the map opens with crates showing their item;
+ * the waiting room fetches them first, preload/match-assets.ts); the rest is queued once, the first time a view shows
+ * the manual combat (render/arsenal-fx.ts). A match with the automatic weapons downloads none of it.
  */
 export function arsenalLoads():ArsenalLoad[]{
   const out:ArsenalLoad[]=[],seen=new Set<string>();
   for(const id of ARSENAL_ITEMS){
-    const icon=itemIcon(id);if(!icon||seen.has(icon))continue;seen.add(icon);
-    const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    const plain=itemIcon(id);if(!plain||seen.has(plain))continue;
+    // The weapon's sticker and, where it is in, its dourada edition (goldIcon).
+    for(const icon of [plain,goldIcon(plain,GOLD_LEVEL)]){
+      if(seen.has(icon))continue;seen.add(icon);
+      const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    }
   }
   for(const look of Object.values(FIRE_LOOK)){
     if(!look.art||seen.has(look.art))continue;seen.add(look.art);

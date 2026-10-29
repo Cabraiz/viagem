@@ -45,10 +45,10 @@ import type {SimContext} from '../../src/sim/context.ts';
 import {FLEE_CAP_SECONDS,createDirector,type DirectorOptions,type RoundSummary} from '../../src/sim/director.ts';
 import {MOUTHS,type Mouth} from '../../src/sim/city/avenues.ts';
 import {PLAZA_HOLD_FLAG,PLAZA_HOLD_RADIUS,cityFlowGrid,cityPlanner} from '../../src/sim/city/grid.ts';
-import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,START_SLOT_SPREAD,TUTORIAL_PLAN,behindCandidates,cityRunStart} from '../../src/sim/city/tutorial.ts';
+import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,START_SLOT_SPREAD,TUTORIAL_PLAN,behindCandidates,cityRunStart,floorRoute,floorToPlaza,tutorialMouths} from '../../src/sim/city/tutorial.ts';
 import {BARK_MAX,CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY} from '../../src/rules/zueira-cidade.ts';
 import {ROUNDS,ROUND_NAMES,countMult} from '../../src/rules/waves.ts';
-import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
+import {CITY_DISTANCE_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
@@ -67,7 +67,12 @@ const ROUTE=new FlowField(cityFlowGrid(city),[POINTS.praca]);
 const secs=(t:number)=>`${(t/SIM_HZ).toFixed(1)} s`;
 const fmt=(p:Point)=>`(${p.x.toFixed(1)},${p.y.toFixed(1)})`;
 /** Path distance (u) from p to the plaza on the judge's plaza field. */
-const toPlaza=(p:Point)=>{const c=JUDGE.plazaField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*JUDGE.plazaField.cellSize;};
+// On its own floor (mapa-175-com-viaduto): from the viaduct's deck the walk goes down its ramp first.
+const toPlaza=(p:Point&{andar?:number})=>floorToPlaza(city,JUDGE.plazaField,p);
+/** The route's direction for a hero on its own floor (floorRoute: on the deck, straight down the ramp). */
+const routeAt=(p:Point&{andar?:number},out:Point)=>floorRoute(city,ROUTE,p,out);
+/** The avenue the team walks in by (the N one from the Uno on the viaduct, mapa-175-com-viaduto): the one tutorialMouths leaves out. */
+const TEAM_MOUTH=MOUTHS.find(m=>!tutorialMouths(city).includes(m))!;
 /** The plaza mouth nearest to p (the avenue a body is on, near the plaza). */
 const mouthOf=(p:Point):Mouth=>MOUTHS.reduce((a,b)=>Math.hypot(POINTS.bocas[b].x-p.x,POINTS.bocas[b].y-p.y)<Math.hypot(POINTS.bocas[a].x-p.x,POINTS.bocas[a].y-p.y)?b:a);
 
@@ -95,7 +100,7 @@ function drive(sim:Simulation,n:Novice){
   if(t%SIM_HZ===0&&t>=n.pauseUntil&&n.r.chance(PAUSE_CHANCE)){n.pauseUntil=t+ticks(n.r.range(PAUSE[0],PAUSE[1]));if(n.arrived===undefined)n.pauses++;}
   if(t<n.pauseUntil){stand();return;}
   if(t%JITTER_EVERY===0)n.jitter=n.r.range(-JITTER,JITTER);
-  ROUTE.directionAt(p.x,p.y,dir);
+  routeAt(p,dir);
   if(!dir.x&&!dir.y){stand();return;}
   const c=Math.cos(n.jitter),s=Math.sin(n.jitter);
   sim.setBotInput(n.id,{x:dir.x*c-dir.y*s,y:dir.x*s+dir.y*c});
@@ -125,7 +130,7 @@ function script(sim:Simulation,n:Novice,mover:Mover){
   const p=sim.players.get(n.id)!,t=sim.tick;
   for(const o of sim.offers(n.id))sim.choose(n.id,o.id,0);
   if(mover==='still'||t<ticks(READ_SECONDS)||mover==='slow'&&Math.floor(t/SIM_HZ)%5>=3){sim.setBotInput(n.id,{x:0,y:0});return;}
-  ROUTE.directionAt(p.x,p.y,dir);sim.setBotInput(n.id,{x:dir.x,y:dir.y});
+  routeAt(p,dir);sim.setBotInput(n.id,{x:dir.x,y:dir.y});
 }
 /** A real Simulation of the city with `count` heroes, until round 1 ended (or `seconds`). */
 function walk(seed:number,count:number,seconds=WATCH,mover:Mover='novice'):RunResult{
@@ -215,7 +220,7 @@ function checkRound1(seed:number,r:RunResult){
   if(n===1)assert.ok(want<10,'single digits for one player');
   for(const s of r.spawns){
     assert.ok(s.tick-r.waveTick>=ticks(TUTORIAL_PLAN.behindAt),`${at}: ${s.id} at ${secs(s.tick-r.waveTick)} into the wave: too early`);
-    assert.ok(s.behind||s.mouth!=='S',`${at}: ${s.id} born at ${fmt(s)} ahead of the team on the S road (${secs(s.tick-r.waveTick)})`);
+    assert.ok(s.behind||s.mouth!==TEAM_MOUTH,`${at}: ${s.id} born at ${fmt(s)} ahead of the team on the ${TEAM_MOUTH} road (${secs(s.tick-r.waveTick)})`);
   }
 }
 
@@ -256,14 +261,16 @@ test('ACCEPTANCE: one novice per seed (5 seeds) walks from the wreck to the plaz
 /*
  * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro (part A): the 1.7× city made the wreck → plaza walk 1.7× longer (round 1's
  * arrival 22 → 35 s; the group behind chased the team into the 90 s cap). The run now starts down the road
- * (cityRunStart): on the route, with the walk the tutorial was tuned for (route ÷ CITY_MAP_SCALE) left.
+ * (cityRunStart): on the route, with the walk the tutorial was tuned for (route ÷ the map's distance scale) left.
  */
 test('the city run starts down the road from the wreck: the tuned walk left, every spawn slot open; the room spawns the heroes there',()=>{
   const start=cityRunStart(city),wreck=POINTS.inicio;
   const walkLeft=(p:Point)=>ROUTE.costAt(p.x,p.y)/STRAIGHT_COST*ROUTE.cellSize;
-  assert.ok(Math.hypot(start.x-wreck.x,start.y-wreck.y)>20,`the start ${fmt(start)} is down the road from the wreck ${fmt(wreck)}`);
-  const whole=walkLeft(wreck),left=walkLeft(start);
-  assert.ok(left<=whole/CITY_MAP_SCALE+1e-6&&left>=whole/CITY_MAP_SCALE-4*city.asset.unitsPerCell,`${left.toFixed(1)} u left of ${whole.toFixed(1)}`);
+  // Asset v4 (mapa-175-com-viaduto): the whole route is the tuned walk already (route ÷ CITY_DISTANCE_SCALE ≥ route), so
+  // the start is the first spot by the wreck where the six slots fit (was > 20 u down the road on the 1.7× city).
+  const whole=walkLeft(wreck),left=walkLeft(start),tuned=Math.min(whole,whole/CITY_DISTANCE_SCALE);
+  assert.ok(Math.hypot(start.x-wreck.x,start.y-wreck.y)<6,`the start ${fmt(start)} is by the wreck ${fmt(wreck)}`);
+  assert.ok(left<=tuned+1e-6&&left>=tuned-4*city.asset.unitsPerCell,`${left.toFixed(1)} u left of ${whole.toFixed(1)}`);
   for(let row=0;row<2;row++)for(let col=-1;col<=1;col++)assert.ok(walkable({x:start.x+col*START_SLOT_SPREAD,y:start.y+row*START_SLOT_SPREAD},city),`slot ${row},${col}`);
   assert.deepEqual(cityRunStart(city),start,'once per asset');
   const sim=new Simulation(1,{world:'cidade',terrain:city});
@@ -351,7 +358,7 @@ function threeRounds(seed:number){
       const p=sim.players.get(id)!;
       for(const o of sim.offers(id))sim.choose(id,o.id,0);
       if(sim.tick<ticks(READ_SECONDS)){sim.setBotInput(id,{x:0,y:0});continue;}
-      ROUTE.directionAt(p.x,p.y,dir);sim.setBotInput(id,{x:dir.x,y:dir.y});
+      routeAt(p,dir);sim.setBotInput(id,{x:dir.x,y:dir.y});
     }
     for(const e of sim.step()){events.push(e);if(e.type==='round'&&e.phase==='end')ended++;}
   }
@@ -459,12 +466,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
   const json=JSON.stringify({events:ctx.events,sentAt:ctx.sentAt,created:log.created,ends:log.ends,state:director.state,round:ctx.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs). */
+/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies; again for textos-rodada-nivel-tom, only the round name 'Rodada do Pavê' in the events). */
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
-  'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'a8b18644d60449bc','infinito kill=40 seed 1':'861f7d89517418ba',
-  'infinito kill=Infinity seed 0':'0953c7ab3326ff1f',
+  'ilha kill=40 seed 0':'7c183b3dff9c67bb','ilha kill=40 seed 1':'cd2162e5d002df58',
+  'ilha kill=Infinity seed 0':'fcf570024f5ad32b',
+  'infinito kill=40 seed 0':'6c4dd60bb3eac2b1','infinito kill=40 seed 1':'318f68913410405d',
+  'infinito kill=Infinity seed 0':'cc46f17cd95df8aa',
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

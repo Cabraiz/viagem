@@ -1,10 +1,11 @@
 /**
  * The manual combat's inventory (D-051, card NEW-20261014-E4-inventario-hud): 6 small slots by the attack button, like
- * Wild Rift's items. The rarity is the slot's border, a consumable's stack a number. A tap puts a weapon in the hand or
+ * Wild Rift's items. The rarity is the slot's border (the world's colour, render/arsenal-rules.ts RARITY_TOKEN) and 1–5
+ * dots on its bottom edge, a consumable's stack a number. A tap puts a weapon in the hand or
  * eats a consumable; holding (or dragging it off the bar) drops the item. With the 6 slots full, an item on the ground
  * within reach shows "Trocar" (it takes the place of the weapon in the hand). The room's refusals become a short line.
  * A kit de torre (torre-pela-caixa) wears its tier's rarity; a tap selects it ({t:'kit'}: the host's hud/kit-place,
- * nothing goes to the room yet) and the attack button becomes Construir (construir-no-botao). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
+ * nothing goes to the room yet) and a tap on the map places it (barricada-tocar-no-mapa). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
  * the automatic weapons have no inventory and the bar stays hidden.
  *
  * inventorySlots, swapCandidate, inventoryRefusalText and inventoryKeyOf are pure (tests); createInventory paints .rh-inv.
@@ -12,17 +13,26 @@
 import {putHidden} from './dom-put.ts';
 import type {PlayerRunView,PickupView,RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';
-import {itemDisplay} from './items.ts';
+import {itemDisplay,itemSticker} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {SHELL_DIALOG} from '../desktop-input.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
+import {RARITY_TOKEN,rarityOf} from '../render/arsenal-rules.ts';
 
 /** Inventory size (sim/inventory.ts INVENTORY_SLOTS; a test keeps them equal). */
 export const INVENTORY_SLOTS=6;
 /** How far "Trocar" reaches an item on the ground (sim/inventory.ts TAKE_REACH; a test keeps them equal). */
 export const SWAP_REACH=1.2;
-/** Holding a slot this long drops its item. */
-export const HOLD_DROP_MS=500;
+/** Holding a slot this long drops its item (0.8 s: a thumb resting a bit high on Atacar keeps its weapon;
+ *  celular-largar-item-seguro). */
+export const HOLD_DROP_MS=800;
+/** The slot's tap area (inventory.css .rh-inv-slot::before on the phone, fone-layout.ts RODAPE.hit). */
+export const SLOT_HIT=44;
+/** Is (x, y) still on the slot's tap area (the slot grown to SLOT_HIT, centred)? A hold only drops if it never left it. */
+export function onTapArea(r:{left:number;top:number;width:number;height:number},x:number,y:number,hit=SLOT_HIT):boolean{
+  const gx=Math.max(0,(hit-r.width)/2),gy=Math.max(0,(hit-r.height)/2);
+  return x>=r.left-gx&&x<=r.left+r.width+gx&&y>=r.top-gy&&y<=r.top+r.height+gy;
+}
 /** A finger that moves this far (px) is dragging the item: let go off the bar and it is dropped. */
 export const DRAG_PX=24;
 /** How long a refusal line stays over the bar. */
@@ -30,6 +40,13 @@ export const NOTE_MS=1600;
 
 /** Rarity names (sim/weapons/arsenal.ts RARITY_NAME; a test keeps them equal). */
 export const RARITY_NAME:Readonly<Record<number,string>>={1:'verde',2:'azul',3:'roxa',4:'dourada',5:'lendária'};
+/**
+ * The slot's border for a rarity: the token the rings on the ground wear (arsenal-rules.ts RARITY_TOKEN), so the
+ * inventory and the world read the same (legivel-raridade-uma-tabela: 4 laranja, 5 dourada). Undefined: no rarity.
+ */
+export const rarityBorder=(rarity:number|undefined)=>rarity?`var(${RARITY_TOKEN[rarityOf(rarity)]})`:undefined;
+/** The rarity's second sign, not a colour (verde and laranja look alike to a protan): one dot per level, 1–5. */
+export const rarityPips=(rarity:number|undefined)=>rarity?'<i></i>'.repeat(rarityOf(rarity)):'';
 
 export interface InventorySlot {
   index:number;id:string;name:string;
@@ -56,7 +73,7 @@ export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undef
 }
 /** The slot's accessible name: "Pistola (azul), na mão", "Coxinha, 2". */
 export function slotLabel(slot:InventorySlot):string{
-  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', na mão: Construir põe à sua frente':': tocar para construir'}, segurar para largar`;
+  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', escolhido: toque no mapa para pôr':': tocar para construir'}, segurar para largar`;
   if(slot.kind==='consumable')return `${slot.name}${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para usar, segurar para largar`;
   return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${slot.hand?', na mão':': tocar para equipar'}, segurar para largar`;
 }
@@ -87,6 +104,7 @@ const REFUSALS:Readonly<Record<string,string>>={
   slot:'Esse espaço tá vazio',
   player:'Agora não dá',
   pickup:'O item sumiu',
+  owned:'Você já tem esse',
 };
 export const inventoryRefusalText=(reason:string|undefined)=>REFUSALS[reason??'']??'Não deu';
 
@@ -144,7 +162,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
   const buttons:HTMLButtonElement[]=[];
   for(let i=0;i<INVENTORY_SLOTS;i++){
     const b=doc.createElement('button');b.type='button';b.className='rh-inv-slot';b.dataset.slot=String(i);
-    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
+    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-pips" aria-hidden="true"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
     grid.append(b);buttons.push(b);
   }
   let slots:InventorySlot[]|undefined,hero:{x:number;y:number}|undefined,pickups:readonly PickupView[]=[],candidate:PickupView|undefined;
@@ -161,7 +179,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
     putHidden(swap,!candidate);
     if(!candidate)return;
     const name=itemDisplay(candidate.resource!).name,key=`${candidate.id}`;
-    if(swap.dataset.pickup!==key){swap.dataset.pickup=key;swap.innerHTML=`${sticker(itemDisplay(candidate.resource!).icon,{size:24})}<span>Trocar</span>`;swap.setAttribute('aria-label',`Trocar pela ${name}`);}
+    if(swap.dataset.pickup!==key){swap.dataset.pickup=key;swap.innerHTML=`${sticker(itemSticker(candidate.resource!,candidate.value),{size:24})}<span>Trocar</span>`;swap.setAttribute('aria-label',`Trocar pela ${name}`);}
   };
   const paint=()=>{
     putHidden(el,!live||!slots);
@@ -172,16 +190,21 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       painted[i]=key;
       b.disabled=!s;b.dataset.empty=String(!s);b.dataset.hand=String(!!s?.hand);
       if(s?.rarity)b.dataset.rarity=String(s.rarity);else delete b.dataset.rarity;
+      const border=rarityBorder(s?.rarity);
+      if(border)b.style.setProperty('--raridade',border);else b.style.removeProperty('--raridade');
       b.dataset.kind=s?.kind??'';
-      b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemDisplay(s.id).icon,{size:24}):'';
-      b.querySelector('.rh-inv-pilha')!.textContent=s&&s.kind!=='weapon'&&(s.stack??1)>1?String(s.stack):'';
+      b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemSticker(s.id,s.kind==='weapon'?s.rarity:1),{size:24}):'';
+      const pile=s&&s.kind!=='weapon'&&(s.stack??1)>1?String(s.stack):'';
+      b.querySelector('.rh-inv-pilha')!.textContent=pile;
+      b.querySelector('.rh-inv-pips')!.innerHTML=rarityPips(s?.rarity);
+      b.dataset.pilha=String(!!pile);
       b.setAttribute('aria-label',s?slotLabel(s):`Espaço ${i+1} vazio`);
       b.setAttribute('aria-pressed',String(!!s?.hand));
     }
     paintSwap();
   };
   // Tap / hold / drag on a slot (pointer events: finger and mouse alike).
-  let press:{slot:number;x:number;y:number;timer:ReturnType<typeof setTimeout>;dropped:boolean;dragging:boolean;id:number}|undefined;
+  let press:{slot:number;x:number;y:number;timer:ReturnType<typeof setTimeout>;dropped:boolean;dragging:boolean;left:boolean;id:number;area:DOMRect}|undefined;
   const endPress=()=>{if(!press)return;clearTimeout(press.timer);buttons[press.slot].classList.remove('rh-inv-segurando','rh-inv-arrastando');press=undefined;};
   for(const b of buttons){
     const slot=Number(b.dataset.slot);
@@ -190,11 +213,13 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       e.preventDefault();endPress();
       b.setPointerCapture?.(e.pointerId);
       const timer=setTimeout(()=>{if(!press||press.slot!==slot)return;press.dropped=true;b.classList.remove('rh-inv-segurando');send({t:'drop',slot});},HOLD_DROP_MS);
-      press={slot,x:e.clientX,y:e.clientY,timer,dropped:false,dragging:false,id:e.pointerId};
+      press={slot,x:e.clientX,y:e.clientY,timer,dropped:false,dragging:false,left:false,id:e.pointerId,area:b.getBoundingClientRect()};
       b.classList.add('rh-inv-segurando');
     });
     b.addEventListener('pointermove',e=>{
       if(!press||press.slot!==slot||press.dropped||press.dragging)return;
+      // Off the slot's tap area: neither a hold nor a tap any more (a drag still drops off the bar).
+      if(!press.left&&!onTapArea(press.area,e.clientX,e.clientY)){press.left=true;clearTimeout(press.timer);b.classList.remove('rh-inv-segurando');}
       if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>=DRAG_PX){press.dragging=true;clearTimeout(press.timer);b.classList.remove('rh-inv-segurando');b.classList.add('rh-inv-arrastando');}
     });
     b.addEventListener('pointerup',e=>{
@@ -206,6 +231,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
         if(!inside)send({t:'drop',slot});
         return;
       }
+      if(p.left)return;
       const s=slots?.[slot];const command=s&&tapCommand(s);if(command)send(command);
     });
     b.addEventListener('pointercancel',endPress);

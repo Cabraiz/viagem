@@ -15,7 +15,7 @@ import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
 import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
-import {sticker} from '../ui/sticker.ts';
+import {fanSlots,offerIcon,splitGain} from './offer-px39.ts';
 import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerGain,offerRarity,offerValue} from './offer-card.ts';
 import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
@@ -42,7 +42,7 @@ const jokes:Record<OfferSource,readonly string[]>={
     'Promoção relâmpago de poder',
     'Brinde do síndico por sobreviver',
     'Leva um, os bichos pagam o outro',
-    'Oferta válida só neste intervalo',
+    'Carta válida só neste intervalo',
   ],
 };
 
@@ -148,7 +148,7 @@ export interface OfferPanelOptions {
 }
 
 export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
-  // D-052: the centred window "Ofertas de melhoria" (offer-centro.css) on every screen; `.rh-offer` stays for the zones.
+  // D-052: the centred window "Escolha uma melhoria" (offer-centro.css) on every screen; `.rh-offer` stays for the zones.
   const root=el('section','rh-offer rh-ofc');root.hidden=true;
   root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
   // BUG-20261013-ORQ-oferta-e-dicas-menores: a compact window. The clock is a thin bar along its top edge (no row of
@@ -165,7 +165,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const note=el('span','rh-offer-auto',head);note.setAttribute('role','img');note.setAttribute('aria-label',AUTO_NOTE);note.title=AUTO_NOTE;
   const time=el('span','rh-offer-time',head);
   const later=el('button','rh-offer-later',head);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
-  later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
+  later.setAttribute('aria-label','Depois: guarda as cartas no chip, que abre de novo');
   // Someone fell while the window is open: a Cone ficha under the title, first name and live seconds (janela-caido).
   const fall=el('p','rh-window-fall',root);fall.hidden=true;fall.setAttribute('role','status');
   const joke=el('p','rh-offer-joke',root);
@@ -203,45 +203,60 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   /** A skip or reroll sent and not answered yet: the buttons wait for the offer to change (or a retry window). */
   let acting:{id:string;at:number}|undefined;
   let renderedAt=Number.NEGATIVE_INFINITY;
+  /** This phone's last pick in the pause: the card the waiting window keeps showing (auditoria-ui-menus-28-10 item 2). */
+  let chosen:{offer:OfferView;index:number}|undefined;
+
+  /**
+   * One card of the fan (px39): the power's icon (oferta-icone-do-poder: the name left the card, it stays in the label),
+   * rarity, "Niv N", the gain or value line; the old tag's pieces for labels and tests.
+   */
+  const cardFor=(offer:OfferView,choice:OfferView['choices'][number],index:number,slot:string)=>{
+    const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
+    const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
+    card.dataset.fan=slot;
+    card.classList.toggle('rh-card-default',flags.isDefault);
+    el('span','rh-card-icon',card).innerHTML=offerIcon(choice.itemId,item.icon);
+    // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
+    const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
+    el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];
+    el('b','rh-card-level',card).textContent=levelLabel(choice.level);
+    const body=el('span','rh-card-body',card);
+    // Card upgrades-megabonk: the tome's gain, short and big ("+1 projétil", "+10% dano").
+    const gain=offerGain(choice.itemId,choice.level);
+    if(gain){
+      const box=el('b','rh-card-gain',body),{big,small}=splitGain(gain);
+      el('span','rh-card-gain-big',box).textContent=big;
+      if(small)box.append(' ',Object.assign(el('span','rh-card-gain-small',box),{textContent:small}));
+    }
+    const value=offerValue(choice.itemId,choice.level),line=el('span','rh-card-value',body);
+    if(value&&choice.level>1){line.append(`${value.label}: ${value.from} > `);el('b','rh-card-value-new',line).textContent=value.to;}
+    else line.textContent=item.blurb;
+    el('span','rh-card-blurb',body).textContent=item.blurb;
+    el('em','rh-card-joke',body).textContent=item.joke;
+    // "Novo!" lives in the price slot, like "Nív. N" (the price of a launch); never floating over the icon.
+    if(price.kind==='level'){
+      const tag=el('span','rh-card-price',card);
+      el('small','rh-card-price-unit',tag).textContent='Nív.';
+      el('b','rh-card-price-value',tag).textContent=String(price.level);
+    }else if(price.kind==='new')el('span','rh-card-star',card).append(Object.assign(document.createElement('span'),{textContent:price.label}));
+    else el('span','rh-card-tag',card).textContent=price.label;
+    const mark=el('span','rh-card-stamp',card);mark.textContent='LEVEI';mark.setAttribute('aria-hidden','true');
+    card.setAttribute('aria-label',`${item.name}, ${price.label}. ${item.blurb}${flags.isDefault?' Vai no automático se acabar o tempo.':''}`);
+    return card;
+  };
 
   const render=(offer:OfferView)=>{
     root.dataset.source=offer.source;
+    delete cards.dataset.escolhida;
     const allNew=isAllNew(offer);const titleNew=allNew&&offer.source==='level';
     root.classList.toggle('rh-offer-all-new',titleNew);
     title.textContent=OFFER_WINDOW_TITLE;
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
-    cards.replaceChildren(...offer.choices.map((choice,index)=>{
-      const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
-      const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
-      card.classList.toggle('rh-card-default',flags.isDefault);
-      el('span','rh-card-icon',card).innerHTML=sticker(item.icon);
-      // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
-      const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
-      el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];
-      el('b','rh-card-level',card).textContent=levelLabel(choice.level);
-      const body=el('span','rh-card-body',card);
-      el('strong','rh-card-name',body).textContent=item.name;
-      // Card upgrades-megabonk: the tome's gain, short and big ("+1 projétil", "+10% dano").
-      const gain=offerGain(choice.itemId,choice.level);
-      if(gain)el('b','rh-card-gain',body).textContent=gain;
-      const value=offerValue(choice.itemId,choice.level),line=el('span','rh-card-value',body);
-      if(value&&choice.level>1){line.append(`${value.label}: ${value.from} > `);el('b','rh-card-value-new',line).textContent=value.to;}
-      else line.textContent=item.blurb;
-      el('span','rh-card-blurb',body).textContent=item.blurb;
-      el('em','rh-card-joke',body).textContent=item.joke;
-      // "Novo!" lives in the price slot, like "Nv N" (the price of a launch); never floating over the icon.
-      if(price.kind==='level'){
-        const tag=el('span','rh-card-price',card);
-        el('small','rh-card-price-unit',tag).textContent='Nv';
-        el('b','rh-card-price-value',tag).textContent=String(price.level);
-      }else if(price.kind==='new')el('span','rh-card-star',card).append(Object.assign(document.createElement('span'),{textContent:price.label}));
-      else el('span','rh-card-tag',card).textContent=price.label;
-      const mark=el('span','rh-card-stamp',card);mark.textContent='LEVEI';mark.setAttribute('aria-hidden','true');
-      card.setAttribute('aria-label',`${item.name}, ${price.label}. ${item.blurb}${flags.isDefault?' Vai no automático se acabar o tempo.':''}`);
-      return card;
-    }));
+    // px39 (var-39): the cards open as a fan, the default pick in the middle with the gold frame (offer-px39.ts).
+    const slots=fanSlots(offer.choices.length,offer.defaultIndex);
+    cards.replaceChildren(...offer.choices.map((choice,index)=>cardFor(offer,choice,index,slots[index])));
     guard.rendered(offer.id,now());renderedAt=now();
     lastSeconds=-1;
   };
@@ -258,7 +273,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   /** Picks `index` of the shown offer: stamp, sound, and the server command. */
   const pick=(index:number)=>{
     if(!shown)return;
-    pending={id:shown.id,index};
+    pending={id:shown.id,index};chosen={offer:shown,index};
     markPending();
     root.classList.add('rh-offer-stamping');
     stamp={offer:shown,until:now()+STAMP_HOLD_MS};
@@ -343,7 +358,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       // A wave starting, or a pause opening or ending, closes whatever was open; each intermission opens the window
       // again, and "levar os indicados" only runs inside the intermission (or pause) it began in.
       const mode=offerMode(view);
-      collapsed=false;takingAll=false;
+      collapsed=false;takingAll=false;chosen=undefined;
       // The pause's window is the whole one (title, names, effects: the game stands still), not the combat strip.
       lastMode=mode;lastPaused=paused;root.dataset.mode=paused?'pause':mode;
     }
@@ -365,11 +380,21 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     putAttr(chip,'aria-expanded',String(visible));
     // D-052: in a pause the window waits with the team: someone else still picks ("Esperando os outros jogadores…"),
     // and once this phone picked it stays as just that line and the buttons until the room resumes.
+    // The waiting window (auditoria-ui-menus-28-10 item 2): the card this phone took, smaller, with "LEVEI", the line and
+    // no Pular / Rolar de novo (nothing left to skip or roll); the pause's box above it says the time and who is missing.
     const local=options.localId??'',othersWait=paused&&waitingIds.some(id=>id!==local);
-    putHidden(wait,!othersWait);
     const onlyWait=othersWait&&!waitingIds.includes(local)&&(!visible||!offer);
+    putHidden(wait,!onlyWait);
     root.classList.toggle('rh-ofc-only-wait',onlyWait);
-    if(onlyWait){if(!offer)shown=undefined;cards.replaceChildren();putText(title,OFFER_WINDOW_TITLE);putData(root,'count','0');putHidden(root,false);return;}
+    if(onlyWait){
+      const pick=chosen&&chosen.offer.choices[chosen.index]?chosen:undefined,key=pick?`${pick.offer.id}|${pick.index}`:'-';
+      if(cards.dataset.escolhida!==key){
+        shown=undefined;cards.dataset.escolhida=key;
+        cards.replaceChildren(...(pick?[cardFor(pick.offer,pick.offer.choices[pick.index],pick.index,'m')]:[]));
+        for(const card of cards.children as HTMLCollectionOf<HTMLButtonElement>){card.disabled=true;card.classList.add('rh-card-default','rh-card-chosen');card.tabIndex=-1;}
+      }
+      putText(title,OFFER_WINDOW_TITLE);putData(root,'count',pick?'1':'0');putData(cards,'count',pick?'1':'0');putHidden(root,false);return;
+    }
     if(!visible||!offer){if(!offer)shown=undefined;putHidden(root,true);return;}
     putHidden(root,false);
     if(offer.id!==shown?.id){shown=offer;render(offer);markPending();}

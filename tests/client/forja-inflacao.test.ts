@@ -90,11 +90,12 @@ test('the forge tags show the base before any purchase',()=>{
   }
 });
 
-test('the forge tag price follows camp.forge: the second gambiarra shows 2× the base, the repair keeps its base',()=>{
+test('the forge tag price follows camp.forge: the second gambiarra shows 1.5× the base, the repair keeps its base',()=>{
   const tags=tagPrices({units:0,grana:1000,forge:{gambiarra:1,'torre-chinelo':2}});
-  assert.equal(tags.gambiarra.html,forgePriceLabel(2*G).html);assert.equal(tags.gambiarra.price,String(2*G));
-  assert.match(tags.gambiarra.label,new RegExp(`Custa ${forgePriceLabel(2*G).speech}\\.`),'spoken at the inflated price too');
-  assert.equal(tags['torre-chinelo'].price,String(3*C),'the third chinelo at 3× its base');
+  const G2=Math.round(1.5*G);
+  assert.equal(tags.gambiarra.html,forgePriceLabel(G2).html);assert.equal(tags.gambiarra.price,String(G2));
+  assert.match(tags.gambiarra.label,new RegExp(`Custa ${forgePriceLabel(G2).speech}\\.`),'spoken at the inflated price too');
+  assert.equal(tags['torre-chinelo'].price,String(2*C),'the third chinelo at the 2× cap');
   assert.equal(tags.reparo.price,String(R),'defence never inflates');
   assert.equal(tags.reparo.html,forgePriceLabel(R).html);
 });
@@ -102,10 +103,11 @@ test('the forge tag price follows camp.forge: the second gambiarra shows 2× the
 test('the tag locks and the refusal names the shortfall at the inflated price',()=>{
   const view=(camp:CampView)=>({...fakeView('camp-forge',1),camp});
   const bought={gambiarra:1};
-  assert.equal(forgePrice('gambiarra',bought),2*G);
-  assert.equal(blockedReason('gambiarra',view({units:0,grana:2*G-1,forge:bought}),'p1'),'balance','the base no longer pays it');
-  assert.equal(blockedReason('gambiarra',view({units:0,grana:2*G,forge:bought}),'p1'),undefined,'exactly the inflated price');
-  assert.equal(missing({grana:G,forge:bought},'gambiarra'),`Falta ${granaText(G)}.`);
+  const G2=Math.round(1.5*G);
+  assert.equal(forgePrice('gambiarra',bought),G2);
+  assert.equal(blockedReason('gambiarra',view({units:0,grana:G2-1,forge:bought}),'p1'),'balance','the base no longer pays it');
+  assert.equal(blockedReason('gambiarra',view({units:0,grana:G2,forge:bought}),'p1'),undefined,'exactly the inflated price');
+  assert.equal(missing({grana:G,forge:bought},'gambiarra'),`Falta ${granaText(G2-G)}.`);
   assert.equal(missing({grana:0,forge:{gambiarra:4}},'reparo'),`Falta ${granaText(R)}.`,'the repair at its base');
 });
 

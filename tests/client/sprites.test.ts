@@ -13,26 +13,36 @@ import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 // Light under memory pressure (many test processes at once): no libvips operation cache, one libvips thread.
 sharp.cache(false);sharp.concurrency(1);
 
-test('all 36 class IDs have a transparent 18-frame sheet and a measured scale',async()=>{
-  assert.equal(Object.keys(spriteCatalog).length,classes.length);
-  for(const hero of classes){
+/** The classes drawn before the movement art (28 of the 35 of D-025 left; 7 went to legado/): each has today's 18-frame sheet in the catalog. */
+const legacy=classes.filter(hero=>hero.id in spriteCatalog);
+test('the 28 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
+  assert.equal(legacy.length,28);
+  assert.ok(Object.keys(spriteCatalog).every(id=>classes.some(hero=>hero.id===id)));
+  // gato-no-menu: a class born with the movement art (16 poses per facing) has no 18-frame sheet; the renderer skips it.
+  const pieces=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
+  for(const hero of classes.filter(hero=>!(hero.id in spriteCatalog)))
+    assert.ok(['idle16-S','walk16-S','run16-S','attack16-S'].every(k=>pieces[hero.id]?.files?.[k]),`${hero.id}: no legacy sheet and no movement art`);
+  for(const hero of legacy){
     assert.ok(spriteCatalog[hero.id].height>0);
     const m=await sharp(`public/art/sprites/${hero.id}.webp`).metadata();
     assert.deepEqual([m.width,m.height,m.hasAlpha],[1152,576,true],hero.id);
   }
 });
 
-test('an attack finishes once, survives movement, then yields to locomotion',()=>{
+test('an attack finishes once standing; walking keeps the walk while the weapon fires (atirar-andando)',()=>{
   const motion=new SpriteMotion();
   assert.equal(motion.update(0,false),'idle');
   assert.equal(motion.update(20,true),'walk');
-  assert.equal(motion.update(100,true,5),'attack');
-  assert.equal(motion.update(450,false,5),'attack');
-  assert.equal(motion.update(100+A-1,true,5),'attack');
+  assert.equal(motion.update(100,true,5),'walk','a shot while walking never stops the feet');
+  assert.equal(motion.update(450,false,5),'attack','stopping in the middle of the swing shows the rest of it');
+  assert.equal(motion.update(100+A-1,true,5),'walk');
   assert.equal(motion.update(100+A+1,false,5),'idle');
   assert.equal(motion.update(100+A+101,false,17),'attack');
   assert.equal(motion.update(100+A+151,true,17,false),'idle');
   assert.equal(motion.update(100+A+161,false,17,true),'idle');
+  // A fast weapon (submetralhadora, 4 ticks) held while walking: every frame of the walk is a walk.
+  const smg=new SpriteMotion();
+  for(let t=0,tick=1;t<3000;t+=50,tick++)assert.equal(smg.update(t,true,tick),'walk');
 });
 
 test('weapon fire events reach observers through attackTick without changing old-wire compatibility',()=>{
@@ -66,12 +76,12 @@ test('back-to-back hits restart a clean swing, squeezed into the time between th
   assert.equal(motion.update(0,false,1),'attack');
   assert.deepEqual({...motion.swing},{start:0,ms:A},'a lone swing plays in full');
   // Holding Atacar: the server moves attackTick at most every 12 ticks (600 ms).
-  assert.equal(motion.update(600,true,13),'attack');
+  assert.equal(motion.update(600,false,13),'attack');
   assert.deepEqual({...motion.swing},{start:600,ms:Math.min(A,600)},'the next hit starts over from its first frame');
-  assert.equal(motion.update(1200,true,25),'attack');
+  assert.equal(motion.update(1200,false,25),'attack');
   assert.deepEqual({...motion.swing},{start:1200,ms:Math.min(A,600)});
-  assert.equal(motion.update(1200+Math.min(A,600)-1,true,25),'attack');
-  assert.equal(motion.update(1200+Math.min(A,600),true,25),'walk','no swing outlasts the period between hits');
+  assert.equal(motion.update(1200+Math.min(A,600)-1,false,25),'attack');
+  assert.equal(motion.update(1200+Math.min(A,600),false,25),'idle','no swing outlasts the period between hits');
   // A hit after a pause plays the full swing again; bunched hits never squeeze it below ATTACK_MIN_MS.
   assert.equal(motion.update(5000,false,37),'attack');
   assert.equal(motion.swing.ms,A);
@@ -177,12 +187,12 @@ test('4 directions: a remote ally turns by its interpolated velocity, without bl
   }
 });
 
-test('4 directions: the 36 classes without a 4-direction batch keep exactly the old mirror rule',()=>{
+test('4 directions: the legacy classes without a 4-direction batch keep exactly the old mirror rule',()=>{
   // No class ships a 4-direction batch yet: every class (the 35 others and the lab one outside the lab) uses its
   // approved single sheet, under the same texture key and clips as before.
   assert.equal(directionalSheets.size,Object.values(spriteCatalog).filter(c=>c.dir4).length);
   const v2Heroes=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
-  for(const hero of classes){
+  for(const hero of legacy){
     if(spriteCatalog[hero.id].dir4)continue;
     assert.equal(sheetKey(hero.id),`sprite:${hero.id}`,hero.id);
     // An atlas from the art v2 import is fine: the index lists it (the game only uses it once the index is in).
@@ -229,7 +239,7 @@ const labPixels=()=>labDecoded??=sharp(LAB).ensureAlpha().raw().toBuffer({resolv
 const labImage=async()=>{const {data,info}=await labPixels();return sharp(data,{raw:{width:info.width,height:info.height,channels:4}});};
 
 test('figure boxes come measured in the catalog (no pixel reads in a match) and match the art',async()=>{
-  for(const hero of classes){
+  for(const hero of legacy){
     const {data,width,height}=await raw(`public/art/sprites/${hero.id}.webp`);
     assert.deepEqual(spriteCatalog[hero.id].figure,figureBox(data,width,height),hero.id);
   }

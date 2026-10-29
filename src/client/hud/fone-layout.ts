@@ -9,7 +9,7 @@
  *   EDGE_COLUMN above the joystick, as the desktop's minimap floats (zones.ts ZoneInput.minimap).
  * The real layout is measured in the browser (zones.ts measureZoneInput); this is its reference.
  */
-import {computeZones,orientationOf,right,type Rect,type ScreenZones} from './zones.ts';
+import {computeZones,minimapInBand,orientationOf,right,type Rect,type ScreenZones} from './zones.ts';
 import {wcMinimapSide,HUD_FLOOR,HERO_SIDE} from './city/layout.ts';
 
 /** fone.css numbers (checked against the file by the tests). */
@@ -18,8 +18,8 @@ export const FONE={
   bandGap:6,
   /** The band ends this far left of the right edge (.rh-top right: --rh-r + 66px): the gear's 48 px and its room. */
   gearRoom:66,
-  /** Row 1: the level badge (44 px wide at "Nv 1", its XP thread under it) and the team's bar (a 34 px ficha). */
-  row:34,levelWidth:44,
+  /** Row 1: the team's bar (a 34 px ficha). The level badge is hidden (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos): 0 px. */
+  row:34,levelWidth:0,
   /** The bar's ficha: grows from 88 px up to 150 px in portrait, 160–180 px in landscape. */
   bar:{portrait:{min:88,max:150},landscape:{min:160,max:180}},
   /** Gap between the band's rows (.rh-top row-gap) and, in landscape, between the bar and the fan (margin-left). */
@@ -96,8 +96,8 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
   }
   const boss=input.boss?{x:band.x,y:bottomY+FONE.rowGap+FONE.bossGap,width:band.width,height:40}:undefined;
   band.height=(boss?boss.y+boss.height:bottomY)-band.y;
-  // Portrait: the minimap is a status row of the band (the slot under it); landscape: it floats (trims nothing).
-  const status=[gear,level,bar,fanRect,boss,...(orientation==='portrait'?[minimap]:[])];
+  // Standing: the minimap is a status row of the band (the slot under it); lying down: it floats (trims nothing).
+  const status=[gear,level,bar,fanRect,boss,...(minimapInBand(viewport)?[minimap]:[])];
   const zones=computeZones({viewport,safe,status,joystick:input.joystick,skill:input.skill,minimap});
   const hero={x:Math.round(viewport.width/2-HERO_SIDE/2),y:Math.round(viewport.height/2-HERO_SIDE/2),width:HERO_SIDE,height:HERO_SIDE};
   return {orientation,minimap,gear,band,level,bar,fan:fanRect,...(boss?{boss}:{}),zones,hero};
@@ -111,35 +111,43 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
 export const teamColumnVar=(phone:boolean,teamWidth:number):string|undefined=>phone?undefined:`${Math.ceil(teamWidth)}px`;
 
 /**
- * The phone's footer (BUG-20261022-ORQ-hud-mobile-rodape) as explore.css and inventory.css draw it: the stick at the
- * left, the attack at the right, both centred on one axis; the inventory in the gap between them, RODAPE.clear px from
- * each, only the filled slots, centred, wrapping when a row is full (3 a row in portrait). A slot shrinks to fit a third
- * of the gap (its tap area stays RODAPE.hit px).
+ * The phone's footer as explore.css and inventory.css draw it (BUG-20261024-ORQ-joystick-maior-inventario-direita, after
+ * BUG-20261022-ORQ-hud-mobile-rodape): the stick at the left, the attack at the right, both 20 % bigger than the
+ * desktop's (tokens.css --controle-fone) and centred on one axis; the inventory a column right-aligned with the attack,
+ * RODAPE.lift px above it, only the filled slots, 3 a row, rows from the bottom up (slots 1–3, the weapons, next to the
+ * thumb). A slot's tap area stays RODAPE.hit px. `coluna` is inventory.css --inv-coluna: the room it keeps above the
+ * attack (two rows and the lift), by which Dona Cida's button, the emotes and the combat offer go up.
  */
 export const RODAPE={
-  /** explore.css .explore-controls padding and .explore-stick side; ≤ 370 px wide or landscape: the tight values. */
-  pad:{x:24,y:24},tightPad:{x:18,y:16},stick:112,tightStick:96,
-  /** inventory.css: the gap kept to each control (12 + the hand slot's 1.1 lift), the slot's side and gap. */
-  clear:14,slot:34,tightSlot:32,gap:4,tightGap:3,perRow:3,hit:44,handScale:1.1,
+  /** tokens.css --controle-fone: the phone's stick and attack over the desktop's 112/96 px and 14 + 80 × scale. */
+  scale:1.2,
+  /** explore.css .explore-controls padding and --joystick / --joystick-justo; ≤ 370 px wide or landscape: the tight values. */
+  pad:{x:24,y:24},tightPad:{x:18,y:16},stick:112*1.2,tightStick:96*1.2,
+  /** inventory.css: the gap over the attack (18 px: the slots' 44 px tap areas end 12 px or more above it, the hand slot's
+   *  1.1 lift fits; celular-largar-item-seguro), the slot's side and gap. */
+  lift:18,slot:34,tightSlot:32,gap:4,tightGap:3,perRow:3,hit:44,handScale:1.1,
 } as const;
-export interface FoneFooter {stick:Rect;attack:Rect;box:Rect;slots:Rect[];slotSide:number}
+/** --botao-habilidade on the phone (tokens.css): the desktop's 94 px × 1.2, or 14 + 80 × text scale when that is bigger. */
+export const foneSkillSide=(scale=1)=>Math.max(94*RODAPE.scale,14+80*scale);
+export interface FoneFooter {stick:Rect;attack:Rect;box:Rect;slots:Rect[];slotSide:number;coluna:number}
 export function foneFooter(input:{viewport:{width:number;height:number};safe?:FoneInsets;scale?:number;items:number}):FoneFooter{
   const {viewport}=input,safe=input.safe??NO_INSETS,k=RODAPE;
   const tight=viewport.width<=370||viewport.height<=500;
-  const pad=tight?k.tightPad:k.pad,stickSide=tight?k.tightStick:k.stick,skillSide=14+80*(input.scale??1);
+  const pad=tight?k.tightPad:k.pad,stickSide=tight?k.tightStick:k.stick,skillSide=foneSkillSide(input.scale??1);
   const left=Math.max(pad.x,safe.left),rightPad=Math.max(pad.x,safe.right),bottomPad=Math.max(pad.y,safe.bottom);
   const axis=viewport.height-bottomPad-Math.max(stickSide,skillSide)/2;
   const stick={x:left,y:axis-stickSide/2,width:stickSide,height:stickSide};
   const attack={x:viewport.width-rightPad-skillSide,y:axis-skillSide/2,width:skillSide,height:skillSide};
-  const bx=right(stick)+k.clear,bw=Math.max(0,attack.x-k.clear-bx),bh=Math.max(stickSide,skillSide);
-  const box={x:bx,y:axis-bh/2,width:bw,height:bh};
-  const gap=tight?k.tightGap:k.gap,side=Math.min(tight?k.tightSlot:k.slot,(bw-2*gap)/k.perRow-0.5);
-  const n=Math.max(0,Math.min(6,Math.round(input.items))),perRow=Math.max(1,Math.floor((bw+gap)/(side+gap)));
-  const rows=Math.ceil(n/perRow),top=axis-(rows*side+(rows-1)*gap)/2,slots:Rect[]=[];
+  const gap=tight?k.tightGap:k.gap,side=tight?k.tightSlot:k.slot;
+  const n=Math.max(0,Math.min(6,Math.round(input.items))),rows=Math.ceil(n/k.perRow);
+  const colRight=right(attack),colBottom=attack.y-k.lift,colWidth=Math.max(skillSide,k.perRow*side+(k.perRow-1)*gap);
+  const slots:Rect[]=[];
   for(let i=0;i<n;i++){
-    const row=Math.floor(i/perRow),inRow=Math.min(perRow,n-row*perRow),col=i-row*perRow;
-    const x0=bx+(bw-(inRow*side+(inRow-1)*gap))/2;
-    slots.push({x:x0+col*(side+gap),y:top+row*(side+gap),width:side,height:side});
+    const row=Math.floor(i/k.perRow),inRow=Math.min(k.perRow,n-row*k.perRow),col=i-row*k.perRow;
+    const x0=colRight-(inRow*side+(inRow-1)*gap);
+    slots.push({x:x0+col*(side+gap),y:colBottom-(row+1)*side-row*gap,width:side,height:side});
   }
-  return {stick,attack,box,slots,slotSide:side};
+  const boxHeight=rows?rows*side+(rows-1)*gap:0;
+  const box={x:colRight-colWidth,y:colBottom-boxHeight,width:colWidth,height:boxHeight};
+  return {stick,attack,box,slots,slotSide:side,coluna:2*side+gap+k.lift};
 }

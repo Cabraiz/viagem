@@ -9,18 +9,29 @@
  *  - `empurra=0..1` (the push with mode morta; default it fills in a 4 s loop),
  *  - `fim=vitoria|derrota` (the end: he opened it, or perda total),
  *  - `anda=<graus>` (D-052, the car moves: `voce` pulls it back and forth along that heading, CAR_SWING_U each way in
- *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept).
+ *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept),
+ *  - `empurrando=<graus>` (card empurrar-uno): the car rolls straight ahead along that heading at `vel=` u/s (default
+ *    CAR_SPEED's top, 3.6) over PUSH_SPAN_U and starts over, pushed by `voce` (a mover, no rope); with `puxando=1`
+ *    (puxar-uno-corda) `voce` holds the rope instead and pulls it; `junto=<classe>` adds a second mover on the other end.
+ *  - `fala=alarme,venda,peca,…` (card chaveiro-falas): those moments' events (fakeTalkEvents), one every FALA_EVERY_MS
+ *    from FALA_AT_MS (`falaEm=ms` instead) after the first frame, through the game's line timing (render/chaveiro/talk.ts)
+ *    into the zueiras' balloons; `seed=N` the room's seed.
  * The car stands at the plaza (asset point `praca`). Without `hero`, the hero stands next to the moto (or the car).
  * Deterministic from the clock only; nothing talks to the server.
  */
 import {M} from '../render/chaveiro/iso.ts';
 import type {ChaveiroView,MotoMode,StopKind} from '../render/chaveiro/view.ts';
+import type {LooseEvent} from '../render/chaveiro/talk.ts';
 
 type Pt={x:number;y:number};
 /** anda=: how far the car swings each way (units) and the loop (ms): ≈ 1.6 u/s at the middle, a mover's speed. */
 export const CAR_SWING_U=1.5,CAR_SWING_MS=6000;
 /** anda=: the car's offset from its spot at `now` (units) along `heading` (radians). */
 export const carSwing=(now:number,heading:number)=>{const s=CAR_SWING_U*Math.sin(now/CAR_SWING_MS*Math.PI*2);return {x:Math.cos(heading)*s,y:Math.sin(heading)*s};};
+/** empurrando=: the stretch the car rolls before it starts over (units). */
+export const PUSH_SPAN_U=8;
+/** empurrando=: the car's offset from its spot at `now` (units), rolling ahead along `heading` at `speed` u/s. */
+export const carRoll=(now:number,heading:number,speed:number)=>{const s=(now/1000*speed)%PUSH_SPAN_U-PUSH_SPAN_U/2;return {x:Math.cos(heading)*s,y:Math.sin(heading)*s};};
 const MODES:readonly MotoMode[]=['anda','lombada','volta','morta','entrega','tombo','abrindo'];
 /** The moto parks this far behind the car's back (units) when he arrives. */
 const CAR_STOP=3.2*M;
@@ -63,8 +74,15 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
   const stops=STOPS.map(s=>({kind:s.kind,...along(route,s.at),s:+(s.at*routeLength(route)).toFixed(2)}));
   const fixedParts=Math.max(0,Math.min(15,Number(params.get('pecas'))|0)),cycle=params.get('cai')==='1';
   const alarm=params.get('alarme')==='1';
+  // Card inimigos-querem-o-uno: `apanha=1` the car takes 2 hits every APANHA_MS from `pancadas` (the numbers, the flash,
+  // and under 30 % the hood's smoke), round again once it would break.
+  const beating=params.get('apanha')==='1';
   const ended=params.get('fim')==='vitoria'?'victory':params.get('fim')==='derrota'?'defeat':undefined;
   const swing=params.has('anda')?(Number(params.get('anda'))||0)*Math.PI/180:undefined;
+  // `junto=<classe>` (puxar-uno-corda): a second hero (`junto`) on the other end: it pushes while `voce` pulls (puxando=1),
+  // it pulls on the rope while `voce` pushes, as a helper (bot) takes the free rope.
+  const mate=params.has('junto');
+  const roll=params.has('empurrando')?(Number(params.get('empurrando'))||0)*Math.PI/180:undefined,rollSpeed=Number(params.get('vel'))||3.6;
   const pushParam=params.has('empurra')?Math.max(0,Math.min(1,Number(params.get('empurra')))):undefined;
   const stillMode:MotoMode=ended==='victory'?'abrindo':mode;
   const stillAt=stillMode==='anda'?.15:stillMode==='abrindo'?1:MODE_AT[stillMode];
@@ -74,7 +92,8 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
     const tick=Math.floor(now/100);
     const parts=cycle?(1<<(Math.floor(now/2500)%5))-1:ended==='defeat'?15:fixedParts;
     const fell=[1,2,4,8].filter(b=>parts&b).length;
-    const hits=Number(params.get('pancadas'))||(ended==='defeat'?80:fell*20);
+    const hits=beating?(Number(params.get('pancadas'))||0)+Math.floor(now/APANHA_MS)*2%Math.max(2,80-(Number(params.get('pancadas'))||0)):
+      Number(params.get('pancadas'))||(ended==='defeat'?80:fell*20);
     const t=stillMode==='anda'?(now%LOOP_MS)/LOOP_MS:stillAt;
     const moto=stillMode==='anda'?along(route,t):motoStill;
     const total=routeLength(route),speed=total/(LOOP_MS/1000);
@@ -85,9 +104,29 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
       moto:{...moto,mode:stillMode,...(stillMode==='morta'?{push:pushParam??((now%4000)/4000)}:{})},
       etaS,alarmUntil:alarm?tick+50:0,
       ...(delivery?{delivery}:{}),
-      car:{...(swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts},
+      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:mate?['voce','junto']:['voce'],...(params.get('puxando')==='1'?{rope:'voce'}:mate?{rope:'junto'}:{})}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts,
+        // puxar-uno-corda: the room sends the nose; here it lies along the move.
+        ...((roll??swing)?{heading:roll??swing}:{})},
       route,stops,...(ended?{ended}:{}),
     };
     return {view,tick};
   }};
+}
+
+/** `apanha=1`: a blow on the car every this many ms. */
+export const APANHA_MS=700;
+/** `fala=`: the first moment's event at FALA_AT_MS, then one every FALA_EVERY_MS (past the cast's line gap). */
+export const FALA_AT_MS=1200,FALA_EVERY_MS=5000;
+/** The protocol-15 event (or main's boss arrival) of each `fala=` moment. */
+const FALA_EVENTS:Readonly<Record<string,LooseEvent>>={
+  alarme:{type:'alarm',untilTick:0},venda:{type:'sale',enemy:'e1'},compra:{type:'buy',player:'self',item:'cocada'},
+  peca:{type:'part',name:'porta'},chefe:{type:'boss-phase',enemy:'boss',phase:1},acordou:{type:'acordou',x:0,y:0,n:4},sozinha:{type:'moto',mode:'tranco',alone:true},
+  ...Object.fromEntries(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou'].map(m=>[m,{type:'moto',mode:m}])),
+};
+/** The `fala=` moments' events due in (from, to] ms (eventId: the moment's order), unknown names skipped. */
+export function fakeTalkEvents(params:URLSearchParams,from:number,to:number):LooseEvent[]{
+  const names=(params.get('fala')??'').split(',').filter(n=>Object.hasOwn(FALA_EVENTS,n));
+  const out:LooseEvent[]=[],first=params.has('falaEm')?Number(params.get('falaEm'))||0:FALA_AT_MS;
+  names.forEach((n,i)=>{const at=first+i*FALA_EVERY_MS;if(at>from&&at<=to)out.push({...FALA_EVENTS[n],eventId:i});});
+  return out;
 }

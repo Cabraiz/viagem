@@ -10,8 +10,9 @@ import {
 } from '../../src/rules/offers.ts';
 import type {ItemCatalog} from '../../src/rules/offers.ts';
 import {computeStats} from '../../src/rules/stats.ts';
-import {COLLECT_RADIUS,HOME_ANY,createProgression,createTeamProgress,xpToNext} from '../../src/sim/progression.ts';
+import {COLLECT_RADIUS,HOME_ANY,SOLO_EARLY_LEVEL,SOLO_EARLY_XP,createProgression,createTeamProgress,xpToNext} from '../../src/sim/progression.ts';
 import type {ProgressionOptions,ProgressionState} from '../../src/sim/progression.ts';
+import {initialTeam} from '../../src/sim/core.ts';
 
 // ---------- Fake catalog ----------
 const WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
@@ -80,7 +81,7 @@ interface PlayerInit {
 function addPlayer(ctx:FakeCtx,id:string,init:PlayerInit={}):SimPlayer{
   const p:SimPlayer={
     id,classId:'turista',x:init.x??5,y:init.y??5,hp:init.hp??100,online:init.online??true,spectator:init.spectator??false,
-    facing:{x:1,y:0},build:init.build??{weapons:[{id:'chinelo',level:1}],passives:[]},
+    facing:{x:1,y:0},build:init.build??{weapons:[{id:'pombo',level:1}],passives:[]},
     stats:{...BASE_STATS,...init.stats},weaponReady:{},
   };
   if(init.eliminated)p.eliminated=true;
@@ -131,10 +132,12 @@ function fullBuild():PlayerBuild{
 }
 
 // ---------- 1. XP curve ----------
-test('xpToNext follows the 5 / +10 / +13 / +16 curve and team progress starts at level 1',()=>{
-  assert.equal(xpToNext(1),5);
-  assert.equal(xpToNext(2),15);
-  assert.equal(xpToNext(3),25);
+test('xpToNext follows the 4 / 10 / 20, then 35 / +10 / +13 / +16 curve and team progress starts at level 1',()=>{
+  // levelup-espalhado: levels 2 and 3 cheaper (14 XP to level 3, was 20); level 4 on is the old curve.
+  assert.equal(xpToNext(1),4);
+  assert.equal(xpToNext(2),10);
+  assert.equal(xpToNext(3),20);
+  assert.equal(xpToNext(4),35);
   assert.equal(xpToNext(19),185);
   assert.equal(xpToNext(20),195);
   assert.equal(xpToNext(21),208);
@@ -146,7 +149,8 @@ test('xpToNext follows the 5 / +10 / +13 / +16 curve and team progress starts at
     assert.ok(Number.isInteger(xpToNext(l)));
     assert.ok(xpToNext(l+1)>xpToNext(l),`curve must grow at ${l}`);
   }
-  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:5});
+  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:4});
+  assert.deepEqual(initialTeam(),createTeamProgress(),'the world starts on the same curve (core.ts used to pin nextXp 5)');
   assert.notEqual(createTeamProgress(),createTeamProgress(),'fresh object each call');
 });
 
@@ -400,13 +404,13 @@ test('two level-ups in one tick produce two queued offers per eligible player, o
 test('xp just below the threshold does not level; leftover xp carries over',()=>{
   const {ctx,tick}=setup();
   addPlayer(ctx,'a');
-  ctx.team.xp=4;
+  ctx.team.xp=3.9;
   tick(1);
   assert.equal(ctx.team.level,1);
   assert.equal(ctx.offers.size,0);
-  ctx.team.xp=5+7;
+  ctx.team.xp=4+7;
   tick(1);
-  assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:15});
+  assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:10});
 });
 
 test('high luck yields a fourth choice; luck 1 always three',()=>{
@@ -928,6 +932,7 @@ test('same seed and same actions give identical offers, builds and events',()=>{
 test('dropLoot (D-054): the kill XP goes straight to the team, no gem; a chest only for non-boss elites',()=>{
   const {ctx,sim}=setup();
   addPlayer(ctx,'a',{x:2,y:2});
+  addPlayer(ctx,'b',{x:30,y:30});   // not solo (SOLO_EARLY_XP has its own test)
   ctx.tick=42;
   const plain=sim.dropLoot(ctx,makeEnemy('e1',7,8,{xp:3}),'a');
   assert.equal(ctx.team.xp,3,'XP at the kill');
@@ -956,17 +961,36 @@ test('dropLoot (D-054): the killer growth multiplies the XP; with no hero behind
   assert.equal(ctx.team.xp,14,'no XP, nothing');
 });
 
-test('dropLoot: huge killer luck makes heal drops appear, never a magnet; luck 1 rarely',()=>{
+test('dropLoot (levelup-espalhado): solo, the XP is ×SOLO_EARLY_XP below SOLO_EARLY_LEVEL; a second hero (a bot too) or level 3 ends it',()=>{
+  const {ctx,sim}=setup();
+  addPlayer(ctx,'a',{x:2,y:2,stats:{growth:1.4}});
+  addPlayer(ctx,'s',{x:9,y:9,spectator:true});
+  sim.dropLoot(ctx,makeEnemy('e1',7,8,{xp:2}),'a');
+  assert.equal(SOLO_EARLY_XP,1.5);assert.equal(SOLO_EARLY_LEVEL,3);
+  assert.ok(Math.abs(ctx.team.xp-2*1.4*1.5)<1e-9,'solo (a spectator does not count): 2 × 1.4 × 1.5');
+  ctx.team.level=SOLO_EARLY_LEVEL;ctx.team.xp=0;
+  sim.dropLoot(ctx,makeEnemy('e2',7,8,{xp:2}),'a');
+  assert.ok(Math.abs(ctx.team.xp-2*1.4)<1e-9,'from level 3 on, the plain XP');
+  ctx.team.level=1;ctx.team.xp=0;
+  addPlayer(ctx,'bot',{x:3,y:3});
+  sim.dropLoot(ctx,makeEnemy('e3',7,8,{xp:2}),'a');
+  assert.ok(Math.abs(ctx.team.xp-2*1.4)<1e-9,'two heroes: the plain XP');
+});
+
+test('levelup-espalhado: solo, 2 kills of 1 XP at growth 1.4 (the city before the nests) reach level 2',()=>{
+  const {ctx,sim}=setup();
+  addPlayer(ctx,'a',{x:2,y:2,stats:{growth:1.4}});
+  for(const id of ['k1','k2'])sim.dropLoot(ctx,makeEnemy(id,7,8,{xp:1}),'a');
+  assert.ok(ctx.team.xp>=xpToNext(1),`${ctx.team.xp} ≥ ${xpToNext(1)} (was 2.8 < 5)`);
+});
+
+test('dropLoot (sem-coxinha-no-chao): no coxinha nor magnet falls, whatever the killer luck; only the chest of an elite',()=>{
   const {ctx,sim}=setup();
   addPlayer(ctx,'lucky',{x:2,y:2,stats:{luck:1e9}});
   const kinds=new Set<string>();
   for(let i=0;i<60;i++)for(const p of sim.dropLoot(ctx,makeEnemy(`l${i}`,10,10,{xp:1}),'lucky'))kinds.add(p.kind);
-  assert.deepEqual([...kinds],['heal']);
-  const plain=setup(7);
-  addPlayer(plain.ctx,'a',{x:2,y:2});
-  let extras=0;
-  for(let i=0;i<60;i++)extras+=plain.sim.dropLoot(plain.ctx,makeEnemy(`n${i}`,10,10,{xp:1}),'a').filter(p=>p.kind==='heal').length;
-  assert.ok(extras<30,`luck 1 drops should be uncommon, got ${extras}/60`);
+  assert.deepEqual([...kinds],[]);
+  assert.ok(![...ctx.pickups.values()].some(p=>p.kind==='heal'));
 });
 
 test('unreachable drop (the chest of an elite) homes to the nearest collector and is collected',()=>{
@@ -1029,7 +1053,7 @@ test('unreachable drop while nobody can collect waits and then homes to the firs
   delete a.downed;
   tick(60);
   assert.ok(!ctx.pickups.has(chest.id),'delivered');
-  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,2],'7 xp at the kill, once (5 for level 2, 2 left)');
+  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,6.5],'7 xp ×1.5 (solo, SOLO_EARLY_XP) at the kill, once (4 for level 2, 6.5 left)');
 });
 
 test('round offers are skipped after the last round and queued offers show a chained deadline',()=>{

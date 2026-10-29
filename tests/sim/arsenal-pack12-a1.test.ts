@@ -1,7 +1,7 @@
-// NEW-20261022-ORQ-arsenal-completo-no-bau, fatia A1: the eleven Pack 12 weapons on the sim's own patterns, through
-// the real weapon and projectile systems (manual combat, attack held): every one hurts an enemy in its reach, and each
-// type does its own thing (the sacolé slows, the tampa comes back, the figa blocks, the traque scatters, the tarô fans,
-// the espeto pierces, the buscapé homes, the rings circle).
+// NEW-20261022-ORQ-arsenal-completo-no-bau, fatia A1: the Pack 12 weapons on the sim's own patterns (eight since the
+// rings left the game: sem-arma-girando-no-chao), through the real weapon and projectile systems (manual combat, attack
+// held): every one hurts an enemy in its reach, and each type does its own thing (the sacolé slows, the tampa comes
+// back, the traque scatters, the tarô fans, the espeto pierces, the buscapé homes).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
@@ -13,6 +13,7 @@ import {createWeaponSystem,manualReach} from '../../src/sim/weapons/system.ts';
 import {createProjectileSystem,type WeaponProjectile} from '../../src/sim/projectiles.ts';
 import {getWeapon,resolveWeapon} from '../../src/sim/weapons/catalog.ts';
 import {A1_PLAYABLE} from '../../src/sim/weapons/pack12.ts';
+import {THROW_TICKS} from '../../src/rules/index.ts';
 
 interface Fake extends SimContext {tick:number;players:Map<string,SimPlayer>;events:{tick:number;event:SimEvent}[]}
 function naiveIndex():SpatialIndex<EnemyState>{
@@ -49,8 +50,8 @@ function arena(weapon:string,level:number,enemies:readonly {x:number;y:number}[]
 }
 const reachOf=(id:string)=>manualReach(resolveWeapon(getWeapon(id)!,1,BASE_STATS)).reach;
 
-test('A1: every one of the eleven is a catalog weapon, rarities from its minimum, and hurts an enemy in its reach',()=>{
-  assert.equal(A1_PLAYABLE.length,11);
+test('A1: every one of the eight is a catalog weapon, rarities from its minimum, and hurts an enemy in its reach',()=>{
+  assert.equal(A1_PLAYABLE.length,8);
   for(const id of A1_PLAYABLE){
     const def=getWeapon(id);assert.ok(def?.pattern,id);
     // Just inside the reach for the aimed ones; the rings touch what stands on them.
@@ -78,21 +79,10 @@ test('A1 tampa-voadora: the lid flies out and comes back (boomerang), through ev
   assert.ok(Math.sign(lid.vx)===-Math.sign(vx),'comes back');
 });
 
-test('A1 figa: its two charms circle the hero and block hostile shots; the pandeiro and the vela do not block',()=>{
-  const a=arena('figa',1,[{x:1.2,y:0}]);
-  a.run(2);
-  const ring=a.seen.filter(p=>p.source==='figa');
-  assert.equal(ring.length,2);assert.ok(ring.every(p=>p.motion==='orbit'&&p.blocksHostile));
-  for(const id of ['pandeiro','vela-esoterica']){
-    const b=arena(id,1,[{x:getWeapon(id)!.levels[0].area,y:0}]);b.run(2);
-    const own=b.seen.filter(p=>p.source===id);
-    assert.equal(own.length,3,id);assert.ok(own.every(p=>p.motion==='orbit'&&!p.blocksHostile),id);
-  }
-});
-
 test('A1 traque: four small bursts ring the target at the scatter distance',()=>{
   const a=arena('traque',2,[{x:4,y:0}]);
-  a.run(2);
+  // Thrown (rules/thrown.ts): they fly THROW_TICKS from the hero, then land around the target.
+  a.run(THROW_TICKS+1);
   const pops=a.seen.filter(p=>p.source==='traque');
   assert.equal(pops.length,4);
   for(const p of pops)assert.ok(Math.abs(Math.hypot(p.x-14,p.y-10)-1)<1e-6,'1 u from the target');
@@ -122,7 +112,7 @@ test('A1 buscapé: a homing firework; the tijolo lands where the enemy stands, f
   a.run(2);
   assert.ok(a.seen.some(p=>p.source==='buscape'&&p.motion==='homing'));
   const b=arena('tijolo-baiano',1,[{x:10,y:0}]);
-  b.run(2);
+  b.run(THROW_TICKS+1);
   const brick=b.seen.find(p=>p.source==='tijolo-baiano')!;
   assert.ok(brick);assert.ok(Math.hypot(brick.x-20,brick.y-10)<1e-6);assert.ok(b.hurt()>0);
 });

@@ -2,10 +2,20 @@
  * Terminal connection message (UX onda 4, VGM-042b): the reason the client stopped for good and an "Atualizar"
  * button that reloads the page. Inside the game there is no pull-to-refresh (explore.css overscroll), and in the
  * WhatsApp/Instagram browsers the reload lives in a menu, so the button is the way out.
+ * A "versão nova" message (needsUpdate) never leaves the player stuck (BUG-20261024-ORQ-arrastar-atualiza-versao-nova):
+ * short title, "Atualizar agora", and the page asks the site's build every few seconds with a countdown, reloading by
+ * itself once the new one is out (ui/update-retry.ts). The site naming this same build twice: it was the link, not a
+ * version (nao-e-versao-nova), so the button becomes "Reconectar" (`reconnect`; by default a reload, which takes the
+ * seat back through ?sala= and the saved token).
  */
 import './net-fatal.css';
 import {needsUpdate} from '../protocol/index.ts';
+import {updateNow} from './ui/update-toast.ts';
+import {fetchBuildId} from './ui/version-watch.ts';
+import {UPDATE_TEXT,retryLine,startUpdateRetry,type UpdateRetry} from './ui/update-retry.ts';
 export {needsUpdate};
+
+type Panel=HTMLElement&{action?:()=>void;retry?:UpdateRetry};
 
 /** The way back after a terminal drop in a room (LINK_LOST): the room's invite link, not a reload. */
 export const BACK_TO_ROOM='Voltar pra sala';
@@ -15,25 +25,49 @@ export const BACK_TO_ROOM='Voltar pra sala';
  * `action` replaces the reload (kicked from the room, D-025: reloading would knock on the same door); `title` goes
  * above the text in the poster voice (Londrina 21, left), and the window then reads left-aligned.
  */
-export function showFatal(host:HTMLElement,message:string,{inline=false,action,title}:{inline?:boolean;action?:{label:string;run():void};title?:string}={}):HTMLElement{
-  let panel=host.querySelector<HTMLElement>(':scope > .net-fatal');
+export function showFatal(host:HTMLElement,message:string,{inline=false,action,title,reconnect}:{inline?:boolean;action?:{label:string;run():void};title?:string;reconnect?:()=>void}={}):HTMLElement{
+  let panel=host.querySelector<Panel>(':scope > .net-fatal');
   if(!panel){
     panel=document.createElement('div');panel.className='net-fatal';panel.setAttribute('role','alert');
     const heading=document.createElement('h2');heading.className='net-fatal-title';heading.hidden=true;
     const text=document.createElement('p');text.className='net-fatal-text';
+    const status=document.createElement('p');status.className='net-fatal-status';status.setAttribute('role','status');status.hidden=true;
     const reload=document.createElement('button');reload.type='button';reload.className='net-fatal-reload';reload.textContent='Atualizar';
-    reload.addEventListener('click',()=>{const run=(panel as HTMLElement&{action?:()=>void}).action;if(run)run();else location.reload();});
-    panel.append(heading,text,reload);host.append(panel);
+    reload.addEventListener('click',()=>{const run=(panel as Panel).action;if(run)run();else updateNow();});
+    panel.append(heading,text,status,reload);host.append(panel);
   }
-  (panel as HTMLElement&{action?:()=>void}).action=action?.run;
-  panel.querySelector('.net-fatal-reload')!.textContent=action?.label??'Atualizar';
+  const update=!action&&needsUpdate(message);
+  panel.action=action?.run;
+  panel.querySelector('.net-fatal-reload')!.textContent=action?.label??(update?UPDATE_TEXT.button:'Atualizar');
   panel.dataset.kind=action?'exit':'reload';
   panel.classList.toggle('net-fatal-inline',inline);
   const heading=panel.querySelector<HTMLElement>('.net-fatal-title')!;heading.hidden=!title;heading.textContent=title??'';
   panel.classList.toggle('net-fatal-titled',!!title);
   panel.dataset.update=String(needsUpdate(message));
-  panel.querySelector('.net-fatal-text')!.textContent=message;
+  panel.querySelector('.net-fatal-text')!.textContent=update?UPDATE_TEXT.title:message;
+  const status=panel.querySelector<HTMLElement>('.net-fatal-status')!;
+  if(!update){panel.retry?.stop();panel.retry=undefined;status.hidden=true;}
+  else if(!panel.retry){
+    status.hidden=false;
+    panel.retry=startUpdateRetry({current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),reload:()=>updateNow(),
+      show:state=>{
+        if(!panel!.isConnected){panel!.retry?.stop();return;}
+        status.textContent=retryLine(state);
+        if(state.kind==='stuck'&&panel!.dataset.kind!=='reconnect'){
+          panel!.dataset.kind='reconnect';panel!.action=reconnect??(()=>location.reload());
+          panel!.querySelector('.net-fatal-text')!.textContent=UPDATE_TEXT.stuckTitle;
+          panel!.querySelector('.net-fatal-reload')!.textContent=UPDATE_TEXT.reconnect;
+        }
+      },
+      setTimeout:(h,ms)=>window.setTimeout(h,ms),clearTimeout:id=>window.clearTimeout(id as number)});
+  }
   return panel;
+}
+
+/** Takes the panel away (the client reconnected after "Reconectar"); its asks stop with it. */
+export function hideFatal(host:HTMLElement){
+  const panel=host.querySelector<Panel>(':scope > .net-fatal');
+  panel?.retry?.stop();panel?.remove();
 }
 
 /** After this long trying to get back, the reconnect banner gets a second line and a way out (UX onda 5, B13). */

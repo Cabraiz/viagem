@@ -6,6 +6,8 @@
  * (`t`, ms; the chaveiro's animations read it), so a scene prints the same every time.
  * tools/foto.mjs asks a shared browser for these pages (ESCALA.md "como pedir uma foto"); any extra query parameter
  * (view=1, zoom=0.79, t=4000, hero=…) passes through to the sandbox.
+ * `hero=cx,cy` is in cells of the current map (public/maps/cidade-nevada.json, v7: 110 × 110 cells, the praça at
+ * 54.5,56.5); tests/client/foto-pontos.test.ts keeps every scene's spot on open walkable ground, so a new map moves them.
  */
 
 export type FotoSandbox='cidade'|'hud'|'obra'|'config'|'elenco';
@@ -29,33 +31,55 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  // The game shows 2 balloons at once at most (legibility.ts): the cast's lines take two scenes.
+  'chaveiro-falas':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=part,acordou&seed=2'),descricao:'falas do chaveiro: o Tio ao lado do carro (peça caiu) e a Cida na moto (ninho acordou)'},
+  'chaveiro-falas-2':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=abrindo,volta&seed=7'),descricao:'falas do chaveiro: ele na porta (abrindo) e o alarme do Quadradão'},
+  'chaveiro-falas-3':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000&fala=puxa,empurra&seed=3'),descricao:'falas do chaveiro: o Quadradão puxado na corda (puxa) e empurrado (empurra)'},
   'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
   'muralha-tralha':{...chaveiro('moto=entrega','&obra=1&muralha=1'),descricao:'barricada-2x: a muralha de tralha, 2 fileiras de 5 quadrados 2×2 (inteiros atrás, avariados na frente)'},
   'muralha-juntas':{...chaveiro('moto=entrega','&obra=1&muralha=2'),descricao:'barricada-2x: L, T e um quadrado sozinho (meias peças + pilar)'},
   'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
-  'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=120,140',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},
+  'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=36,97',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},
+  'corda-livre':{...chaveiro('moto=entrega','&obra=1&corda=livre'),descricao:'puxar-uno-corda: a corda caída no chão na frente do Uno, o laço na ponta'},
+  'corda-empurrando':{...chaveiro('moto=entrega','&empurrando=-40&t=1000'),descricao:'puxar-uno-corda: empurrando o Uno, a corda caída na frente'},
   'carro-andando':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000'),descricao:'D-052: o carro puxado na corda, virado para o movimento, rodas girando'},
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
-  'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
-  'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
-  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=95,100',descricao:'sombras: o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
-  'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=95,100',descricao:'luta: todo o elenco ferido (barras de vida), itens no chão, telegraphs'},
-  'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
-  'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=156,74',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
-  'veiculos':{sandbox:'cidade',query:'mapa=real&tele=1&veiculos=1&hero=95,100',descricao:'veículos: patinete, carrinho e crossfiteiro estacionados; o herói no carrinho (chip com 60 % da corrida)'},
-  'bancos-aberto':{sandbox:'cidade',query:'mapa=real&bancos=1&banco=aberto&hero=156,74',descricao:'bancos: os três cheios, ninguém no caixa'},
-  'arsenal':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&hero=112,182',descricao:'D-051: caixas por raridade (uma abrindo, uma estourando), itens no chão, arma na mão e o tiro (arma=pistola|escopeta|…; padrão: as 7 em ciclo)'},
-  'ataque-mira':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&arrasto=-40,-50',descricao:'ataque manual (D-051): arrasto do botão Atacar, linha amarela e retícula'},
-  'ataque-auto':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&segura=1',descricao:'ataque manual (D-051): Atacar segurado, retícula na mira automática'},
-  'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
+  'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=59,74.5',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
+  'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=58,76',descricao:'cidade com a régua ao lado do poste e das casas'},
+  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=20,76.5',descricao:'sombras no terreiro de neve do boteco (oeste): o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
+  'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=30,56',descricao:'luta na avenida oeste: todo o elenco ferido (barras de vida), itens no chão, telegraphs'},
+  'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=54.5,57.5',descricao:'a praça e o chafariz'},
+  // Card foto-cenas-cidade: a dead-end alley 2 cells (3 u) wide between two blocks, south of the praça, a lit post at its end.
+  'cidade-beco':{sandbox:'cidade',query:'mapa=real&hero=59,69',descricao:'beco sem saída entre dois prédios (2 células de largura), o poste aceso no fundo'},
+  'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=53,56.5',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
+  'veiculos':{sandbox:'cidade',query:'mapa=real&tele=1&veiculos=1&hero=43.5,57',descricao:'veículos: patinete, carrinho e crossfiteiro estacionados; o herói no carrinho (chip com 60 % da corrida)'},
+  'bicos-trabalhar':{sandbox:'cidade',query:'mapa=real&bancos=1&bicos=1&turno=0&acao=1&hero=53,56.5',descricao:'bicos (etapa 4): o herói no anel da loja aberta, o botão Atacar vira Trabalhar na cor de interação'},
+  'bicos-turno':{sandbox:'cidade',query:'mapa=real&bancos=1&bicos=1&turno=1&acao=1&hero=53,56.5',descricao:'bicos (etapa 4): o herói no turno (sumiu na porta acesa), "Você no turno" na placa, o botão No turno'},
+  'bancos-aberto':{sandbox:'cidade',query:'mapa=real&bancos=1&banco=aberto&hero=53,56.5',descricao:'bancos: os três cheios, ninguém no caixa'},
+  'arsenal':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&hero=36,97',descricao:'D-051: caixas por raridade (uma abrindo, uma estourando), itens no chão, arma na mão e o tiro (arma=pistola|escopeta|…; padrão: as 7 em ciclo)'},
+  'ataque-mira':{sandbox:'cidade',query:'mapa=real&hero=54.5,57.5&n=8&parado=1&acao=1&arrasto=-40,-50',descricao:'ataque manual (D-051): arrasto do botão Atacar, linha amarela e retícula'},
+  'ataque-auto':{sandbox:'cidade',query:'mapa=real&hero=54.5,57.5&n=8&parado=1&acao=1&segura=1',descricao:'ataque manual (D-051): Atacar segurado, retícula na mira automática'},
+  // auditoria-ui-menus item 19: the HUD scenes open on the city, as the game does now (not the old green island).
+  'hud-topo':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1',descricao:'HUD em onda na cidade (topo, time, controles)'},
+  // Card objetivo-com-verbo: the mission line, one verb at a time, and its edge arrow.
+  'objetivo-caixas':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&explora=80&caixas=2',descricao:'objetivo-com-verbo: "Junte caixas em dupla (2)" na exploração'},
+  'objetivo-ninhos':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Derrube os ninhos (6)" e a seta para o ninho mais perto'},
+  'objetivo-moto':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=tombo&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Chaveiro caiu: tire os bichos" e a seta da moto'},
+  'objetivo-escuro':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&escuro=.7',descricao:'objetivo-com-verbo: o escuro aperta, "Volte ao Uno!" e a seta do Uno'},
   'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
-  'aura':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&arma=pistola&aura=3&hero=112,182',descricao:'upgrades-megabonk: a fumaça pintada do Defumador (aura de dano, nível 3) no herói e, mais fraca, no aliado'},
+  'aura':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&arma=pistola&aura=3&hero=36,97',descricao:'upgrades-megabonk: a fumaça pintada do Defumador (aura de dano, nível 3) no herói e, mais fraca, no aliado'},
+  'oferta-sem-xp':{sandbox:'hud',query:'state=offer-sem-xp&frozen=1',descricao:'ofertas-sem-xp-e-icones: o print do usuário (estilingue, cartão com cashback, café), todos com ícone'},
   'oferta-tomos':{sandbox:'hud',query:'state=offer-tomos&frozen=1',descricao:'upgrades-megabonk: os tomos na tela de nível (+1 projétil, aura, estilingue, dano)'},
-  'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
+  // sandbox-hud puts the hero by the plaza's wall with state=camp-forge and turns the forge on (off in the game, user 18/10).
+  'forja':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=camp-forge&frozen=1',descricao:'forja no intervalo, na cidade (a janela como abriria; desligada no jogo)'},
   'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},
   'carro-soltar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=corda',descricao:'D-052 HUD: Soltar (na corda)'},
   'carro-obra':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=obra-muro',descricao:'D-052 HUD: a bandeja de Construir aberta (Muro escolhido)'},
+  'perfil-inimigo':{sandbox:'hud',query:'state=wave&frozen=1&perfis=3&perfis-abre=1',descricao:'nome-inimigo-rede-social: toque no foguinho, o último match em cartão compacto'},
+  'matches-foguinho':{sandbox:'hud',query:'state=wave&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: o foguinho com o contador de matches, abaixo da engrenagem'},
+  'nome-elite-chefao':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=tio-pave,agiota,bebado,coach,mapinguari-do-shopping&elite=tio-pave,agiota&chefao=mapinguari-do-shopping&caido=agiota&ferido=1',descricao:'nome-inimigo-rede-social, etapa 7: o nome do perfil sobre elite e chefão e "Te derrubou: X" sob a ficha de caído'},
+  'matches-resultado':{sandbox:'hud',query:'state=result&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: "Seus matches" no resultado, figurinhas tortas'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.
   'pausa-escolhendo':{sandbox:'hud',query:'pausa=escolhendo&frozen=1&heroi=1',descricao:'pausa do level-up: oferta aberta, 10 s, esperando você, Tia e Bruninha'},
@@ -64,6 +88,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
   'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Morteiro (roxa) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
   'kit-obra':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro',descricao:'torre-pela-caixa: o Morteiro do kit em obra e o fantasma verde do próximo'},
+  'kit-barricada':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada',descricao:'barricada-tocar-no-mapa: o fantasma da barricada = a própria arte (amarelo) sobre a pegada 2×1'},
+  'kit-barricada-giro':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada&giro=1',descricao:'barricada-tocar-no-mapa: o mesmo fantasma girado (arrastou no outro eixo)'},
   'kit-recusa':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro&fantasma=ocupado',descricao:'torre-pela-caixa: o fantasma vermelho em cima da obra'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
   // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").

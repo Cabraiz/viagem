@@ -2,24 +2,32 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,HurtGate,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
+import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,hasBuild16,buildPlan,hasWork16,workPlan,downedPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
 import {watchOrphans} from './texture-orphans.ts';
 import {handPoint,type HandPoint} from './hand-points.ts';
-import type {HeroDirection} from './sprite-motion.ts';
+import {HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
+import {DanceGate,type DanceCue} from './hero-dance.ts';
 
 export type {FigureBox};
 /** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
 interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
 /** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen (`geom`: the city copy shown). */
 export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
+/**
+ * A walk as drawn (card som-passos-fora-do-eixo): the cycles walked since it started (`since`, the scene's clock) up to
+ * the frame drawn at `at` (same clock), and the points of the cycle (0..1) where the sheet shown plants a foot: the run
+ * and push phase tables' (phaseContacts), else pose 0 and the middle pose of a looping clip (LOOP_CONTACTS).
+ */
+export interface Gait {cycles:number;contacts:readonly number[];since:number;at:number}
+export const LOOP_CONTACTS:readonly number[]=[0,.5];
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 
 /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas) of one texture. */
@@ -132,7 +140,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite;downSince?:number}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -162,6 +170,10 @@ export class CharacterSprites {
    */
   queueOwnWalk(id:string){
     for(const plan of movementSheets(id,'walk'))this.queueDetailed(plan);
+    // The flinch (animacao-receber-dano) and the build (animacao-construir-6): 5 small sheets each, there for the first
+    // hit and the first obra (a build sheet still coming holds the last pose, facing the wrong way).
+    const seen=new Set<string>();
+    for(const d of HERO_DIRECTIONS)for(const plan of [hurtPlan(id,d),buildPlan(id,d),workPlan(id,d)])if(plan&&!seen.has(plan.key)){seen.add(plan.key);this.queueDetailed(plan);}
   }
   private queueDetailed(plan:Movement128Plan){
     const cache=this.detailed??=movement128Textures(this.scene,this.city);
@@ -251,21 +263,54 @@ export class CharacterSprites {
    * (hand-points.ts) and how that frame is drawn. Undefined for a clip without measured hands (the legacy sheets, R06,
    * a class not measured yet): render/arsenal-fx.ts then keeps the weapon sticker at the hero's side.
    */
+  /** The walk `sprite` shows this frame (footsteps.ts steps on its contacts); undefined while it does not walk. */
+  gait(sprite:Phaser.GameObjects.Sprite):Gait|undefined{return this.states.get(sprite)?.gait;}
   handPose(sprite:Phaser.GameObjects.Sprite):HandPose|undefined{
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
     return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
   }
+  private cues=new WeakMap<Phaser.GameObjects.Sprite,DanceCue>();
+  /**
+   * Whether and since when `sprite` may dance (card danca-no-jogo, hero-dance.ts), read by its next animate(); a sprite
+   * never given a cue (the sandboxes, the ghost) never dances.
+   */
+  danceCue(sprite:Phaser.GameObjects.Sprite,cue:DanceCue){this.cues.set(sprite,cue);}
+  /** True while `sprite` shows its dance (render/arsenal-fx.ts puts the weapon away: the dance holds its own prop). */
+  dancing(sprite:Phaser.GameObjects.Sprite){return this.states.get(sprite)?.stream?.motion==='dance';}
+  /**
+   * The dance clip to show now (card danca-no-jogo), once its sheet is decoded; undefined while it is not time yet, the
+   * class has none, or the sheet is still coming (the rest goes on meanwhile). The sheet is asked for DANCE_PREFETCH_MS
+   * before the dance by a stand-in owner that lives and dies with the sprite (the cache keeps one wanted clip per owner:
+   * the sprite's own is its rest).
+   */
+  private danceClip(sprite:Phaser.GameObjects.Sprite,state:{dance:DanceGate;fetcher?:Phaser.GameObjects.Sprite},id:string,start:number|undefined){
+    const plan=state.dance.prefetch?dancePlan(id):undefined,cache=this.detailed??=movement128Textures(this.scene,this.city);
+    if(!plan){if(state.fetcher){cache.release(state.fetcher);state.fetcher=undefined;}return;}
+    state.fetcher??=danceFetcher(sprite);
+    cache.request(state.fetcher,plan);
+    return start!==undefined&&cache.status(plan.key)==='ready'?plan:undefined;
+  }
   /**
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
+   * `push` (card empurrar-uno): the world direction to the Uno while this hero pushes it (ObjectiveView.car.movers, not
+   * the rope): a class with a push16 faces it and plays the push by the ground walked (its pose held while the car is
+   * stuck); the others keep their walk. With `pull` (card puxar-uno-corda) it holds the rope instead: the direction is
+   * away from the car and a class with a pull16 plays it the same way (the fists behind its hips, the rope from them).
+   * `hp` (card animacao-receber-dano): the hero's hit points; a drop while it rests plays its hurt16 flinch (HurtGate).
+   * `build` (card animacao-construir-6): the world direction to an obra going up next to the hero (buildFacing); a class
+   * with a build16 standing still faces it and loops its build, the weapon put away. Walking drops it at once.
+   * With `work` (card animacao-trabalhar-6: on a bico's shift, workFacing) the same with its work16 loop instead.
+   * `downed` (card queda-6-herois): the hero is caído (not out, not offline); a class with a downed16 plays its fall from
+   * the moment it went down and holds the last pose, lying, until lifted (the scene turns only the classes without one).
    */
-  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},
+  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number;pull?:boolean},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number}){
+    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean},downed=false){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0};this.states.set(sprite,state);}
+    if(!state){state={motion:new SpriteMotion(),hurt:new HurtGate(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0,dance:new DanceGate()};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
@@ -273,9 +318,22 @@ export class CharacterSprites {
     const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
-    const face=look??intent,legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
+    const pulling=!!push?.pull&&alive&&motion!=='attack'&&hasPull16(id),pushing=!!push&&!push.pull&&alive&&motion!=='attack'&&hasPush16(id);
+    const building=!!build&&alive&&motion==='idle'&&!pushing&&!pulling&&(build.work?hasWork16(id):hasBuild16(id));
+    const face=pushing||pulling?push:building?build:look??intent;
+    const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
     const seen=movement128Visible(sprite,this.scene);
-    const detailed=alive&&seen?movementPlan(id,motion,direction):undefined;
+    // A hit while resting flinches (its first and last poses are the rest's); the rest then starts over from its pose 0.
+    const hurt=state.hurt.update(this.scene.time.now,hp,alive&&motion==='idle'&&!pushing&&!pulling),flinch=hurt!==undefined&&seen?hurtPlan(id,direction):undefined;
+    if(flinch)state.phaseStarted=this.scene.time.now;
+    // Resting long enough, it dances (danca-no-jogo) once its sheet is in; meanwhile the rest goes on.
+    const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&!pulling&&!building&&hurt===undefined,this.cues.get(sprite));
+    const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
+    // A caído plays its fall (queda-6-herois) from the moment it went down, once; a class without one shows its rest,
+    // breathing, turned −90° by the scene (parado-respiracao-herois: the legacy sheet it fell back to was older art).
+    if(downed&&!alive)state.downSince??=this.scene.time.now;else state.downSince=undefined;
+    const fall=seen&&state.downSince!==undefined?downedPlan(id,direction):undefined;
+    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):fall??movementPlan(id,'idle',direction);
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -283,16 +341,18 @@ export class CharacterSprites {
     if(motion==='walk'){
       const figurePx=96*this.viewScale*HERO_DRAW_SCALE,phase=detailed?.phase;
       state.cycles+=phase?walkCycles(dx,dy,view,figurePx,phaseStride(phase),1):heroRuns(id)?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx);
-    }
+      state.gait={cycles:state.cycles,contacts:phase?phaseContacts(phase):LOOP_CONTACTS,since:state.phaseStarted!,at:this.scene.time.now};
+    }else state.gait=undefined;
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){
         const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE;
         // The walk by the ground walked, attack and rest by the clock. A run with a phase table picks its pose by the
         // ground and shifts the sprite back by the planted foot's travel within the pose: the foot stays on its spot.
-        const run=motion==='walk'&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
+        // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move; the pull too.
+        const run=(motion==='walk'||pushing||pulling)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
-          motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+          fall?swingFrame(fall,(this.scene.time.now-state.downSince!)/fall.durationMs):dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -302,12 +362,17 @@ export class CharacterSprites {
         // M16's E/NE/SE are W/NW/SW mirrored: Phaser flips inside the frame's box (city copy included, its crop is
         // symmetric), so the body's pivot column goes to 1 − x and the figure stays on the same world point.
         // The run's foot shift moves the origin the other way (in the unmirrored cell; the flip below mirrors it too).
-        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0),ay=(clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
+        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0);
+        // The dance's ground is its anchor (scripts/import-danca-jogo.mjs puts the median feet row there).
+        let ay=(clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
+        if(dancing)ay=dancing.anchor[1];
         const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
-        state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
+        // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda), or a tool in them (animacao-construir-6):
+        // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned: no hand fits.
+        state.hand=pushing||pulling||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
@@ -365,4 +430,13 @@ export class CharacterSprites {
     state.hand=undefined;
     if(state.stream||this.detailed){state.stream=undefined;if(detailed)this.detailed?.unbind(sprite);else this.detailed?.release(sprite);}
   }
+}
+
+/** The pose of a dance `ms` after it started, looping: a class's own loop at its pace, the menu's poses DANCE_RATE times faster (plan.rate). */
+export const danceFrame=(plan:Pick<Movement128Plan,'durationMs'|'frameCount'|'rate'>,ms:number)=>
+  Math.floor(Math.max(0,ms)*(plan.rate??1)/plan.durationMs*plan.frameCount)%plan.frameCount;
+/** A cache owner standing for `sprite` (its scene, visibility and destroy event), to fetch the dance sheet ahead. */
+function danceFetcher(sprite:Phaser.GameObjects.Sprite):Phaser.GameObjects.Sprite{
+  return {get scene(){return sprite.scene;},get active(){return sprite.active;},get visible(){return sprite.visible;},
+    once:(event:string,fn:()=>void)=>sprite.once(event,fn)} as unknown as Phaser.GameObjects.Sprite;
 }

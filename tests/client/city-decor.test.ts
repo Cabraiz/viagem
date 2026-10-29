@@ -7,7 +7,7 @@ import {blockPieces,buildChunks,type BlockPiece,type CityChunk} from '../../src/
 import {groundQuads,pieceGeometry,viewSide} from '../../src/client/render/city/faces.ts';
 import * as palette from '../../src/client/render/city/palette.ts';
 import {BLOCK_COLORS,CITY_PALETTE,MATERIALS,SHADOW,WALL_STONE,luminance} from '../../src/client/render/city/palette.ts';
-import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,STONE_WALL,TRACK,groundDecor,pieceDecor,pieceShadow,shadowUnion,type DecorPrim} from '../../src/client/render/city/decor.ts';
+import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,STONE_WALL,TRACK,FLAT_SHADOW,groundDecor,pieceDecor,pieceShadow,shadowUnion,stackedAlpha,type DecorPrim} from '../../src/client/render/city/decor.ts';
 import {HEIGHT_PX,project,type Pt} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -274,6 +274,34 @@ test('shadowUnion: one disjoint shadow per chunk region, covering every piece sh
     }
     assert.ok(prims.every(u=>area4(u.points!)>0));
   }
+});
+
+test('shadowUnion soft edge (chao-da-cidade-sem-emenda): nested layers that stack to the same alpha, wider than the hard shadow',()=>{
+  const soft={...FLAT_SHADOW,soft:{layers:4,penumbra:.22,fade:.4}};
+  const a=stackedAlpha(soft.alpha,soft.soft.layers);
+  assert.ok(Math.abs(1-Math.pow(1-a,soft.soft.layers)-soft.alpha)<1e-9);
+  const area4=(pts:Pt[])=>Math.abs(pts.reduce((s,p,i)=>{const q=pts[(i+1)%pts.length];return s+p.x*q.y-q.x*p.y;},0))/2;
+  const casters=index.chunks.flatMap(k=>k.pieces);
+  let deepest=0;
+  for(const v of VIEWS)for(const c of index.chunks){
+    const region={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1};
+    const hard=shadowUnion(casters,asset,region,v);
+    // Without `soft` nothing changes (the same look object, field by field).
+    assert.deepEqual(shadowUnion(casters,asset,region,v,undefined,{...FLAT_SHADOW}),hard);
+    const prims=shadowUnion(casters,asset,region,v,undefined,soft);
+    for(const p of prims){assert.equal(p.color,soft.color);assert.equal(p.alpha,a);}
+    if(!hard.length)continue;
+    // The outer layer reaches past the hard shadow; every hard polygon's middle is still in shade.
+    assert.ok(prims.reduce((s,u)=>s+area4(u.points!),0)>hard.reduce((s,u)=>s+area4(u.points!),0),`view ${v} chunk ${c.key}`);
+    for(const h of hard){
+      const ctr=h.points!.reduce((s,q)=>({x:s.x+q.x/4,y:s.y+q.y/4}),{x:0,y:0});
+      const n=prims.filter(u=>inPoly(ctr,u.points!,0.01)).length;
+      assert.ok(n>=1&&n<=soft.soft.layers,`view ${v} chunk ${c.key}: ${n} layers`);
+      deepest=Math.max(deepest,n);
+    }
+  }
+  // Somewhere the core has every layer, i.e. the full alpha.
+  assert.equal(deepest,4);
 });
 
 // ---------------------------------------------------------------------------------------------------------------

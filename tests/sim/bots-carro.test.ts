@@ -4,28 +4,30 @@
  *  - the brain: who helps (CAR_HELP_BOTS nearest free bots within CAR_HELP_RANGE, only while a person moves it), which
  *    way (the people's pull: a pusher toward the body, the rope toward its holder; the bots' own push left out);
  *  - a city Simulation (the real Cidade Nevada) with a person leaning on the car and three RoomBots: two bots join, the
- *    car goes at carSpeed(3) the person's way, the third keeps fighting; the person lets go and the car stops.
+ *    car goes at carSpeed(3) the person's way, the third keeps fighting; the person lets go and the car stops;
+ *  - puxar-uno-corda: the helper ahead of the car takes the free rope (the car going nose first), the other pushes.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CAR_ID,CAR_RADIUS,SIM_HZ,carSpeed,ticks} from '../../src/contract/index.ts';
+import {CAR_ID,CAR_NOSE,CAR_RADIUS,CAR_ROPE_REST,SIM_HZ,carSpeed,ticks} from '../../src/contract/index.ts';
+import {PUSH_LEAN_S} from '../../src/sim/chaveiro/car.ts';
 import {CAR_HELP_BOTS,CAR_HELP_RANGE,carHeading,objectiveTask} from '../../src/sim/bot-brain.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {RoomBots} from '../../multiplayer/room-bots.ts';
+import {BOT_THINK_EVERY,RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 
 type View=Parameters<typeof objectiveTask>[0];
 const player=(id:string,x:number,y=0)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y});
-const view=(players:ReturnType<typeof player>[],car:{movers?:string[];rope?:string},moto:'anda'|'morta'='anda')=>({tick:100,players,
+const view=(players:ReturnType<typeof player>[],car:{movers?:string[];rope?:string;heading?:number},moto:'anda'|'morta'='anda')=>({tick:100,players,
   structures:[{id:CAR_ID,kind:CAR_ID,x:0,y:0,hp:120,maxHp:120}],
   objective:{moto:{x:40,y:0,mode:moto},etaS:300,budget:120,car:{x:0,y:0,hits:0,limit:100,parts:0,...car}}} as unknown as View);
 const BOTS=['b1','b2','b3'];
 
 test('brain: nobody helps a still car; a person pushing calls the CAR_HELP_BOTS nearest bots, pushing the same way',()=>{
   assert.equal(CAR_HELP_BOTS,2);
-  const people=[player('ana',-1.3),player('b1',5),player('b2',-6),player('b3',9)];
+  const people=[player('ana',-1.3),player('b1',-5),player('b2',-6),player('b3',9)];
   for(const id of BOTS)assert.equal(objectiveTask(view(people,{}),id,BOTS),undefined,`${id}: nobody moves it`);
   // Ana leans on the car's west side: she pushes it east.
   const pushed=view(people,{movers:['ana']});
@@ -39,9 +41,11 @@ test('brain: nobody helps a still car; a person pushing calls the CAR_HELP_BOTS 
 });
 
 test('brain: the heading is the people\'s pull (the rope toward its holder, the bots\' own push left out)',()=>{
-  // Ana holds the rope 4 u north; b1 already pushes from the east (it would say west): the car goes north.
-  const roped=view([player('ana',0,-4),player('b1',1.4),player('b2',3)],{movers:['ana','b1'],rope:'ana'});
-  assert.deepEqual(carHeading(roped,BOTS),{x:0,y:-1});
+  // Ana holds the rope 4 u north of the nose (the car faces north); b1 already pushes from the east (it would say
+  // west): the car goes north.
+  const roped=view([player('ana',0,-1.3-4),player('b1',1.4),player('b2',3)],{movers:['ana','b1'],rope:'ana',heading:-Math.PI/2});
+  const north=carHeading(roped,BOTS)!;
+  assert.ok(Math.abs(north.x)<1e-9&&Math.abs(north.y+1)<1e-9,JSON.stringify(north));
   // Only bots on the list (the sim never moves it so, but the brain must not follow a bot): no heading, no task.
   const botsOnly=view([player('b1',-1.3),player('b2',3)],{movers:['b1']});
   assert.equal(carHeading(botsOnly,BOTS),undefined);
@@ -49,6 +53,14 @@ test('brain: the heading is the people\'s pull (the rope toward its holder, the 
   // Two people from the west and the south: north-east.
   const two=carHeading(view([player('ana',-1.3),player('bia',0,1.3),player('b1',5)],{movers:['ana','bia']}),BOTS)!;
   assert.ok(Math.abs(two.x-Math.SQRT1_2)<1e-9&&Math.abs(two.y+Math.SQRT1_2)<1e-9,JSON.stringify(two));
+});
+
+test('brain: the helpers leaning behind the car keep their place when the car rolls up to a free bot ahead',()=>{
+  // Ana pushes east with b1 and b2 leaning behind; b3, ahead and off the line, is now the nearest to the body.
+  const rolling=view([player('ana',-1.3),player('b1',-2.3),player('b2',-3.5),player('b3',1.2,1.2)],{movers:['ana','b1','b2']});
+  assert.equal(objectiveTask(rolling,'b1',BOTS)?.kind,'carro');
+  assert.equal(objectiveTask(rolling,'b2',BOTS)?.kind,'carro');
+  assert.equal(objectiveTask(rolling,'b3',BOTS),undefined,'it would circle to the back while b2 walked off');
 });
 
 test('brain: the moto\'s pushers and far bots stay out; the next nearest bot helps instead',()=>{
@@ -79,7 +91,9 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   assert.equal(sim.world.round.phase,'prepare');
   const car=()=>sim.objectiveView()!.car,ana=sim.players.get('ana')!,east={x:1,y:0};
   // Ana leans on its west side and walks east; the bots stand around the car (3 to 6 u, where they fight).
-  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[3,-4,-6][i];b.y=c.y;});
+  // Asset v4 (mapa-175-com-viaduto): the street east of the car is ~9 u long (a block at x ≈ 92): the car starts 5 u
+  // west, where it stands clear to x ≈ 73, so the 3 s and the second at full crew fit before it.
+  const start=sim.run.chaveiro!.state.car;start.x-=5;
   let seq=0;
   const lean=(push:boolean)=>{
     if(push){const c=car();ana.x=c.x-(CAR_RADIUS+.3);ana.y=c.y;}
@@ -87,11 +101,20 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   };
   const run=(n:number,push:boolean)=>{for(let i=0;i<n;i++){calm();lean(push);bots.think(sim);sim.step(sim.tick*50);}};
   const x0=car().x;
+  // Card uno-nao-empurra-sem-querer: she leans PUSH_LEAN_S before it rolls (it rolls on the last of those ticks); idle
+  // ticks first keep the bots' thinking on the same beat as before (BOT_THINK_EVERY).
+  const leanTicks=ticks(PUSH_LEAN_S)-1;
+  run((BOT_THINK_EVERY-leanTicks%BOT_THINK_EVERY)%BOT_THINK_EVERY,false);
+  run(leanTicks,true);
+  assert.equal(car().x,x0,'leaning: not yet');
+  assert.equal(car().movers,undefined);
+  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[3,-4,-6][i];b.y=c.y;});
   run(ticks(3),true);
   const movers=car().movers??[];
   assert.ok(movers.includes('ana'),`ana moves it: ${movers}`);
   const helping=movers.filter(id=>ids.includes(id));
   assert.equal(helping.length,CAR_HELP_BOTS,`two bots lean on it: ${movers} (modes ${[...bots.modes]})`);
+  assert.equal(car().rope,'bot-1','puxar-uno-corda: the bot ahead of the car pulls it by the rope');
   // From here on, a second at full crew: carSpeed(3) east, straight.
   const x1=car().x,y1=car().y;
   run(SIM_HZ,true);
@@ -108,3 +131,24 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   assert.equal(car().movers,undefined);
   for(const id of ids)assert.notEqual(bots.modes.get(id),'carro',`${id} stops helping`);
 });
+
+test('brain (puxar-uno-corda): the helper ahead of the car takes the free rope when it goes nose first; the other pushes',()=>{
+  // Ana pushes the car east (its nose); b1 stands ahead near the rope's end, b2 behind.
+  const pushed=view([player('ana',-1.3),player('b1',4),player('b2',-4)],{movers:['ana']});
+  const b1=objectiveTask(pushed,'b1',BOTS),b2=objectiveTask(pushed,'b2',BOTS);
+  assert.ok(b1?.kind==='carro'&&b1.rope,'b1 pulls');
+  assert.ok(b2?.kind==='carro'&&!b2.rope,'b2 pushes');
+  if(b1?.kind!=='carro'||!b1.rope)return;
+  assert.deepEqual(b1.rope.tip,{x:CAR_NOSE+CAR_ROPE_REST,y:0});assert.equal(b1.rope.held,false);
+  // On the rope it keeps it (even if b2 got nearer to the end).
+  const held=view([player('ana',-1.3),player('b1',6),player('b2',2.5)],{movers:['ana'],rope:'b1'});
+  const h1=objectiveTask(held,'b1',BOTS);
+  assert.ok(h1?.kind==='carro'&&h1.rope?.held,'b1 keeps the rope');
+  assert.ok((objectiveTask(held,'b2',BOTS) as {rope?:unknown}|undefined)?.rope===undefined,'b2 does not');
+  // The car pushed backwards (west, against its nose), or a person on the rope: nobody takes it.
+  const back=view([player('ana',1.3),player('b1',4),player('b2',-4)],{movers:['ana']});
+  for(const id of ['b1','b2'])assert.equal((objectiveTask(back,id,BOTS) as {rope?:unknown}|undefined)?.rope,undefined,`${id}: backwards`);
+  const person=view([player('ana',CAR_NOSE+3.2),player('b1',4),player('b2',-4)],{movers:['ana'],rope:'ana'});
+  for(const id of ['b1','b2'])assert.equal((objectiveTask(person,id,BOTS) as {rope?:unknown}|undefined)?.rope,undefined,`${id}: a person holds it`);
+});
+

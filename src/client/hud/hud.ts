@@ -5,6 +5,7 @@
  */
 import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
+import './coach/dicas.css';
 import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
@@ -12,8 +13,12 @@ import {applyEvents,emptyTally,nestTally,resetTally,type HudContext,type HudPart
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
+import {createFearRow,type FearRow} from './fear.ts';
+import type {FearFrame} from '../render/fear-rules.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
+import {createCacaNiquel} from './caca-niquel.ts';
+import './caca-niquel.css';
 import {createResultScreen,type ResultRoster,type RematchVotes} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
@@ -31,19 +36,29 @@ import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,c
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import {createMinerva} from './minerva.ts';
+import {createMission,MissionTracker,missionFacts,type MissionArrow,type MissionPart} from './missao.ts';
+import './missao.css';
+import {isTowerKit,kitPiece} from '../../rules/index.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {createInventory,type InventoryCommand,type InventoryPart} from './inventory.ts';
 import './inventory.css';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
+import {BICO_LINE_MS,bicoLine} from './bicos.ts';
 import {icon} from '../ui/icon.ts';
 import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
+import './chefao-cena.css';
+import {createCenaPart} from './chefao-cena.ts';
+import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
+import {LEVELUP_BURST_MS} from '../render/levelup-fx-rules.ts';
+import './perfis.css';
+import {createProfiles,type Match,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -94,6 +109,18 @@ export interface RunHudOptions {
   input?:InputKind;
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
+  /**
+   * The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts): the compact card's clock (performance.now by
+   * default; the sandbox's frozen scenes stop it) and the dice (Math.random by default).
+   */
+  profileClock?():number;
+  profileRng?():number;
+  /** Matches the run starts with (?matches=demo, the CI recording). */
+  profileDemo?:readonly Match[];
+  /** false: no matches (the HUD sandbox's other scenes). */
+  profiles?:boolean;
+  /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
+  cena?:CenaClock;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -135,6 +162,10 @@ export class RunHud {
   private readonly camp:CampPart;
   /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
   private readonly killcam:KillcamPart;
+  /** The enemies the local hero killed that became matches: the flame and its counter, the result's stickers (hud/perfis.ts). */
+  readonly profiles:ProfilesPart;
+  /** The mission line (inicio-no-uno-caixas-120, hud/missao.ts): big in the middle, then a row of the slot. */
+  private readonly mission:MissionPart;private readonly missionTracker=new MissionTracker();private unoArrowNow:{urgent:boolean}|undefined;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
   /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
@@ -154,8 +185,14 @@ export class RunHud {
   private readonly coachRow:CoachPart;
   private coachShow?:CoachShow;
   private hero?:{x:number;y:number};
+  /** What the profile cards must not cover on screen (scene.guardScreenRects), fed by guardProfiles. */
+  private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
+  /** The level-up burst's hold on the pause's screen (card levelup-estouro-e-tremida): set while it runs. */
+  private burstHold?:ReturnType<typeof setTimeout>;
+  /** What the burst holds back: the pause's veil and title (hud/pausa.ts) and the offer. */
+  private pauseScreen:readonly HTMLElement[]=[];
   private readonly forgeEl:HTMLElement;
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
@@ -184,10 +221,14 @@ export class RunHud {
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
   /** Bancos: the row "Bicho sacando no …!" (hud/bancos.ts BankAlert). */
   private readonly bankRow:HTMLElement;private readonly bankAlert=new BankAlert();
+  /** Bicos: the row of the local player's own shift, and the last room event it read. */
+  private readonly bicoRow:HTMLElement;private bicoEvent=-1;
   /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
   private obraOpen=false;
   /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
   private readonly topEl:HTMLElement;private readonly teamEl:HTMLElement;
+  /** Fear (card fear-escuridao-sozinho, hud/fear.ts): the notice in the slot, the dimmed portraits and the sound. */
+  private readonly fear:FearRow;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
@@ -201,29 +242,44 @@ export class RunHud {
     this.objectiveRow=createObjectiveRow(parent.ownerDocument);
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
-    const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
+    const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target),pendingGrana:()=>this.granaPending()});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The Minuto de Minerva clock (relogio-minerva): the slot's first row while the monsters sleep.
     const minerva=createMinerva();
+    const mission=this.mission=createMission(parent.ownerDocument);
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
     const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open,kitSlot:()=>options.kitSlot?.()},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
+    const bicoRow=this.bicoRow=document.createElement('div');bicoRow.className='rh-chaveiro-motivo rh-bico';bicoRow.setAttribute('role','status');bicoRow.hidden=true;
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(minerva.el,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    this.fear=createFearRow(parent.ownerDocument,team.el);
+    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,this.fear.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
+    // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
+    const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
+    // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
+    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,rng:options.profileRng,demo:options.profileDemo,off:options.profiles===false,
+      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden),
+      // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
+      guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],
+      useful:()=>this.zones().useful});
+    this.pauseScreen=[pausa.dim,pausa.el,offer.el];
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
       live:()=>!this.el.hidden&&!this.el.classList.contains('rh-ended')});
     this.el.insertBefore(pix.el,this.result.el);this.parts.push(pix);
+    // The caça-níquel when a crate turns DOURADA for me (caixa-gamble, hud/caca-niquel.ts): over the play, under the result.
+    const cacaNiquel=createCacaNiquel(parent.ownerDocument,{onPlay:()=>{const audio=getAudio();if(audio.unlocked)audio.play('caca-niquel');}});
+    this.el.insertBefore(cacaNiquel.el,this.result.el);this.parts.push(cacaNiquel);
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
@@ -231,7 +287,7 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,profiles.flame,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>this.writeColumn());
@@ -268,13 +324,39 @@ export class RunHud {
       // D-052: a reroll changes only the counters.
       &&JSON.stringify([was.skips,was.rerolls])===JSON.stringify([pause.skips,pause.rerolls])))return;
     if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
+    if(!was&&pause)this.holdOffer();else if(!pause)this.releaseOffer();
     if(this.last)this.update(this.last);
   }
+  /**
+   * A pause just opened: its screen (the veil that darkens the play, the title, the offer) stays invisible (and the offer
+   * untouchable) for LEVELUP_BURST_MS while the scene plays the level-up burst on the hero (render/zueira-fx.ts), bright,
+   * then shows. The room's deadline is long (D-050), 0.4 s of it is fine.
+   */
+  private holdOffer(){
+    clearTimeout(this.burstHold);
+    for(const el of this.pauseScreen)el.style.visibility='hidden';
+    this.burstHold=setTimeout(()=>this.releaseOffer(),LEVELUP_BURST_MS);
+  }
+  private releaseOffer(){
+    if(this.burstHold===undefined)return;
+    clearTimeout(this.burstHold);this.burstHold=undefined;
+    for(const el of this.pauseScreen)el.style.removeProperty('visibility');
+  }
+  /** The offer waits for the level-up burst (tests, dev probe). */
+  get offerHeld(){return this.burstHold!==undefined;}
 
   /** Minuto de Minerva: the room's RunState.minervaAteTick (combat only), or undefined; the clock reads it on each view. */
   setMinerva(untilTick?:number){
     if(untilTick===undefined)delete this.ctx.minervaAteTick;else this.ctx.minervaAteTick=untilTick;
   }
+  /** The time to explore after a wave (RunState.exploraDesdeTick/exploraAteTick), or undefined; the clock and the mission read it. */
+  setExplora(window?:{from:number;until:number}){
+    if(!window)delete this.ctx.explora;else this.ctx.explora=window;
+  }
+  /** The Uno gets its edge arrow now (the mission: the Minerva, the last seconds of a time to explore); urgent: "Volte ao Uno.". */
+  get unoArrow(){return this.unoArrowNow;}
+  /** The mission line's target (objetivo-com-verbo): the Uno, the moto, the nearest nest; rescue.ts draws its edge arrow. */
+  private missionArrowNow:MissionArrow|undefined;get missionArrow(){return this.missionArrowNow;}
 
   update(view:RunView){
     const t0=perfNow(); // ?perf=1: the HUD's work this frame
@@ -283,11 +365,14 @@ export class RunHud {
     this.music.update(musicCue(view,this.el.classList.contains('rh-ended')));
     // On the result the run is over: no damage edge (it would frame the result screen).
     for(const part of this.parts)if(part!==this.hurt||!this.el.classList.contains('rh-ended'))part.update(view,this.ctx);
+    this.stepMission(view);
     // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
+    // The mission's big band (inicio-no-uno-caixas-120) too: one big line under the clock, the hero kept in view.
+    if(marquee&&!marquee.hidden&&!this.mission.band.hidden)marquee.hidden=true;
     // The kill-cam (VGM-053B) gives way to any notice (danger over the joke) and takes the round banner's turn
     // ("Intervalo!": the round chip already says it).
     const notice=!!this.stack.querySelector('.rh-alert:not([hidden])');
@@ -298,6 +383,7 @@ export class RunHud {
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.stepReason(view);
     this.stepBanks(view);
+    this.stepBicos(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);
@@ -305,6 +391,15 @@ export class RunHud {
     perfSpan('hud',t0);
   }
 
+  private stepMission(view:RunView){
+    const me=view.players.find(p=>p.id===this.ctx.localId),ended=this.el.classList.contains('rh-ended');
+    const playing=!!me&&!me.spectator&&!me.eliminated&&!ended;
+    const towerKit=!!me?.weapons.some(w=>{const piece=kitPiece(w.id);return !!piece&&isTowerKit(piece);});
+    const out=this.missionTracker.step({tick:view.tick,...(this.ctx.minervaAteTick!==undefined?{minervaAte:this.ctx.minervaAteTick}:{}),
+      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing,facts:missionFacts(view,this.ctx.localId,this.routeInput?.hero)});
+    this.unoArrowNow=out.pointUno?{urgent:out.arrow?.kind==='uno'&&out.arrow.urgent}:undefined;this.missionArrowNow=out.arrow;
+    this.mission.render(out.line);
+  }
   /**
    * The city's round-1 walk (card cidade-08): the run's terrain, the local hero's predicted spot and the camera's view,
    * every frame (rescue.ts); undefined out of a run. The row shows from the opening countdown through round 1 while the
@@ -421,6 +516,18 @@ export class RunHud {
     const row=this.bankRow;row.innerHTML=icon('caixa-eletronico');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);
   }
+  /** Bicos (hud/bicos.ts bicoLine): the local player's own shift, entering (the gig's joke) or thrown out (the manager). */
+  private stepBicos(view:RunView){
+    let line:string|undefined;
+    for(const e of view.events??[]){
+      if(e.eventId<=this.bicoEvent)continue;
+      this.bicoEvent=e.eventId;
+      if(e.type==='bico')line=bicoLine(e,this.ctx.localId,view.banks)??line;
+    }
+    if(!line||this.el.classList.contains('rh-ended'))return;
+    const row=this.bicoRow;row.innerHTML=icon('caixa-eletronico');row.append(line);
+    this.queueRow(row,BICO_LINE_MS,{answer:true});
+  }
   /** The reason row on screen now (the sandbox and the acceptance scripts). */
   get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
   /** The room's answer to a Dona Cida tap (D-047, {t:'bought'}). */
@@ -430,6 +537,11 @@ export class RunHud {
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
+  /** Where the top bar reads the R$ caught on screen and not paid by the room yet (hud/rescue.ts: the scene's, camp.ts). */
+  setGranaPending(source:()=>number){this.granaPending=source;}
+  private granaPending:()=>number=()=>0;
+  /** The R$ caught on screen moved (hud/rescue.ts, every frame): the top bar's R$ follows in this frame. */
+  granaMoved(){this.camp.refreshGrana();}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
   setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.cida.setHero(spot);this.inventory.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 
@@ -441,6 +553,7 @@ export class RunHud {
     this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);
     // D-051: in the nests mode the round line counts the nests that fell (the last view still has them).
     this.result.show(result,this.ctx,nestTally(this.last));
+    this.profiles.fillResult(this.result.matches);
   }
 
   /** Hides the result and starts a fresh tally: call on rematch so awards and kills do not carry over. */
@@ -506,6 +619,8 @@ export class RunHud {
    * Keeps the center banner off the hero (UX checklist B2: hero rect ±40 px). The banner moves to the low slot
    * while its top slot would cross the hero, and comes back when the top slot is clear again.
    */
+  /** The hero, the Uno and the allies on screen (scene.guardScreenRects): the profile cards keep off them (perfil-nao-cobre). */
+  guardProfiles(rects:readonly Rect[]|undefined){this.profileGuards=rects;}
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
@@ -600,14 +715,24 @@ export class RunHud {
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){
     resetTally(this.tally);
+    this.profiles.reset();
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
-    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);
+    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);this.dropRow(this.bicoRow);this.bicoEvent=-1;
   }
 
   get view(){return this.last;}
 
+  /** One frame of the fear (the scene's hooks.fear); `far` the allies out of reach while alone. */
+  setFear(frame:FearFrame,far:readonly string[]){
+    if(this.el.hidden||this.el.classList.contains('rh-ended')){this.fear.clear();return;}
+    // "Não se afaste do bando" is an order too: inside the gap of the mission line's (ordens-menos-e-claras), it waits out.
+    const gap=frame.notice&&this.last&&this.missionTracker.orderRecent(this.last.tick);
+    this.fear.frame(gap?{...frame,notice:undefined}:frame,far);
+  }
   destroy(){
+    clearTimeout(this.burstHold);
+    this.fear.destroy();
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
     removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();

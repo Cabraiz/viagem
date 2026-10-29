@@ -8,12 +8,12 @@
  * and imports Phaser as a type, so this module loads without Phaser.
  */
 import type Phaser from 'phaser';
-import {artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
+import {HD_ENEMIES,artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
-import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
+import {CIDADE_MODIFIERS,WAVE_BOSS,WAVE_BOSS_IDS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
@@ -21,6 +21,7 @@ import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
+import {gameEnemyArt} from './mendigo.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -38,8 +39,9 @@ const LEGACY=new Set<string>(ENEMY_KINDS);
  * Art id of an enemy (arte-do-roster-no-render): a legacy kind keeps ENEMY_ART_ID; any roster id (D-040) is its own
  * art id in the `inimigos` group. A roster id never borrows its base kind's art: without its own piece it keeps the
  * role's procedural reserve (render/textures.ts with the roster accent).
+ * So-o-mendigo-no-jogo: every common enemy draws the mendigo (art/mendigo.ts gameEnemyArt); the chefões keep theirs.
  */
-export const enemyArtId=(viewKind:string,kind:EnemyKind)=>LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind;
+export const enemyArtId=(viewKind:string,kind:EnemyKind)=>gameEnemyArt(LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind);
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;
 /**
@@ -77,10 +79,8 @@ export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mo
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
 export const STATIC_ART:readonly StaticArt[]=[
   pickup('heal',['coxinha']),
-  pickup('chest',['bau','bau-fechado']),
+  // No 'chest' (bau-antigo-ainda-visivel): a crate is drawn only as its floating item (render/arsenal-fx.ts), never the old baú.
   pickup('resource',['recurso']),
-  // Size of render/textures.ts BOLETO_SIZE (that module imports Phaser at runtime).
-  {key:FX.boleto,group:'itens',ids:['boleto-chuva','boleto'],mode:'bake',size:[46,34]},
   {key:FX.projFriendly,group:'projeteis',ids:['tiro-aliado'],mode:'sheet'},
   // Sizes of render/textures.ts drawFx (layers.ts scales the shadow by SHADOW_W/H = 46×16 of the 48×18 texture).
   // Stretched (not contained): the contact shadow keeps today's 48×18 footprint whatever its cell's aspect.
@@ -121,7 +121,7 @@ export const poofSheetFrame=(ageMs:number,frames:number)=>frames<=1?0:Math.min(f
  * server, the sandboxes) is today's star (FX.projHostile), whose look is HOSTILE_SHOT_ART under `art:proj:tiro-inimigo`.
  */
 // D-051 arsenal: the bullets and the rojão's rocket (render/arsenal-rules.ts ARSENAL_PROJECTILE_ALIAS names the weapons).
-export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+export const WEAPON_PROJECTILE_IDS=['boleto','cafe','guarda-chuva','pombo','audio','boleto-evo','cafe-evo','garrafa-molotov',
   'bala-revolver','bala-metralhadora','bala-fuzil','rojao'] as const;
 export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 /** The shared look of a hostile shot without its own art (the friendly one is 'tiro-aliado'). */
@@ -193,9 +193,21 @@ export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=
 
 /**
  * The enemy sheets load their lossy copy (scripts/art-lite.mjs, public/art/lite/enemies/<id>/<file>), like the hero
- * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl).
+ * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl). A file the
+ * computer draws from its own copy (manifest.ts pcCell, kept only on a computer) loads public/art/lite/enemies-pc/.
  */
-export const liteEnemyUrl=(url:string)=>url.replace('/art/enemies/','/art/lite/enemies/');
+export const liteEnemyUrl=(url:string,file?:Pick<ArtFile,'pcCell'>)=>url.replace('/art/enemies/',file?.pcCell?'/art/lite/enemies-pc/':'/art/lite/enemies/');
+/**
+ * URL of a file of enemy art `id` the game downloads: the chefão's HD copy (manifest.ts hdFile, public/art/hd/enemies/;
+ * no fallback, its cell is its own); his other files at the approved cell (manifest.ts HD_ENEMIES), from the computer's
+ * lossy copy when it has that cell (~half the bytes; a failed load falls back to the approved file), on both screens;
+ * everyone else's lite copy.
+ */
+export const enemyFileUrl=(id:string,url:string,file?:Pick<ArtFile,'cell'|'pcCell'|'hd'>)=>{
+  if(file?.hd)return url.replace('/art/enemies/','/art/hd/enemies/');
+  if(!HD_ENEMIES.has(id))return liteEnemyUrl(url,file);
+  return file?.pcCell&&file.pcCell[0]===file.cell[0]&&file.pcCell[1]===file.cell[1]?liteEnemyUrl(url,file):url;
+};
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
@@ -230,10 +242,14 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue;
+    // An elite layer that is its base's own file (mendigo.ts: the elite keeps the loop) loads nothing: drawing the same
+    // sheet over itself shows nothing new, and a second texture would double its video memory.
+    if(name.startsWith('elite/')&&piece.files[name.slice(6)]===file)continue;
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
-      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      // The chefão's HD copy or approved file (enemyFileUrl); everyone else's lite copy.
+      const lite=enemyFileUrl(id,url,file);if(file.hd||file.liteCell&&!HD_ENEMIES.has(id))LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }
@@ -268,7 +284,9 @@ export function queueHordeArt(scene:Phaser.Scene){
 const asked=new WeakMap<object,Set<string>>();
 /** Critters first seen while the background was held (queueEnemyArt): asked when it lets go. */
 const deferred=new WeakMap<object,Set<string>>();
-export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
+export function queueEnemyArt(scene:Phaser.Scene,requested:string):boolean{
+  // The rotation ({t:'elenco'}) names roster ids: a common one asks for the mendigo, never its old sheets.
+  const id=gameEnemyArt(requested);
   // The opening's near art holds the link (background-hold.ts, cena-nasce-rapido): the critters seen under the cover
   // ask once it lets go (the procedural look stands in meanwhile, as for any sheet still on its way).
   if(backgroundHeld()){
@@ -293,6 +311,16 @@ export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
   }
   if(queued&&!scene.load.isLoading())scene.load.start();
   return queued;
+}
+/**
+ * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
+ * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
+ */
+export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  let removed=false;
+  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  return removed;
 }
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
 function bakeFrame(scene:Phaser.Scene,from:string,cell:[number,number],key:string,[w,h]:readonly [number,number],fit:'contain'|'fill'){
@@ -399,9 +427,10 @@ export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
 export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
- * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
+ * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts); `leash:false`
+ * (`golpe=antes`) walking on any step, a jiggle against a player too (render/motion.ts leashMoving).
  */
-export const ENEMY_WALK={byGround:true,faceTarget:true};
+export const ENEMY_WALK={byGround:true,faceTarget:true,leash:true};
 /** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
 export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
@@ -485,8 +514,22 @@ export const HERO_FIGURE_PX=96;
  */
 export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,voador:.6,brutamontes:1.3,'mini-chefe':2,chefe:3};
 export const DEFAULT_HEIGHT=.9;
+/** The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it). */
+let waveBossDraw:number=WAVE_BOSS.drawScale;
+/** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
+export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
+if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
+/** The chefão's extra scale for art `id` (1 for every other art). */
+const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
+/**
+ * The ground shadow's length × this for art `id` (render/silhouette.ts castSilhouette): the chefão's, as long as a
+ * WAVE_BOSS_SHADOW-times-bigger figure's would be, never a streak across the street (the user, 24/10: "corrige a
+ * sombra dele quando ele tiver grande"); 1 for everyone else.
+ */
+export const WAVE_BOSS_SHADOW=1.2;
+export const artShadowLength=(id:string|undefined)=>id&&WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
-export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT);
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
 export const MASS_ALPHA=128;
 /**
@@ -557,7 +600,25 @@ export function loopAnim(piece:ArtPiece,moving:boolean,elite:boolean,bossPhase=1
  * the loop comes back. A 'hit' never interrupts another action nor restarts itself; any other action replaces a hit
  * or a different action, and the same action already playing is not restarted. Pure, for tests and playEnemyAction.
  */
-export interface ActionState {action?:string;at:number;end:number;hitAt?:number}
+export interface ActionState {action?:string;at:number;end:number;hitAt?:number;
+  /** Drawn time per ms on screen of the action playing (1: its fps; under 1: a repeated swing stretched, SWING_FILL). */
+  pace?:number;
+  /** The last action started and when: a swing that comes back is timed by the gap between the two. */
+  lastAction?:string;lastAt?:number}
+/**
+ * Repeated swings (inimigos-animacao-auditoria, the user: "animação muito rápida, bem bugadas"): an enemy on a player
+ * hits every contactCooldown (1 s; the swarm 0.6 s) and its 'attack' lasted ~0.7 s, so between two swings it snapped to
+ * its idle for 0.3 s at a random column (attack, idle flash, attack, every second). When the same action comes back
+ * within SWING_FILL_MAX_MS, it plays over the whole gap (SWING_FILL of it, slower, never faster than drawn): the swings
+ * follow each other with no idle in between. SWING_FILL is a bit over the gap: the next hit comes a few ms late with
+ * the network's jitter, and a frame of the loop between two swings still showed (real match, swarm every 0.6 s); the
+ * next swing cuts the tail (SWING_RESTART). A first or a lone swing keeps its own length.
+ * SWING_RESTART: a repeat may restart the swing once this share of it played (the next hit arrives a bit early with
+ * the network's jitter); earlier, the same action is not restarted.
+ */
+export const SWING_FILL=1.08,SWING_FILL_MAX_MS=1700,SWING_RESTART=.8;
+/** The sandbox's before/after proof (`?sandbox=horda&golpe=antes`): `fill:false` brings back the swing of before. */
+export const ENEMY_SWING={fill:true};
 /**
  * A hit starts at most once per hitGap(its duration): at least HIT_GAP_HITS × the hit animation and never under
  * HIT_GAP_MIN_MS. An enemy inside an aura is damaged every tick: it plays its hit now and then and walks in between,
@@ -584,11 +645,15 @@ export function pieceAction(piece:ArtPiece,action:string):string|undefined{
 }
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
-  // A hit never starts while another action plays, and the same action already playing is not restarted.
-  if(s.action!==undefined&&now<s.end&&(action==='hit'||action===s.action))return false;
-  const duration=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
-  if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(duration))return false;s.hitAt=now;}
-  s.action=action;s.at=now;s.end=now+duration;
+  // A hit never starts while another action plays, and the same action already playing is not restarted (but a
+  // swing that comes back near its end, SWING_RESTART).
+  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
+  const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
+  if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
+  const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
+  const duration=ENEMY_SWING.fill&&gap<=SWING_FILL_MAX_MS?Math.max(drawn,gap*SWING_FILL):drawn;
+  if(action!=='hit'){s.lastAction=action;s.lastAt=now;}
+  s.action=action;s.at=now;s.end=now+duration;s.pace=drawn/duration;
   return true;
 }
 /** The action still playing at `now` (clears a finished one), or undefined. */
@@ -604,18 +669,26 @@ interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.Ga
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
   cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
-  ratio:number}
+  ratio:number;
+  /** Feet-to-head height of the figure drawn (world px before the scene's body scale; figurePx): the bar sits on it. */
+  head:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,head:0,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
+/**
+ * Feet-to-head height (world px before the body scale) of the imported figure on `image`, undefined when the art is
+ * off: the measured figure (the role's target height), not the cell, whose empty top would float the bar (card
+ * vida-inimigos-estilo-clash: the bar sits right on the head, like Clash Royale's).
+ */
+export const enemyArtHead=(image:object)=>{const s=states.get(image);return s&&s.on&&s.head>0?s.head:undefined;};
 /**
  * Scale of art `id`'s file `file` for an enemy of `kind`: the drawn height (drawnHeight) to the role's target once
  * measured; until then (or unmeasurable) today's cell rule (enemyDrawScale).
  */
 function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
+  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite)*waveBossK(id);
 }
 /**
  * The figure's height in world px (before the scene's `body` scale) for `file`: the role's target once the drawn height
@@ -623,7 +696,7 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
  */
 function figurePx(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*file.cell[1]*(file.anchor?.[1]??.88);
+  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*waveBossK(id)*file.cell[1]*(file.anchor?.[1]??.88);
 }
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
@@ -639,7 +712,7 @@ function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
 }
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
-export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;s.lx=s.ly=s.lt=NaN;}}
+export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=s.lastAction=s.lastAt=undefined;s.pace=1;s.lx=s.ly=s.lt=NaN;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
 export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
 /** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
@@ -653,7 +726,7 @@ export function playEnemyAction(image:object,art:string,action:string,now:number
   return !!piece&&!!played&&startAction(stateOf(image),piece,played,now);
 }
 /** A legacy kind → its ENEMY_ART_ID; anything else (a roster id) is already an art id. */
-const artOf=(id:string)=>LEGACY.has(id)?ENEMY_ART_ID[id as EnemyKind]:id;
+const artOf=(id:string)=>gameEnemyArt(LEGACY.has(id)?ENEMY_ART_ID[id as EnemyKind]:id);
 /** Last facing row of a pooled enemy image (0 = facing the camera when it never had art): the death plays on it. */
 export function enemyArtRow(image:object){const s=states.get(image);return s&&s.row>=0?s.row:0;}
 
@@ -688,9 +761,9 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
   const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
   return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
-  const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
+  const id=actor.art??gameEnemyArt(ENEMY_ART_ID[actor.kind]),piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
   if(!piece){const s=states.get(image);return s?off(image,actor,s):false;}
   const s=stateOf(image),loop=loopAnim(piece,moving,actor.elite,actor.bossPhase,actor.act);
@@ -700,9 +773,11 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined;
   if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
-  let frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
+  // The action's own clock: drawn time since it started (slower for a stretched swing, SWING_FILL).
+  const acted=(now-s.at)*(s.pace??1);
+  let frame=action?enemyFrame(id,piece,action,s.row,acted,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
-  let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
+  let anim=action??loop;const t=action?acted:now+actor.phase*1000;
   // The walk by the ground walked since the last draw (monstros-sem-deslizar); the clock for every other loop. A fresh
   // image starts at its own phase of the cycle, so a pack never steps in unison.
   const wx=actor.x,wy=actor.y,walkFile=piece.files.walk;
@@ -731,22 +806,28 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
+  // The chefão's HD sheets (manifest.ts hdFile) keep their baked rim: a Breu copy of each would be another ~120-190 MB
+  // of video memory on a computer (measured, boss-fim-onda-1 etapa 6), and at 3× he reads on any ground.
   let copy:CityVariant|undefined,copyTop:CityVariant|undefined,copyMid:CityVariant|undefined;
-  if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
+  if(city&&city.active()&&!file.hd&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
     copy=city.variant(frame.key,scale);
     const same=(v:CityVariant|undefined)=>!!v&&!!copy&&v.geom.slotW===copy.geom.slotW&&v.geom.slotH===copy.geom.slotH;
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}
     if(copy&&costumeFrame){copyMid=city.variant(costumeFrame.key,scale);if(!same(copyMid))copy=copyTop=copyMid=undefined;}
   }
-  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,scale,scale);
+  // Card inimigos-variedade: the critter's own size (render/enemy-variety.ts) on the drawn image only; the city copy is
+  // the kind's (built for `scale`), so a varied horde builds no extra copies.
+  const drawn=scale*(actor.vary??1);
+  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,drawn,drawn);
   else{
     if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
-    image.setOrigin(ox,oy).setScale(scale);
+    image.setOrigin(ox,oy).setScale(drawn);
   }
   image.setFlipX(false).setRotation(0);
   s.on=true;
   const art=ENEMY_ART[actor.kind];
-  s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.ratio=drawn/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.head=figurePx(textures,id,piece,actor.kind,file,actor.elite);
   if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
   if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;
@@ -811,7 +892,7 @@ export function deathDuration(art:string){
  */
 export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string,costume?:{image:Phaser.GameObjects.Image;variant?:string}):boolean{
   // `kind` sizes it (enemyDrawScale); `art` (the roster id) picks the sheet, the kind's own art without it.
-  const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
+  const id=art===undefined?gameEnemyArt(ENEMY_ART_ID[kind]):artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
   if(!piece||!anim||!file){overlay.setVisible(false);costume?.image.setVisible(false);return false;}
   const info=fileInfo(id,anim,file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
   const frame=alpha>0?enemyFrame(id,piece,anim,row,elapsedMs,base,true):undefined;

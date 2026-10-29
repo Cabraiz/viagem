@@ -9,10 +9,10 @@
  *   the client's reach, so a weapon card shows its blurb instead.
  */
 import {BASE_STATS,type PlayerStats} from '../../contract/index.ts';
-import {AURA,passiveDef} from '../../rules/index.ts';
+import {AURA,cartaoCashback,passiveDef} from '../../rules/index.ts';
 import {itemDisplay} from './items.ts';
 
-export const OFFER_WINDOW_TITLE='Ofertas de melhoria';
+export const OFFER_WINDOW_TITLE='Escolha uma melhoria';
 export const WAIT_LINE='Esperando os outros jogadores…';
 export const SKIP_LABEL='Pular',REROLL_LABEL='Rolar de novo';
 
@@ -24,7 +24,7 @@ export function offerRarity(itemId:string,level:number):OfferRarity{
   const l=Math.floor(level)||1;
   return l<=1?'nova':l<=3?'comum':l<=5?'rara':l<=7?'epica':'lendaria';
 }
-export const levelLabel=(level:number)=>`Niv ${Math.max(1,Math.floor(level)||1)}`;
+export const levelLabel=(level:number)=>`Nív. ${Math.max(1,Math.floor(level)||1)}`;
 
 /** pt-BR label and format of each stat a passive moves ("x": a multiplier, "n": a plain number). */
 const STAT_TEXT:Partial<Record<keyof PlayerStats,{label:string;format:'x'|'n'}>>={
@@ -59,6 +59,7 @@ export function offerGain(itemId:string,level:number):string|undefined{
   const def=passiveDef(itemId);
   if(!def)return undefined;
   const l=Math.max(1,Math.floor(level)||1);
+  if(itemId==='cartao')return `+R$ ${cartaoCashback(l)-cartaoCashback(l-1)} por caixa`;
   if(itemId==='defumador')return l<=1?`Aura: ${AURA.damage(1)} de dano`:`Aura: +${AURA.damage(l)-AURA.damage(l-1)} de dano, +${num(AURA.radius(l)-AURA.radius(l-1))} m`;
   const p=def.perLevel,pct=(x:number)=>`${Math.round(Math.abs(x)*100)}%`;
   if(p.amount)return `+${p.amount} projétil`;
@@ -71,6 +72,5 @@ export function offerGain(itemId:string,level:number):string|undefined{
   if(p.armor)return `-${p.armor} de dano tomado`;
   if(p.moveSpeed)return `+${pct(p.moveSpeed)} velocidade`;
   if(p.luck)return `+${pct(p.luck)} sorte`;
-  if(p.growth)return `+${pct(p.growth)} XP`;
   return undefined;
 }

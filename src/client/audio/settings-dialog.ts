@@ -27,10 +27,11 @@ export function openSoundSettings(opener?:HTMLElement|null):HTMLDialogElement{
     d.innerHTML=`<div class="sound-settings-heading"><h2 id="sound-settings-title">Configurações</h2><button type="button" class="sound-settings-close" aria-label="Fechar">${icon('fechar',{size:32})}</button></div><div class="sound-settings-content"></div>`;
     mountAudioControls(d.querySelector<HTMLElement>('.sound-settings-content')!,getAudio());
     d.querySelector('.sound-settings-close')!.addEventListener('click',()=>d.close());
+    d.addEventListener('close',()=>{getAudio().play('ui-fechar');});
     document.body.append(d);
   }
   const d=dialog;
-  if(!d.open){d.addEventListener('close',()=>opener?.focus(),{once:true});d.showModal();}
+  if(!d.open){d.addEventListener('close',()=>opener?.focus(),{once:true});d.showModal();getAudio().play('ui-abrir');}
   d.querySelector<HTMLElement>('.sound-settings-close')!.focus();
   return d;
 }

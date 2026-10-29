@@ -52,8 +52,21 @@ export function backOnline(input:{downMs:number;cameBack:boolean;phase?:string;r
   if(input.phase!=='combat')return undefined;
   if(input.downMs<BACK_ONLINE_MIN_MS&&!input.cameBack)return undefined;
   const round=Math.max(1,Math.floor(input.round??1));
-  return `Voltou! O round tá no ${round}`;
+  return `Voltou! Tá na rodada ${round}`;
 }
+
+/**
+ * The menu's status line in place of the raw room id (auditoria-ui-menus item 15: "Sala F0121F65F2" meant nothing): no
+ * other person online is "Partida solo" (bots do not count); with friends, how many people are in (the code stays in
+ * "Copiar convite").
+ */
+export const SOLO_LINE='Partida solo';
+export function roomLine(members:readonly {id:string;online?:boolean;bot?:boolean}[]|undefined,localId:string):string{
+  const people=(members??[]).filter(m=>!m.bot&&(m.id===localId||m.online!==false)).length;
+  return people<=1?SOLO_LINE:`${people} jogadores na sala`;
+}
+/** The connection line under it: the plain "connected" news is noise in a solo match (only a problem is worth a line). */
+export const quietStatus=(text:string,solo:boolean)=>solo&&text.startsWith('Conectado');
 
 /** The app came back from the background this recently (ms): a drop ending now counts as noticed (BackOnlineWatch). */
 export const WAKE_WINDOW_MS=10_000;

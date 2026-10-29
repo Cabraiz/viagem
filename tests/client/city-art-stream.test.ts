@@ -74,17 +74,16 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
   const ground=src.slice(src.indexOf('  private drawGround(){'));
   assert.match(ground,/const stopStream=this\.streamCityArt\(city,art\);/);
   assert.match(ground,/const drop=\(\)=>\{stopStream\(\);city\.destroy\(\);/);
-  assert.match(src,/if\(this\.cityHeld\)this\.readyHeld=true;else\{this\.hooks\.ready\(\);this\.queueLateArt\(\);\}/,'create holds the cover while the near art comes');
-  // cena-nasce-rapido: the defenses' sheets (~11 MB) are not in the city's preload; they follow the near art, and the
-  // waiting room's P1/P2 wait for it too (background-hold.ts).
-  assert.match(preload,/if\(!\(this\.field instanceof CityTerrain\)\)this\.queueLateArt\(\);/);
-  assert.doesNotMatch(src.slice(src.indexOf('  preload(){'),src.indexOf('  private lateArtQueued')),/queueTowerArt\(this\)/,'no tower sheet before the first frame in the city');
+  assert.match(src,/if\(this\.cityHeld\)this\.readyHeld=true;else this\.hooks\.ready\(\);/,'create holds the cover while the near art comes');
+  // auditoria-desempenho-28-10: no defense sheet is preloaded (every kind's was ~134 MB of textures on a phone); a kit's
+  // ghost or a defense asks for its own kind's (needTowerArt).
+  assert.doesNotMatch(src,/queueTowerArt|queueLateArt/,'no bulk tower preload');
+  assert.match(src,/needArt:kind=>this\.needTowerArt\(kind\)/,'the defenses ask for their own sheets');
   const update=src.slice(src.indexOf('  private updateCity(delta:number){'),src.indexOf('this.city.update({camera'));
   assert.match(update,/this\.cityStream\?\.nearReady\(\)&&this\.city\.groundSettled\(\)/,'near art and the final ground');
   assert.match(update,/performance\.now\(\)-this\.heldSince<NEAR_ART_CAP_MS\)return;/,'no chunk is built while held, at most the cap');
   assert.match(update,/if\(this\.readyHeld\)\{this\.readyHeld=false;this\.hooks\.ready\(\);\}/);
   assert.match(update,/this\.cityHeld=false;this\.releaseBackground\(\);/,'the background downloads go on with the cover');
-  assert.match(src.slice(src.indexOf('  private updateCity(delta:number){')),/this\.queueLateArt\(\);/,'the towers after the near art');
   const stream=src.slice(src.indexOf('  private streamCityArt('),src.indexOf('  private cityArt():'));
   assert.match(stream,/if\(ok\)city\.artArrived\(key\);stream\.settled\(key,ok\);/);
   assert.match(stream,/Events\.FILE_LOAD_ERROR,failed/);
@@ -96,7 +95,7 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
 });
 
 test("scene.ts: the run's enemies wait for the near city art (they held the albedo behind them in the loader)",()=>{
-  assert.match(read('scene.ts'),/if\(elenco&&elenco!==this\.elenco&&!this\.cityHeld\)\{this\.elenco=elenco;for\(const id of elenco\)queueEnemyArt\(this,id\);\}/);
+  assert.match(read('scene.ts'),/if\(elenco&&elenco!==this\.elenco&&!this\.cityHeld\)\{this\.elenco=elenco;for\(const id of elenco\)if\(!chefaoDeferred\(id\)\)queueEnemyArt\(this,id\);\}/);
 });
 
 test('city-layer: late art is rebuilt one chunk per update, only off screen; dropped chunks leave the queue; the modo foto waits',()=>{

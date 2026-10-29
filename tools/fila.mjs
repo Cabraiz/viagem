@@ -3,12 +3,15 @@
 // once, sends back what conflicts or breaks it (a conflict only in public/art/manifest.json is regenerated instead:
 // resolveIndexConflict), publishes the Worker once (the Orquestrador's step, D-029) and pushes once.
 //
-//   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N]
+//   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N] [--sem-checagem]
 //   node tools/fila.mjs lista
-//   node tools/fila.mjs lote [--suite local|ci|"<command>"]      (the Orquestrador, or his cron)
-//   node tools/fila.mjs publicar <lote>                          (after `npm run deploy:rooms` when the lote needs it:
-//                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
+//   node tools/fila.mjs lote [--suite local|ci|"<command>"] [--smoke ci|off|"<command>"]   (the Orquestrador)
+//   node tools/fila.mjs publicar <lote> [--manter-remotas]       (after `npm run deploy:rooms` when the lote needs it:
+//                                                                 a --worker entry, a map/protocol change, CONTRACT_PATHS,
+//                                                                 or any file the Worker bundles, scripts/worker-files.mjs)
 //   node tools/fila.mjs cancelar <lote>
+// lote and publicar refuse to run when tools/fila.mjs (or wt-rm/wt-guarda) differs from <remote>/<base>: run the queue from
+// an up-to-date worktree of the main (--repo stays the main checkout); --qualquer-versao to try a new queue on purpose.
 // Options for tests and the simulation: --repo <main checkout> --board <board dir> --wt <worktree root> --remote origin
 // --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules
 // --disco "<free GB>,<total GB>" (a simulated drive; tools/wt-guarda.mjs: no lote below 25 GB free, a warning above 85%).
@@ -20,12 +23,24 @@
 // `ci` pushes the batch branch and runs `node tools/ci.mjs test <branch> --json` (E7: {ok, failedFiles, url});
 // any other string is a shell command run in the batch checkout (exit 0 = green; it may print `FILA-FAILED: [...]`, and
 // gets the files to run in FILA_FILES when the queue looks for the culprit).
+// The production + upgrade smoke (`--smoke`): by default on the PC (runSmoke, a board browser slot); `ci` reads them from
+// the batch branch's ci.yml run instead (NEW-20261025-ORQ-cicd-smokes-bench: jobs build and smoke-upgrade, annotations
+// smoke-prod / smoke-upgrade via `tools/ci.mjs test --smoke`), the same run as `--suite ci` or one pushed for it; red or
+// infra there aborts the lote like a red smoke here, and no answer from the CI falls back to the PC's smoke.
+// publicar deletes, on the remote, each integrated vgm/ branch whose remote head the new main contains (--manter-remotas:
+// keep them); the batch fila/ branch goes whenever the lote pushed it.
+// The static checks (STATIC_CHECKS: lint-design) run with no checkout on the tree of the branch merged with the base:
+// `pronto` refuses a branch that fails one the base passes (--sem-checagem: queue it anyway), and the lote sends one back
+// before its suite. The culprit of a red suite is looked for in ONE worktree, by binary search over the batch's prefixes;
+// a failure only in files a static check stands for is looked for first on the prefixes' trees, with no worktree at all.
 import {execFileSync,spawnSync} from 'node:child_process';
-import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
+import {existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {JUNCTIONS,removeWorktreeSafe} from './wt-rm.mjs';
 import {avalia,avisaUso,exigeEspaco,protecoes,salvaEvidencias,worktrees} from './wt-guarda.mjs';
+import {workerChanges,workerFiles} from '../scripts/worker-files.mjs';
 
 const SELF_ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const PRIO={P0:0,P1:1,P2:2,P3:3};
@@ -37,7 +52,7 @@ function parse(argv){
     const a=argv[i];
     if(!a.startsWith('--')){o._.push(a);continue;}
     const k=a.slice(2);
-    if(['worker','protocol','no-modules','dry'].includes(k))o.flags.add(k);
+    if(['worker','protocol','no-modules','dry','qualquer-versao','manter-remotas','sem-checagem'].includes(k))o.flags.add(k);
     else o[k]=argv[++i];
   }
   // The main checkout, also when the tool runs from a worktree (D:/Gits/viagem-wt/x): the parent of git's common dir.
@@ -58,6 +73,29 @@ const writeJson=(p,v)=>{mkdirSync(dirname(p),{recursive:true});const tmp=`${p}.$
 export function mainCheckout(dir){
   const r=spawnSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:dir,encoding:'utf8'});
   return r.status===0?dirname(r.stdout.trim()):dir;
+}
+/**
+ * The queue's own files. A lote or a publish run by another copy is refused (BUG-20261024-ORQ-fila-base-arquivo-novo: the
+ * Orquestrador ran the main checkout's fila.mjs, left at 14/10 while the main moved on 1272 commits; without the filter of
+ * 1a82e778 the base ran tests/maps/mapa-175.test.ts, which it does not have, and lote 20261024-183205 said "a main já falha").
+ */
+export const TOOL_FILES=['tools/fila.mjs','tools/wt-rm.mjs','tools/wt-guarda.mjs'];
+/** The TOOL_FILES under `root` that differ from <remote>/<base> in opt.repo (a file the base does not have is skipped). */
+export function staleTools(opt,root=SELF_ROOT){
+  const lf=(s)=>s.replace(/\r\n/g,'\n').trim();
+  return TOOL_FILES.filter(f=>{
+    const there=spawnSync('git',['show',`${opt.remote}/${opt.base}:${f}`],{cwd:opt.repo,encoding:'utf8',maxBuffer:64<<20});
+    if(there.status!==0)return false;
+    const here=join(root,f);
+    return !existsSync(here)||lf(readFileSync(here,'utf8'))!==lf(there.stdout);
+  });
+}
+/** Fetches, then throws when this copy of the queue is not the base's (--qualquer-versao: trying a new queue on purpose). */
+function exigeFilaAtual(opt){
+  if(opt.flags.has('qualquer-versao'))return;
+  tryGit(opt.repo,'fetch','-q',opt.remote);
+  const old=staleTools(opt);
+  if(old.length)throw new Error(`${old.join(', ')} de ${SELF_ROOT} não é o da ${opt.remote}/${opt.base}: rode a fila de uma worktree atualizada da ${opt.remote}/${opt.base} (node <worktree>/tools/fila.mjs ...; a --repo continua sendo a main checkout), ou --qualquer-versao para testar uma fila nova`);
 }
 const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'').replace('T','-');
 const log=(...a)=>console.log('[fila]',...a);
@@ -122,6 +160,13 @@ export function failedFilesFromTap(tap){
  */
 export const CONTRACT_PATHS=[/^public\/maps\/[^/]+\.json$/,/^src\/protocol\//,/^public\/multiplayer\.json$/];
 export const contractFiles=(changed)=>changed.filter(f=>CONTRACT_PATHS.some(re=>re.test(f)));
+/**
+ * A lote that changes what the Worker bundles (NEW-20261025-ORQ-health-gate-build-sha; lote 23 changed the sim with the
+ * same protocol, the Worker stayed on lote 22) needs deploy:rooms too: pages.yml's gate compares /health's build with
+ * the site and holds the site until the Worker is this lote's.
+ */
+const staleWorker=(files,sha)=>`o lote muda o que o Worker empacota (${files.slice(0,4).join(', ')}${files.length>4?`, … ${files.length} arquivos`:''}): `
+  +`rode deploy:rooms deste lote antes (o /health tem de dizer build ${sha.slice(0,12)}); sem isso o pages.yml não publica o site`;
 const outOfStep=(contrato)=>`ATENÇÃO: o lote muda o que o Worker casa com o cliente (${contrato.slice(0,4).join(', ')}${contrato.length>4?', …':''}): `
   +'depois do deploy:rooms, o site no ar fica fora de passo por ~20 min, até o pages.yml publicar (o health-gate dele segura o site até o Worker casar)';
 
@@ -191,13 +236,111 @@ function addWorktree(opt,name,branch,at){
   }
   return dir;
 }
-function removeWorktree(opt,dir,branch){
+// ---------- static checks with no checkout (NEW-20261029-ORQ-fila-culpado-rapido) ----------
+/**
+ * Pure, fast checks run on a git tree's files alone: the tree's own `script` (absent there: skipped) with the extracted
+ * folder as its argument, exit 0 = ok. `arquivos` picks the blobs it reads; `testes` are the suite files it stands for
+ * (a red suite only in them is looked for on trees first). Lote 20261029-062428 failed only in design-lint.test.ts and
+ * the step-by-step search was ~5 min per worktree on the HD; lint-design over each branch's tree found it in 2 min.
+ */
+export const STATIC_CHECKS=[
+  {nome:'lint-design',script:'scripts/lint-design.mjs',testes:['tests/tools/design-lint.test.ts'],
+    arquivos:(f)=>/^(src|multiplayer)\/.+\.(css|ts)$/.test(f)||f==='scripts/lint-design.mjs'||f==='scripts/design-lint-baseline.json'},
+];
+/** The tree of `a` merged with `b`, written to the object store only: {ok, tree}; ok false on a conflict or an error. */
+export function mergeTree(repo,a,b){
+  const r=tryGit(repo,'merge-tree','--write-tree',a,b);
+  return {ok:r.ok,tree:r.ok?r.out.split('\n')[0].trim():null};
+}
+/** Writes the blobs of `tree` whose path passes `want` under `dest` (git ls-tree + one cat-file --batch). Returns the count. */
+export function extractTree(repo,tree,want,dest){
+  const ls=execFileSync('git',['ls-tree','-r','-z',tree],{cwd:repo,maxBuffer:256<<20,stdio:['ignore','pipe','pipe']}).toString('utf8');
+  const blobs=[];
+  for(const rec of ls.split('\0')){
+    const tab=rec.indexOf('\t');if(tab<0)continue;
+    const [,type,oid]=rec.slice(0,tab).split(' '),p=rec.slice(tab+1);
+    if(type==='blob'&&want(p))blobs.push({oid,p});
+  }
+  if(!blobs.length)return 0;
+  const out=execFileSync('git',['cat-file','--batch'],{cwd:repo,input:blobs.map(b=>b.oid).join('\n')+'\n',maxBuffer:1<<30,stdio:['pipe','pipe','pipe']});
+  let at=0;
+  for(const b of blobs){
+    const nl=out.indexOf(10,at),size=Number(out.subarray(at,nl).toString().split(' ')[2]);
+    const f=join(dest,b.p);mkdirSync(dirname(f),{recursive:true});writeFileSync(f,out.subarray(nl+1,nl+1+size));
+    at=nl+1+size+1;
+  }
+  return blobs.length;
+}
+/** The STATIC_CHECKS (or `checks`) that fail on `tree`: [{nome, testes, linhas}], each run on its own extracted copy. */
+export function checkTree(repo,tree,checks=STATIC_CHECKS){
+  const falhas=[],tmp=mkdtempSync(join(tmpdir(),'fila-arvore-'));
+  try{
+    for(const c of checks){
+      if(!tryGit(repo,'cat-file','-e',`${tree}:${c.script}`).ok)continue;
+      const dir=join(tmp,c.nome);extractTree(repo,tree,c.arquivos,dir);
+      const r=spawnSync(process.execPath,[join(dir,c.script),dir],{cwd:dir,encoding:'utf8',env:childEnv(),maxBuffer:64<<20});
+      if(r.status===0)continue;
+      const lines=`${r.stdout??''}${r.stderr??''}`.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      falhas.push({nome:c.nome,testes:c.testes,linhas:lines.slice(0,6).join(' / ').slice(0,600)||`saiu com ${r.status}`});
+    }
+  }finally{rmSync(tmp,{recursive:true,force:true});}
+  return falhas;
+}
+/**
+ * The static checks that `sha` merged with `base` fails and `base` itself passes (a check red on the main blames nobody:
+ * logged once). A merge with conflicts is checked on the branch's own tree. `memo` keeps the base's answer for a lote.
+ */
+function checkBranch(opt,sha,base,memo={}){
+  // A check none of whose files the branch changes gives the base's answer on the merge: not run.
+  const d=base?tryGit(opt.repo,'diff','--name-only',`${base}...${sha}`):{ok:false};
+  const changed=d.ok?d.out.split('\n').filter(Boolean):undefined;
+  const checks=STATIC_CHECKS.filter(c=>!changed||changed.some(c.arquivos));
+  if(!checks.length)return [];
+  const m=base?mergeTree(opt.repo,base,sha):{ok:false};
+  const falhas=checkTree(opt.repo,m.ok?m.tree:`${sha}^{tree}`,checks);
+  if(!falhas.length||!base)return falhas;
+  if(!memo.base){
+    memo.base=new Set(checkTree(opt.repo,`${base}^{tree}`).map(f=>f.nome));// all checks, once per lote
+    if(memo.base.size)log(`checagem estática já falha na ${opt.base} (${[...memo.base].join(', ')}): não culpa ninguém`);
+  }
+  return falhas.filter(f=>!memo.base.has(f.nome));
+}
+/** "lint-design: <its lines>; …" for a refusal or a send-back. */
+const staticWhy=(falhas)=>falhas.map(f=>`${f.nome}: ${f.linhas}`).join('; ');
+
+/** Whether this lote pushes its batch branch (for the CI suite or the CI smoke). */
+const pushesBatch=(opt)=>opt.suite==='ci'||opt.smoke==='ci';
+function removeWorktree(opt,dir,branch,pushed=pushesBatch(opt)){
   if(!existsSync(dir))return;
   // tools/wt-rm.mjs: the junctions dropped and CHECKED gone, nothing else pointing outside, only then the remove (the
   // shared node_modules were emptied four times by a plain `git worktree remove`). It throws instead of removing.
   removeWorktreeSafe(dir,{repo:opt.repo});
-  // The batch branch goes with its worktree, and from the remote when --suite ci pushed it.
-  if(branch){tryGit(opt.repo,'branch','-D',branch);if(opt.suite==='ci'&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
+  // The batch branch goes with its worktree, and from the remote when the lote pushed it (also on a later publicar or
+  // cancelar run without the lote's options: the lote state's `pushed`).
+  if(branch){tryGit(opt.repo,'branch','-D',branch);if(pushed&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
+}
+
+/**
+ * After the push: the remote vgm/ branch of each integrated card, when the new main contains its remote head (it was
+ * integrated as it is there). The delete is leased on that head: a push in the meantime keeps the branch. A local
+ * branch or worktree is not touched (limpaIntegradas decides those); an executor's next push makes the remote one again.
+ * Returns the branches deleted. Never throws (the lote is already published).
+ */
+export function apagaRemotas(opt,state){
+  const out=[];
+  if(opt.flags?.has('manter-remotas'))return out;
+  for(const e of state.integrados??[]){
+    if(!String(e.branch).startsWith('vgm/'))continue;
+    const ls=tryGit(opt.repo,'ls-remote',opt.remote,`refs/heads/${e.branch}`);
+    const head=ls.ok?ls.out.split(/\s+/)[0]:'';
+    if(!head)continue;
+    // A head this checkout does not have (pushed from elsewhere) cannot be in the new main.
+    if(!tryGit(opt.repo,'merge-base','--is-ancestor',head,state.sha).ok){log(`branch remota mantida ${e.branch}: ${head.slice(0,7)} não está na ${opt.base} nova`);continue;}
+    const del=tryGit(opt.repo,'push','-q',`--force-with-lease=refs/heads/${e.branch}:${head}`,opt.remote,`:refs/heads/${e.branch}`);
+    if(del.ok){out.push(e.branch);log(`branch remota apagada ${e.branch} (${head.slice(0,7)}, já na ${opt.base})`);}
+    else log(`branch remota mantida ${e.branch}: ${del.err.split('\n')[0].slice(0,200)}`);
+  }
+  return out;
 }
 
 // ---------- the suite ----------
@@ -229,9 +372,10 @@ function runSuite(opt,dir,branch,files){
     const ci=join(dir,'tools','ci.mjs');
     if(!existsSync(ci)){log('tools/ci.mjs ainda não existe: suíte local');return runSuite({...opt,suite:'local'},dir,branch,files);}
     git(dir,'push','-f',opt.remote,`${branch}:${branch}`);
-    const r=spawnSync(process.execPath,[ci,'test',branch,'--json'],{cwd:dir,encoding:'utf8',env:childEnv()});
+    // --smoke ci: the same run's smokes come back with it (runSmokeCi uses them).
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json',...(opt.smoke==='ci'?['--smoke']:[])],{cwd:dir,encoding:'utf8',env:childEnv()});
     if(r.status===2||r.status===null){log(`tools/ci.mjs sem resposta (exit ${r.status}): suíte local`);return runSuite({...opt,suite:'local'},dir,branch,files);}
-    try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url};}
+    try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url,...(j.smoke?{smoke:j.smoke}:{})};}
     catch{return {ok:false,failedFiles:[],error:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,400)}`};}
   }
   // A shell command (also the culprit runs of --suite ci, which are local and short).
@@ -288,6 +432,38 @@ function runSmoke(opt,dir,prev){
     return {ok:true,out};
   }finally{rmdirSyncSafe(slot);}
 }
+/**
+ * The CI's smokes ({prod, upgrade}: tools/ci.mjs smokeSummary each) as runSmoke's result. No prod summary: {semResposta}
+ * (the queue then smokes on the PC). upgrade null: the run had no upgrade job (not a fila/ branch); skipped: no base.
+ */
+export function smokeFromCi(smoke){
+  const prod=smoke?.prod;
+  if(!prod)return {semResposta:true,motivo:'o CI não deu o resumo do smoke de produção'};
+  const red=(s,label)=>{const linha=(s.linhas??[]).join(' / ').slice(0,600);
+    return {ok:false,infra:!!s.infra,linha,motivo:`${s.infra?`infraestrutura do ${label}`:`${label} falhou`} no CI (exit ${s.exit}): ${linha}`};};
+  if(!prod.ok)return red(prod,'smoke');
+  if(smoke.upgrade&&!smoke.upgrade.ok)return red(smoke.upgrade,'smoke de upgrade');
+  return {ok:true,...(smoke.upgrade?.skipped?{nota:smoke.upgrade.linhas?.[0]??'upgrade pulado'}:{})};
+}
+/**
+ * --smoke ci: the smokes of the batch branch's ci.yml run — the suite's own (--suite ci asked for them), else the branch
+ * pushed now and `tools/ci.mjs test <branch> --json --smoke` waited for (its tests are the local suite's business).
+ */
+function runSmokeCi(opt,dir,branch,suite){
+  let smoke=suite?.smoke,url=suite?.url??null;
+  if(!smoke){
+    const ci=join(dir,'tools','ci.mjs');
+    if(!existsSync(ci))return {semResposta:true,motivo:'tools/ci.mjs não existe no lote'};
+    const push=tryGit(dir,'push','-f',opt.remote,`${branch}:${branch}`);
+    if(!push.ok)return {semResposta:true,motivo:`push de ${branch} falhou (${push.err.split('\n')[0].slice(0,200)})`};
+    log('smoke de produção + upgrade no CI (ci.yml: build e smoke-upgrade)…');
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json','--smoke'],{cwd:dir,encoding:'utf8',env:childEnv()});
+    if(r.status===2||r.status===null)return {semResposta:true,motivo:`tools/ci.mjs sem resposta (exit ${r.status})`};
+    try{const j=JSON.parse((r.stdout??'').trim());smoke=j.smoke;url=j.url??null;}
+    catch{return {semResposta:true,motivo:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,300)}`};}
+  }
+  return {...smokeFromCi(smoke),url,onde:'ci'};
+}
 /** Whether the batch checkout's smoke script has the upgrade mode (--upgrade-from). */
 const hasUpgradeSmoke=(dir)=>{const p=join(dir,'scripts','smoke-prod.mjs');return existsSync(p)&&readFileSync(p,'utf8').includes('upgrade-from');};
 
@@ -296,6 +472,14 @@ function pronto(opt){
   const [card]=opt._.slice(1);
   if(!card||!opt.branch)throw new Error('uso: pronto <card> --branch <branch> [--worker] [--protocol] [--prio P0] [--dono Executor-N]');
   const sha=git(opt.repo,'rev-parse',opt.branch);
+  // The static checks before the queue (fila-culpado-rapido): a branch that breaks lint-design is told now, not after a
+  // lote. Against the last fetched base (no fetch here); --sem-checagem queues it anyway.
+  if(!opt.flags.has('sem-checagem')){
+    const b=tryGit(opt.repo,'rev-parse','--verify','-q',`${opt.remote}/${opt.base}`);
+    const falhas=checkBranch(opt,sha,b.ok?b.out:undefined);
+    if(falhas.length)throw new Error(`${opt.branch}@${sha.slice(0,7)} não entra na fila: checagem estática falha — ${staticWhy(falhas)} `
+      +`(corrija, ou --sem-checagem para pôr assim mesmo)`);
+  }
   const entry={card,branch:opt.branch,sha,worker:opt.flags.has('worker')||opt.flags.has('protocol'),protocol:opt.flags.has('protocol'),
     prio:opt.prio??'P1',dono:opt.dono??'',at:new Date().toISOString()};
   writeJson(join(opt.board,'fila',`${card}.json`),entry);
@@ -341,6 +525,7 @@ function answer(opt,entry,result){
 
 function lote(opt){
   const lockDir=join(opt.board,'fila','.lote');
+  exigeFilaAtual(opt);
   // BUG-20261022-ORQ-disco-cheio-guarda: a lote makes up to four checkouts; below 25 GB free it does not start (the
   // Orquestrador gets a note; above 85% of use, a warning). --disco "<free GB>,<total GB>" simulates the drive.
   exigeEspaco(opt.board,opt.wt,'abrir o lote',{fake:opt.disco});
@@ -350,6 +535,8 @@ function lote(opt){
     throw new Error(`há um lote aberto (${open}): node tools/fila.mjs publicar ${open} ou cancelar ${open}`);
   }
   const id=stamp(),entries=ordered(queued(opt));
+  // The options of a smoke on the PC: --smoke ci's fallback and the default.
+  const pcSmoke={...opt,smoke:opt.smoke==='ci'?undefined:opt.smoke};
   writeFileSync(join(lockDir,'lote.txt'),id);
   const made=[],wt=(name,branch,at)=>{const dir=addWorktree(opt,name,branch,at);made.push({dir,branch});return dir;};
   const drop=(dir,branch)=>{removeWorktree(opt,dir,branch);const k=made.findIndex(m=>m.dir===dir);if(k>=0)made.splice(k,1);};
@@ -360,8 +547,10 @@ function lote(opt){
     const base=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
     const devolvidos=[],sendBack=(e,why)=>{devolvidos.push({card:e.card,...why});answer(opt,e,{status:'devolvido',lote:id,...why});log(`devolvido: ${e.card} — ${why.motivo}`);};
     /** The base + `list` merged in order (+ the bump when one of them changes the protocol), in a fresh worktree. */
-    const build=(name,branch,list,commit)=>{
-      const dir=wt(name,branch,base),merged=[];
+    const build=(name,branch,list,commit)=>mergeAll(wt(name,branch,base),list,commit);
+    /** `list` merged in order into the checkout `dir` (at the base), the bump too: {dir, merged, ok, protocol}. */
+    const mergeAll=(dir,list,commit)=>{
+      const merged=[];
       for(const e of list){
         const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${id}: ${e.card}`,e.sha);
         if(!r.ok){
@@ -387,6 +576,14 @@ function lote(opt){
       if(!now.ok||now.out!==e.sha)sendBack(e,{motivo:'branch mudou depois do pronto (rode pronto de novo)',agora:now.out||null});
       else candidates.push(e);
     }
+    // The static checks before any suite: each candidate over the base, on trees (no worktree).
+    const memo={};
+    candidates=candidates.filter(e=>{
+      const falhas=checkBranch(opt,e.sha,base,memo);
+      if(!falhas.length)return true;
+      sendBack(e,{motivo:`checagem estática: ${falhas.map(f=>f.nome).join(', ')}`,falhas:[...new Set(falhas.flatMap(f=>f.testes))],checagem:staticWhy(falhas)});
+      return false;
+    });
     let suites=0,result;
     while(candidates.length){
       const batch=build(`fila-${id}`,`fila/${id}`,candidates,true);
@@ -407,17 +604,49 @@ function lote(opt){
         log(`lote ${id} abortado: ${msg}; as entradas continuam na fila`);
         return {lote:id,abortado,falhas:s.failedFiles,...more,integrados:[],devolvidos,suites};
       };
-      /** `check(dir)` on the base, then on the batch rebuilt one branch at a time (with the bump): {base} or {e, at}. */
+      /**
+       * `check(dir)` on the base, then by binary search over the batch's prefixes (base + the first k, with the bump), all
+       * in ONE worktree reset between steps (a `worktree add` was ~5 min on the HD): {base}, {e, at} or {} (not
+       * reproduced), with busca {worktrees, passos} — the k of each prefix run, 0 the base. The full batch is red, so a
+       * prefix N is run only when the search lands on it (to tell a real failure from a flaky one).
+       */
       const firstFailing=(check)=>{
-        const bare=wt(`fila-${id}-base`,`fila/${id}-base`,base),atBase=check(bare);
-        drop(bare,`fila/${id}-base`);
-        if(!atBase.ok)return {base:atBase};
+        const name=`fila-${id}-c`,br=`fila/${id}-c`,dir=wt(name,br,base),passos=[],res=new Map(),n=batch.ok.length;
+        const busca=()=>({worktrees:1,passos:[...passos]});
+        const at=(k)=>{
+          if(res.has(k))return res.get(k);
+          git(dir,'reset','-q','--hard',base);git(dir,'clean','-fdq');// node_modules is ignored: clean leaves the junctions
+          if(k)mergeAll(dir,batch.ok.slice(0,k),false);
+          passos.push(k);const r=check(dir);res.set(k,r);return r;
+        };
+        try{
+          const atBase=at(0);
+          if(!atBase.ok)return {base:atBase,busca:busca()};
+          let lo=0,hi=n;// prefix lo passes, prefix hi is taken as red
+          while(hi-lo>1){const mid=(lo+hi)>>1;if(at(mid).ok)lo=mid;else hi=mid;}
+          const r=at(hi);
+          return r.ok?{busca:busca()}:{e:batch.ok[hi-1],at:r,busca:busca()};
+        }finally{drop(dir,br);}
+      };
+      /**
+       * The cheap road first: a red suite only in files the static checks stand for (design-lint.test.ts) is looked for
+       * by those checks on the trees of the batch's prefixes (merge-tree + commit-tree, no worktree). {base}, {e, nome,
+       * busca} or undefined (other files, a merge-tree conflict, or no prefix red: the worktree search decides).
+       */
+      const staticCulprit=(files)=>{
+        const checks=STATIC_CHECKS.filter(c=>files.some(f=>c.testes.includes(f)));
+        if(!checks.length||!files.every(f=>checks.some(c=>c.testes.includes(f))))return undefined;
+        if(checkTree(opt.repo,`${base}^{tree}`,checks).length)return {base:true};
+        let prev=base;
         for(let k=1;k<=batch.ok.length;k++){
-          const step=build(`fila-${id}-c`,`fila/${id}-c`,batch.ok.slice(0,k),false),at=check(step.dir);
-          drop(step.dir,`fila/${id}-c`);
-          if(!at.ok)return {e:batch.ok[k-1],at};
+          const e=batch.ok[k-1],m=mergeTree(opt.repo,prev,e.sha);
+          if(!m.ok){log(`atalho estático parado em ${e.card} (merge-tree com conflito): busca no worktree`);return undefined;}
+          const falhas=checkTree(opt.repo,m.tree,checks);
+          if(falhas.length)return {e,falhas,busca:{worktrees:0,atalho:falhas.map(f=>f.nome).join(', '),passos:k}};
+          prev=git(opt.repo,'-c','user.name=fila','-c','user.email=fila@local','commit-tree',m.tree,'-p',prev,'-p',e.sha,'-m',`fila ${id}: ${e.card}`);
         }
-        return {};
+        log(`atalho estático: nenhum prefixo falha em ${checks.map(c=>c.nome).join(', ')}: busca no worktree`);
+        return undefined;
       };
       // A CI job's failure is not a file (tools/ci.mjs: `job:<name>`); with test files too, the files decide first.
       const files=s.failedFiles.filter(f=>!f.startsWith('job:')),jobs=s.failedFiles.filter(f=>f.startsWith('job:'));
@@ -426,38 +655,68 @@ function lote(opt){
         // batch one branch at a time. Another job has no rule: nobody is blamed, and the main is not said to fail.
         const other=jobs.filter(j=>j!=='job:build');
         if(other.length)return abort('falha de job sem arquivo',`falha de job sem arquivo (${other.join(', ')})`);
-        const f=firstFailing((dir)=>runSmoke(opt,dir));
+        // --smoke ci: the CI's smoke stands for the PC's, so a red one aborts the lote as a red smoke here does (nobody
+        // blamed, nothing run on the PC; `lote` without --smoke ci looks for the culprit on the PC).
+        if(opt.smoke==='ci'&&s.smoke){
+          const c=smokeFromCi(s.smoke);
+          if(!c.semResposta){
+            if(c.ok)return abort('falha de job sem arquivo','o job build do CI falhou, mas o smoke dele passou');
+            return abort('smoke',`o smoke do CI falhou (${c.motivo})`,{smoke:{...c,url:s.url??null,onde:'ci'}});
+          }
+        }
+        const f=firstFailing((dir)=>runSmoke(pcSmoke,dir));
         if(f.base)return f.base.infra?abort('smoke sem resposta',`o smoke da ${opt.base} não rodou (${f.base.motivo})`,{smoke:f.base})
           :abort(`a ${opt.base} falha`,`o smoke da ${opt.base} já falha (${f.base.linha??f.base.motivo})`,{smoke:f.base});
         if(f.at?.infra)return abort('smoke sem resposta',`o smoke não rodou ao refazer o lote (${f.at.motivo})`,{smoke:f.at});
         if(!f.e)return abort('falha não reproduzida','o smoke do CI falhou, mas não falha aqui ao refazer o lote passo a passo (instável?)');
-        sendBack(f.e,{motivo:'smoke',smoke:f.at.linha??f.at.motivo,falhas:s.failedFiles,url:s.url??null});
+        sendBack(f.e,{motivo:'smoke',smoke:f.at.linha??f.at.motivo,falhas:s.failedFiles,url:s.url??null,busca:f.busca});
         candidates=batch.ok.filter(e=>e!==f.e);
         continue;
       }
       // The main itself red in those files: not the branches' fault. Else the first branch whose addition makes them fail
       // goes back, the rest gets another suite.
+      const fast=staticCulprit(files);
+      if(fast?.base)return abort(`a ${opt.base} falha`,`a ${opt.base} já falha na checagem estática de ${files.join(', ')}`);
+      if(fast){
+        log(`culpada pelo atalho estático (${fast.busca.atalho}, ${fast.busca.passos} árvore(s), nenhum worktree): ${fast.e.card}`);
+        sendBack(fast.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null,
+          checagem:staticWhy(fast.falhas),busca:fast.busca});
+        candidates=batch.ok.filter(e=>e!==fast.e);
+        continue;
+      }
       const f=firstFailing((dir)=>runSuite(local,dir,`fila/${id}-c`,files));
       if(f.base)return abort(`a ${opt.base} falha`,`a ${opt.base} já falha em ${files.join(', ')}`);
       if(!f.e)return abort('falha não reproduzida','a falha não se repete ao refazer o lote passo a passo (instável?)');
-      sendBack(f.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null});
+      log(`culpada em ${f.busca.passos.length} passo(s) num worktree (prefixos ${f.busca.passos.join(', ')}): ${f.e.card}`);
+      sendBack(f.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null,busca:f.busca});
       candidates=batch.ok.filter(e=>e!==f.e);
     }
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
     // The production build, opened in a browser (the 14/10 outage: the source suite never loads the bundle).
     // The base (the main before this lote) checked out for the upgrade smoke, when the script has that mode.
-    const prev=!opt.smoke&&hasUpgradeSmoke(result.dir)?wt(`fila-${id}-anterior`,`fila/${id}-anterior`,base):undefined;
-    const smoke=runSmoke(opt,result.dir,prev);
-    if(prev)drop(prev,`fila/${id}-anterior`);
+    const onPc=()=>{
+      const prev=!pcSmoke.smoke&&hasUpgradeSmoke(result.dir)?wt(`fila-${id}-anterior`,`fila/${id}-anterior`,base):undefined;
+      const r=runSmoke(pcSmoke,result.dir,prev);
+      if(prev)drop(prev,`fila/${id}-anterior`);
+      return r;
+    };
+    let smoke;
+    if(opt.smoke==='ci'){
+      smoke=runSmokeCi(opt,result.dir,result.branch,result.suite);
+      if(smoke.semResposta){log(`smoke do CI sem resposta (${smoke.motivo}): smoke no PC`);smoke=onPc();}
+      else if(smoke.nota)log(`smoke do CI: ${smoke.nota}`);
+    }else smoke=onPc();
     if(!smoke.ok){
       log(`lote ${id} abortado: o smoke de produção falhou (${smoke.motivo}); as entradas continuam na fila`);
       return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};
     }
     const sha=git(result.dir,'rev-parse','HEAD');
-    const contrato=contractFiles(git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean));
-    const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0;
-    const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,suites,
-      integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',estado:needsWorker?'aguardando-worker':'pronto-para-push'};
+    const changed=git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean);
+    const contrato=contractFiles(changed),empacota=workerChanges(changed,workerFiles(result.dir));
+    const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0||empacota.length>0;
+    const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,empacota,suites,
+      integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',smokeOnde:smoke.onde??'pc',
+      ...(smoke.onde==='ci'?{smokeUrl:smoke.url??null}:{}),pushed:pushesBatch(opt),estado:needsWorker?'aguardando-worker':'pronto-para-push'};
     writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
     kept=true;made.length=0;// the batch worktree and the lock now belong to the lote state (publicar/cancelar)
     log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
@@ -465,6 +724,7 @@ function lote(opt){
     // Executors never deploy the Worker (D-029): the queue stops before the push and calls the Orquestrador.
     log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). Orquestrador: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
     log(`depois, com FILA_ORQ=1: node tools/fila.mjs publicar ${id}`);
+    if(empacota.length)log(staleWorker(empacota,sha));
     if(contrato.length)log(outOfStep(contrato));
     return state;
   }finally{
@@ -478,6 +738,7 @@ function rmdirSyncSafe(dir){try{for(const f of readdirSync(dir))rmSync(join(dir,
 
 function publicar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
+  exigeFilaAtual(opt);
   if(!existsSync(p))throw new Error(`lote ${id} não existe`);
   const state=readJson(p);
   if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);
@@ -488,6 +749,7 @@ function publicar(opt){
   if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}) depois do lote: `
     +(state.needsWorker?`o Worker publicado é o DESTE lote e o site ainda é o anterior — rode já "cancelar ${id}", depois "lote", e publique o Worker a partir do lote novo`
       :`rode "cancelar ${id}" e depois "lote" de novo`));
+  if(state.empacota?.length)log(`ATENÇÃO: ${staleWorker(state.empacota,state.sha)}`);
   git(opt.repo,'push',opt.remote,`${state.sha}:refs/heads/${opt.base}`);
   // The main checkout follows by fast-forward only, when it is on the base branch and clean.
   const cur=tryGit(opt.repo,'rev-parse','--abbrev-ref','HEAD').out,clean=tryGit(opt.repo,'status','--porcelain').out==='';
@@ -497,15 +759,16 @@ function publicar(opt){
     answer(opt,e,{status:'integrado',lote:id,sha:state.sha,protocolo:state.protocol});
     mkdirSync(join(opt.board,'integrated'),{recursive:true});writeFileSync(join(opt.board,'integrated',e.card),'');
   }
-  removeWorktree(opt,state.dir,state.branch);
+  removeWorktree(opt,state.dir,state.branch,state.pushed??pushesBatch(opt));
   const limpas=limpaIntegradas(opt,state);
-  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString(),worktreesRemovidas:limpas});
+  const remotas=apagaRemotas(opt,state);
+  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString(),worktreesRemovidas:limpas,remotasApagadas:remotas});
   rmdirSyncSafe(join(opt.board,'fila','.lote'));
   log(`publicado ${state.sha.slice(0,7)}: ${state.integrados.map(e=>e.card).join(', ')}`);
   try{const aviso=avisaUso(opt.board,opt.wt,{fake:opt.disco});if(aviso)log(aviso);}catch{/* only a warning */}
   if(state.contrato?.length)log(`${outOfStep(state.contrato)}; confira o site em ~25 min`);
   for(const d of state.devolvidos)log(`avise ${d.card}: ${d.motivo}`);
-  return {...state,estado:'publicado'};
+  return {...state,estado:'publicado',remotasApagadas:remotas};
 }
 
 /**
@@ -537,7 +800,7 @@ function limpaIntegradas(opt,state){
 function cancelar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
   if(existsSync(p)){
-    const state=readJson(p);removeWorktree(opt,state.dir,state.branch);
+    const state=readJson(p);removeWorktree(opt,state.dir,state.branch,state.pushed??pushesBatch(opt));
     // The integrated-to-be go back to the queue as they were, unless their owner queued a newer SHA meanwhile.
     for(const e of state.integrados){const q=join(opt.board,'fila',`${e.card}.json`);if(!existsSync(q))writeJson(q,e);}
     writeJson(p,{...state,estado:'cancelado'});

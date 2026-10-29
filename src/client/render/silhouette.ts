@@ -5,7 +5,7 @@
  */
 import type Phaser from 'phaser';
 import {LIT_SHADOW} from './light.ts';
-import {SILHOUETTE,SILHOUETTE_ROTATION} from './shadow-rules.ts';
+import {CONTACT,SILHOUETTE,SILHOUETTE_ROTATION,SOFT_SHADOW,conjugateEllipse} from './shadow-rules.ts';
 
 type Body=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
 /** A body's frame without the city's rims (contorno-breu copies): its sheet, origin and scale. */
@@ -17,21 +17,63 @@ export interface BareFrame {key:string;ox:number;oy:number;sx:number;sy:number}
 const bare=new WeakMap<Body,BareFrame>();
 export function setBareFrame(body:Body,frame:BareFrame|undefined){if(frame)bare.set(body,frame);else bare.delete(body);}
 export function bareFrameOf(body:Body){return bare.get(body);}
-export function silhouetteImage(scene:Phaser.Scene,key:string,depth:number){
-  return scene.add.image(0,0,key).setDepth(depth).setTintFill(LIT_SHADOW.color).setAlpha(SILHOUETTE.alpha).setVisible(false).setActive(false);
+/** `color`: its flat tint (the enemies' is neutral, shadow-rules.ts ENEMY_SILHOUETTE). */
+export function silhouetteImage(scene:Phaser.Scene,key:string,depth:number,color:number=LIT_SHADOW.color){
+  return scene.add.image(0,0,key).setDepth(depth).setTintFill(color).setAlpha(SILHOUETTE.alpha).setVisible(false).setActive(false);
 }
 /**
  * Lays `sil` under `body` with its feet at (x, y); `on` false (a hidden body) hides it. Its opacity follows the body's,
  * so it fades with it (death, a downed or spectating hero).
  */
-export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y:number,on:boolean,depth?:number){
+/**
+ * `length`: × the shadow's length on the ground (1: the figure's own; a giant's is shorter, render/layers.ts); `alpha`:
+ * its opacity (the enemies' is fainter, ENEMY_SILHOUETTE).
+ */
+export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y:number,on:boolean,depth?:number,length=1,alpha:number=SILHOUETTE.alpha){
   if(!on||!body.visible){if(sil.visible)sil.setVisible(false).setActive(false);return;}
   const b=bare.get(body),name=body.frame.name;
   const plain=b&&b.key!==body.texture.key&&body.scene.textures.exists(b.key)&&body.scene.textures.get(b.key).has(name)?b:undefined;
   const key=plain?plain.key:body.texture.key;
   if(sil.texture.key!==key||sil.frame.name!==name)sil.setTexture(key,name);
   sil.setVisible(true).setActive(true).setOrigin(plain?plain.ox:body.originX,plain?plain.oy:body.originY).setFlipX(body.flipX)
-    .setScale(plain?plain.sx:body.scaleX,-(plain?plain.sy:body.scaleY)*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION+body.rotation).setPosition(x,y)
-    .setAlpha(SILHOUETTE.alpha*body.alpha);
+    .setScale(plain?plain.sx:body.scaleX,-(plain?plain.sy:body.scaleY)*SILHOUETTE.flatten*length).setRotation(SILHOUETTE_ROTATION+body.rotation).setPosition(x,y)
+    .setAlpha(alpha*body.alpha);
   if(depth!==undefined)sil.setDepth(depth);
+}
+
+/**
+ * A vehicle's soft shadow (shadow-rules.ts SOFT_SHADOW) filled into `g`: the ellipse with centre (x, y) through the
+ * conjugate semi-diameters a and b (screen px), as SOFT_SHADOW.rings nested ellipses, so it is darkest at the centre
+ * and soft to 0 at the rim (the ground layer is a Graphics; one fill per ring, no texture).
+ */
+export function fillSoftShadow(g:Phaser.GameObjects.Graphics,x:number,y:number,ax:number,ay:number,bx:number,by:number,alpha:number=SOFT_SHADOW.alpha){
+  const e=conjugateEllipse(ax,ay,bx,by),n=SOFT_SHADOW.rings,c=Math.cos(e.rotation),s=Math.sin(e.rotation),[r,gr,bl]=SOFT_SHADOW.color;
+  const color=(r<<16)|(gr<<8)|bl,a=1-Math.pow(1-alpha,1/n);
+  for(let i=0;i<n;i++){
+    const t=1-i/n,pts:{x:number;y:number}[]=[];
+    for(let k=0;k<SOFT_SHADOW.sides;k++){const u=k/SOFT_SHADOW.sides*2*Math.PI,ex=Math.cos(u)*e.rx*t,ey=Math.sin(u)*e.ry*t;pts.push({x:x+ex*c-ey*s,y:y+ex*s+ey*c});}
+    g.fillStyle(color,a).fillPoints(pts,true);
+  }
+}
+
+/** The enemies' contact shadow texture (shadow-rules.ts CONTACT): a soft radial Breu blot, drawn once on a canvas. */
+export const CONTACT_KEY='horde:fx:contact';
+function ensureContact(scene:Phaser.Scene){
+  if(scene.textures.exists(CONTACT_KEY))return;
+  const {w,h,color,alpha}=CONTACT,c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d') as CanvasRenderingContext2D,rgb=color.join(',');
+  g.setTransform(1,0,0,h/w,0,0);
+  const r=g.createRadialGradient(w/2,w/2,0,w/2,w/2,w/2);
+  r.addColorStop(0,`rgba(${rgb},${alpha})`);r.addColorStop(.45,`rgba(${rgb},${alpha*.8})`);r.addColorStop(1,`rgba(${rgb},0)`);
+  g.fillStyle=r;g.fillRect(0,0,w,w);
+  scene.textures.addCanvas(CONTACT_KEY,c);
+}
+export function contactImage(scene:Phaser.Scene,depth:number){
+  ensureContact(scene);
+  return scene.add.image(0,0,CONTACT_KEY).setDepth(depth).setVisible(false).setActive(false);
+}
+/** Lays the contact shadow `width` px wide (shadow-rules.ts contactWidth) at the feet (x, y); it fades with the body. */
+export function castContact(contact:Phaser.GameObjects.Image,body:Body,x:number,y:number,width:number,on:boolean){
+  if(!on||!body.visible||!(width>0)){if(contact.visible)contact.setVisible(false).setActive(false);return;}
+  contact.setVisible(true).setActive(true).setPosition(x,y).setScale(width*CONTACT.width/CONTACT.w,width*CONTACT.height/CONTACT.h).setAlpha(body.alpha);
 }

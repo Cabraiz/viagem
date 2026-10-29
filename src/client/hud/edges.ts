@@ -20,18 +20,21 @@ export interface Point {x:number;y:number}
  * `obra`: a build site off screen in the intermission (card E4-obras-visiveis-da-base): the obra HUD lays it out on top of
  * the arrows already drawn (EdgeOptions.placed) and draws it itself, as a button that opens the site's tree.
  */
-export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra'|'moto'|'banco';
+/**
+ * `uno`: the car while it takes hits off screen (card inimigos-querem-o-uno): Cone, the Uno's own picture in the body.
+ */
+export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra'|'moto'|'banco'|'uno';
 /** Lower is more urgent (UX card: caído > chefe > spawn > aliado; base and baú are the Stonewards and loot extras; the city's grupo goes before spawn). */
 /**
  * moto and banco: only the city points at them, and the city ranks them itself (hud/city/edges.ts cityEdgeRank 3.5 and
  * 3.8); 8 and 9 here on purpose.
  */
-export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7,moto:8,banco:9};
+export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7,moto:8,banco:9,uno:10};
 /**
  * The ficha's sticker. grupo: the doc's new `bichos` sticker (a gosma silhouette, design/cidade-hud.md §3) has no art yet,
  * so it wears `onda` ("Bichos chegando") until the art lane draws it; its count in the body tells it from a mouth.
  */
-export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto',banco:'caixa-eletronico'};
+export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto',banco:'caixa-eletronico',uno:undefined};
 /** At most this many arrows on screen (UX card). */
 export const MAX_ARROWS=6;
 /** Arrows closer than this (CSS px) step aside along their side; when no spot is left they become one ("+N"). */
@@ -497,7 +500,7 @@ export class EdgeArrows {
         // An ally is a face in a circle (rostos-hud): the class's crop of the portrait it was handed (ui/face-crop.ts).
         const id=portraitClass(a.portrait)??(a.portrait?'':undefined);
         // The moto's arrow wears the chaveiro riding it (ui/chaveiro), else the moto icon.
-        slot.face.innerHTML=a.kind==='aliado'?faceHtml(id,a.portrait?{src:a.portrait}:{}):a.kind==='moto'?stickerOrIcon('chaveiro','moto'):sticker?icon(sticker):'';
+        slot.face.innerHTML=a.kind==='aliado'?faceHtml(id,a.portrait?{src:a.portrait}:{}):a.kind==='moto'?stickerOrIcon('chaveiro','moto'):a.kind==='uno'?'<span class="rh-edge-uno" aria-hidden="true"></span>':sticker?icon(sticker):'';
       });
       // A group's body holds its count ("99+" at the ceiling); its distance goes up to the tag (doc §3).
       put(slot,'num',a.kind==='grupo'?a.label??'':distanceText(a.distance),v=>{slot.num.textContent=v;});

@@ -199,8 +199,8 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   assert.match(scene,/this\.followHold\(time,still\|\|Math\.hypot\(sx,sy\)>\.05\)/);
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.hold\.release\(\);/);
   // The input still leaves through net.input (input-10hz); D-051: the attack button rides it as the 4th argument, the
-  // mouse's aim (cone-ataque-melee) as the 5th.
-  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!frozen&&!out&&!!this\.hooks\.attacking\?\.\(\),aim\)/);
+  // mouse's aim (cone-ataque-melee) as the 5th, Trabalhar (bicos) as the 6th: working, it does not attack.
+  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!work&&!frozen&&!out&&!!this\.hooks\.attacking\?\.\(\),aim,work\)/);
   assert.match(scene,/const frozen=this\.paused\|\|!!net\.run\?\.pause;/,'D-050: the level-up pause holds the controls too');
 });
 
@@ -226,7 +226,7 @@ test('right button on the map: holds the attack toward the mouse and never walks
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*if\(paused\)this\.rightAttack\(false\);/);assert.match(scene,/releaseInput\(\)\{[^\n]*this\.rightAttack\(false\);/);
   // explore: the hook is Space's own attack (AttackButton.key, its own key source), never pressed on a greyed button.
   // construir-no-botao: with a kit selected the right button builds (buildNow) instead, on a live button only.
-  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(down&&kitPlace\.active\)\{if\(!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)buildNow\(\);return;\}if\(!down\)attackBtn\?\.key\(false,'direito'\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true,'direito'\);\}/);
+  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(down&&skill\?\.working\)\{if\(!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)\{pause\(false\);workLatch\.tap\(performance\.now\(\)\);\}return;\}if\(down&&skill\?\.towing\)\{if\(!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)towTap\(\);return;\}if\(down&&skill\?\.dancing\)\{if\(!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)dance\(\);return;\}if\(!down\)attackBtn\?\.key\(false,'direito'\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true,'direito'\);\}/);
   // The hold-to-follow follows the left button only.
   const follow=scene.match(/private followHold\([\s\S]*?\n {2}\}\n/)?.[0]??'';
   assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);

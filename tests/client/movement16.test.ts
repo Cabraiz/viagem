@@ -3,7 +3,7 @@ import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movement16Plan,movementPlan,movementSheets,movementFrame,movementPivotX,hasMovement16,movement128Figure,movement16Source} from '../../src/client/sprites/movement128.ts';
+import {movement16Plan,movementPlan,movementSheets,movementFrame,movementPivotX,hasMovement16,movement128Figure,movement16Source,hasPush16,pushPlan,hasPull16,pullPlan,hasIdle16} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 import {screenDirection} from '../../src/client/projection.ts';
@@ -176,4 +176,74 @@ test('corrida-clt: an R06 class with run16 alone runs on it (S, N, W, NW, SE dra
   // a missing run direction: back to the R06 walk
   delete files['run16-N'];setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
   assert.equal(movementPlan(ID,'walk','W')?.key,`sprite128:${ID}:walk:W`);
+});
+
+test('parado-respiracao-herois: an R06 class breathes on idle16 drawn in the 8 directions; its run stays mirrored, its attack R06',()=>{
+  const sheet=(motion:'run'|'idle',d:keyof typeof PIVOT)=>{const m=m16('walk',d),file=`${ID}.${motion}16-${d.toLowerCase()}.webp`;
+    return {...m,file,height:60,durationMs:motion==='idle'?3200:600,pivotX:48,pages:[{...m.pages[0],file}],
+      ...(motion==='run'?{phase:{d:Array(16).fill(.1),v:Array(16).fill([0,0])}}:{})};};
+  const files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack'])for(const d of HERO_DIRECTIONS)files[`${motion}128-${d}`]=r06(motion,d);
+  for(const d of ['S','N','W','NW','SE'] as const)files[`run16-${d}`]=sheet('run',d);
+  for(const d of HERO_DIRECTIONS)files[`idle16-${d}`]=sheet('idle',d);
+  const load=()=>setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  load();
+  assert.equal(hasMovement16(ID),false);assert.equal(hasIdle16(ID),true);
+  const run={S:['S',false],N:['N',false],W:['W',false],E:['W',true],NW:['NW',false],NE:['NW',true],SE:['SE',false],SW:['SE',true]} as const;
+  for(const d of HERO_DIRECTIONS){
+    const idle=movementPlan(ID,'idle',d)!;
+    assert.equal(idle.key,`sprite16:${ID}:idle:${d}`,d);assert.equal(!!idle.flip,false,d);assert.deepEqual([idle.frameCount,idle.durationMs,idle.loop],[16,3200,true]);
+    assert.equal(movementPlan(ID,'walk',d)?.key,`sprite16:${ID}:run:${run[d][0]}`,d);assert.equal(!!movementPlan(ID,'walk',d)?.flip,run[d][1],d);
+    assert.equal(movementPlan(ID,'attack',d)?.key,`sprite128:${ID}:attack:${d}`);
+  }
+  assert.equal(movementSheets(ID,'idle').length,8);assert.equal(heroSheetUrl(ID),movementSheets(ID,'idle')[0].url);
+  // one side of a pair missing: the other side mirrored, as in M16
+  delete files['idle16-NE'];load();
+  assert.equal(hasIdle16(ID),true);assert.equal(movementPlan(ID,'idle','NE')?.key,`sprite16:${ID}:idle:NW`);assert.equal(movementPlan(ID,'idle','NE')?.flip,true);
+  // a pair missing: back to the idle8 (the run keeps running)
+  delete files['idle16-NW'];load();
+  assert.equal(hasIdle16(ID),false);assert.equal(movementPlan(ID,'idle','S')?.key,`sprite128:${ID}:idle8`);assert.equal(movementPlan(ID,'walk','NE')?.key,`sprite16:${ID}:run:NW`);
+});
+
+test('empurrar-uno: push16 keys survive the index, an R06 class (CLT) and an M16 one push on them, each side mirrored as drawn',()=>{
+  const sheet=(motion:'run'|'push',d:keyof typeof PIVOT)=>{const m=m16('walk',d),file=`${ID}.${motion}16-${d.toLowerCase()}.webp`;
+    return {...m,file,height:60,durationMs:motion==='push'?1000:600,pages:[{...m.pages[0],file}],phase:{d:Array(16).fill(.02),v:Array(16).fill([0,0])}};};
+  const files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack'])for(const d of HERO_DIRECTIONS)files[`${motion}128-${d}`]=r06(motion,d);
+  for(const d of ['S','N','W','NW','SE'] as const){files[`run16-${d}`]=sheet('run',d);files[`push16-${d}`]=sheet('push',d);}
+  const load=()=>setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  load();
+  assert.equal(hasPush16(ID),true);
+  const want={S:['S',false],N:['N',false],W:['W',false],E:['W',true],NW:['NW',false],NE:['NW',true],SE:['SE',false],SW:['SE',true]} as const;
+  for(const d of HERO_DIRECTIONS){
+    const plan=pushPlan(ID,d)!;
+    assert.equal(plan.key,`sprite16:${ID}:push:${want[d][0]}`,d);assert.equal(!!plan.flip,want[d][1],d);assert.ok(plan.phase,d);assert.equal(plan.durationMs,1000);
+  }
+  // the walk is still the run, the push never leaks into it
+  assert.equal(movementPlan(ID,'walk','W')?.key,`sprite16:${ID}:run:W`);
+  // a direction missing, or a push without its phase table: no push (the class pushes with its walk)
+  delete files['push16-N'];load();assert.equal(hasPush16(ID),false);assert.equal(pushPlan(ID,'W'),undefined);
+  files['push16-N']={...sheet('push','N'),phase:undefined};load();assert.equal(hasPush16(ID),false);
+  // an M16 class: its push drawn on the side of its walk/attack/idle (the default W/NW/SW here)
+  setArtIndex(index());assert.equal(hasPush16(ID),false);
+  const m16files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack','idle'] as const)for(const d of DRAWN)m16files[`${motion}16-${d}`]=m16(motion,d);
+  for(const d of DRAWN)m16files[`push16-${d}`]=sheet('push',d);
+  setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files:m16files}}}}}));
+  assert.equal(hasPush16(ID),true);assert.equal(pushPlan(ID,'SE')?.key,`sprite16:${ID}:push:SW`);assert.equal(pushPlan(ID,'SE')?.flip,true);
+});
+
+test('puxar-uno-corda: pull16 keys survive the index, mirrored as drawn, apart from the push', ()=>{
+  const sheet=(motion:'run'|'push'|'pull',d:keyof typeof PIVOT)=>{const m=m16('walk',d),file=`${ID}.${motion}16-${d.toLowerCase()}.webp`;
+    return {...m,file,height:60,durationMs:motion==='run'?600:1000,pages:[{...m.pages[0],file}],phase:{d:Array(16).fill(.02),v:Array(16).fill([0,0])}};};
+  const files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack'])for(const d of HERO_DIRECTIONS)files[`${motion}128-${d}`]=r06(motion,d);
+  for(const d of ['S','N','W','NW','SE'] as const){files[`push16-${d}`]=sheet('push',d);files[`pull16-${d}`]=sheet('pull',d);}
+  const load=()=>setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  load();
+  assert.equal(hasPull16(ID),true);assert.equal(hasPush16(ID),true);
+  assert.equal(pullPlan(ID,'E')?.key,`sprite16:${ID}:pull:W`);assert.equal(pullPlan(ID,'E')?.flip,true);assert.equal(pullPlan(ID,'SE')?.flip,false);
+  assert.equal(pushPlan(ID,'W')?.key,`sprite16:${ID}:push:W`);
+  // without its phase table, no pull (the holder walks); the push stays
+  files['pull16-N']={...sheet('pull','N'),phase:undefined};load();assert.equal(hasPull16(ID),false);assert.equal(pullPlan(ID,'W'),undefined);assert.equal(hasPush16(ID),true);
 });

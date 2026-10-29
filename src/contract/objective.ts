@@ -50,7 +50,20 @@ export type BankState='aberto'|'sacando'|'bicho'|'sem-cedulas';
 /** The banks' names (their text and numbers: rules/bancos.ts); never a real brand. */
 export const BANK_IDS=['pao-duro','juros','posto'] as const;
 export type BankName=typeof BANK_IDS[number];
-export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string}
+/**
+ * Bicos (card NEW-20261024-ORQ-bancos-viram-bicos; their names, lines and numbers: rules/bicos.ts BICOS): each bank's
+ * place is a shop with a gig, drawn by the seed and drawn again (another one) every time the shop opens. With it the
+ * states read: 'aberto' (open, nobody in), 'sacando' (heroes in the shift), 'bicho' (a critter takes the money),
+ * 'sem-cedulas' (closed until `until`: the shift's money is gone).
+ */
+export const BICO_IDS=['telemarketing','aura-67','entregador','compro-ouro','colchao','coach','fiscal','curso','influencer','pesquisa'] as const;
+export type BicoId=typeof BICO_IDS[number];
+/**
+ * bico: the gig the shop has now. workers: the players in the shift (PlayerInput.work; they are inside: no hits, no
+ * shots), absent when nobody. fila: the critters in its queue (each cuts the pay; rules/bicos.ts), absent when none.
+ */
+export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string;
+  bico:BicoId;workers?:string[];fila?:number}
 
 /** The objective as the HUD and the bots see it (ObjectiveView; seconds rounded up, ticks absolute). */
 export interface ObjectiveView {
@@ -75,8 +88,10 @@ export interface ObjectiveView {
   /**
    * D-052 (the car moves): `movers` are the players pushing or pulling it now (absent: nobody; they do not attack while
    * they do), `rope` the one pulling it by the rope (one at a time). The position follows the car as it moves.
+   * Card puxar-uno-corda: `heading` (radians, absent = 0) is where its nose points; the rope is tied to the front bumper
+   * (carNose) and lies on the ground ahead of it (ropeTip) while nobody holds it.
    */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;movers?:string[];rope?:string};
+  car:{x:number;y:number;hits:number;limit:number;parts:number;movers?:string[];rope?:string;heading?:number};
   ended?:'victory'|'defeat';
 }
 /**
@@ -85,10 +100,76 @@ export interface ObjectiveView {
  * the rope's length, the car's body radius and how close to a living nest it may never go. The body is 1 u (the siege
  * radius it always had), not the proposal's 1.5: a 1.5 u disc does not fit the city's streets (from the wall's spot it
  * reaches 16 u², against the whole city at 1-1.2 u). Pushing: an input pointing at the car within CAR_PUSH_DOT (cos).
+ * Card empurrar-uno (user, 22/10: "deixe empurrar 2x mais rápido o Uno"): twice the approved 0.8 / 1.4 / 1.8, the rope
+ * too (one table); the cap stays under the city hero's walk (heroSpeed 3.99 u/s), so the movers keep up with it.
  */
-export const CAR_SPEED:readonly number[]=Object.freeze([0,.8,1.4,1.8]);
+export const CAR_SPEED:readonly number[]=Object.freeze([0,1.6,2.8,3.6]);
 export const carSpeed=(movers:number)=>CAR_SPEED[Math.max(0,Math.min(CAR_SPEED.length-1,Math.floor(movers)))];
 export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1,CAR_NEST_KEEP_OUT=6,CAR_PUSH_DOT=.5;
+/**
+ * Card puxar-uno-corda (user, 23/10: "ao empurrar o Uno deveria estar visível algum lugar para puxá-lo também"): the
+ * rope is tied to the FRONT bumper, CAR_NOSE u ahead of the centre along the heading, and its free end lies
+ * CAR_ROPE_REST u further ahead on the ground. A hero within CAR_PULL_REACH of that end walking away from the bumper
+ * (cos ≥ CAR_PUSH_DOT) takes it, the way a pusher leans on the car: no button. Taut (CAR_ROPE from the bumper) it pulls
+ * and counts as one mover (carSpeed). It is let go after CAR_ROPE_LET_GO_S without a stick pointing away from the
+ * bumper (cos ≥ CAR_ROPE_KEEP_DOT: steering is fine, turning back or stopping lets it go). A pulled car turns its nose
+ * toward the pull at CAR_ROPE_TURN rad/s at most (a towed car), a pushed one along the push's axis.
+ */
+export const CAR_NOSE=1.3,CAR_ROPE_REST=1.6,CAR_ROPE_LET_GO_S=.6,CAR_ROPE_KEEP_DOT=.3,CAR_ROPE_TURN=1.2;
+const unitHeading=(heading=0)=>({x:Math.cos(heading),y:Math.sin(heading)});
+/** The front bumper, where the rope is tied (world u). */
+export const carNose=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading);return {x:car.x+h.x*CAR_NOSE,y:car.y+h.y*CAR_NOSE};};
+/** The free end of the rope lying on the ground ahead of the bumper. */
+export const ropeTip=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading),d=CAR_NOSE+CAR_ROPE_REST;return {x:car.x+h.x*d,y:car.y+h.y*d};};
+/**
+ * Card BUG-20261024-ORQ-uno-bloqueio-corpo-em-cima (user, 24/10: "uma pessoa meio que flutua no Uno, tem que ter melhor
+ * block nele"): the car's body is the Uno's footprint, a box CAR_HALF_LENGTH along the heading and CAR_HALF_WIDTH across
+ * it (the renderer's CAR_HALF), not the CAR_RADIUS disc (which left 0.3 u of bumper outside it at each end). Heroes and
+ * critters stand clear of the box (carPushOut), pushers lean on it and critters hit it from its edge (carGap). The
+ * disc stays where the car itself meets the structures, nests and the build rules (the map's walls: carBodyDiscs).
+ */
+export const CAR_HALF_LENGTH=1.32,CAR_HALF_WIDTH=.58;
+type CarPlace={x:number;y:number;heading?:number};
+/** `p` in the car's frame: along the heading (l) and across it (w). */
+function carLocal(car:CarPlace,p:{x:number;y:number}){
+  const c=Math.cos(car.heading??0),s=Math.sin(car.heading??0),rx=p.x-car.x,ry=p.y-car.y;
+  return {l:rx*c+ry*s,w:-rx*s+ry*c,c,s};
+}
+/** How far `p` is from the car's body (u, 0 on or inside it). */
+export function carGap(car:CarPlace,p:{x:number;y:number}):number{
+  const q=carLocal(car,p);
+  return Math.hypot(Math.max(0,Math.abs(q.l)-CAR_HALF_LENGTH),Math.max(0,Math.abs(q.w)-CAR_HALF_WIDTH));
+}
+/**
+ * Where a body of `radius` at `p` stands clear of the car: `p` itself when it already is, else the nearest point
+ * `radius` off the box (out through the shallower side from inside it).
+ */
+export function carPushOut(car:CarPlace,p:{x:number;y:number},radius:number):{x:number;y:number}{
+  const q=carLocal(car,p),ol=Math.abs(q.l)-CAR_HALF_LENGTH,ow=Math.abs(q.w)-CAR_HALF_WIDTH;
+  let l=q.l,w=q.w;
+  if(ol>0||ow>0){
+    // Outside the box: off its nearest point, radius away.
+    const dl=Math.max(0,ol)*Math.sign(q.l),dw=Math.max(0,ow)*Math.sign(q.w),d=Math.hypot(dl,dw);
+    if(d>=radius)return p;
+    l=q.l-dl+dl/d*radius;w=q.w-dw+dw/d*radius;
+  }else if(ol>ow)l=(q.l<0?-1:1)*(CAR_HALF_LENGTH+radius);
+  else w=(q.w<0?-1:1)*(CAR_HALF_WIDTH+radius);
+  return {x:car.x+l*q.c-w*q.s,y:car.y+l*q.s+w*q.c};
+}
+/**
+ * NEW-20261028-ORQ-uno-atravessa-tralha (the user, 28/10: "muitas tralhas que vão me atrapalhar a caminhar com o carro
+ * pelo jogo todo"): where the car meets the map (the hero mask) it is its body, not the CAR_RADIUS disc (2 u wide: it
+ * stayed out of every yard behind a one-cell door, 1.5 u). The body as CAR_BODY_DISCS.length discs of CAR_BODY_R along
+ * the heading (a capsule over the box: its sides, its bumpers).
+ */
+export const CAR_BODY_R=CAR_HALF_WIDTH;
+const CAR_BODY_STEP=CAR_HALF_LENGTH-CAR_BODY_R;
+export const CAR_BODY_DISCS=[-CAR_BODY_STEP,0,CAR_BODY_STEP] as const;
+/** The body's discs (centres, radius CAR_BODY_R) at (x, y) with the nose along `heading`. */
+export function carBodyDiscs(x:number,y:number,heading=0):{x:number;y:number;r:number}[]{
+  const h=unitHeading(heading);
+  return CAR_BODY_DISCS.map(l=>({x:x+h.x*l,y:y+h.y*l,r:CAR_BODY_R}));
+}
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;
 /**

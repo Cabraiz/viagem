@@ -35,6 +35,8 @@ async function solo(options:object){
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);
   say(room,a,{t:'ready',round:room.run.snapshot().round,ready:true},t+=OWNER_GAP_MS);
   for(let i=0;i<2000&&room.run.snapshot().phase!=='combat';i++)room.advance(t+=50);
+  // exploracao-espera-carregar: the phone drew the run at once (else the room holds the minute for it, load-wait.ts).
+  say(room,a,{t:'carregou',round:room.run.snapshot().round},t);
   room.advance(t+=50);
   return {room,a,t};
 }
@@ -42,7 +44,9 @@ const runs=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='run');
 
 test('ninhos room: {t:\'run\'} carries minervaAteTick through the first minute of combat (one push), then drops it',async()=>{
   let {room,a,t}=await solo({mode:'ninhos',combat:'manual'});
-  const tick=()=>{say(room,a,{t:'ping',at:t},t);room.advance(t+=50);};
+  // The Fear (card fear-escuridao-sozinho) would take this hero, alone for the whole minute: keep the dark away.
+  const calm=()=>{for(const p of room.sim.players.values())delete p.fear;};
+  const tick=()=>{calm();say(room,a,{t:'ping',at:t},t);room.advance(t+=50);};
   const until=room.sim.run.nests!.state.minervaUntil!;
   assert.equal(until,room.sim.run.nests!.state.startTick!+ticks(MINERVA_S));
   const last=runs(a).at(-1)!;

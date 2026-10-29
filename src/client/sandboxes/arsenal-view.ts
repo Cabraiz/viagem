@@ -6,7 +6,8 @@
  * goes through all seven). An ally (SANDBOX_ALLY, at allyAt) stands at an azul crate of its own, which fills its ring and
  * bursts open every BURST_EVERY_MS too: the opening shows for the other heroes, not just the local one. Each crate gives
  * its prize as the sim does (bau-mostra-o-premio): into the opener's inventory, or, the dourada with a full one, on the
- * ground where it stood. Pure: the same time gives the same view; event ids grow with the push (the renderer drops older ones).
+ * ground where it stood. Each crate names its item (caixa-icone-torre-arma: drawn as that item floating and turning,
+ * CRATE_ITEMS for the arc). Pure: the same time gives the same view; event ids grow with the push (the renderer drops older ones).
  */
 import type {PickupView,PlayerRunView,ProjectileView,RunView,SimEvent} from '../../contract/index.ts';
 import {FIRE_LOOK} from '../render/arsenal-rules.ts';
@@ -20,7 +21,9 @@ const ALLY_BURST_MS=2200;
 const CYCLE=Object.keys(FIRE_LOOK);
 /** The local hero's crate per cycle: its rarity and prize (`chao`: the inventory is full, the prize falls at the crate). */
 export const SELF_PRIZES:readonly {rarity:number;item:string;chao?:boolean}[]=[
-  {rarity:4,item:'kit:ninho-de-metralhadora',chao:true},{rarity:2,item:'submetralhadora'},{rarity:5,item:'chinelo-lendario'},{rarity:3,item:'rifle'}];
+  {rarity:4,item:'kit:ninho-de-metralhadora',chao:true},{rarity:2,item:'submetralhadora'},{rarity:5,item:'audio-lendario'},{rarity:3,item:'rifle'}];
+/** The items of the arc's crates (verde .. lendária): weapons and kits de torre, as the sim rolls them. */
+export const CRATE_ITEMS:readonly string[]=['pistola','kit:vigias-armados','escopeta','kit:morteiro','audio-lendario'];
 /** The ally's azul crate gives this, into its inventory. */
 export const ALLY_PRIZE='macarico';
 /** The weapon shown at `timeMs`: `arma` when it is one of the arsenal's shots, else the cycle. */
@@ -30,14 +33,14 @@ export const sandboxWeapon=(arma:string|null,timeMs:number)=>arma&&FIRE_LOOK[arm
 export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:string|null,aura=0):RunView{
   const tick=100+Math.floor(timeMs/50),step=Math.floor(timeMs/ARSENAL_PUSH_MS),weapon=sandboxWeapon(arma,timeMs);
   const target={x:x+1.5,y:y-.2}; // the agiota of the lab's view
-  const crates:PickupView[]=[1,2,3,4,5].map((rarity,i)=>({id:`bau-${rarity}`,kind:'chest',value:rarity,x:x-2.4+i*1.2,y:y+2.6-Math.abs(i-2)*.35}));
-  crates.push({id:'bau-aqui',kind:'chest',value:3,x:x+.75,y:y+.45});
+  const crates:PickupView[]=[1,2,3,4,5].map((rarity,i)=>({id:`bau-${rarity}`,kind:'chest',value:rarity,resource:CRATE_ITEMS[i],x:x-2.4+i*1.2,y:y+2.6-Math.abs(i-2)*.35}));
+  crates.push({id:'bau-aqui',kind:'chest',value:3,resource:'rifle',x:x+.75,y:y+.45});
   const cycle=Math.floor(timeMs/BURST_EVERY_MS),burstAt=(cycle+1)*BURST_EVERY_MS-BURST_GONE_MS,prize=SELF_PRIZES[cycle%SELF_PRIZES.length];
   const events:(SimEvent&{eventId:number})[]=[];
-  if(timeMs<burstAt)crates.push({id:`bau-abre-${cycle}`,kind:'chest',value:prize.rarity,x:x-1.9,y:y+.9});
+  if(timeMs<burstAt)crates.push({id:`bau-abre-${cycle}`,kind:'chest',value:prize.rarity,resource:prize.item,x:x-1.9,y:y+.9});
   else if(timeMs-burstAt<ARSENAL_PUSH_MS)events.push({type:'pickup',player:SANDBOX_SELF,pickup:`bau-abre-${cycle}`,kind:'chest',value:prize.rarity,eventId:step*4+1});
   const ally=allyAt(x,y),allyBurst=cycle*BURST_EVERY_MS+ALLY_BURST_MS;
-  if(timeMs<allyBurst)crates.push({id:`bau-parca-${cycle}`,kind:'chest',value:2,...ally});
+  if(timeMs<allyBurst)crates.push({id:`bau-parca-${cycle}`,kind:'chest',value:2,resource:ALLY_PRIZE,...ally});
   const allyOpened=timeMs>=allyBurst&&timeMs-allyBurst<ARSENAL_PUSH_MS;
   const items:PickupView[]=[
     {id:'it-pistola',kind:'item',resource:'pistola',value:2,x:x-2.6,y:y+.6},

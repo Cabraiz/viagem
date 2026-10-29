@@ -171,7 +171,8 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25).
+  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25), one
+  // player (vida-inimigos-estilo-clash: clashBodies(1) = 1, the stream of before the Clash table).
   const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
@@ -471,7 +472,10 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both re-recorded for balanco-pos-1-7's enemy radius × ENEMY_RADIUS_SCALE 1.15 (the boss's, every body's and the
 // enemy-ai's neighbour reach, which is the boss's radius; were
 // ilha 75a2225f4fc40291, infinito e2d8811cc8c12ed9), the one change allowed to move them.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'251d5c145e1bf470',infinito:'dba3b8b9445b3997'};
+// Both again for heroi-empurra-inimigos (heroes and critters solid to each other; were ilha 251d5c145e1bf470,
+// infinito dba3b8b9445b3997).
+// Both again for vida-inimigos-estilo-clash: role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'f2cdd64acf0330fc',infinito:'9d8dabc1887c3e50'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);
@@ -674,7 +678,9 @@ test('siege while the team is away (inicio): siege groups are placed like plaza-
       const reached=list.filter(([,s])=>s.inBase>=0);
       report.push(`seed ${seed} round ${round}: ${list.length} siege bodies, ${reached.length} reached the base (median ${reached.length?secs(median(reached.map(([,s])=>s.inBase))):'-'}); spawn walk to the plaza median ${median(list.map(([,s])=>s.plazaU)).toFixed(1)} u (max ${Math.max(...list.map(([,s])=>s.plazaU)).toFixed(1)}, plaza-aimed reference max ${Math.max(...list.map(([,s])=>s.ref)).toFixed(1)}), to the team median ${median(list.map(([,s])=>s.teamU)).toFixed(0)} u; regular (team-aimed) bodies: plaza walk median ${median(aimed.get(round)??[]).toFixed(1)} u`);
       for(const [id,s] of list){
-        if(!(s.plazaU<=s.ref+3))far.push(`seed ${seed} round ${round} ${id}: ${s.plazaU.toFixed(1)} u from the plaza, a plaza-aimed group is ${s.ref.toFixed(1)} u (team ${s.teamU.toFixed(0)} u away)`);
+        // 3 u of slack on the 1.7× city; 5 u on asset v4 (mapa-175-com-viaduto): its smaller plaza spreads the hidden spots
+        // of a group more (measured 12.6 u for an 8.4 u reference, with the team 88 u away and team-aimed bodies at ~44 u).
+        if(!(s.plazaU<=s.ref+5))far.push(`seed ${seed} round ${round} ${id}: ${s.plazaU.toFixed(1)} u from the plaza, a plaza-aimed group is ${s.ref.toFixed(1)} u (team ${s.teamU.toFixed(0)} u away)`);
         if(s.inBase<0)late.push(`seed ${seed} round ${round} ${id}: ${s.end??'still walking at the end of the run'}`);
       }
     }

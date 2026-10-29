@@ -5,6 +5,7 @@
 import type {EmoteId} from '../fun/emotes.ts';
 import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
+import {waveBossById} from '../../rules/index.ts';
 import type {OfferView,PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {isAsleep} from '../render/wake-rules.ts';
@@ -45,6 +46,8 @@ export interface HudContext {
    * {t:'run'}, combat only), set by Hud.setMinerva; undefined: no minute this run.
    */
   minervaAteTick?:number;
+  /** The time to explore after a wave (inicio-no-uno-caixas-120: RunState.exploraDesdeTick/exploraAteTick), set by Hud.setExplora. */
+  explora?:{from:number;until:number};
 }
 
 /** Common shape of every DOM part of the HUD. */
@@ -56,6 +59,18 @@ export interface HudPart {
 
 export const clamp01=(value:number)=>Number.isFinite(value)?Math.min(1,Math.max(0,value)):0;
 export const secondsLeft=(untilTick:number,tick:number)=>Math.max(0,Math.ceil((untilTick-tick)/SIM_HZ));
+/**
+ * The time to explore at `tick` (card topo-sem-icone-contagem-exploracao): the whole seconds left (120, 119…), or
+ * undefined outside it. Both windows count, as the big clock does (minerva.ts): the Minuto de Minerva at the start (its
+ * mission is the boxes too, the user's print) and each time to explore after a wave. The top's clock shows this number
+ * in place of the chaveiro's m:ss.
+ */
+export type ExploraWindows=Pick<HudContext,'minervaAteTick'|'explora'>;
+export function exploraLeft(tick:number,w:ExploraWindows|undefined):number|undefined{
+  if(w?.minervaAteTick!==undefined&&tick<w.minervaAteTick)return secondsLeft(w.minervaAteTick,tick);
+  const e=w?.explora;
+  return e&&tick>=e.from&&tick<e.until?secondsLeft(e.until,tick):undefined;
+}
 /** One clock format for a caído everywhere (team strip, edge arrow, map ficha): "27 s" (design onda 6 M2, UX aresta 1). */
 export const secondsText=(seconds:number)=>`${seconds} s`;
 /**
@@ -112,7 +127,7 @@ export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:numbe
  * objective running (D-047) the rounds have no end ("Onda N": waves go on past 10) and the chip carries his clock.
  */
 export function roundInfo(view:RunView):RoundInfo|undefined{
-  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective)}:{}),...(nestsMode(view)?{nests:true as const}:{})};
+  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective,waveBossUp(view))}:{}),...(nestsMode(view)?{nests:true as const}:{})};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
     const label=objective?`Onda ${round.index}`:`Rodada ${round.index} de ${total}`;
@@ -134,6 +149,9 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
 /** Enemies the round still has to beat: a nest's sleepers (D-051, asleep) are not in the count until they wake. */
 export function awakeCount(enemies:readonly object[]){let n=0;for(const e of enemies)if(!isAsleep(e))n++;return n;}
 
+/** The 1st wave's chefão stands (card boss-fim-onda-1): the chaveiro's clock is stopped until he falls. */
+export const waveBossUp=(view:Pick<RunView,'enemies'>)=>view.enemies.some(e=>e.boss&&e.hp>0&&!!waveBossById(e.kind));
+
 export interface BossInfo {id:string;name:string;fraction:number;phase:number;enraged:boolean}
 export const BOSS_NAME='Síndico Supremo';
 
@@ -141,7 +159,8 @@ export function bossInfo(view:RunView):BossInfo|undefined{
   const boss=view.enemies.find(enemy=>enemy.boss&&enemy.hp>0);
   if(!boss)return undefined;
   const phase=boss.phase??1;
-  return {id:boss.id,name:BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
+  // The chefão of the 1st wave (boss-fim-onda-1) has his own name; the final boss is the Síndico.
+  return {id:boss.id,name:waveBossById(boss.kind)?.bar??BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
 }
 
 export const isActive=(player:PlayerRunView)=>!player.spectator&&!player.eliminated;
@@ -154,14 +173,30 @@ export function teamOrder(players:readonly PlayerRunView[],localId:string){
 
 export interface ReviveAlert {kind:'self'|'ally';playerId:string;name:string;seconds:number;progress:number;text:string}
 
+/**
+ * Card solo-segunda-chance (sim/revive.ts): alone in the run (no friend, no bot), the first fall gets up by itself in
+ * SOLO_SELF_REVIVE_TICKS; nobody comes, so the banner says so instead of "Grita por socorro".
+ */
+export const soloRun=(view:RunView)=>view.players.filter(p=>!p.spectator).length===1;
+export const soloRisingText=(progress:number)=>`Segunda chance! Levantando… ${Math.round(progress*100)}%`;
+/** Shown LAST_CHANCE_TICKS after the solo hero got up by himself: the next fall ends the match. */
+export const LAST_CHANCE_TEXT='Última chance: se cair de novo, acabou.';
+export const LAST_CHANCE_TICKS=3*SIM_HZ;
+/** The tick the last-chance line goes, for a view carrying the local hero's own solo get-up (a `revived` with no rescuer). */
+export function lastChanceUntil(view:RunView,localId:string):number|undefined{
+  if(!soloRun(view))return undefined;
+  return view.events.some(e=>e.type==='revived'&&e.player===localId&&!e.by)?view.tick+LAST_CHANCE_TICKS:undefined;
+}
+
 /** Alerts for downed players: the local one first (it changes what the player should do), then allies by urgency. */
 export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
   const alerts:ReviveAlert[]=[];
+  const solo=soloRun(view);
   for(const player of view.players){
     if(!player.downed||player.eliminated)continue;
     const seconds=secondsLeft(player.downed.bleedOutTick,view.tick);
     const progress=clamp01(player.downed.progress);
-    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
+    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:solo&&progress>0?soloRisingText(progress):progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
     else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá: ${seconds} s`});
   }
   return alerts.sort((a,b)=>Number(b.kind==='self')-Number(a.kind==='self')||a.seconds-b.seconds);
@@ -182,12 +217,21 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
 /** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
 export const watchingText=(name:string)=>`Assistindo: ${railName(name)}`;
 
-export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false):ReviveBanner|undefined{
+/**
+ * `lastChance`: the tick the solo last-chance line goes (lastChanceUntil), shown while the hero is back on his feet;
+ * the solo get-up itself keeps its line even with the world rescue (the ring alone does not say nobody is coming).
+ */
+export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false,lastChance=-Infinity):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
+  const me=view.players.find(p=>p.id===localId);
+  if(me&&!me.downed&&!me.eliminated&&!me.spectator&&view.tick<lastChance)return {kind:'self',key:'last-chance',text:LAST_CHANCE_TEXT,seconds:Infinity,progress:0,urgent:true};
   if(worldRescue){
     // Falls and rescues live in the world now (ring, column, "Você, 18 s" ficha, Me salva button, edge arrows).
-    const self=view.players.find(p=>p.id===localId);
-    if(self?.downed&&!self.eliminated)return undefined;
+    const self=me;
+    if(self?.downed&&!self.eliminated){
+      const progress=clamp01(self.downed.progress);
+      return soloRun(view)&&progress>0?{kind:'self',key:`solo:${self.id}`,text:soloRisingText(progress),seconds:secondsLeft(self.downed.bleedOutTick,view.tick),progress,urgent:false}:undefined;
+    }
     if((self?.eliminated||self?.spectator)&&watching)return {kind:'ally',key:`watching:${watching}`,text:watchingText(watching),seconds:Infinity,progress:0,urgent:false};
     if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
     if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
@@ -214,7 +258,7 @@ export function reviveBanner(view:RunView,localId:string,network?:string,causes?
 
 /** Offer header copy (DSG-voz): one title, no eyebrow chip. */
 export function offerTitle(offer:OfferView){
-  return {title:offer.source==='round'?'Oferta do round':`Nível ${offer.level}!`};
+  return {title:offer.source==='round'?'Escolha da rodada':`Nível ${offer.level}!`};
 }
 
 /**

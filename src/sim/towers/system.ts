@@ -45,10 +45,11 @@ import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/ind
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
-import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
-import {RADIUS} from '../../maps/index.ts';
+import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
+import {RADIUS,floorOf} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import type {TralhaState} from './tralha.ts';
+import type {Feirinha} from './barracas.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
   type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
@@ -90,6 +91,8 @@ export interface TowersState {
   pieces?:PieceState[];
   /** barricada-construir part 2: the map's barricadas laid, the heroes' coletas (towers/tralha.ts). */
   tralha?:TralhaState;
+  /** barracas-no-caminho: the map's feirinhas, laid once (towers/barracas.ts; present: laid). */
+  feirinhas?:Feirinha[];
 }
 
 /** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */
@@ -127,7 +130,7 @@ export function siteRect(plan:BuildPlan,siteId:string):Rect|undefined{
 }
 const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>d.cell?defenseRectOf(d):siteRect(plan,d.site)??{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
 /** True when the player stands within BUILD_REACH of `rect` (the reach rule). */
-export function withinReach(rect:Rect,p:Point):boolean{return rectDistance(rect,p)<=BUILD_REACH;}
+export function withinReach(rect:Rect,p:Point,reach=BUILD_REACH):boolean{return rectDistance(rect,p)<=reach;}
 const near=(ctx:SimContext,playerId:string,rect:Rect)=>{const p=ctx.players.get(playerId);return !!p&&withinReach(rect,p);};
 
 /** `calm` (D-051 mode 'ninhos', ninhos/calma.ts): the gate instead of the intermission. */
@@ -152,7 +155,7 @@ function once(state:StonewardsState,playerId:string,requestId:string|undefined,r
 const radiusOn=(plan:BuildPlan,size:number)=>size*plan.cell/2;
 
 /**
- * Builds the root defense (Vigia do Prédio) on a free site, or lays the Gustavão's rail when `siteId` is the plan's
+ * Builds the root defense (the Guarita) on a free site, or lays the Gustavão's rail when `siteId` is the plan's
  * rail ('trilho'). A ruin on the site is cleared by the new obra.
  * D-052, the city: the sites are only hints now. A site id (the bots, an old client) becomes a free build of the root
  * on the cell under the site's centre (`buildFree`, the defense keeps the site id); the rail is gone ('rail').
@@ -271,7 +274,8 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
-    if(!withinReach(rect,p))return {ok:false,reason:'away'};
+    // barricada-tocar-no-mapa: a kit is placed by a tap on the map, KIT_PLACE_REACH away.
+    if(!withinReach(rect,p,kit?KIT_PLACE_REACH:BUILD_REACH))return {ok:false,reason:'away'};
     const root=wall?DEFENSES[ROOT_DEFENSE]:DEFENSES[piece],price=kit?0:wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
     if(wall?walletOf(p)<price:state.balance.units<price)return {ok:false,reason:short};
     if(piece==='muro'&&locks(city,state,cell,car??state.wall,free.moto?.(ctx.tick)))return {ok:false,reason:'tranca'};
@@ -437,7 +441,8 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
       area:base.area*boost.area,shots:base.shots+boost.amount}:base;
     const range=def.range*(1+radarBonus(state,d,ctx.tick));
     ctx.enemyIndex.query(d.x,d.y,range,found);
-    const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
+    // The towers stand on the ground: a body on a viaduct's deck (maps city/viaduct.ts) is out of their reach.
+    const pool=found.filter(e=>alive(e)&&floorOf(e)===0&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
     if(!pool.length)continue;
     d.fireTick=ctx.tick+def.cooldown;d.shots=((d.shots??0)+1)&255;
     if(def.target==='aura'){hitArea(ctx,def,d,range,d.owner);continue;}
@@ -470,7 +475,8 @@ function densest(pool:readonly EnemyState[],area:number):EnemyState{
 function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number,owner:string){
   // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
   const victims=queryHittable(ctx,at.x,at.y,radius,[]);
-  const list=victims.filter(e=>e.hp>0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  const list=victims.filter(e=>e.hp>0&&floorOf(e)===0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+
   for(const e of list)hit(ctx,def,e,owner);
 }
 function hit(ctx:SimContext,def:DefenseDef,e:EnemyState,owner:string){

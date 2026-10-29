@@ -28,7 +28,7 @@ export interface ClassKit {
 
 export const KITS:readonly ClassKit[]=Object.freeze([
   {
-    classId:'cidadao-comum',role:'Linha de frente',weapon:'chinelo',
+    classId:'cidadao-comum',role:'Linha de frente',weapon:'audio',
     classBonus:{maxHp:10,armor:1},
     skill:{name:'Só Estou de Passagem',cooldown:12,
       effect:'Dá um passo à frente, empurra os bichos em volta e protege os aliados próximos; quanto mais confusão, mais tempo.'},
@@ -38,7 +38,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mendigo',role:'Suporte',weapon:'guarda-chuva',
     classBonus:{luck:0.2,growth:0.08,regen:0.2},
     skill:{name:'Tesouro do Achados',cooldown:20,
-      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto e, no meio do round, ainda acha uma coxinha.'},
+      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto.'},
     lines:['Isso aqui ainda dá jogo.','Papelão é tecnologia, confia.','Abrigo cinco estrelas, sem taxa de serviço.','Engenharia de reaproveitamento!'],
   },
   {
@@ -71,7 +71,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   // ----- VGM-044B: the other 30 classes -----
   {
-    classId:'pedreiro',role:'Linha de frente',weapon:'chinelo',
+    classId:'pedreiro',role:'Linha de frente',weapon:'audio',
     classBonus:{maxHp:25,armor:2,moveSpeed:-0.05},
     skill:{name:'Puxadinho Tático',cooldown:16,
       effect:'Ergue um puxadinho na frente: empurra os bichos do arco, derruba os tiros inimigos ali e fica protegido por um instante.'},
@@ -92,14 +92,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Qual apartamento, por favor?','Deixa o documento aqui comigo.','Encomenda só com autorização.','Interfonei, ninguém atendeu.'],
   },
   {
-    classId:'goleira',role:'Linha de frente',weapon:'guarda-chuva',
-    classBonus:{armor:3,maxHp:15,moveSpeed:-0.05},
-    skill:{name:'Muralha do Bairro',cooldown:15,
-      effect:'Espalma tudo o que vem pela frente: derruba tiros inimigos, empurra os bichos e protege os aliados perto dela.'},
-    lines:['Aqui é muralha, meu filho!','Bate que eu pego, pode bater!','Chuta de longe, vai, tenta!','Bola na área é minha, sai!'],
-  },
-  {
-    classId:'maromba',role:'Dano',weapon:'chinelo',
+    classId:'maromba',role:'Dano',weapon:'audio',
     classBonus:{might:0.15,maxHp:15,moveSpeed:-0.05},
     skill:{name:'Última Repetição',cooldown:12,
       effect:'Golpe pesado bem de perto, à frente: muito dano e um empurrão que tira os bichos do lugar.'},
@@ -113,13 +106,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Clipa isso, moderador!','Chat, foi tudo planejado.','Oi, mãe! Tô ao vivo agora!','Deixa o like e ativa o sininho!'],
   },
   {
-    classId:'roqueira',role:'Dano',weapon:'audio',
-    classBonus:{area:0.1,might:0.1},
-    skill:{name:'Solo de Respeito',cooldown:13,
-      effect:'Onda sonora em cone estreito e longo à frente: dano alto e um empurrãozinho.'},
-    lines:['Aumenta, que isso aí é rock!','O síndico que lute!','Afinar? Vai assim mesmo!','Barulho? Isso é arte, vizinho.'],
-  },
-  {
     classId:'universitario',role:'Dano',weapon:'boleto',
     classBonus:{cooldown:-0.08,might:0.05,maxHp:-10},
     skill:{name:'Prazo Final',cooldown:10,
@@ -127,32 +113,11 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Trabalho em grupo e só eu fiz.','Professor, o arquivo corrompeu!','Sétimo café do dia, bora.','Slide final: obrigado pela atenção.'],
   },
   {
-    classId:'sensei',role:'Dano',weapon:'chinelo',
-    classBonus:{might:0.1,armor:1,moveSpeed:0.05},
-    skill:{name:'Combo da Garagem',cooldown:11,
-      effect:'Três golpes seguidos no bicho tocado (ou no mais perto); se os três acertarem e ele aguentar, fica atordoado (o chefe não).'},
-    lines:['Faixa preta em fugir de boleto.','Primeiro a reverência. Depois o golpe.','Kiai! Foi mal, vizinho.','Concentra. Mira. Chinelada.'],
-  },
-  {
     classId:'rei-pastel',role:'Dano',weapon:'cafe',
     classBonus:{might:0.1,area:0.1},
     skill:{name:'Óleo no Fogo',cooldown:14,
       effect:'Arremessa um pacote fumegante no bicho tocado (ou no mais perto): dano em área e todo mundo ali fica lento.'},
     lines:['Pastel de vento aqui não tem!','Caprichei no recheio, toma!','Cuidado que o óleo tá pelando!','Vai um caldo de cana pra acompanhar?'],
-  },
-  {
-    classId:'gamer-mobile',role:'Dano',weapon:'pombo',
-    classBonus:{speed:0.1,luck:0.1,cooldown:-0.05},
-    skill:{name:'Modo Tryhard',cooldown:12,
-      effect:'Dois toques rápidos em cada um dos 2 bichos mais perto (o tocado primeiro), e as armas disparam de novo na hora.'},
-    lines:['Foi o ping, eu juro!','Bateria em 3%, é agora ou nunca!','Peraí, o Wi-Fi caiu de novo.','Tela rachada e mesmo assim acertei!'],
-  },
-  {
-    classId:'rainha-bateria',role:'Dano',weapon:'audio',
-    classBonus:{might:0.1,moveSpeed:0.1},
-    skill:{name:'Virada de Carnaval',cooldown:14,
-      effect:'Pulso em volta dela: dano em todos os bichos perto e um empurrão para abrir a roda.'},
-    lines:['Esquenta, bateria!','Ninguém atravessa o samba aqui!','Paradinha... e volta!','Dez, nota dez! Pro chefe, zero!'],
   },
   {
     classId:'tio-do-churrasco',role:'Suporte',weapon:'cafe',
@@ -200,15 +165,8 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mae-pet',role:'Suporte',weapon:'pombo',
     classBonus:{growth:0.06,luck:0.1},
     skill:{name:'Cadê o Neném',cooldown:18,
-      effect:'O pet busca uma coxinha e larga ao lado do aliado mais machucado por perto. Só durante o round.'},
+      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante a rodada.'},
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
-  },
-  {
-    classId:'salva-vidas',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{moveSpeed:0.1,maxHp:10},
-    skill:{name:'Segura a Boia',cooldown:16,
-      effect:'Joga a boia no aliado mais machucado em alcance: puxa ele até 3 passos para perto (menos quem está resgatando alguém), cura um pouco e protege. Ninguém ferido, nada acontece.'},
-    lines:['Segura a boia e não solta!','Bandeira vermelha, pessoal!','Volta pro raso, por favor!','Piiii! Sai daí agora!'],
   },
   {
     classId:'tecnico-ti',role:'Controle',weapon:'audio',
@@ -218,7 +176,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Já tentou desligar e ligar de novo?','Abre um chamado, por favor.','Tá instalando atualização, aguarde.','Quem tirou esse cabo da tomada?'],
   },
   {
-    classId:'faxineira',role:'Controle',weapon:'chinelo',
+    classId:'faxineira',role:'Controle',weapon:'audio',
     classBonus:{area:0.1,armor:1},
     skill:{name:'Passa o Rodo',cooldown:14,
       effect:'Varre um arco largo à frente: dano, empurrão e limpeza dos tiros inimigos ali.'},
@@ -230,13 +188,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     skill:{name:'Questão Anulada',cooldown:20,
       effect:'Anula o bicho tocado (ou o mais perto): cancela o próximo ataque avisado dele (no mesmo bicho, no máximo um a cada 6 s), trava ele e dá um dano leve. O chefe não trava.'},
     lines:['Pegadinha clássica de prova.','Recurso deferido, questão anulada!','Isso tá no edital, página 47.','Na dúvida, marca a C.'],
-  },
-  {
-    classId:'caca-promocao',role:'Controle',weapon:'pombo',
-    classBonus:{cooldown:-0.1,luck:0.1},
-    skill:{name:'Cupom Acumulado',cooldown:18,
-      effect:'Cupom para a turma em volta: armas disparam de novo na hora e a habilidade dos aliados volta 4 s mais cedo (nunca antes da metade da recarga; não vale para quem também adianta).'},
-    lines:['Leve três, pague dois!','Cupom de energia, gente!','Frete grátis acima de três chefes.','Ontem tava mais barato, viu?'],
   },
   {
     classId:'gambiarreiro',role:'Controle',weapon:'cafe',
@@ -253,7 +204,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Culpa do Mercúrio, não minha.','Esse chefe é muito escorpiano.','Os astros mandaram eu fazer isso.','Hoje a lua tá contra você, viu?'],
   },
   {
-    classId:'rei-arraia',role:'Controle',weapon:'chinelo',
+    classId:'rei-arraia',role:'Controle',weapon:'audio',
     classBonus:{maxHp:10,moveSpeed:0.1},
     skill:{name:'Olha a Cobra',cooldown:13,
       effect:'Grita "olha a cobra": empurra para longe todos os bichos em volta, com um dano leve.'},
@@ -273,11 +224,19 @@ export const KITS:readonly ClassKit[]=Object.freeze([
       effect:'Sensor de longo alcance: os 6 bichos mais perto ficam lentos e levam um dano leve.'},
     lines:['Coincidência? Acho que não.','Eles não querem que você saiba.','O chefe é um robô. Repara.','Tá tudo conectado, olha o mapa!'],
   },
+  // NEW-20261022-ORQ-gato-personagem-completo (ORQ 23/10 00:21Z). magnet has no stat since D-054; ORQ 23/10 10:39Z swapped it for luck (the cat always finds food).
+  {
+    classId:'gato-nada-pra-comer',role:'Controle',weapon:'pombo',
+    classBonus:{moveSpeed:0.15,luck:0.15,maxHp:-10},
+    skill:{name:'Miado de Fome',cooldown:16,
+      effect:'Mia de fome: dano leve e congela os bichos em volta, que depois só perseguem o Gatito; ele fica protegido por um instante.'},
+    lines:['Miau. (Tradução: cadê a ração?)','Faz 15 minutos que eu não como. Estou morrendo.','A tigela está vazia. DE NOVO.','Eu vi você abrir a geladeira.'],
+  },
 ] as ClassKit[]);
 
-/** Plain fallback for unknown class ids: chinelo, no bonus, no skill. */
+/** Plain fallback for unknown class ids: the Áudio de 5 Minutos (the chinelo left the game), no bonus, no skill. */
 export const DEFAULT_KIT:Readonly<Omit<ClassKit,'skill'|'role'>&{skill?:undefined}>=Object.freeze({
-  classId:'',weapon:'chinelo',classBonus:{},lines:[],
+  classId:'',weapon:'audio',classBonus:{},lines:[],
 });
 
 const byClass=new Map(KITS.map(kit=>[kit.classId,kit]));

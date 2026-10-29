@@ -6,11 +6,25 @@ import type {NodeView,StructureView} from '../../contract/index.ts';
  * the wall 'muralha', a city barricade 'barricada' (cidade-06) or a forge tower 'torre-chinelo'. Any other kind is
  * not drawn (never as a tower: a barricade counted as a tower drew a sandal on every plaza mouth).
  */
-export type StructureRole='wall'|'barricade'|'tower';
-export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo';
+export type StructureRole='wall'|'barricade'|'tower'|'barraca';
+export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo',BARRACA_KIND='barraca';
 export function structureRole(kind:string):StructureRole|undefined{
-  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':undefined;
+  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':kind===BARRACA_KIND?'barraca':undefined;
 }
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho, a feirinha barraca's look (pure, tested). The art (public/art/city/base/barraca.webp)
+ * has BARRACA_LONAS lonas × inteira | danificada | quebrada, 2 views (the second mirrored: the other diagonal); the
+ * feirinhas' barracas are never hurt, so always inteira.
+ * - lona: from the id (every phone draws the same stall), 1..lonas;
+ * - column: the view's parity turned by the id, so a feirinha is not one stall copied and a camera turn flips them all.
+ */
+export function barracaHash(id:string){
+  let h=2166136261;
+  for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),16777619);
+  return h>>>0;
+}
+export const barracaLona=(id:string,lonas:number)=>`lona-${1+barracaHash(id)%Math.max(1,lonas)}`;
+export const barracaColumn=(view:number,id:string)=>((Math.round(view)+(barracaHash(id)>>>4))%2+2)%2;
 
 /** Life share under which the wall's bar turns Laranja Cone (and gains its notch). */
 export const WALL_LOW=.3;
@@ -101,6 +115,39 @@ export const isFreeBarricade=(s:{c?:number})=>s.c!==undefined;
 export function hpDropped(before:ReadonlyMap<string,number>,after:readonly StructureView[]){
   const out:string[]=[];
   for(const s of after){const old=before.get(s.id);if(old!==undefined&&s.hp<old)out.push(s.id);}
+  return out;
+}
+/**
+ * NEW-20261028-ORQ-uno-atravessa-tralha: the map's tralha squares (ids TRALHA_PREFIX, sim/towers/tralha.ts) gone since
+ * the last view with the Uno's centre within RUN_OVER_NEAR u of them: the Uno ran them over (a coleta or a horde far from
+ * the car gets no burst).
+ */
+export function ranOver(before:ReadonlyMap<string,StructureView>,after:readonly StructureView[],car:{x:number;y:number}|undefined):StructureView[]{
+  if(!car)return [];
+  const now=new Set(after.map(s=>s.id)),out:StructureView[]=[];
+  for(const [id,s] of before)if(!now.has(id)&&id.startsWith('tralha')&&Math.hypot(s.x-car.x,s.y-car.y)<=RUN_OVER_NEAR)out.push(s);
+  return out;
+}
+export const RUN_OVER_NEAR=4;
+/** How long the pieces of a run-over square fly and settle (ms). */
+export const RUN_OVER_MS=800;
+/** A run-over piece: a rect of the source frame (x,y,w,h in frame px) and its throw (spin rad/s, out and up in source heights/s). */
+export interface RunOverPiece {x:number;y:number;w:number;h:number;spin:number;out:number;up:number;land:number;shard:{x:number;y:number}[]}
+/**
+ * uno-atravessa-tralha: cuts the shown rect (frame px) of a run-over square's art into about `n` pieces (a grid that keeps
+ * them near square) and gives each a seeded throw and a shard outline (4–6 points inside its rect, local px) so no straight
+ * cut edge shows. The renderer drops the pieces that are empty art.
+ */
+export function runOverPieces(rect:{x:number;y:number;w:number;h:number},n:number,seed:number):RunOverPiece[]{
+  let h=(seed*2654435761)>>>0;const rnd=()=>{h=(h^(h>>>15))*2246822507>>>0;h=(h^(h>>>13))*3266489909>>>0;return ((h^=h>>>16)>>>0)/4294967296;};
+  if(!(rect.w>0&&rect.h>0&&n>0))return [];
+  const cols=Math.max(1,Math.round(Math.sqrt(n*rect.w/rect.h))),rows=Math.max(1,Math.ceil(n/cols)),out:RunOverPiece[]=[];
+  for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+    const x0=Math.round(rect.x+rect.w*i/cols),x1=Math.round(rect.x+rect.w*(i+1)/cols),y0=Math.round(rect.y+rect.h*j/rows),y1=Math.round(rect.y+rect.h*(j+1)/rows);
+    const w=x1-x0,hh=y1-y0,m=4+Math.floor(rnd()*3),a0=rnd()*Math.PI*2,shard:{x:number;y:number}[]=[];
+    for(let k=0;k<m;k++){const a=a0+(k+rnd()*.6)/m*Math.PI*2,r=.32+rnd()*.18;shard.push({x:w/2+Math.cos(a)*r*w,y:hh/2+Math.sin(a)*r*hh});}
+    out.push({x:x0,y:y0,w,h:hh,spin:(rnd()<.5?-1:1)*(4+rnd()*7),out:.6+rnd()*.9,up:1.1+rnd()*.9,land:rnd()*.12,shard});
+  }
   return out;
 }
 /** How long a hit structure flashes (ms); never with reduced effects (UX checklist B9). */

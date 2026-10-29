@@ -17,7 +17,20 @@ import {fileURLToPath} from 'node:url';
 const TOKENS='src/client/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
 const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css','src/client/hud/fone.css','src/client/hud/pausa.css']);
-const MIN_MATCH=13,MIN_OTHER=10,ROOT_PX=16;
+/**
+ * O resto do que aparece na partida (inventário, oferta, missão, chefão, perfis, Minerva, Pix, HUD da cidade, fortify;
+ * auditoria-legibilidade L6): piso de 12 px, o que essas telas já usam (max(12px,…)).
+ */
+const MATCH_12_CSS=new Set(['src/client/hud/inventory.css','src/client/hud/offer-centro.css','src/client/hud/missao.css','src/client/hud/chefao-cena.css',
+  'src/client/hud/perfis.css','src/client/hud/minerva.css','src/client/hud/pix.css','src/client/hud/city/city-hud.css','src/client/hud/fortify/fortify.css']);
+const MIN_MATCH=13,MIN_MATCH_12=12,MIN_OTHER=10,ROOT_PX=16;
+/**
+ * Files still under their own card for L6 (perfis.css: L1; inventory.css: L3). Here only px/rem count, as before; the
+ * card that fixes the file takes its line out.
+ */
+const PENDING_L6=new Set(['src/client/hud/perfis.css']);
+/** The floor of a file: 13 px in the HUD, 12 px in the rest of the match, 10 px outside. */
+export function minFont(file){return MATCH_CSS.has(file)?MIN_MATCH:MATCH_12_CSS.has(file)&&!PENDING_L6.has(file)?MIN_MATCH_12:MIN_OTHER;}
 const EMOJI=/(?![★☆])\p{Extended_Pictographic}|✦/gu;// ★/☆ are text stars, and ICU versions (Node 22 × 24) disagree on them
 const NAMED_COLORS=new Set(('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood '+
   'cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey '+
@@ -57,7 +70,7 @@ export function declarations(css){
     if(!text||!stack.length)return;
     const k=text.indexOf(':');if(k<=0)return;
     const prop=text.slice(0,k).trim().toLowerCase(),value=text.slice(k+1).trim();
-    if(/^[a-z-]+$/.test(prop))out.push({selector:stack.join(' '),prop,value,line:bufLine});
+    if(/^[a-z-]+$/.test(prop))out.push({selector:stack.join(' '),chain:[...stack],prop,value,line:bufLine});
   };
   while(i<css.length){
     const c=css[i];
@@ -114,31 +127,37 @@ function fontFamilyOk(value){
 /**
  * Smallest px a size expression can produce, or undefined when it depends on something unknown.
  * Understands px, rem (16 px), var(--t-N) (N px at scale 1), calc() with + - * /, min(), max() and clamp() (its minimum).
- * Other var() calls and %, em, vw… are unknown: the lint does not guess.
+ * `ctx` gives em and cqw in px when the file tells them (the parent's size, the container's width: sizeContext); without
+ * it they are unknown, like other var() calls and %, vw…: the lint does not guess.
  */
-export function sizePx(expr){
+export function sizePx(expr,ctx={}){
   const s=expr.trim();
   let m;
   if((m=s.match(/^var\(\s*--t-(\d+)\s*\)$/)))return Number(m[1]);
   if(/^var\(/.test(s))return undefined;
   if((m=s.match(/^(-?[\d.]+)px$/)))return parseFloat(m[1]);
   if((m=s.match(/^(-?[\d.]+)rem$/)))return parseFloat(m[1])*ROOT_PX;
+  if((m=s.match(/^(-?[\d.]+)(em|cqw|cqi)$/))){const unit=m[2]==='em'?ctx.em:ctx.cqw;return unit===undefined?undefined:parseFloat(m[1])*unit;}
   if((m=s.match(/^(-?[\d.]+)$/)))return parseFloat(m[1]);
   if((m=s.match(/^(clamp|min|max|calc)\((.*)\)$/s))){
-    if(m[1]==='calc')return evalCalc(m[2]);
-    const vals=splitTop(m[2]).map(sizePx);
+    if(m[1]==='calc')return evalCalc(m[2],ctx);
+    const vals=splitTop(m[2]).map(v=>sizePx(v,ctx));
     if(m[1]==='clamp')return vals[0];
     if(vals.some(v=>v===undefined))return m[1]==='max'?vals.find(v=>v!==undefined):undefined;
     return m[1]==='min'?Math.min(...vals):Math.max(...vals);
   }
   return undefined;
 }
-function evalCalc(body){
+function evalCalc(body,ctx={}){
   // Tokenize numbers with units, var(--t-N), parentheses and operators; anything else makes it unknown.
-  const tokens=[];const re=/\s*(var\(\s*--t-(\d+)\s*\)|var\([^()]*\)|(-?[\d.]+)(px|rem)?|[()+\-*/])/gy;let m,last=0;
+  const tokens=[];const re=/\s*(var\(\s*--t-(\d+)\s*\)|var\([^()]*\)|(-?[\d.]+)(px|rem|em|cqw|cqi)?|[()+\-*/])/gy;let m,last=0;
   while((m=re.exec(body))){last=re.lastIndex;
     if(m[2])tokens.push(Number(m[2]));else if(m[1].startsWith('var('))return undefined;
-    else if(m[3]!==undefined)tokens.push(parseFloat(m[3])*(m[4]==='rem'?ROOT_PX:1));else tokens.push(m[1]);}
+    else if(m[3]!==undefined){
+      const unit=!m[4]||m[4]==='px'?1:m[4]==='rem'?ROOT_PX:m[4]==='em'?ctx.em:ctx.cqw;
+      if(unit===undefined)return undefined;
+      tokens.push(parseFloat(m[3])*unit);
+    }else tokens.push(m[1]);}
   if(body.slice(last).trim())return undefined;
   let k=0;
   const expr=()=>{let v=term();while(tokens[k]==='+'||tokens[k]==='-'){const op=tokens[k++],r=term();v=op==='+'?v+r:v-r;}return v;};
@@ -147,26 +166,87 @@ function evalCalc(body){
   const v=expr();return Number.isFinite(v)?v:undefined;
 }
 /** Font size of a `font` shorthand: the token right before the optional /line-height and the family. */
-function shorthandSize(value){
+function shorthandSize(value,ctx={}){
   const v=stripStringsAndUrls(value);
   const parts=[];let depth=0,cur='';
   for(const c of v){if(c==='(')depth++;if(c===')')depth--;if(/\s/.test(c)&&!depth){if(cur)parts.push(cur);cur='';}else cur+=c;}
   if(cur)parts.push(cur);
   for(const p of parts){
     const size=p.split('/')[0];
-    if(/^(-?[\d.]+(px|rem)|var\(\s*--t-\d+\s*\)|calc\(.*\)|clamp\(.*\)|min\(.*\)|max\(.*\))$/s.test(size))return sizePx(size);
+    if(/^(-?[\d.]+(px|rem|em|cqw|cqi)|var\(\s*--t-\d+\s*\)|calc\(.*\)|clamp\(.*\)|min\(.*\)|max\(.*\))$/s.test(size))return sizePx(size,ctx);
   }
   return undefined;
+}
+/**
+ * Largest px a length can reach (a container's width): clamp → its maximum, min → the smallest known, max → only when all
+ * are known. var(--x) takes the smallest of the file's definitions of --x. Undefined when unknown (%, vw, other vars).
+ */
+export function upperPx(expr,defs=new Map(),seen=new Set()){
+  const s=expr.trim();
+  let m;
+  if((m=s.match(/^var\(\s*(--[\w-]+)\s*(?:,(.*))?\)$/s))){
+    const name=m[1];
+    if(/^--t-\d+$/.test(name))return Number(name.slice(4));
+    if(seen.has(name))return undefined;
+    const vals=(defs.get(name)??[]).map(v=>upperPx(v,defs,new Set([...seen,name]))).filter(v=>v!==undefined);
+    if(vals.length)return Math.min(...vals);
+    return m[2]===undefined?undefined:upperPx(m[2],defs,seen);
+  }
+  if((m=s.match(/^(clamp|min|max)\((.*)\)$/s))){
+    const vals=splitTop(m[2]).map(v=>upperPx(v,defs,seen));
+    if(m[1]==='clamp')return vals[2];
+    const known=vals.filter(v=>v!==undefined);
+    if(m[1]==='min')return known.length?Math.min(...known):undefined;
+    return known.length===vals.length?Math.max(...known):undefined;
+  }
+  return sizePx(s);
+}
+/** Compounds of a declaration's selector, each as its class names (one list per comma alternative); @-rules dropped. */
+export function compounds(chain){
+  let alts=[''];
+  for(const sel of chain){
+    if(sel.startsWith('@'))continue;
+    const parts=splitTop(sel);
+    alts=alts.flatMap(a=>parts.map(p=>p.includes('&')?p.replace(/&/g,a):`${a} ${p}`));
+  }
+  return alts.map(a=>a.trim().split(/\s*[>+~]\s*|\s+/).filter(Boolean).map(c=>c.match(/\.[\w-]+/g)??[]));
+}
+/**
+ * What em and cqw mean for each declaration of one file. cqw: 1 % of the narrowest container the file declares
+ * (container-type, with a width or inline-size it can tell). em: the font size of the nearest rule of the same file
+ * whose last compound is part of an earlier compound of this one (its parent in the markup); unknown without one.
+ */
+export function sizeContext(decls){
+  const defs=new Map();
+  for(const d of decls)if(d.prop.startsWith('--'))defs.set(d.prop,[...(defs.get(d.prop)??[]),d.value]);
+  const containers=new Set(decls.filter(d=>d.prop==='container-type'&&!/^normal$/i.test(d.value)).map(d=>d.chain.join('{')));
+  const widths=decls.filter(d=>(d.prop==='width'||d.prop==='inline-size')&&containers.has(d.chain.join('{'))).map(d=>upperPx(d.value,defs)).filter(v=>v!==undefined);
+  const cqw=widths.length?Math.min(...widths)/100:undefined;
+  const fonts=decls.filter(d=>d.prop==='font-size'||d.prop==='font').map(d=>({d,last:compounds(d.chain).map(c=>c.at(-1)??[])}));
+  const cache=new Map();
+  const emOf=(d,depth=0)=>{
+    if(depth>8)return undefined;
+    let best,bestAt=-1;
+    for(const alt of compounds(d.chain))for(let i=0;i<alt.length-1;i++)for(const f of fonts){
+      if(f.d===d||i<bestAt)continue;
+      if(f.last.some(cls=>cls.length&&cls.every(c=>alt[i].includes(c)))){best=f.d;bestAt=i;}
+    }
+    if(!best)return undefined;
+    if(!cache.has(best)){const ctx={em:emOf(best,depth+1),cqw};cache.set(best,best.prop==='font'?shorthandSize(best.value,ctx):sizePx(best.value,ctx));}
+    return cache.get(best);
+  };
+  return d=>({em:emOf(d),cqw});
 }
 // The one tracking the user ordered (selecionar-espacamento, 22/10: "aumente o espaçamento entre as letras em 2x"): the
 // stadium's SELECIONAR, painted to match the generated button art. Keyed by file + exact selector, nothing else.
 const TRACKING_OK=new Set(['src/client/estadio.css .estadio .estadio-confirmar-texto']);
-const RADIUS_PART=/^(var\(--r-[a-z]+\)|50%|0|0px|inherit|initial)$/;
+const RADIUS_PART=/^(var\(--r-[a-z]+(-[a-z]+)*\)|50%|0|0px|inherit|initial)$/;
 
 export function lintCss(file,css){
   const v=[];
   const add=(d,rule,msg)=>v.push({file,line:d.line,rule,msg:`${msg} (${d.selector.slice(-60)} { ${d.prop}:${d.value.slice(0,80)} })`});
-  for(const d of declarations(css)){
+  const decls=declarations(css),ctxOf=PENDING_L6.has(file)?()=>({}):sizeContext(decls);
+  for(const d of decls){
     const {prop,value}=d;
     const bare=stripStringsAndUrls(value);
     if(/#[0-9a-f]{3,8}\b/i.test(bare))add(d,'hex','cor em hex fora do tokens.css');
@@ -191,8 +271,8 @@ export function lintCss(file,css){
     }
     if((prop==='animation'||prop==='animation-iteration-count')&&/(^|[\s,])infinite([\s,]|$)/i.test(bare))add(d,'infinite','animação infinite (roda 1–2 vezes ao aparecer e para; a urgência fica na cor, design §2.5)');
     if(prop==='font-size'||prop==='font'){
-      const min=MATCH_CSS.has(file)?MIN_MATCH:MIN_OTHER;
-      const px=prop==='font'?shorthandSize(value):sizePx(value);
+      const min=minFont(file),ctx=ctxOf(d);
+      const px=prop==='font'?shorthandSize(value,ctx):sizePx(value,ctx);
       if(px!==undefined&&px<min)add(d,'font-size',`texto de ${+px.toFixed(2)}px (< ${min}px)`);
     }
   }

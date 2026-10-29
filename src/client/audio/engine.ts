@@ -1,12 +1,17 @@
 /**
- * Procedural WebAudio engine (VGM-050). No AudioContext exists before the first user gesture,
+ * WebAudio engine (VGM-050). No AudioContext exists before the first user gesture,
  * so nothing can play until then. Voice limit, per-sound throttle, optional vibration and two buses under the master
- * (config-audio-musica-efeitos): "effects" (these procedural sounds) and "music" (music.ts tracks), each with its own
+ * (config-audio-musica-efeitos): "effects" (the sounds) and "music" (music.ts tracks), each with its own
  * volume and mute (settings.ts); the master stays at 1 and feeds the limiter.
+ *
+ * Sounds are files (sfx.ts, NEW-20261022-ORQ-sons-ia-ace-step) fetched and decoded on demand: a sound's takes start
+ * loading the first time it is asked for (or at unlock for SFX_WARM), and until one is ready, or for good when its file
+ * fails, the procedural recipe (recipes.ts) plays instead; a file-only sound is silent meanwhile.
  */
 import type {SoundId,SoundRecipe,Tone} from './types.ts';
 import {recipeLength} from './types.ts';
 import {RECIPES} from './recipes.ts';
+import {SFX,SFX_WARM,alignTake,drawTake,pickSfxFormat,sfxUrl,type SfxFormat,type SfxSpec} from './sfx.ts';
 import {busGain,busQuiet,clampVolume,copySettings,loadSettings,saveSettings,type AudioSettings,type Bus,type StorageLike} from './settings.ts';
 
 export {DEFAULT_SETTINGS,SETTINGS_KEY,LEGACY_SETTINGS_KEY,type AudioSettings,type Bus,type BusSettings} from './settings.ts';
@@ -15,12 +20,22 @@ export const MAX_VOICES=10;
 /** Events that count as user activation for audio (a touch pointerdown does not, on iOS or per spec). */
 export const UNLOCK_EVENTS=['pointerup','touchend','click','keydown'] as const;
 const SILENT=.0001;
+/** Buttons that do not click: the match's actions (explore.ts .explore-actions) and opt-outs. */
+const SILENT_BUTTONS='.explore-actions,[data-sfx="off"]';
 /** After a gesture asks to resume, sounds may be scheduled on a still-suspended context for this long. */
 const RESUME_GRACE_MS=500;
 /** Time constant of a bus's volume change: smooth while a slider drags, no clicks. */
 const BUS_RAMP_S=.02;
 interface EngineOptions {
-  recipes?:Readonly<Record<SoundId,SoundRecipe>>;
+  recipes?:Readonly<Partial<Record<SoundId,SoundRecipe>>>;
+  /** The files' table (sfx.ts); `null` plays the procedural sounds only. */
+  sfx?:Readonly<Partial<Record<SoundId,SfxSpec>>>|null;
+  /** Downloads one file (default: a low-priority fetch in a browser, none elsewhere); `null` = no files. */
+  loadFile?:((url:string)=>Promise<ArrayBuffer>)|null;
+  /** The files' format (default: what an <audio> element says it plays, pickSfxFormat). */
+  format?:SfxFormat|null;
+  /** Draws the take (default Math.random). */
+  random?:()=>number;
   createContext?:()=>AudioContext;
   storage?:StorageLike|null;
   vibrate?:(pattern:number[])=>boolean;
@@ -28,6 +43,29 @@ interface EngineOptions {
   nowMs?:()=>number;
 }
 interface Voice {id:SoundId;priority:number;startedAt:number;endsAt:number;out:GainNode;sources:AudioScheduledSourceNode[]}
+/**
+ * One play's own level and speed: a footstep's jitter (footsteps.ts), an ally farther away; `pan` (-1 left … 1 right) puts
+ * a file's take where its figure is on screen (the recipes stay centred).
+ */
+export interface PlayOptions {gain?:number;rate?:number;pan?:number}
+/** The output latency the engine reports at most (a context that claims more is not believed). */
+export const MAX_LATENCY_MS=150;
+type FileState=AudioBuffer|'loading'|'failed';
+
+async function fetchFile(url:string):Promise<ArrayBuffer>{
+  const response=await fetch(url,{priority:'low'} as RequestInit);
+  if(!response.ok)throw new Error(`${url}: ${response.status}`);
+  return response.arrayBuffer();
+}
+function defaultLoader():((url:string)=>Promise<ArrayBuffer>)|null{
+  return globalThis.location&&typeof globalThis.fetch==='function'?fetchFile:null;
+}
+function defaultFormat():SfxFormat|null{
+  try{
+    const audio=globalThis.document?.createElement?.('audio');
+    return audio&&typeof audio.canPlayType==='function'?pickSfxFormat(type=>audio.canPlayType(type)):null;
+  }catch{return null;}
+}
 
 /** Disconnects the voice output once every source has ended, so finished graphs can be collected. */
 function releaseOnEnd(out:GainNode,sources:AudioScheduledSourceNode[]){
@@ -55,9 +93,19 @@ export class AudioEngine {
   private detachers=new Set<()=>void>();
   private state:AudioSettings;
   private isUnlocked=false;
+  private hushed=false;
   private resumeAskedAt=-Infinity;
   private cleanups:(()=>void)[]=[];
-  private readonly recipes:Readonly<Record<SoundId,SoundRecipe>>;
+  private readonly recipes:Readonly<Partial<Record<SoundId,SoundRecipe>>>;
+  private readonly sfx:Readonly<Partial<Record<SoundId,SfxSpec>>>;
+  private readonly loadFile:((url:string)=>Promise<ArrayBuffer>)|null;
+  private readonly format:SfxFormat|null;
+  private readonly random:()=>number;
+  /** Each file's state by URL: decoded, on its way, or failed (then the recipe plays for good). */
+  private files=new Map<string,FileState>();
+  /** An aligned sound's take (SfxSpec.align): where its attack starts and the gain that evens it. */
+  private aligned=new WeakMap<AudioBuffer,{offset:number;gain:number}>();
+  private lastTake=new Map<SoundId,number>();
   private readonly createContext:()=>AudioContext;
   private readonly storage:StorageLike|null;
   private readonly vibrateFn:((pattern:number[])=>boolean)|undefined;
@@ -66,6 +114,10 @@ export class AudioEngine {
 
   constructor(opts:EngineOptions={}){
     this.recipes=opts.recipes??RECIPES;
+    this.sfx=opts.sfx===null?{}:opts.sfx??SFX;
+    this.loadFile=opts.loadFile===undefined?defaultLoader():opts.loadFile;
+    this.format=opts.format===undefined?(this.loadFile?defaultFormat():null):opts.format;
+    this.random=opts.random??Math.random;
     this.createContext=opts.createContext??defaultContext;
     this.storage=opts.storage===undefined?null:opts.storage;
     this.vibrateFn=opts.vibrate;
@@ -84,13 +136,28 @@ export class AudioEngine {
   get context():AudioContext|undefined{return this.ctx;}
   get output():AudioNode|undefined{return this.master;}
   get musicOutput():AudioNode|undefined{return this.buses.music;}
+  /** The effects bus (its volume and mute): a looping voice of its own joins it (audio/alarm.ts, the Uno's alarm). */
+  get effectsOutput():AudioNode|undefined{return this.buses.effects;}
+  /**
+   * How late a sound started now reaches the speakers (ms): the context's base and output latency, 0 before unlock or
+   * where the browser does not say; at most MAX_LATENCY_MS. footsteps.ts plays that much ahead of the foot.
+   */
+  get latencyMs(){
+    const ctx=this.ctx as (AudioContext&{outputLatency?:number})|undefined;
+    const s=(Number(ctx?.baseLatency)||0)+(Number(ctx?.outputLatency)||0);
+    return Math.max(0,Math.min(MAX_LATENCY_MS,s*1000));
+  }
 
   /**
    * Unlocks on the first gesture on `target` and keeps listening: any later gesture revives a context that
-   * iOS suspended or interrupted (app switch, call). Returns a detach function.
+   * iOS suspended or interrupted (app switch, call). A click on a button also clicks (ui-botao), except the match's
+   * action buttons (attack, skill, SOS: pressed nonstop) and anything under [data-sfx="off"]. Returns a detach function.
    */
   attachUnlock(target:EventTarget):()=>void{
-    const handler=()=>{if(this.isUnlocked)this.wake();else this.unlock();};
+    const handler=(event:Event)=>{
+      if(this.isUnlocked)this.wake();else this.unlock();
+      if(event.type==='click')this.buttonClick(event.target);
+    };
     const detach=()=>{for(const type of UNLOCK_EVENTS)target.removeEventListener(type,handler);this.detachers.delete(detach);};
     for(const type of UNLOCK_EVENTS)target.addEventListener(type,handler,{passive:true});
     this.detachers.add(detach);
@@ -104,7 +171,7 @@ export class AudioEngine {
     try{
       const ctx=this.ctx=this.createContext();
       this.master=ctx.createGain();
-      this.master.gain.value=1;
+      this.master.gain.value=this.hushed?0:1;
       // A limiter keeps a boss roar plus a fall plus hits from hard-clipping on phone speakers.
       const limiter=ctx.createDynamicsCompressor?.();
       if(limiter){
@@ -117,6 +184,7 @@ export class AudioEngine {
         gain.connect(this.master);
       }
       this.wake();
+      this.preload(SFX_WARM);
       const doc=globalThis.document;
       if(doc){
         const onVisible=()=>{if(doc.visibilityState==='visible')this.wake();};
@@ -141,24 +209,66 @@ export class AudioEngine {
     this.update({[bus]:{...this.state[bus],volume:clampVolume(volume)}},opts.persist??true);
   }
   setMuted(bus:Bus,muted:boolean){this.update({[bus]:{...this.state[bus],muted}});}
+  /** Silences everything for an ad break (ads/ads.ts) without touching the saved settings; false restores. */
+  setHushed(on:boolean){
+    this.hushed=on;
+    const ctx=this.ctx,master=this.master;
+    if(!ctx||!master)return;
+    master.gain.cancelScheduledValues?.(ctx.currentTime);
+    master.gain.setValueAtTime?.(on?0:1,ctx.currentTime);
+    master.gain.value=on?0:1;
+  }
   setVibration(vibration:boolean){this.update({vibration});}
 
   activeVoices(){this.prune();return this.voices.length;}
 
   onChange(listener:()=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
 
-  /** Plays a sound. False when locked, unknown, throttled, muted, suspended or dropped by the voice limit. */
-  play(id:SoundId):boolean{
+  /** True when a decoded take of the sound is ready (its file plays, not the recipe). */
+  hasFile(id:SoundId){
+    const file=this.sfx[id],format=this.format;
+    if(!file||!format)return false;
+    for(let take=0;take<file.takes;take++)if(typeof this.files.get(sfxUrl(id,take,format))==='object')return true;
+    return false;
+  }
+
+  /** Starts downloading every take of these sounds (once each); no-op before the context exists or without files. */
+  preload(ids:Iterable<SoundId>){
+    const ctx=this.ctx,load=this.loadFile,format=this.format;
+    if(!ctx||!load||!format)return;
+    for(const id of ids){
+      const file=this.sfx[id];
+      if(!file)continue;
+      for(let take=0;take<file.takes;take++){
+        const url=sfxUrl(id,take,format);
+        if(this.files.has(url))continue;
+        this.files.set(url,'loading');
+        let job:Promise<ArrayBuffer>;
+        try{job=load(url);}catch(error){job=Promise.reject(error);}
+        job.then(data=>ctx.decodeAudioData(data)).then(buffer=>{
+          if(file.align){try{this.aligned.set(buffer,alignTake(buffer.getChannelData(0),buffer.sampleRate));}catch{/* plays whole */}}
+          this.files.set(url,buffer);
+        },()=>{this.files.set(url,'failed');});
+      }
+    }
+  }
+
+  /**
+   * Plays a sound: a take of its file when one is decoded, else its recipe (and its file starts loading). False when
+   * locked, unknown, throttled, muted, suspended, dropped by the voice limit, or a file-only sound not loaded yet.
+   */
+  play(id:SoundId,opts:PlayOptions={}):boolean{
     if(!this.isUnlocked)return false;
-    const recipe=this.recipes[id];
-    if(!recipe)return false;
+    const recipe=this.recipes[id],file=this.sfx[id];
+    if(!recipe&&!file)return false;
+    const throttleMs=file?.throttleMs??recipe!.throttleMs,priority=file?.priority??recipe!.priority;
     const now=this.nowMs(),last=this.lastPlay.get(id);
-    if(last!==undefined&&now-last<recipe.throttleMs)return false;
+    if(last!==undefined&&now-last<throttleMs)return false;
     const ctx=this.ctx,out=this.buses.effects;
     if(busQuiet(this.state.effects)||!ctx||!out){
       // Haptics follow their own toggle, so a muted phone can still buzz on a fall.
       this.lastPlay.set(id,now);
-      this.buzz(recipe);
+      if(recipe)this.buzz(recipe);
       return false;
     }
     if(ctx.state!=='running'&&now-this.resumeAskedAt>RESUME_GRACE_MS){
@@ -166,17 +276,38 @@ export class AudioEngine {
       void ctx.resume?.().catch(()=>{});
       return false;
     }
+    const take=file?this.pickTake(id,file):undefined;
+    if(!take&&!recipe)return false;
     this.prune();
     // A drop by the voice limit was never heard, so it neither starts the throttle window nor vibrates.
-    if(this.voices.length>=this.maxVoices&&!this.steal(recipe.priority))return false;
+    if(this.voices.length>=this.maxVoices&&!this.steal(priority))return false;
     this.lastPlay.set(id,now);
-    const voice=ctx.createGain();
+    const voice=ctx.createGain(),level=Math.max(0,Math.min(2,Number.isFinite(opts.gain)?opts.gain!:1));
     voice.connect(out);
     const start=ctx.currentTime+.005,sources:AudioScheduledSourceNode[]=[];
-    for(const tone of recipe.tones)sources.push(...this.schedule(ctx,voice,tone,start));
+    let length:number;
+    const rate=Math.max(.5,Math.min(2,Number.isFinite(opts.rate)?opts.rate!:1));
+    if(take){
+      const src=ctx.createBufferSource(),align=this.aligned.get(take.buffer),offset=align?.offset??0;
+      src.buffer=take.buffer;
+      if(src.playbackRate)src.playbackRate.value=rate;
+      voice.gain.value=file!.gain*level*(align?.gain??1);
+      // Panned before the voice: the voice's release (releaseOnEnd, a steal) cuts the whole chain off the bus.
+      const pan=Number.isFinite(opts.pan)?Math.max(-1,Math.min(1,opts.pan!)):0,panner=Math.abs(pan)>.01?ctx.createStereoPanner?.():undefined;
+      if(panner){panner.pan.value=pan;src.connect(panner);panner.connect(voice);}else src.connect(voice);
+      src.start(start,offset);
+      sources.push(src);
+      length=Math.max(0,take.buffer.duration-offset)/rate;
+      this.lastTake.set(id,take.index);
+    }else{
+      voice.gain.value=level;
+      // The recipe follows the pitch too (the gem's combo while its file loads): its tones scaled, its timing kept.
+      for(const tone of recipe!.tones)sources.push(...this.schedule(ctx,voice,tone,start,rate));
+      length=recipeLength(recipe!);
+    }
     releaseOnEnd(voice,sources);
-    this.voices.push({id,priority:recipe.priority,startedAt:start,endsAt:start+recipeLength(recipe)+.05,out:voice,sources});
-    this.buzz(recipe);
+    this.voices.push({id,priority,startedAt:start,endsAt:start+length+.05,out:voice,sources});
+    if(recipe)this.buzz(recipe);
     this.emit();
     return true;
   }
@@ -193,6 +324,28 @@ export class AudioEngine {
   }
 
   // ---- internals ----
+
+  private buttonClick(target:EventTarget|null){
+    const el=(target as Element|null)?.closest?.('button,[role="button"]');
+    if(!el||(el as HTMLButtonElement).disabled||el.closest(SILENT_BUTTONS))return;
+    this.play('ui-botao');
+  }
+
+  /** A decoded take, drawn without repeating the last; any other ready one while the drawn one loads. Loads them all. */
+  private pickTake(id:SoundId,file:SfxSpec):{buffer:AudioBuffer;index:number}|undefined{
+    const format=this.format;
+    if(!format||!this.loadFile)return undefined;
+    this.preload([id]);
+    const last=this.lastTake.get(id),drawn=drawTake(file.takes,last,this.random());
+    let fallback:{buffer:AudioBuffer;index:number}|undefined;
+    for(let k=0;k<file.takes;k++){
+      const index=(drawn+k)%file.takes,state=this.files.get(sfxUrl(id,index,format));
+      if(typeof state!=='object')continue;
+      if(index!==last||file.takes===1)return {buffer:state,index};
+      fallback={buffer:state,index};
+    }
+    return fallback;
+  }
 
   /** Inside a gesture: resume plus a silent sample, which is what iOS needs to really start output. */
   private wake(){
@@ -257,9 +410,9 @@ export class AudioEngine {
     return this.noise=buffer;
   }
 
-  private schedule(ctx:AudioContext,out:GainNode,tone:Tone,start:number):AudioScheduledSourceNode[]{
+  private schedule(ctx:AudioContext,out:GainNode,tone:Tone,start:number,rate=1):AudioScheduledSourceNode[]{
     const t0=start+Math.max(0,tone.at),dur=Math.max(.01,tone.dur),attack=Math.min(dur*.9,Math.max(.001,tone.attack??.005));
-    const peak=Math.max(SILENT,Math.min(1,tone.gain)),from=Math.max(1,tone.from),to=Math.max(1,tone.to);
+    const peak=Math.max(SILENT,Math.min(1,tone.gain)),from=Math.max(1,tone.from*rate),to=Math.max(1,tone.to*rate);
     const env=ctx.createGain();
     env.gain.setValueAtTime(SILENT,t0);
     env.gain.linearRampToValueAtTime(peak,t0+attack);

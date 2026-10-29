@@ -5,15 +5,17 @@
  * preloader's download is what Phaser then finds in the cache.
  *
  * Priorities: P0 = the map's ground and this player's hero with its walk clips (the match opens with them:
- * preload-heroi-primeiro); P1 = its attack clips first (cena-nasce-rapido), teammates' heroes, enemies and the base pieces; P2 = the city's pine, items,
+ * preload-heroi-primeiro); P1 = its attack clips first (cena-nasce-rapido), teammates' heroes, the upgrade cards' and the crates' item stickers, enemies and the base pieces; P2 = the city's pine, items,
  * effects and HUD art.
  * Not listed: the city's buildings, props, decor and live sheets (the scene, open behind the waiting room, streams them
  * itself nearest the camera first, render/city/art-stream.ts: fetched here in list order they took the bandwidth from
  * the art around the hero, partida-abre-com-P0), the endless map's trees (which ones depends on the terrain seed the room sends with the match; the scene
  * fetches the ones by the spawn itself) and the city's map file (the room's mapLoad already gates on it).
  */
-import {classes} from '../../rules/index.ts';
+import {PASSIVE_IDS,classes} from '../../rules/index.ts';
 import type {MapId} from '../../protocol/index.ts';
+import {itemDisplay} from '../hud/items.ts';
+import {uiArtUrl} from '../ui/icon.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {directionalSheet} from '../sprites/sprite-sheets.ts';
 import {movementSheets} from '../sprites/movement128.ts';
@@ -23,6 +25,7 @@ import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
 import {baseLoads} from '../art/base-art.ts';
 import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
+import {arsenalLoads} from '../render/arsenal-rules.ts';
 import {buildCityArtPlan,cityArtOptions} from '../render/city/art-plan.ts';
 import {ALBEDO_URL} from '../render/city/relevo/albedo-meta.ts';
 
@@ -53,6 +56,9 @@ const RANK:Record<AssetPriority,number>={P0:0,P1:1,P2:2};
  */
 export const heroMotionUrls=(classId:string)=>[...new Set((['walk','attack','idle'] as const).flatMap(motion=>movementSheets(classId,motion).map(p=>p.url)))]
   .filter(url=>url!==heroSheetUrl(classId));
+
+/** The imported `ui` art of every sticker an upgrade card can wear (the passives and the coxinha), each once. */
+export const offerIconUrls=()=>[...new Set([...PASSIVE_IDS,'heal'].map(id=>uiArtUrl(itemDisplay(id).icon)).filter((u):u is string=>!!u))];
 
 /**
  * Ordered list (P0, then P1, then P2; plan order inside each) of every file the match needs, each URL once at its
@@ -91,6 +97,13 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     add(heroSheetUrl(id),'P1','hero');
     if(known(id))add(thumbUrl(id),'P1','icon');
   }
+  // The level-up cards' stickers (hud/offer.ts: every passive, and the coxinha of a full build): the <img> of a card
+  // asked for only when the window opens came in seconds late behind the city's stream, an empty frame (card
+  // ofertas-sem-xp-e-icones: Cartão Fidelidade, Café Coado na Meia).
+  for(const url of offerIconUrls())add(url,'P1','icon');
+  // The crates' floating items (caixa-aparece-tarde): every arsenal sticker, which the scene's preload asks for in a room
+  // (the map opens with crates of any item); fetched here, the first frame finds them in the cache.
+  for(const l of arsenalLoads())if(!l.strip)add(l.url,'P1','icon');
   // The loader requests the enemies' lite copies (liteEnemyUrl): the same URLs here.
   const enemyPrefix=index.groups.inimigos?liteEnemyUrl(`/${index.groups.inimigos.output.replace(/^public\//,'')}/`):undefined;
   const horde=artLoads();

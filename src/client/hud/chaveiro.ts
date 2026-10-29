@@ -31,11 +31,16 @@ export const reais=(value:number)=>`R$ ${Math.max(0,Math.round(Number.isFinite(v
 /** The objective while it runs (absent, or ended: the round chip goes back to its plain form). */
 export const liveObjective=(view:{objective?:ObjectiveView}|undefined)=>view?.objective&&!view.objective.ended?view.objective:undefined;
 
-/** The round chip's chaveiro part: the clock and the words for the screen reader. */
-export interface ChaveiroClock {clock:string;seconds:number;aria:string}
-export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>):ChaveiroClock{
+/**
+ * The round chip's chaveiro part: the clock and the words for the screen reader. `held`: the 1st wave's chefão stands
+ * and the clock is stopped until he falls (card boss-fim-onda-1, ORQ 24/10; sim/ninhos/chefao.ts holdChaveiroClock):
+ * the number goes grey behind a padlock.
+ */
+export interface ChaveiroClock {clock:string;seconds:number;aria:string;held:boolean}
+export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>,held=false):ChaveiroClock{
   const seconds=Math.max(0,Math.ceil(objective.etaS)),clock=etaClock(seconds);
-  return {clock,seconds,aria:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`};
+  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${clock}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`;
+  return {clock,seconds,aria,held};
 }
 
 /**
@@ -53,6 +58,17 @@ export const MOTO_REASONS:Readonly<Record<MotoMode,string|undefined>>=Object.fre
 });
 /** The modes where the team can do something: the row wears Cone (morta: 2 to push; tombo: clear the critter). */
 export const reasonUrgent=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
+/**
+ * Card objetivo-com-verbo: the stops that need the team say what to do, with a verb, in the mission line (hud/missao.ts,
+ * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size. Card
+ * ordens-menos-e-claras (auditoria-primeiro-minuto item 5: "Uno" and "moto" read as one vehicle, only the Uno on
+ * screen): the line names the chaveiro, as the top's clock and the moto's arrow ("Chaveiro parado") do; the Uno is the
+ * team's car, the moto is his.
+ */
+export const MOTO_ACTIONS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
+  morta:'Moto do chaveiro: vá empurrar',
+  tombo:'Chaveiro caiu: tire os bichos',
+});
 
 /**
  * When the reason's row comes and goes (the row itself waits its turn in the announcement slot, RunHud.queueRow, and
@@ -64,9 +80,10 @@ export class MotoReason {
   step(mode:MotoMode|undefined):{show?:{text:string;urgent:boolean;mode:MotoMode};drop:boolean}{
     if(mode===this.mode)return {drop:false};
     const was=this.mode;this.mode=mode;
-    const text=mode?MOTO_REASONS[mode]:undefined;
+    // The team's stops are the mission line's (MOTO_ACTIONS): no second row with the same news.
+    const text=mode&&!MOTO_ACTIONS[mode]?MOTO_REASONS[mode]:undefined;
     if(text&&mode)return {show:{text,urgent:reasonUrgent(mode),mode},drop:false};
-    return {drop:!!was&&!!MOTO_REASONS[was]};
+    return {drop:!!was&&!!MOTO_REASONS[was]&&!MOTO_ACTIONS[was]};
   }
   reset(){this.mode=undefined;}
 }
@@ -131,7 +148,7 @@ export const cidaBought=(name:string)=>`${name.trim().split(/\s+/)[0]} na mão!`
 /** Why the run ended, as the result screen says it (card: aberto / perda total / time caído / timeout). */
 export const OBJECTIVE_CAUSE_TEXT:Readonly<Record<ObjectiveCause,string>>=Object.freeze({
   opened:'Abriu! O carregador era do conector errado.',
-  car:'Perda total. O motor segue ligado.',
+  car:'O Uno não aguentou. Perda total.',
   team:'O time caiu antes do chaveiro chegar.',
   timeout:'Acabou o tempo. O chaveiro não chegou.',
 });

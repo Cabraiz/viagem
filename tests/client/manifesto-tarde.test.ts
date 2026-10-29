@@ -32,7 +32,9 @@ class FakeSocket{
 }
 (globalThis as any).WebSocket=FakeSocket;
 const store=new Map<string,string>();
+// The seat token lives in localStorage (all tabs of the device: F5 volta pra sala); sessionStorage is the legacy read.
 (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
+Object.defineProperty(globalThis,'localStorage',{value:(globalThis as any).sessionStorage,configurable:true});
 const {CoopClient,CITY_RETRY_WAIT_MS,CITY_RETRY_STATUS}=await import('../../src/client/net/client.ts');
 
 const CODE='ABCDEF1234',KEY=`viagem:room:${CODE}`;

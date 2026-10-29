@@ -4,31 +4,52 @@ import { getClass, heroiPadrao, isLiberado, playableClasses, type HeroClass } fr
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
+import { mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
+import { startAds } from './client/ui/ads-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
-import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
-import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
+import { manterAcimaDoTeclado } from './client/ui/teclado.ts';
+import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, updateNow, type ResumeIntent } from './client/ui/update-toast.ts';
+import { startPullToRefresh } from './client/ui/pull-refresh.ts';
 import './client/ui/update-toast.css';
+import './client/ui/pull-refresh.css';
 import './client/ui/cadeado.css';
-import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
+import './client/ui/insta.css';
+import './client/ui/escolha.css';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, aneisHtml, aneisOf } from './client/ui/insta.ts';
+import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
+import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
+import { emLoop, montarAneis } from './client/ui/insta-aneis.ts';
+import { miniaturaOf } from './client/ui/miniatura.ts';
+import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText, soloProgress, type SoloStep } from './client/ui/solo-plan.ts';
+import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
 // Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
 const session=()=>{try{return sessionStorage;}catch{return undefined;}};
 const storage=()=>{try{return localStorage;}catch{return undefined;}};
-linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
-  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
+const versionWatch=startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
+  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))});
+linkWatch(versionWatch);
+// arrastar-atualiza-versao-nova: a page from the HTTP cache (an old SW, or the browser's own) may be an older build than
+// the site: ask once at startup, so it reloads into the new one before the rooms refuse it (the watch's guard stops loops).
+void versionWatch.check();
+// ...and in the menus, pulling down reloads (the browser's own pull-to-refresh is off: fullscreen, installed app, html overflow).
+startPullToRefresh({doc:document,win:window,inMatch:()=>inMatchOf(document),refresh:()=>updateNow()});
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
 // the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
 void startArt();
 // Menu music (NEW-20261014-ORQ-musica-do-menu): after load + idle, low priority, never on 2g/Save-Data; plays from the first tap.
 startMenuMusic();
+// Ads (NEW-20261023-ORQ-anuncios-h5-games): off by default; when on, the async script loads after the menu is ready.
+startAds(window,import.meta.env.DEV);
 // Art cache (NEW-20261013-ORQ-3g-precarga-partida): public/sw.js keeps /art and /assets by content version, so a second
 // match downloads no art. Production builds only: the dev server never gets a worker.
 if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});
@@ -62,7 +83,11 @@ app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+  <button type="button" class="menu-tela-cheia" hidden></button>
+  <nav class="menu-rodape" aria-label="O site"><a class="menu-privacidade" href="/privacidade/">Privacidade</a><a class="menu-sobre" href="/sobre/">Sobre</a></nav>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
+    <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
+    <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
     <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2></div>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
@@ -78,18 +103,37 @@ app.innerHTML = `
     <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-cadeado" hidden>${icon('cadeado',{size:48})}</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
   </section>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title" tabindex="-1"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button"><span class="escolha-rotulo">Jogar sozinho</span></button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 // The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
 const menuConfig=document.querySelector<HTMLButtonElement>('.menu-config')!;
-menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(menuConfig)).catch(e=>console.error('settings failed to load',e));});
+const openSettings=(from:HTMLElement)=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(from)).catch(e=>console.error('settings failed to load',e));};
+menuConfig.addEventListener('click',()=>openSettings(menuConfig));
+// The phone upright shows the hero pick as an Instagram profile (ui/insta.ts): its ≡ is the gear.
+const instaMenu=document.querySelector<HTMLButtonElement>('.insta-menu')!;
+instaMenu.addEventListener('click',()=>openSettings(instaMenu));
+// Game-style full screen (celular-deitado-tela-cheia, ui/tela-cheia.ts): the corner button, and SELECIONAR / JOGAR on a
+// touch screen; a match started on its side stays on its side until the game closes.
+const tela:TelaCheiaEnv={doc:document as unknown as TelaCheiaEnv['doc'],media:q=>matchMedia(q).matches,
+  orientation:screen.orientation as TelaCheiaEnv['orientation'],storage:storage()};
+const telaCheia=document.querySelector<HTMLButtonElement>('.menu-tela-cheia')!;
+const paintTela=()=>{telaCheia.hidden=!showButton(tela);paintButton(telaCheia,isFullscreen(tela.doc));};
+paintTela();
+document.addEventListener('fullscreenchange',paintTela);document.addEventListener('webkitfullscreenchange',paintTela);
+telaCheia.addEventListener('click',()=>void toggleFullscreen(tela));
+// The manifest's `fullscreen` makes the site installable: no install prompt pops up for it (as with `browser`).
+addEventListener('beforeinstallprompt',e=>e.preventDefault());
+const toMatch=()=>void autoFullscreen(tela).then(()=>lockMatchOrientation(tela));
+// Back at the menu (no game dialog open): the phone turns freely again.
+new MutationObserver(()=>{if(!document.querySelector('dialog.explore-shell[open]'))unlockOrientation(tela);})
+  .observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open']});
 
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
 // point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
 const stage=document.querySelector<HTMLElement>('.estadio-palco')!;
 const tallStadium=matchMedia(STADIUM_TALL_QUERY),cutoutScreen=matchMedia(CUTOUT_QUERY);
-// The PC shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
+// Landscape (the PC, the phone on its side) shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
 // the bar and the hero on it are never cut. Its size and position in px; the CSS keeps `cover` until this runs.
 const stageArt=():StadiumArt=>tallStadium.matches?STADIUM.tall:cutoutScreen.matches?STADIUM.bleed:STADIUM.wide;
 // The hero whose picture the stage shows (his own background moved with him, clt-mesmo-lugar; or the stadium he stands
@@ -163,11 +207,12 @@ function lazySrc(img: HTMLImageElement, url: string) {
   img.dataset.src=url; lazyArt.observe(img);
 }
 // After the first screen is up, the rest of the row comes in idle time, so scrolling it never shows empty frames.
-addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
+// Not on the profile (phone upright), where the row is hidden: its faces come in when it shows (the observer above).
+addEventListener('load',()=>idle(()=>!instaScreen.matches&&document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
-// the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
+// every landscape screen (the PC and the phone on its side, celular-deitado-foto); the dance is held (its pages released) while he does.
 const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
 // mureta-camada-frente: the piece of the background over the hero (the bar), placed by the background's own framing.
 const frontImg=stage.querySelector<HTMLImageElement>('.estadio-mureta')!;
@@ -250,10 +295,14 @@ function setArt(id: string,hero: HeroClass) {
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
 // The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
+// selecao-miniatura-rosto: a released hero shows his face over his own background (ui/miniatura.ts), loaded lazily too.
 // cadeado-so-clt-viciado: a locked hero (rules/personagens-liberados.ts) keeps his tile, darkened under a lock.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${hasNewArt(hero.id)
-  ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
-  :'<span class="card-misterio" aria-hidden="true">?</span>'}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
+const cardFace=(hero:HeroClass)=>{
+  const rosto=miniaturaOf(hero.id,isLiberado(hero.id)),url=rosto??(hasNewArt(hero.id)?thumbUrl(hero):undefined);
+  return url?`<img class="card-portrait${rosto?' card-rosto':''}" draggable="false" data-src="${url}" alt="" width="192" height="192" decoding="async" aria-hidden="true" />`
+    :'<span class="card-misterio" aria-hidden="true">?</span>';
+};
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${cardFace(hero)}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
@@ -269,12 +318,19 @@ function renderSelected(announce=false) {
   const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
   const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
-  if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
+  // The phone held upright never shows the letreiro (insta.css): no download there (primeira-visita-leve); turning it
+  // sideways runs syncInsta → here again, and the picture comes then.
+  if(picture){if(!instaScreen.matches&&sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
   sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
+  // A letreiro taller than its sign (the gato's collar): laid out by the sign's own shape, the rest over the top.
+  const tall=picture?letreiroAltoOf(selected.id):undefined;sign.classList.toggle('letreiro-alto',!!tall);
+  if(tall){sign.style.setProperty('--sinal-ar',String(tall.sinal/tall.w));sign.style.setProperty('--alto-ar',String(tall.h/tall.w));}
+  else{sign.style.removeProperty('--sinal-ar');sign.style.removeProperty('--alto-ar');}
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
   showCutout(); // first: a hero standing in place never starts his dance
-  showPortrait(selected,announce);
+  // The profile (phone upright) shows no dancer and no portrait: neither downloads until the stadium comes back.
+  if(instaScreen.matches) renderInsta(); else showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
@@ -283,6 +339,77 @@ function renderSelected(announce=false) {
   showLock();
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}${isLiberado(selected.id)?'':'. Em breve.'}`);
 }
+// The profile screen (selecao-mobile-instagram): the other heroes as stories, the chosen one's profile and his 3 photos
+// (none for a locked one). Built only while the phone is upright, so the stadium never downloads its pictures.
+const instaScreen=matchMedia(INSTA_QUERY);
+const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perfil:document.querySelector<HTMLElement>('.insta-perfil')!,
+  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!,
+  logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
+const instaIds=classes.map(hero=>hero.id);
+let instaShown='',instaAneis='';
+// The heroes' rings: one endless row a finger drags (ui/insta-aneis.ts); drawn again only when the heroes or locks change.
+const aneis=montarAneis(insta.stories);
+// Whose stories were watched this visit: his ring goes grey (ui/insta.ts perfilHtml).
+const instaVistos=new Set<string>();
+function renderInsta() {
+  const perfil=instaPerfil(selected.id);
+  if(!perfil||instaShown===selected.id) return;
+  instaShown=selected.id;
+  // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
+  insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
+  const perfis=aneisOf(instaIds),assinatura=perfis.map(p=>`${p.id}${isLiberado(p.id)?'':'!'}`).join();
+  if(instaAneis!==assinatura){
+    instaAneis=assinatura;
+    insta.stories.innerHTML=aneisHtml(perfis,isLiberado,emLoop(perfis.length));
+    aneis.montou(perfis.length,perfis.indexOf(perfil));
+  }
+  insta.stories.querySelectorAll<HTMLElement>('[data-hero]').forEach(anel=>{if(anel.dataset.hero===perfil.id)anel.setAttribute('aria-current','true');else anel.removeAttribute('aria-current');});
+  aneis.mostrar(perfis.indexOf(perfil));
+  insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
+  insta.chips.innerHTML=chipsHtml(perfil);
+  insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
+  void document.fonts.ready.then(fitHandle);
+}
+// The @handle's size was a guess from its letters (insta.ts handleFit): measured once the font is in, a handle wider than
+// its column shrinks until it and the badge fit (its share in card px, so any screen size keeps it).
+function fitHandle() {
+  const line=insta.perfil.querySelector<HTMLElement>('.insta-arroba'),text=line?.firstElementChild as HTMLElement|null;
+  if(!line||!text||line.scrollWidth<=line.clientWidth) return;
+  const fit=parseFloat(line.style.getPropertyValue('--arroba-fit'))||1,room=line.clientWidth-(line.scrollWidth-text.offsetWidth);
+  line.style.setProperty('--arroba-fit',(fit*room/text.offsetWidth*.98).toFixed(3));
+}
+insta.stories.addEventListener('click',event=>{
+  const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
+  if(!story) return;
+  // The half ring at the edge comes fully into view, also when it is the one already chosen.
+  aneis.mostrar(aneisOf(instaIds).findIndex(p=>p.id===story.dataset.hero));
+  if(etapaOf(etapa)==='nome') showEtapa(etapa,'escolher');
+  selected=getClass(story.dataset.hero!)!;
+  renderSelected(true);
+});
+// The profile photo opens the hero's stories (ui/insta-stories.ts); a locked hero's is no button (a private account).
+insta.perfil.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('.insta-foto-botao'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirStories(perfil,foto,()=>{instaVistos.add(perfil.id);foto.toggleAttribute('data-visto',true);});
+});
+// A grid photo opens as a post (ui/insta-post.ts); it grows out of its thumbnail and shrinks back into it.
+insta.grade.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLElement>('[data-post]'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirPost(perfil,Number(foto.dataset.post),i=>insta.grade.querySelector<HTMLElement>(`[data-post="${i}"]`));
+});
+// The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
+let instaHold:(()=>void)|undefined;
+function syncInsta() {
+  fecharPost(true);fecharStories(true);
+  if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
+  else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
+  if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();
+  instaShown='';
+  renderSelected();
+}
+instaScreen.addEventListener('change',syncInsta);
 // A locked hero can be looked at, never chosen: SELECIONAR turns into a disabled "EM BREVE" with the lock in the star's place.
 function showLock() {
   const button=document.getElementById('confirm') as HTMLButtonElement,locked=!isLiberado(selected.id);
@@ -307,7 +434,15 @@ document.getElementById('previous')!.addEventListener('click',()=>cycle(-1));
 document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
-nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
+// BORA! with no name (auditoria-ui-menus 9): the menu's own warning, not the browser's balloon (its look changes from
+// browser to browser): the field turns red, says it in its placeholder and shakes once; the live region reads it.
+const NAME_MISSING='Escolha um nome primeiro!',namePlaceholder=nameInput.placeholder;
+const nameMissing=(on:boolean)=>{
+  nameInput.classList.remove('nome-faltando');nameInput.placeholder=on?NAME_MISSING:namePlaceholder;
+  if(on){void nameInput.offsetWidth;nameInput.classList.add('nome-faltando');nameInput.setAttribute('aria-invalid','true');text('announcement',NAME_MISSING);}
+  else nameInput.removeAttribute('aria-invalid');
+};
+nameInput.addEventListener('input',()=>{nickname=nameInput.value;if(nameInput.classList.contains('nome-faltando'))nameMissing(false);});
 // A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
 // Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
@@ -328,6 +463,8 @@ function backToRow() {
   rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`)?.focus({preventScroll:true});
 }
 document.getElementById('trocar')!.addEventListener('click',backToRow);
+// The phone's keyboard never covers the field and BORA! (teclado-cobre-nome-bora): the column takes what it leaves.
+manterAcimaDoTeclado(etapa.section,nameInput);
 nameInput.addEventListener('keydown',event=>{
   const key=nameKey(event);
   if(!key) return;
@@ -337,9 +474,9 @@ nameInput.addEventListener('keydown',event=>{
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!isLiberado(selected.id)) return; // a locked hero never gets past here (a click, Enter or a script)
+  void autoFullscreen(tela); // inside the tap: browsers allow it only there
   if(etapaOf(etapa)==='escolher') {chooseHero();return;}
-  if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
-  nameInput.setCustomValidity('');
+  if(!nickname.trim()) {nameMissing(true);nameInput.focus();return;}
   nickname=nameInput.value=fitName(nickname);
   const saved={version:1,classId:selected.id,name:nickname,color};
   let persisted=false;
@@ -349,10 +486,13 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role">${suit(selected.role)}${selected.role}</span> ${selected.name}`;
   // Saved: nothing to say. Only a failure to save is worth a line.
   text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
-  dialog.showModal();
+  mostrarEscolha(dialog,selected.id);
+  dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
+  // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
+  if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
-const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.querySelector('#confirmation .solo-row')!.before(coopButton);
+const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;
@@ -365,9 +505,9 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
 // Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
 // straight in (below); a new player makes one first and the confirmation's button says which room it opens.
 let invite=inviteCode(location.search);
-if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
-const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
-coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
+if(invite)rotulo(coopButton).textContent=`Entrar na sala ${formatRoomCode(invite)}`;
+const openInvite=()=>{const room=invite;invite=undefined;rotulo(coopButton).textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
+coopButton.addEventListener('click',()=>{toMatch();void(invite?openInvite():openCoop());});
 document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
@@ -381,8 +521,23 @@ const showBots=()=>{
 };
 soloBots.hidden=island;showBots();
 soloBots.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.solo-bots-step');if(b&&!b.disabled){bots=saveBots(storage(),bots+Number(b.dataset.step));showBots();}});
+/** The bar under "Jogar sozinho"'s line while the match opens (0..1; undefined hides it). */
+function soloBar(button:HTMLElement){
+  let bar=button.querySelector<HTMLElement>('.carga');
+  if(!bar){
+    bar=document.createElement('span');bar.className='carga';bar.setAttribute('role','progressbar');bar.setAttribute('aria-label','Carregando a partida');
+    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');bar.hidden=true;bar.innerHTML='<span class="carga-cheio"></span>';
+    const line=rotulo(button);if(line===button)button.append(bar);else line.after(bar);
+  }
+  const el=bar;
+  return {set(fraction:number|undefined){
+    el.hidden=fraction===undefined;if(fraction===undefined)return;
+    const pct=Math.round(fraction*100);el.setAttribute('aria-valuenow',String(pct));el.style.setProperty('--carga',`${pct}%`);
+  }};
+}
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
+  toMatch();
   button.disabled=true;text('explore-error','');
   if(island){
     const releaseDance=menuDance.hold();
@@ -393,17 +548,24 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
     finally {releaseDance();button.disabled=false;}
     return;
   }
-  const label=button.textContent;button.textContent='Preparando…';
+  // auditoria-ui-menus 5: the card says which step is running, over a bar of the real steps (solo-plan.ts).
+  const label=rotulo(button).textContent,parts:Partial<Record<SoloStep,number>>={};
+  const bar=soloBar(button);
+  const showStep=()=>{const p=soloProgress(parts);rotulo(button).textContent=p.text;bar.set(p.fraction);};
+  button.setAttribute('aria-busy','true');showStep();
   const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
-    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{button.textContent=label;dialog.close();}});
+    await openSolo(selected,nickname.trim(),{bots,
+      onStep:(step,fraction)=>{parts[step]=Math.max(parts[step]??0,fraction);showStep();},
+      onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {releaseDance();button.disabled=false;button.textContent=label;}
+  finally {releaseDance();button.disabled=false;button.removeAttribute('aria-busy');bar.set(undefined);rotulo(button).textContent=label;}
 });
-renderSelected();
+syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
-// with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
+// with a room, joins it by itself (the room's token in localStorage keeps the same seat, net/room-return.ts).
+// F5 in a room lands on the invite path: the welcome put ?sala= in the address (F5 volta pra sala).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
 else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();

@@ -19,12 +19,14 @@ test('every enemy kind maps to an importer id (identity after the D-033/D-036 re
   assert.deepEqual(Object.values(ENEMY_ART_ID),['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer']);
 });
 
-test('static art replaces today\'s keys: pickups, the boleto, projectiles and FX',()=>{
+test('static art replaces today\'s keys: pickups, projectiles and FX',()=>{
   const keys=STATIC_ART.map(s=>s.key);
-  for(const k of ['heal','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
-  // D-054: no gem nor ímã art (the only XP on the ground is the boleto rain, FX.boleto).
-  assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima')),'no gem, no ímã');
-  for(const k of [FX.boleto,FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
+  for(const k of ['heal','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
+  // bau-antigo-ainda-visivel: the old baú art is not loaded any more (a crate is its floating item).
+  assert.ok(!keys.includes(pickupTexture('chest'))&&!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('bau'))),'no baú');
+  // D-054: no gem nor ímã art; NEW-20261024-ORQ-tirar-drops-cedula-girando: nor the boleto rain's.
+  assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima'||id==='boleto-chuva')),'no gem, no ímã, no boleto rain');
+  for(const k of [FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
   // The agiota's boleto has its own key now (art:proj:boleto-juros, horde-actions.test.ts), not today's FX.projBoleto.
   assert.ok(!keys.includes(FX.projBoleto));
   assert.equal(new Set(keys).size,keys.length,'one entry per key');
@@ -148,7 +150,7 @@ test('resources: only the generic recurso replaces the single resource texture (
 });
 
 test('weapon projectiles: each one has its own key; tiro-aliado stays the shared friendly look',()=>{
-  assert.deepEqual([...WEAPON_PROJECTILE_IDS],['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+  assert.deepEqual([...WEAPON_PROJECTILE_IDS],['boleto','cafe','guarda-chuva','pombo','audio','boleto-evo','cafe-evo','garrafa-molotov',
     // D-051 arsenal (armas-caixas-render): the bullets and the rojão's rocket.
     'bala-revolver','bala-metralhadora','bala-fuzil','rojao']);
   for(const id of WEAPON_PROJECTILE_IDS)assert.equal(WEAPON_PROJECTILE_KEY[id],`art:proj:${id}`,id);

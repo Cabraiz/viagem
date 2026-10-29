@@ -548,12 +548,13 @@ test('P0 table: absent P0 pieces are pending, absent P1/P2 only optional; extra 
   approved(piece(r,'itens','moeda'));
   for(const id of ['gema-media','gema-grande','coxinha','ima','bau','recurso-coco','recurso-pedra'])
     assert.deepEqual([piece(r,'itens',id).status,piece(r,'itens',id).priority],['pendente','P0'],id);
-  assert.deepEqual([piece(r,'itens','boleto-chuva').status,piece(r,'itens','boleto-chuva').priority],['opcional','P1']);
-  for(const id of ['coach','motoboy','influencer'])assert.equal(piece(r,'inimigos',id).status,'opcional',id);
+  // The boleto rain's 'boleto-chuva' (the items' only P1) left with the rain (NEW-20261024-ORQ-tirar-drops-cedula-girando).
+  assert.equal(r.pieces.some(p=>p.group==='itens'&&p.id==='boleto-chuva'),false);
+  for(const id of ['coach','motoboy','influencer'])assert.deepEqual([piece(r,'inimigos',id).status,piece(r,'inimigos',id).priority],['opcional','P1'],id);
   assert.equal(piece(r,'inimigos','bebado').status,'pendente');
   const html=readFileSync(reportFile,'utf8');
   const optional=[...html.matchAll(/<p class="pending optional">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
-  assert.match(optional,/Opcionais \(P1\/P2\).*<code>boleto-chuva<\/code>/);
+  assert.match(optional,/Opcionais \(P1\/P2\).*<code>coach<\/code>/);
   const pending=[...html.matchAll(/<p class="pending">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
   assert.match(pending,/<code>gema-media<\/code>/);
   assert.doesNotMatch(pending,/boleto-chuva|coach/,'P1 piece listed as pending');
@@ -594,14 +595,14 @@ test('expected ids without a sidecar take the table cell/frames (192×128 strip)
 
 test('a sidecar without "kind" keeps the table kind and cell (9-slice frame whose sidecar only gives "slice")',async()=>withTemp(async dir=>{
   const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida');
-  await writeFrames(path.join(input,'efeitos','balao-fala.png'),{cell:[96,64],frames:1});
-  json(path.join(input,'efeitos','balao-fala.json'),{slice:[16,16,16,16]});
+  await writeFrames(path.join(input,'efeitos','balao-fala.png'),{cell:[74,28],frames:1});
+  json(path.join(input,'efeitos','balao-fala.json'),{slice:[12,10,12,10]});
   const r:Result=await importArtV2({input,repoRoot,outRoot,groups:{efeitos:GROUPS.efeitos},write:true});
   approved(piece(r,'efeitos','balao-fala'));
   const entry=readManifestOf(outRoot,'efeitos').pieces['balao-fala'];
   assert.equal(entry.kind,'nineslice');
   const file:any=Object.values(entry.files)[0];
-  assert.deepEqual([file.cell,file.slice],[[96,64],[16,16,16,16]]);
+  assert.deepEqual([file.cell,file.slice],[[74,28],[12,10,12,10]]);
 }));
 
 test('index public/art/manifest.json: every group manifest merged, meta from table + sidecar; dry-run writes nothing',async()=>withTemp(async dir=>{

@@ -12,9 +12,14 @@
  *  - the outside group: OUTSIDE_GROUP by f × playerScale(n).count × NEST_PACE.size, walking in from an avenue end (the
  *    entrances in turn); the kills past the quota cut it, never below NEST_PACE.floor of it.
  *  Every one of them besieges the car (SIEGE_FLAG: the enemy-ai goes for the car, or a player closer on the way). The
- *  first wave comes FIRST_EXIT seconds after the start, the next NEST_PACE.period × (1 − NEST_SPEEDUP·f) later,
- *  f = time since the start ÷ NEST_PACE.ramp (0..1); with NEST_PACE.alive enemies up, or no room under the cap, it waits
- *  RETRY_SECONDS. The last waves are logged (state.log: quota, kills, map, nests, outside, total).
+ *  first wave comes FIRST_EXIT seconds after the minuto de Minerva; f = time since the start ÷ NEST_PACE.ramp (0..1);
+ *  with NEST_PACE.alive enemies up, or no room under the cap, it waits RETRY_SECONDS. The last waves are logged
+ *  (state.log: quota, kills, map, nests, outside, total).
+ *  - The time to explore (card inicio-no-uno-caixas-120, the user 23/10: "Você tem 2 minutos para buscar mais caixas"):
+ *    once a wave has left (its map share too) and is over (no besieger alive, calm at the car: options.calm, the boss
+ *    down), at least NEST_PACE.waveMin s after it left, NEST_PACE.explore s open (state.exploreFrom/exploreUntil, the
+ *    HUD's clock) and the next wave leaves at their end. A wave never holds it more than NEST_PACE.waveCap s. Before
+ *    this card the next wave came NEST_PACE.period × (1 − NEST_SPEEDUP·f) after the last (wavePeriod), calm or not.
  *  - A nest is a structure: NEST_HP[size] × (1 + 0.3(n − 1)). Its first hit wakes its sleepers (options.wake, the E2 half);
  *    at 0 it falls: it drops a crate (purple P/M, golden G) and NEST_GRANA. Hits come through `hit` (the E2 damage path
  *    routes nest ids here).
@@ -24,9 +29,10 @@
  */
 import type {NestPlan,NestSize,Point} from '../../maps/index.ts';
 import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
-import {ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
+import {CLASH_BODIES,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
+import {assignFoco} from '../enemies/foco.ts';
 
 export const NEST_RUN_SECONDS=540;
 export const NEST_SPEEDUP=.4;
@@ -39,8 +45,10 @@ export const RETRY_SECONDS=1;
  * (the map's, the waves', the nests'): no noise wakes anyone, a hero wakes only the sleepers in its reach (sono
  * MINERVA_REACH), which hit him standing (the enemy-ai's hold), and the first wave is NEST_PACE.first after its end.
  * NestsState.minervaUntil; the room shows it (RunState.minervaAteTick, the HUD's clock).
+ * Card inicio-no-uno-caixas-120 (the user, 23/10): 120 s (was 60), the mission's "busque o máximo de caixas e volte ao
+ * Uno"; the first wave comes 30–60 s after it (was 90–120 s), so it still leaves 150–180 s after the start as before.
  */
-export const MINERVA_S=60;
+export const MINERVA_S=120;
 /** The outside group by f: [min, max] below .3, from .3 to .7, above .7 (the old M nest's group). */
 export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([[5,6],[6,8],[8,10]]);
 /**
@@ -49,8 +57,14 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - alive: no wave while this many enemies are alive (it waits RETRY_SECONDS);
  *  - minerva: the minuto de Minerva (s, MINERVA_S);
  *  - first: [min, max] seconds from the end of the minuto de Minerva to the first wave;
+ *  - firstLate: seconds added to that window (pair: 1 player → 6 players), so a small team gets back to the Uno before
+ *    the first wave reaches it;
  *  - warm: for the first `warm` seconds the outside group is × warmScale and the waves play the round row `warmRow`
  *    (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
+ *  - warmEase: seconds after `warm` in which the outside group climbs linearly from warmScale to 1, still on warmRow
+ *    (balanco-1p-3p-carro: the step at `warm` was a ×2.5 wave that took the team and the Uno in the same minute); 0: the step;
+ *  - warmTrickle: × trickle while warming (warm + warmEase): the map share leaves slower, never smaller (6p: ~80 recruits
+ *    reached the Uno in 25 s at the first wave); 1: unchanged;
  *  - size: × the outside group (over playerScale's count);
  *  - mapShare: the quota, a share of the plan's bodies (the user: 1000 on the map → 100 a wave; fixed by the user,
  *    22/10: "calibra, mas sem diminuir número de inimigos": the quota, the population and the waves never shrink to
@@ -60,16 +74,42 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - hp, damage: × the hp and the hit of a wave's bodies (the hp is E6's curve: leave it at 1 without asking);
  *  - perNest: [min, max] bodies born in each live nest per wave;
  *  - floor: the outside group never shrinks below this share of itself, whatever the kills past the quota;
- *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row).
+ *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row);
+ *  - explore: the time to explore after a wave is over (s); waveMin, waveCap: a wave holds it at least / at most (s);
+ *  - crowd: × march, hp and damage of a wave's body by room size (1..6 players, on top of march/hp/damage), so a big
+ *    room meets stronger bodies while 1p-2p stay as before (a pair would move 2p too).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, 1p and 6p, evidence/NEW-20261022-ORQ-monstros-espalhados/bench): with the quota at 10 % of today's
 // horde, the waves of the first draft (period 60/45 s, first wave 45–90 s, 2–6 recruits a second, full march) won
 // 1p 0/16 and 6p 2/16 (the car fell). The pace that keeps every body (the user: "sem diminuir número de inimigos"):
 // period 90/60 s, the first wave 90–120 s after the minuto de Minerva, 1–3 recruits a second, march × .85 on 1p.
-export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[90,120] as [number,number],alive:[8,60] as [number,number],
-  warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
-  trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
+// inicio-no-uno-caixas-120: minerva 60 → 120 s and first 90–120 → 30–60 s (the first wave at the same 150–180 s).
+// balanco-mapa-175 (production bench, chaveiro + ninhos + manual, 16 seeds): on the city 1.75× shorter the first wave
+// reached the Uno before a solo bot was back, and the Uno fell ~4 min in (1p 4/16 → 0/16). firstLate 1p +60 s (first wave
+// 210–240 s after the start for a solo, 150–180 s for six as before): 1p 3/16; march .65 instead: 2/16. Same bodies.
+// balanco-6p-facil (production bench, 6p × 16): six bots won 16/16 with the Uno untouched, the car open after 2-3 waves.
+// The chaveiro's ride alone (CHAVEIRO_PACE.ride, 6p 420 → 1080 s) left 15/16 at 23.5 min, and so did march / size alone;
+// the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
+// bots-resgatam (headless audit, 16 seeds): the bots that rescue first and keep by the Uno won 3p 15/16 and 6p 14/16
+// (target 7–11). 3p hp ×1.5 → 14/16, ×2 → 12, ×2.5 → 11, ×3 → 7; 6p hp ×2.5 → 14, ×3 (march 1.35, damage 1.6) → 10.
+// The live bench is harder than the headless audit: 3p ×2.75 (headless 11/16) won 4/16 there, so 3p is back to ×1.5
+// (headless 14/16); 4p and 5p in between; 1p and 2p as before.
+// solo-uno-aguenta-1a-onda (headless audit, armed, seeds 1-8): the solo hero stays by the Uno and the first wave's map
+// share (~80 bodies) piled ~40 on it at 1 a second, the Uno down at ~6 min in half the seeds. A trickle under 1 now adds
+// up (warmTrickle did nothing for a solo before) and 1p leaves at .4 a second (× .34 while warming): with CHAVEIRO_PACE
+// 1p (ride 210, limit × 1.6) 1p 6/8 (16 seeds 11/16; .5 → 5/8, .3 → 3/8), 3p 8/8. Same bodies: the rest sleeps at waveCap.
+// After ritmo-morto-e-viaduto 1p fell to 3/8 (13/32); march 1p .85 → .7 with ride 150: 6/8 (22/32), 3p 7/8. Not more:
+// .6 → 15/32; crowd hp 1p .8 → 20/32 alone, 15/32 with .7; crowd damage .8 → 19/32 (the bench swings ±3 seeds in 32).
+const CROWD={march:[1,1,1.08,1.17,1.26,1.35] as number[],hp:[1,1,1.5,2,2.5,3] as number[],damage:[1,1,1.15,1.3,1.45,1.6] as number[]};
+export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
+  warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
+  // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
+  size:[CLASH_BODIES[0],1.85*CLASH_BODIES[1]] as [number,number],mapShare:[.1*CLASH_BODIES[0],.1*CLASH_BODIES[1]] as [number,number],
+  trickle:[.4,3] as [number,number],march:[.7,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
+  explore:120,waveMin:20,waveCap:150,crowd:CROWD};
+/** NEST_PACE.crowd's factor `k` for a room of `players` (1..6). */
+export const crowd=(k:keyof typeof CROWD,players:number)=>NEST_PACE.crowd[k][clampPlayers(players)-1]??1;
 /** The first wave's window (s): NEST_PACE.first. */
 export const FIRST_EXIT:readonly [number,number]=NEST_PACE.first;
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
@@ -121,8 +161,13 @@ export interface NestsState {
   log?:WaveLog[];
   /** The end tick of the minuto de Minerva (start + NEST_PACE.minerva); absent in a checkpoint from before it. */
   minervaUntil?:number;
-  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick. */
-  drip?:{door:number;left:number;tick:number};
+  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick,
+   * the batch's fraction carried to the next second (a trickle under 1). */
+  drip?:{door:number;left:number;tick:number;carry?:number};
+  /** Tick the last wave left while it is not over yet (absent between waves: the time to explore runs). */
+  waveOpen?:number;
+  /** The last time to explore (NEST_PACE.explore): its first tick and its end (the next wave's tick). */
+  exploreFrom?:number;exploreUntil?:number;
 }
 export const LOG_WAVES=20;
 export type NestCause='hit'|'fell';
@@ -150,6 +195,15 @@ export interface NestsOptions {
   entrances?:readonly WaveEntrance[];
   /** Plan bodies dead so far (the sono). */
   mapDead?():number;
+  /** A wave may be over: calm at the car and no boss up (assemble.ts); default true (the besiegers still count). */
+  calm?(ctx:SimContext):boolean;
+  /**
+   * A wave (index 0-based) left ('saiu': sendWave decided it) or its map share ran out ('escoou': the last body of its
+   * drip left, at once when it had none). For boss-fim-onda-1 (E1).
+   */
+  onWave?(ctx:SimContext,index:number,phase:'saiu'|'escoou'):void;
+  /** The time to explore opened (a wave over): assemble.ts gives the Uno back a share (chaveiro repair, inimigos-querem-o-uno). */
+  onExplore?(ctx:SimContext):void;
   /**
    * Wakes up to `count` sleeping plan bodies nearest `route`, besieging the car, each passed to `tune` (NEST_PACE's
    * march, hp, damage); returns how many woke (the sono).
@@ -168,6 +222,15 @@ export interface NestsSystem extends SimSystem {
   alive():number;
   /** Whether the minuto de Minerva still holds at `tick` (true before the first step: nothing moves before the run). */
   minerva(tick:number):boolean;
+  /**
+   * The room still waits for the team to load (multiplayer/load-wait.ts, card exploracao-espera-carregar): the minuto de
+   * Minerva ends a whole NEST_PACE.minerva after `tick` and the first wave keeps its distance from it. It moves half a
+   * second at a time (the clock rounds up, so it still reads the full minute): two {t:'run'} a second, not one a tick.
+   * Nothing before the first step nor once the Minerva is over.
+   */
+  holdMinerva(tick:number):void;
+  /** The time to explore running at `tick` ([first tick, end tick]), undefined outside one (the Minerva is not one). */
+  exploring(tick:number):{from:number;until:number}|undefined;
   /** The plan the run plays (drawn on the first step); undefined before it. */
   plan():NestPlan|undefined;
 }
@@ -197,7 +260,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   const random=()=>rng??=Object.assign(new Rng(0),{state:state.rng??0});
   const save=()=>{if(rng)state.rng=rng.state;};
   const elapsedF=(tick:number)=>state.startTick===null?0:(tick-state.startTick)/ticks(NEST_PACE.ramp);
-  const warming=(tick:number)=>state.startTick!==null&&tick-state.startTick<ticks(NEST_PACE.warm);
+  const warming=(tick:number)=>state.startTick!==null&&tick-state.startTick<ticks(NEST_PACE.warm+NEST_PACE.warmEase);
+  /** The outside group's × at `tick`: warmScale while warm, then up to 1 over warmEase. */
+  const warmScale=(tick:number)=>{
+    if(!warming(tick))return 1;
+    const past=(tick-(state.startTick??tick))/ticks(1)-NEST_PACE.warm;
+    return past<=0?NEST_PACE.warmScale:NEST_PACE.warmScale+(1-NEST_PACE.warmScale)*past/NEST_PACE.warmEase;
+  };
 
   function begin(ctx:SimContext){
     const counted=options.players?.(ctx)??[...ctx.players.values()].filter(p=>p.online&&!p.spectator).length;
@@ -208,7 +277,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     state.quota=Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan));
     state.deadAt=0;
     state.minervaUntil=ctx.tick+ticks(NEST_PACE.minerva);
-    state.nextWave=state.minervaUntil+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1]));
+    state.nextWave=state.minervaUntil+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1])+pace(NEST_PACE.firstLate,state.players));
     save();
   }
 
@@ -264,22 +333,31 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     // Once per body (a recruit that slept again and comes back keeps its tune).
     if(e.memory?.tuned===1)return;
     (e.memory??={}).tuned=1;
-    const march=pace(NEST_PACE.march,state.players);
+    // Foco (enemies/foco.ts): most of the wave goes for the Uno, the rest hunts the players.
+    assignFoco(e);
+    const march=pace(NEST_PACE.march,state.players)*crowd('march',state.players);
     if(march!==1)e.speed*=march;
-    if(NEST_PACE.hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*NEST_PACE.hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*NEST_PACE.hp)));}
-    if(NEST_PACE.damage!==1)e.damage*=NEST_PACE.damage;
+    const hp=NEST_PACE.hp*crowd('hp',state.players),damage=NEST_PACE.damage*crowd('damage',state.players);
+    if(hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*hp)));}
+    if(damage!==1)e.damage*=damage;
   }
   /** Lets the next batch of a wave's map share out (NEST_PACE.trickle a second, from its entrance's route). */
   function drip(ctx:SimContext){
     const d=state.drip,door=d?options.entrances?.[d.door]:undefined;
-    if(!d||!door||!options.recruit){delete state.drip;return;}
+    if(!d||!door||!options.recruit){if(d){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}return;}
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size);
-    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players))),room),tune);
+    // solo-uno-aguenta-1a-onda: a batch under 1 a second adds up (1p: .4, × .34 while warming → one every ~7 s), where it used to round
+    // up to 1 and warmTrickle did nothing for a solo; the first batch leaves with the wave.
+    const rate=pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1);
+    const carry=d.carry===undefined?Math.max(1,Math.round(rate)):d.carry+rate,batch=Math.floor(carry);
+    if(batch<1){d.carry=carry;return;}
+    d.carry=carry-batch;
+    const got=options.recruit(ctx,door.route,Math.min(d.left,batch,room),tune);
     d.left-=Math.max(got,0);
     const entry=state.log?.find(l=>l.tick===d.tick);
     if(entry){entry.map+=got;entry.total+=got;}
     // Nobody left asleep to send, or the share is out: done.
-    if(d.left<=0||got<=0)delete state.drip;
+    if(d.left<=0||got<=0){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}
   }
   /** A nest's spots: its yard's sleeper spots (clear ground by construction, maps/nests.ts), else its centre. */
   const yardOf=(nest:NestRun)=>{const s=plan!.nests.find(p=>p.id===nest.id)?.sleepers;return s?.length?s:[{x:nest.x,y:nest.y}];};
@@ -287,7 +365,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   function sendWave(ctx:SimContext){
     const retry=()=>{state.nextWave=ctx.tick+ticks(RETRY_SECONDS);};
     if(ctx.enemies.size>=pace(NEST_PACE.alive,state.players)||ctx.enemies.size>=options.maxEnemies)return retry();
-    const f=elapsedF(ctx.tick),warm=warming(ctx.tick)?NEST_PACE.warmScale:1;
+    const f=elapsedF(ctx.tick),warm=warmScale(ctx.tick);
     const entrances=options.entrances??[],door=entrances.length?entrances[state.sent%entrances.length]:undefined;
     const dead=options.mapDead?.()??0,kills=Math.max(0,dead-(state.deadAt??0)),quota=state.quota??0;
     const [lo,hi]=outsideRange(f);
@@ -307,10 +385,32 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     if(state.log.length>LOG_WAVES)state.log.splice(0,state.log.length-LOG_WAVES);
     // The map share leaves a batch a second (NEST_PACE.trickle), the first batch with the wave; a drip still running
     // from the last wave is dropped (its bodies stay asleep: the new share replaces it).
-    if(want.map>0&&door&&options.recruit){state.drip={door:entrances.indexOf(door),left:want.map,tick:ctx.tick};drip(ctx);}
-    else delete state.drip;
+    const was=state.drip;
+    if(was)options.onWave?.(ctx,state.sent-1,'escoou');
     state.sent++;state.deadAt=dead;
-    state.nextWave=ctx.tick+ticks(wavePeriod(f,state.players));
+    options.onWave?.(ctx,state.sent-1,'saiu');
+    if(want.map>0&&door&&options.recruit){state.drip={door:entrances.indexOf(door),left:want.map,tick:ctx.tick};drip(ctx);}
+    else{delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}
+    // The next wave leaves at the end of the time to explore (waveOver); this is only the backstop.
+    state.waveOpen=ctx.tick;
+    state.nextWave=ctx.tick+ticks(NEST_PACE.waveCap+NEST_PACE.explore);
+  }
+  /** A besieger (a wave's body: SIEGE_FLAG) still up. */
+  const besieged=(ctx:SimContext)=>{for(const e of ctx.enemies.values())if(e.hp>0&&e.memory?.[SIEGE_FLAG]===1)return true;return false;};
+  /** Checked once a second while a wave is open: over (or past waveCap) → the time to explore, then the next wave. */
+  function waveOver(ctx:SimContext){
+    const open=state.waveOpen;
+    if(open===undefined)return;
+    const since=ctx.tick-open,capped=since>=ticks(NEST_PACE.waveCap);
+    // A map share still dripping holds the wave open, but never past waveCap: there the rest stays asleep (as when the
+    // next wave replaces a drip), or a big share (1p wave 1: ~340 bodies at 1 a second) would never let it end.
+    if(state.drip&&!capped)return;
+    if(since<ticks(NEST_PACE.waveMin)||since%ticks(1)!==0)return;
+    if(!capped&&(besieged(ctx)||options.calm?.(ctx)===false))return;
+    if(state.drip){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}
+    delete state.waveOpen;
+    state.exploreFrom=ctx.tick;state.exploreUntil=state.nextWave=ctx.tick+ticks(NEST_PACE.explore);
+    options.onExplore?.(ctx);
   }
 
   function fall(ctx:SimContext,nest:NestRun){
@@ -326,6 +426,14 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     plan:()=>plan,
     alive:()=>state.nests.filter(n=>!n.down).length,
     minerva:tick=>state.startTick===null||tick<(state.minervaUntil??0),
+    holdMinerva(tick){
+      if(state.minervaUntil===undefined||tick>=state.minervaUntil)return;
+      const by=tick+ticks(NEST_PACE.minerva)-state.minervaUntil;
+      if(by<ticks(.5))return;
+      state.minervaUntil+=by;
+      if(state.nextWave!==undefined)state.nextWave+=by;
+    },
+    exploring:tick=>state.exploreFrom!==undefined&&state.exploreUntil!==undefined&&tick>=state.exploreFrom&&tick<state.exploreUntil?{from:state.exploreFrom,until:state.exploreUntil}:undefined,
     bossSpot(){
       let best:NestRun|undefined;
       for(const n of state.nests)if(!n.down&&(!best||SIZE_RANK[n.size]>SIZE_RANK[best.size]))best=n;
@@ -347,7 +455,11 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
       // A checkpoint from before the waves (nests on their own timers): the first wave now, the quota from the plan.
       if(state.nextWave===undefined){state.nextWave=ctx.tick;state.quota??=plan?Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan)):0;state.deadAt??=options.mapDead?.()??0;}
       if(ctx.tick>=state.nextWave)sendWave(ctx);
-      else if(state.drip&&(ctx.tick-state.drip.tick)%ticks(1)===0)drip(ctx);
+      else{
+        // Both on the same tick: a drip batch lands on the wave's whole seconds, the same ones waveOver checks.
+        if(state.drip&&(ctx.tick-state.drip.tick)%ticks(1)===0)drip(ctx);
+        waveOver(ctx);
+      }
       save();
     },
   };

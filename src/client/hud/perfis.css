@@ -1,0 +1,97 @@
+/*
+ * The enemies' matches (hud/perfis.ts, the user's option D): during the match only a small flame with the count, beside
+ * the gear (left of it on the desktop, where the minimap sits under it; under it on the phone, whose minimap is on the
+ * left); a tap opens the last match as a compact card under it, moved by placeProfiles (an inline translate + scale)
+ * off the hero, the Uno, the allies and the mission band. On the result, "Seus matches": the same card as stickers.
+ * The card is the mockup the user chose (etapa 1, opção 8): a cream card with the photo inset and rounded, a white
+ * speech balloon on the photo with its tail towards the face, "Name, age" in Inter 800, the pin and the distance, the
+ * bio, and the two big round ChatGPT buttons (✕ and ♥). Sizes follow the card's width (container units). No real brand.
+ */
+.rh .rh-perfis{position:absolute;inset:0;z-index:var(--z-hud);pointer-events:none}
+.rh .rh-perfis.rh-perfis-espera{visibility:hidden}
+.rh-matches-aviso{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);margin:0}
+
+/* The flame: the gear's sibling (explore.css .explore-config: 48 px at max(18px, safe area); 12/14 px on small screens). */
+.rh-matches{--m-top:max(18px,env(safe-area-inset-top));--m-right:max(18px,env(safe-area-inset-right));
+  position:absolute;top:var(--m-top);right:calc(var(--m-right) + 58px);display:grid;place-items:center;width:44px;height:44px;margin-top:2px;padding:0;
+  border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);box-shadow:var(--s-2);cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;transition:opacity .2s}
+.rh-matches[hidden]{display:none}
+.rh-matches svg{width:28px;height:28px}
+.rh-matches-fogo{fill:var(--c-cone)}
+.rh-matches-miolo{fill:var(--c-amarelo)}
+.rh-matches-n{position:absolute;right:-7px;bottom:-7px;min-width:20px;height:20px;box-sizing:border-box;padding:0 5px;border-radius:var(--r-pilula);
+  background:var(--c-cone);color:var(--c-breu);font:800 13px/20px var(--f-perfil);text-align:center}
+/* Over the hero, the Uno or an ally: see-through, never hiding them. */
+.rh-matches.rh-matches-veu{opacity:.25}
+@keyframes rh-matches-pulo{0%{transform:none}30%{transform:translateY(-9px) scale(1.12)}55%{transform:translateY(0) scale(.94)}75%{transform:translateY(-3px)}100%{transform:none}}
+.rh-matches.rh-matches-pulo{animation:rh-matches-pulo .55s ease-out}
+.rh[data-hud=fone] .rh-matches{right:calc(var(--m-right) + 2px);top:calc(var(--m-top) + 48px + 10px);margin:0}
+@media (max-width:370px),(max-height:500px){.rh-matches{--m-top:max(12px,env(safe-area-inset-top));--m-right:max(14px,env(safe-area-inset-right))}}
+
+/* The compact card (a tap on the flame): under the flame, right-aligned with it; left of the minimap on the desktop. */
+.rh-perfil-slot{--perfil-w:clamp(150px,min(17vw,34vh),210px);position:absolute;top:calc(var(--rh-t) + 64px);right:calc(var(--rh-r) + clamp(124px,30vmin,210px) + 18px);
+  width:var(--perfil-w);container-type:inline-size;transform-origin:0 0;transition:transform .22s ease-out}
+.rh[data-hud=fone] .rh-perfil-slot{--perfil-w:min(40vw,156px);top:calc(max(18px,env(safe-area-inset-top)) + 48px + 64px);right:max(8px,var(--rh-r))}
+@media (max-height:460px){.rh[data-hud=fone] .rh-perfil-slot{--perfil-w:clamp(132px,36vh,150px);top:calc(max(12px,env(safe-area-inset-top)) + 4px);right:calc(max(14px,env(safe-area-inset-right)) + 112px)}}
+
+.rh-perfil{position:absolute;top:0;right:0;width:100%;box-sizing:border-box;container-type:inline-size;padding:3.4%;border-radius:var(--r-perfil);
+  background:var(--perfil-papel);color:var(--perfil-tinta);font-family:var(--f-perfil);
+  box-shadow:var(--perfil-sombra);pointer-events:auto;
+  transform-origin:100% 0;opacity:0;transform:translateY(-10px) scale(.9);
+  transition:transform .22s cubic-bezier(.2,1.4,.4,1),opacity .16s ease-out}
+.rh-perfil.rh-perfil-in{opacity:1;transform:none}
+
+/* "Seus matches" on the result: a row of stickers between the players' cards and the buttons, scrolling sideways. */
+.rh-result:has(>.rh-result-matches:not([hidden])){grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"head" "shame" "grid" "matches" "actions"}
+.rh-result-matches{grid-area:matches;position:relative;z-index:1;min-width:0}
+.rh-result-matches[hidden]{display:none}
+.rh-result-matches-titulo{margin:0 0 2px;font:400 var(--t-16)/1.1 var(--f-botao);color:var(--c-papel);text-align:center}
+.rh-result-matches-lista{display:flex;gap:12px;overflow-x:auto;overscroll-behavior:contain;padding:8px 10px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.rh-result-matches-lista:has(> :only-child),.rh-result-matches-lista:has(> :nth-child(2):last-child){justify-content:center}
+.rh-perfil-figurinha-cx{flex:none;width:clamp(118px,min(31vw,23vh),170px);container-type:inline-size;scroll-snap-align:center;transform:rotate(var(--tilt,0deg))}
+.rh-perfil.rh-perfil-figurinha{position:relative;top:auto;right:auto;opacity:1;transform:none;transform-origin:50% 50%}
+.rh-perfil-figurinha[data-sai=passar]{opacity:.55;filter:grayscale(1)}
+@media (max-height:500px){
+  .rh-result:has(>.rh-result-matches:not([hidden])){grid-template-rows:auto auto auto minmax(0,1fr) auto;grid-template-areas:"titles actions" "stats stats" "shame shame" "grid grid" "matches matches"}
+  .rh-perfil-figurinha-cx{width:clamp(96px,24vh,112px)}
+  .rh-result-matches-lista{padding-block:4px 6px}
+}
+
+/* The photo: inset, rounded, wider than tall as in the mockup (the face is in the portrait's upper part). */
+.rh-perfil-foto{position:relative;aspect-ratio:1.4/1;border-radius:var(--r-perfil-foto);overflow:hidden;background:var(--perfil-cor,var(--c-lilas))}
+.rh-perfil-img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 22%;opacity:0;transition:opacity .15s}
+.rh-perfil[data-foto=ok] .rh-perfil-img{opacity:1}
+
+/* Legibility audit 29/10 (L1): the card is 156 px wide on the phone, so its cqw letters fell to 8-10 px; each text has a
+   12 px floor (the name 14 px) and the MATCH stamp a darker green (4.5:1 on the cream; the token's green gave 2.4:1). */
+.rh-perfil{--perfil-match-tinta:color-mix(in srgb,var(--perfil-match) 60%,var(--perfil-tinta))}
+
+/* The speech balloon, measured on the mockup's card (cropped at its edges) and the game's card at the same width: warm white, very round corners, near
+   the photo's top-right corner, black semibold text in two balanced lines (Inter 400 thickened by a stroke: the mockup's
+   iOS-like letter sits between the 400 and 800 files we ship), a short tail curving down-left from the bottom-left.
+   The rim and the soft shadow are drop-shadows of the whole shape, so they run round the tail with no seam. */
+.rh-perfil-balao{position:absolute;top:.4%;right:1%;box-sizing:border-box;max-width:max(48cqw,84px);margin:0;padding:6cqw 3.2cqw 6.4cqw;border-radius:var(--r-perfil-balao);
+  background:var(--perfil-balao);color:var(--perfil-balao-tinta);font:400 max(12px,6.4cqw)/1.13 var(--f-perfil);letter-spacing:-.015em;-webkit-text-stroke:.068em currentColor;
+  text-align:center;text-wrap:balance;filter:var(--perfil-balao-sombra)}
+.rh-perfil-balao::after{content:'';position:absolute;left:11%;bottom:calc(1px - 4.6cqw);width:8.6cqw;height:4.6cqw;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10' preserveAspectRatio='none'%3E%3Cpath d='M2 0C2.3 4 1.6 7.4 0 10C6.5 8.8 13.5 5 20 0Z' fill='%23FDFAF9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat}
+
+.rh-perfil-info{padding:3.4cqw 2cqw 0}
+.rh-perfil-nome{margin:0;font:800 max(14px,7.6cqw)/1.15 var(--f-perfil);color:var(--perfil-tinta);letter-spacing:-.01em}
+.rh-perfil-dist{display:flex;align-items:center;gap:1.6cqw;margin:1.4cqw 0 0;font:400 max(12px,5.4cqw)/1.2 var(--f-perfil);color:var(--perfil-texto)}
+.rh-perfil-dist svg{width:max(12px,5.6cqw);height:max(12px,5.6cqw);flex:none;color:var(--perfil-icone)}
+.rh-perfil-bio{margin:1.4cqw 0 0;font:400 max(12px,5.4cqw)/1.25 var(--f-perfil);color:var(--perfil-texto)}
+
+.rh-perfil-botoes{display:flex;justify-content:center;gap:15cqw;padding:4cqw 0 1.5cqw}
+.rh-perfil-botoes button{width:21cqw;height:21cqw;padding:0;border:0;background:none;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.rh-perfil-botoes button:active{transform:scale(.9)}
+.rh-perfil-botoes img{display:block;width:100%;height:100%}
+
+.rh-perfil-match{position:absolute;left:50%;top:30%;padding:1cqw 4cqw;border:1cqw solid var(--perfil-match-tinta);border-radius:var(--r-perfil-match);color:var(--perfil-match-tinta);
+  background:color-mix(in srgb,var(--perfil-papel) 90%,transparent);font:800 9cqw/1 var(--f-perfil);white-space:nowrap;opacity:0;transform:translate(-50%,-50%) rotate(-14deg) scale(1.6);
+  transition:opacity .12s,transform .2s cubic-bezier(.2,1.6,.4,1)}
+.rh-perfil[data-sai=curtir] .rh-perfil-match{opacity:1;transform:translate(-50%,-50%) rotate(-14deg) scale(1)}
+
+
+@media (prefers-reduced-motion:reduce){.rh-perfil-slot,.rh-perfil,.rh-perfil-match,.rh-matches{transition:none}.rh-matches.rh-matches-pulo{animation:none}}

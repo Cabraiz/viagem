@@ -15,7 +15,7 @@
 import {Rng} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {ticks} from '../contract/index.ts';
-import {LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
+import {clashBodies,LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
 import {roleOf} from './enemy-cast.ts';
 import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
 const ROLE_BAND=new Map(ROTATION_SLOTS.map(s=>[s.role as EnemyRole,s.band]));
@@ -160,7 +160,7 @@ export interface RoundModifier {
  * Names and descriptions of the kind-specific ones follow the D-033 cast (the D-033 joke pass left the base modifiers as they are).
  */
 export const MODIFIERS:readonly RoundModifier[]=[
-  {id:'uncle-party',name:'Round do Pavê',description:'Só tio. É pavê ou pa comê?',
+  {id:'uncle-party',name:'Rodada do Pavê',description:'Só tio. É pavê ou pa comê?',
     weights:{'tio-pave':1},normalizeThreat:true,banRounds:[5,6]},
   {id:'mosquito-swarm',name:'Revoada de Pombos',description:'Quem jogou milho?!',
     share:{pombos:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},
@@ -417,7 +417,11 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   else if(mod?.normalizeThreat)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgThreat(weights)));
   // Round 8's mini-chefe comes outside the budget: the regular count gives up its threat (per player, x the count scale).
   const solo=roles?roster!.solo:undefined,soloThreat=solo?ROLE_PROFILES['mini-chefe'].threat*scale.count:0;
-  const raw=Math.max(1,Math.round(def.budget*scale.count*modCount-(roles&&solo?soloThreat/avgRoleThreat(roles):0)));
+  // Fewer, sturdier bodies (enemy-roles clashBodies: the Clash hp table made the average body ×1.48; ×1 at 1 player to
+  // ×0.7 at 6), from round 2: round
+  // 1 (hp row ×0.35, the tutorial count) keeps its bodies, one group or more for each of 6 heroes spread apart.
+  const bodies=index>1?clashBodies(players):1;
+  const raw=Math.max(1,Math.round(def.budget*scale.count*modCount*bodies-(roles&&solo?soloThreat/avgRoleThreat(roles):0)));
   const regular=Math.min(raw,MAX_ROUND_ENEMIES);
   // Threat lost to the cap moves partly into hp.
   const hpComp=Math.min(1.3,raw/Math.max(1,regular));
@@ -430,7 +434,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   const swarmGroups:string[][]=[];
   let left=regular;
   for(const _ of def.swarm?.at??[]){
-    const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*Math.min(1,regular/raw*modCount)));
+    const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*bodies*Math.min(1,regular/raw*modCount)));
     swarmGroups.push(Array(size).fill(roles?picks.pick(swarmIds(roster!)):'pombos'));left-=size;
   }
   const pool:string[]=[];

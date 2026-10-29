@@ -30,7 +30,14 @@ test('the bar shows only in combat, out (eliminated) or watching (joined mid-run
 });
 
 test('names are cut like the banner and the chinelo lines cycle in a fixed order', ()=>{
-  assert.equal(shortName('  Bartolomeu Silva '),'Bartolome');
+  assert.equal(shortName('  Bartolomeu Silva '),'Bartolomeu');
+  assert.equal(shortName('Concurseira Eterna da Silva'),'Concurseira');
+  assert.equal(shortName('Maximilianos'),'Maximil.');
+  // Two bots of one class stay apart on the ‹ › (bot-nome-do-personagem).
+  assert.equal(shortName('Mendigo 2'),'Mendigo 2');
+  assert.equal(shortName('Concurseira 2'),'Concurs. 2');
+  const watching={id:'b2',name:'Mendigo 2',choices:2};
+  assert.equal(spectatorView({phase:'combat',eliminated:true,watching}).name,'Mendigo 2');
   assert.equal(chineloLine(0),CHINELO_LINES[0]);
   assert.equal(chineloLine(CHINELO_LINES.length+1),CHINELO_LINES[1]);
   assert.equal(chineloLine(-1),CHINELO_LINES.at(-1));
@@ -50,7 +57,7 @@ test('watching: the depth origin follows the watched friend and a turned phone r
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   // Anchored on the dead body, everything near a far friend sorted under the ground layers (depth −10 000): invisible.
   const rebase=scene.match(/private rebaseDepth\(force=false\)\{[\s\S]*?\n  \}/)?.[0]??'';
-  assert.match(rebase,/at=this\.watchPoint\?\?this\.position/);
+  assert.match(rebase,/at=(near\?\?)?this\.watchPoint\?\?this\.position/);
   assert.match(rebase,/this\.depthOrigin=\{x:Math\.round\(at\.x\),y:Math\.round\(at\.y\)\}/);
   // Phaser 3.90 misses the size after screen.orientation 'change': the parent's real size refreshes the scale again.
   assert.match(scene,/new ResizeObserver\([\s\S]{0,300}s\.getParentBounds\(\);s\.refresh\(\);/);

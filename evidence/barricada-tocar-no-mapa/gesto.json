@@ -1,0 +1,73 @@
+{
+ "report": [
+  {
+   "step": "início",
+   "hero": {
+    "x": 80.83,
+    "y": 86.72
+   },
+   "barricadasDoMapa": 24
+  },
+  {
+   "step": "item tocado",
+   "aviso": "Toque no mapa onde quer pôr; segure e arraste pra girar"
+  },
+  {
+   "step": "segura e gira a 6.1 u",
+   "lookTurned": "ok",
+   "construiu": true,
+   "aviso": "",
+   "nova": {
+    "id": "s36",
+    "c": 86,
+    "r": 93,
+    "rot": 1,
+    "x": 76.119140625,
+    "y": 82.720703125
+   }
+  },
+  {
+   "step": "segundo a 7.8 u",
+   "construiu": true,
+   "aviso": "",
+   "nova": {
+    "id": "s37",
+    "c": 85,
+    "r": 91,
+    "rot": 0,
+    "x": 75.6796875,
+    "y": 80.51953125
+   }
+  },
+  {
+   "step": "em cima da barricada",
+   "construiu": false,
+   "aviso": "Já tem coisa aí"
+  },
+  {
+   "step": "fim",
+   "hero": {
+    "x": 80.83,
+    "y": 86.72
+   },
+   "built1": {
+    "id": "s36",
+    "c": 86,
+    "r": 93,
+    "rot": 1,
+    "x": 76.119140625,
+    "y": 82.720703125
+   },
+   "built2": {
+    "id": "s37",
+    "c": 85,
+    "r": 91,
+    "rot": 0,
+    "x": 75.6796875,
+    "y": 80.51953125
+   }
+  }
+ ],
+ "errors": [],
+ "frames": 62
+}

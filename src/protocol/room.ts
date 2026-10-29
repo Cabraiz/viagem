@@ -23,7 +23,7 @@ export const UPDATE_NEEDED='Saiu versão nova do jogo. Atualiza a página pra en
 /** Whether a terminal message asks for a reload (also older rooms' wording, "Atualize a página"). */
 export const needsUpdate=(message:string)=>message===UPDATE_NEEDED||/Atualiz[ae] a página/.test(message);
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
-export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que o bêbado espera.';
+export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra partida inteira. Criem uma sala nova, que o bêbado espera.';
 
 /**
  * The room's Durable Object restarted (deploy, eviction) in the middle of a run (VGM-047, D-024): honest end, as news
@@ -32,7 +32,7 @@ export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar temp
  */
 export function restartedNotice(lost?:{round:number;level:number}){
   const title=lost&&lost.round>0
-    ?`A sala caiu e voltou. A partida do Round ${lost.round} se perdeu${lost.level>0?`: vocês estavam no Nv ${lost.level}`:''}.`
+    ?`A sala caiu e voltou. A partida da rodada ${lost.round} se perdeu${lost.level>0?`: vocês estavam no Nív. ${lost.level}`:''}.`
     :'A sala caiu e voltou, e a partida se perdeu.';
   const body='Não foi ninguém da turma. Toca em Tô pronto pra começar outra.';
   return {title,body,message:`${title} ${body}`};
@@ -43,8 +43,8 @@ export function restartedNotice(lost?:{round:number;level:number}){
  * 'resumed' (the lost run keeps 'restarted'). Shown once, as news over the match; `message` is both lines.
  */
 export function resumedNotice(round:number){
-  const title=round>0?`A sala caiu e voltou: recomeçando o Round ${round}.`:'A sala caiu e voltou: recomeçando o round.';
-  const body='Nível, armas, muralha e defesas estão como no começo dele.';
+  const title=round>0?`A sala caiu e voltou: recomeçando a rodada ${round}.`:'A sala caiu e voltou: recomeçando a rodada.';
+  const body='Nível, armas, barricada e torres estão como no começo dela.';
   return {title,body,message:`${title} ${body}`};
 }
 /** A kicked player stays out of the same room this long (D-025): by the seat's token, which the page keeps. */
@@ -58,7 +58,7 @@ export function kickedMessage(until:number,now=Date.now()){
 export const OWNER_ONLY='Só o dono da sala mexe na turma.';
 /** Title of the kicked window (D-025, design review): who did what, in the voice of the room. */
 export const KICKED_TITLE='Tiraram você da sala';
-export const OWNER_NOT_NOW='No meio do Round não dá. Espera o resultado.';
+export const OWNER_NOT_NOW='No meio da rodada não dá. Espera o resultado.';
 export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
 /** A second person knocking on a "Jogar sozinho" room (sala-solo-privada). */
 export const SOLO_ROOM_REFUSED='Essa sala é de alguém jogando sozinho. Peça um código de sala da turma.';
@@ -132,7 +132,9 @@ export function parsePixed(m:unknown):{req:number;result:PixResult}|undefined{
  */
 export const GRACE_MS = 120_000;
 export type Input = PlayerInput;
-export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number; spectator?:boolean; skillTick?:number; skillReadyTick?:number };
+export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number; spectator?:boolean; skillTick?:number; skillReadyTick?:number;
+  /** The viaduct (maps city/viaduct.ts): on a deck, floor 1; absent on the ground. */
+  andar?:1 };
 export type Enemy = Point & { id:string; hp:number };
 // Fixed tuple fields avoid repeated property names in frequent patches.
 export type PlayerWire = [string,number,number,number,number,boolean,number,string,string,number?,boolean?,number?,number?];

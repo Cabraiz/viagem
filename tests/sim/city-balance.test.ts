@@ -212,10 +212,16 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * down the road, cityRunStart; plain seed 21 has no tutorial and kept its digest), then plain seed 21 for its city retreat
  * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block), and for cenario-no-mapa
  * (the city asset v3: the places with life put on open ground stop those cells being walkable, so routes and spawn spots
- * move; with main's asset v2 the old digests still come out).
+ * move; with main's asset v2 the old digests still come out), and for mapa-175-com-viaduto (asset v4: the distances
+ * 1.75× shorter, the map lengths × CITY_DISTANCE_SCALE, the nests and the field to it), and for its viaduct (etapa 3: the
+ * pillars and the ramp's embankment are solid on the ground, the run starts on the deck, the group behind the team comes
+ * on it and the plaza group never takes the N avenue, the team's now), and for mapa-conexoes-sem-beco (asset v5: holes
+ * through thin walls and the rubble off the Uno's way open new routes for the bodies).
  */
+// Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+// Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'904736d2bebf594f','tutorial seed 8 r4':'8dff5d5d74d1dc82','plain seed 21 r10':'f1578307e14a1b4e',
+  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'e90551f1a18407a9',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -234,9 +240,11 @@ test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and outpu
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
-  const base=cityRun(3,4,true);
+  // Seed 8 (was 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
+  // modifier (its hpMult) can differ between the two runs; on seed 8 rounds 2-4 draw the same theme in both.
+  const base=cityRun(8,4,true);
   const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
-  const tuned=cityRun(3,4,true,{cityBalance:knobs});
+  const tuned=cityRun(8,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
   assert.ok(r1(base.bodies).length>0,'the tutorial spawned');
@@ -313,7 +321,26 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'26a8c859733e7f61',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// All three again for tirar-drops-cedula-girando (a kill's Grana is a 'grana' pickup a second later, the cédulas pending
+// in the progression state, instead of the wallet at once; no boleto rain in the zueira plan).
+// cidade again for mapa-175-com-viaduto (asset v4, the city 1.75× shorter, many more crates); ilha and infinito unchanged.
+// cidade again for its viaduct (etapa 3: the start on the deck, pillars and embankment solid); ilha and infinito unchanged.
+// cidade again for the merge of both (the viaduct's city with the cédulas).
+// cidade again for the bicos (bancos-viram-bicos: each bank row's gig in the state, the shops placed on a clear lot first);
+// ilha and infinito unchanged (no banks). cidade again for its merge with the viaduct's city and the cédulas.
+// cidade again for projetil-mais-rapido (HERO_SHOT_SLOWDOWN 3 → 2: the heroes' shots 1.5× faster, same reach; with 3 the
+// tree gives d19d984546770e0f); ilha and infinito unchanged.
+// All three again for sem-coxinha-no-chao (no coxinha from kills nor from the retired flash sale; the zueira plan has
+// one kind, so its shuffle draws one roll less).
+// All three again for the solid bodies (heroi-empurra-inimigos: a hero pushes the critters it walks into, in every world).
+// cidade again for vida-inimigos-estilo-clash merged with all of the above (role hp, ×0.7 bodies from round 2, ×1.4 XP).
+// The city again for sem-arma-girando-no-chao (the chinelo and the rings out of the catalog: the offers' and crates' rolls move).
+// The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
+// reached on foot, the revive's shove).
+// The city again for economia-caixa-e-forja (the bico's shift by seat, bicoSaldo: 4 heroes hold R$ 20, not 40).
+// levelup-espalhado (levels 2/3 cheaper, a solo run's XP ×1.5 below level 3) leaves it: the 4-player neutral run to
+// tick 4000 hashes the same with the old curve.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a98f622f0ffe608d',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

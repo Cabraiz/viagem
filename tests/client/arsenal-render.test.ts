@@ -47,7 +47,7 @@ test('every arsenal weapon fires something the art has: a projectile piece or a 
   }
   // The firearms and the rojão fly their own projectile art; a legendary its old weapon's best one.
   const expect:Record<string,string>={pistola:'bala-revolver',submetralhadora:'bala-metralhadora',rifle:'bala-fuzil',rojao:'rojao',
-    'chinelo-lendario':'chinelo-evo','boleto-lendario':'boleto-evo','cafe-lendario':'cafe-evo','guarda-chuva-lendario':'guarda-chuva',
+    'boleto-lendario':'boleto-evo','cafe-lendario':'cafe-evo','guarda-chuva-lendario':'guarda-chuva',
     'pombo-lendario':'pombo','audio-lendario':'audio'};
   for(const [source,art] of Object.entries(expect)){
     assert.equal(projectileArtId(source),art,source);

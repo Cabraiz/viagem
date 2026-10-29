@@ -7,16 +7,17 @@ import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
+import {withDevice} from './net/room-return.ts';
 import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
-import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
+import {selectorReducer,mapChangedNews,downloadText,DEFAULT_MAP,NEWS_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
 import {holdMenuDownload} from './audio/menu-music.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
-import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
+import {objectiveFromSearch,soloMemory,soloNext,soloCreateMs,soloOneRetry,soloPlan,soloRefused,soloRetryable,soloWithin,SOLO_FIRST_JOIN_MS,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -233,12 +234,22 @@ export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,
   const headline=phase==='hidden'?''
     :total<=1?'Só você aqui. Chama a turma!'
     :!missing.length?'Todo mundo pronto. Milagre!'
-    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:awayText)
+    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:`${awayText} Alguém foi ao banheiro.`)
     :away.length?`${here.length===1?"Falta":"Faltam"} ${who(here)}. ${awayText}`
     :missing.length===1?(missing[0].self?'Só falta você. Sem pressão.':`Só falta ${missing[0].name}. Sem pressão.`)
-    :`Faltam ${missing.length}. Alguém foi ao banheiro.`;
+    :`${missing.length} ainda não estão prontos.`;
   return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline,canManage,seatsLeft};
 }
+
+/** "Jogar sozinho" (card solo-sem-sala-de-espera): no room on screen, only this line, the faces and the 3-2-1. */
+export const SOLO_LOADING='Chamando os bots…';
+/** The solo line: the countdown's joke, the map that did not arrive, else SOLO_LOADING. */
+export function soloHeadline(view:Pick<WaitingView,'phase'|'headline'>,failed?:string){
+  return view.phase==='countdown'?view.headline:failed||SOLO_LOADING;
+}
+/** The loading cover (explore.ts): up until the scene is drawn; in solo also through the room and its 3-2-1. */
+export const coverUp=(sceneReady:boolean,phase:string|undefined,solo:boolean)=>
+  !sceneReady||solo&&(phase===undefined||phase==='lobby'||phase==='countdown');
 
 // ---------- DOM ----------
 
@@ -286,14 +297,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const label=shareButton.querySelector<HTMLElement>('.coop-wait-share-text')!;
     const say=(text:string)=>{label.textContent=text;shareButton.classList.add('is-saying');setTimeout(()=>{label.textContent='Chamar a turma';shareButton.classList.remove('is-saying');},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? A cidade não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
       say(`Código: ${formatRoomCode(client.code)}`);
     }
   });
-  if(options.solo)shareButton.hidden=true;
+  // Solo: over the loading cover, no box (coop.css .is-solo); code, buttons and lines stay in the DOM, hidden.
+  if(options.solo){shareButton.hidden=true;panel.classList.add('is-solo');$('.coop-wait-code').hidden=true;}
   let soloMem=soloMemory();
   const readyButton=$<HTMLButtonElement>('.coop-wait-ready');
   let lastView:WaitingView|undefined;
@@ -322,54 +334,19 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   host.append(panel);
   let membersKey='',wasReady=new Set<string>();
   // Who owned the room last time we looked, and the names seen (the one who left is gone from the run state).
-  // The news strip (.coop-wait-owner) also carries the map news and, in landscape, the selector's hints.
+  // The news strip (.coop-wait-owner) also carries the map news.
   let ownerSeen:string|undefined,ownerNews:{text:string;until:number}|undefined;
-  // From a tap: shown at once (update); from inside update(): `refresh` false, the line is drawn further down.
-  let updating=false;
-  const say=(text:string,ms:number,refresh=true)=>{ownerNews={text,until:now()+ms};if(refresh&&!updating)update();};
-  // Map selector (cidade-09): portrait, in the window under the code row; landscape, its own small window in the column
-  // opposite the notch (selectorRects), outside the panel. The owner picks, the room decides ({t:'map'}).
-  const mapSlot=document.createElement('div');mapSlot.className='coop-wait-map';
-  $('.coop-wait-code').after(mapSlot);
-  // Safe-area insets for the landscape window (the same env() the panel's CSS reads).
-  const probe=document.createElement('div');probe.setAttribute('aria-hidden','true');
-  probe.style.cssText='position:fixed;inset:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
-  host.append(probe);
-  const soon=soonMaps(options.cityPlayable);
+  // Said from inside update(): the line is drawn further down.
+  const say=(text:string,ms:number)=>{ownerNews={text,until:now()+ms};};
+  // No map choice in the room (card topo-sem-icone-contagem-exploracao, the user 25/10: "remova Cidade Nevada e Mapa
+  // infinito"): the room opens on ROOM_DEFAULT_MAP; the endless map stays reachable by URL (solo plan, sandbox).
   const viewport=()=>({width:innerWidth,height:innerHeight});
   let orientation=lobbyOrientation(viewport()),mapSeen:MapId|undefined,loadFailed:string|undefined;
-  let selector:SelectorState={...initialSelector(false,roomMapId(client)),soon};
-  const dispatch=(event:SelectorEvent)=>{const out=selectorReducer(selector,event);selector=out.state;if(out.send)client.setMap?.(out.send);mapControl.update(selector,orientation);};
-  const mapControl=mountMapSelector(mapSlot,{state:selector,orientation,now,
-    onPick:(map,nowMs)=>{
-      dispatch({type:'tap',map,nowMs});
-      // Landscape has no hint line: each tap on "em breve" says it again on the room's line (the hint repeats only once).
-      if(orientation==='landscape'&&selector.notice&&soon[map])say(selector.notice,NEWS_MS);
-    },
-    onEvent:dispatch,
-    onHint:text=>say(text,text===SELECTOR_TEXT.guest?GUEST_HINT_MS:NEWS_MS)});
-  const placeMap=()=>{
-    const landscape=orientation==='landscape';
-    mapSlot.classList.toggle('is-window',landscape);mapSlot.dataset.orientation=orientation;
-    if(!landscape){
-      if(mapSlot.parentElement!==panel)$('.coop-wait-code').after(mapSlot);
-      // 12 px under the code row: the segments' stickers stand 10 px over their top edge, clear of the share button.
-      if(mapSlot.dataset.css!=='portrait'){mapSlot.dataset.css='portrait';mapSlot.style.cssText='margin:12px 0 0';}
-      return;
-    }
-    if(mapSlot.parentElement!==host)host.append(mapSlot);
-    const style=getComputedStyle(probe),px=(v:string)=>parseFloat(v)||0;
-    const safe={top:px(style.paddingTop),right:px(style.paddingRight),bottom:px(style.paddingBottom),left:px(style.paddingLeft)};
-    const {selector:box}=selectorRects(viewport(),safe),origin=host.getBoundingClientRect();
-    const css=`position:absolute;z-index:var(--z-hud);left:${box.x-origin.left}px;top:${box.y-origin.top}px;margin:0;pointer-events:auto`;
-    if(mapSlot.dataset.css!==css){mapSlot.dataset.css=css;mapSlot.style.cssText=css;}
-  };
-  placeMap();
   const names=new Map<string,string>();
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);stopPreload();panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
     // The match is on: a slow connection now fetches the decoration too (it held it back to give P0/P1 the bandwidth).
     if(client.run?.phase==='combat')preloader?.release();
@@ -381,9 +358,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
     // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
     const off=!view.visible||!!client.fatal;
-    putHidden(panel,off);putHidden(mapSlot,off);
+    putHidden(panel,off);
     if(!view.visible)return;
-    // The map selector follows the room: owner, countdown, connection, the room's map and its download.
+    // The room's map and its download (the preload and the ready button follow it).
     const roomMap=roomMapId(client),load=client.mapLoad;
     const selfClass=view.members.find(m=>m.self)?.classId??client.classId;
     if(preloader&&selfClass){
@@ -393,15 +370,11 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
     const preload=preloader?.progress();
     if(menuHold&&preload&&preloadDone(preload)){menuHold();menuHold=undefined;}
-    if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS,false);
+    if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS);
     mapSeen=roomMap;
-    if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS,false);
+    if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS);
     loadFailed=load?.failed;
-    const nextOrientation=lobbyOrientation(viewport());
-    const next=syncSelector(selector,{canManage:view.canManage,countdown:view.phase==='countdown',connected:client.connected,map:roomMap,download:mapLoadText(load)});
-    // (The control may hand a landscape hint to say() from here: drawn below, no nested update.)
-    if(next!==selector||nextOrientation!==orientation){selector=next;orientation=nextOrientation;updating=true;try{mapControl.update(selector,orientation);}finally{updating=false;}}
-    placeMap();
+    orientation=lobbyOrientation(viewport());
     panel.dataset.phase=view.phase;
     // After a restart of the room the run is gone (VGM-047, UX onda 5): the news goes on top, as a ficha, in place of
     // the headline, and the waiting joke is suspended until the next run starts.
@@ -410,12 +383,12 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     $('.coop-wait-news').hidden=!news;
     if(news){setText($('.coop-wait-news strong'),news.title);setText($('.coop-wait-news span'),news.body);}
     $('.coop-wait-headline').hidden=!!news&&view.phase!=='countdown';
-    setText($('.coop-wait-headline'),view.headline);
+    setText($('.coop-wait-headline'),options.solo?soloHeadline(view,load?.failed):view.headline);
     // The 4 s start when the island is on screen (the loading cover can sit over the room for a while on a slow phone).
     if(ownerNews?.until===Infinity&&!host.querySelector('.explore-loading:not([hidden])'))ownerNews.until=now()+OWNER_NEWS_MS;
-    const ownerLine=$('.coop-wait-owner'),showNews=!!ownerNews&&now()<ownerNews.until;
+    const ownerLine=$('.coop-wait-owner'),showNews=!options.solo&&!!ownerNews&&now()<ownerNews.until;
     ownerLine.hidden=!showNews;if(showNews)setText(ownerLine,ownerNews!.text);
-    // A fuller window (4+, the selector inside in portrait): for its 4 s the news takes the headline's place, like the
+    // A fuller window (4+): for its 4 s the news takes the headline's place, like the
     // restart notice does, and in portrait the line under the chips too, so the window never scrolls the ready button away.
     const tightNews=showNews&&view.phase!=='countdown'&&view.members.length>=4;
     if(tightNews)$('.coop-wait-headline').hidden=true;
@@ -423,14 +396,12 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     // The team's makeup takes the joke's place; for the owner it takes turns with the hint (WAITING_LINE_SECONDS each).
     const makeup=compositionLine(view.members),turn=Math.floor((now()-started)/1000/WAITING_LINE_SECONDS)%2===1;
     setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint&&!(makeup&&turn)?OWNER_HINT:makeup??waitingLine((now()-started)/1000));
-    // Portrait, a guest in a fuller room: the selector's fixed line ("Quem escolhe o mapa é o dono da sala.") takes the
-    // joke's place, so the window fits without scrolling and the ready button stays in view (cidade-09).
-    $('.coop-wait-line').hidden=jokeYields(orientation,view)||tightNews&&orientation==='portrait';
-    botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
+    $('.coop-wait-line').hidden=!!options.solo||tightNews&&orientation==='portrait';
+    botButton.hidden=!!options.solo||!view.canManage||view.seatsLeft<1||view.selfSpectator;
     panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
-    readyButton.hidden=view.selfSpectator;
+    readyButton.hidden=view.selfSpectator||!!options.solo;
     // The room's map still downloading here (or it did not arrive): no "pronto" (backing out stays possible).
     // Then this phone's P0 of the match (own hero, the map's ground) for at most PRELOAD_CAP_MS since it entered.
     const blocked=view.selfReady?undefined:readyBlock(load)??(preloader?preloadBlock(preload,now()-started):undefined);
@@ -448,7 +419,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       else if(step.action==='bot')client.addBot?.();
       else if(step.action==='ready')client.ready(true);
     }
-    setText(readyButton,blocked??(view.selfReady?'Ops, peraí':'Tô pronto!'));
+    setText(readyButton,blocked??(!view.selfReady?'Tô pronto!':options.solo&&client.run?.phase==='countdown'?SOLO_STARTING:'Ops, peraí'));
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
     readyButton.classList.toggle('is-ready',view.selfReady);
     if(armed&&!view.members.some(m=>m.id===armed!.id&&!m.self))armed=undefined;
@@ -469,6 +440,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         // This player's face wears the download ring (its fill: --preload, set below at every update).
         const bare=faceHtml(m.classId,{className:'coop-wait-face',tag:'i'});
         const face=m.self&&preloader?`<b class="coop-wait-ring" aria-hidden="true">${bare}</b>`:bare;
+        // Solo: the faces only (self first, with its download ring), the names read aloud.
+        if(options.solo)return `<li class="coop-wait-solo${m.self?' is-self':''}">${face}<span class="sr-only">${escapeHtml(m.name)}${said}</span></li>`;
         // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
         // The owner's grid shows the rail's short name (unique for bots, like the HUD); the whole name is read aloud.
         const shown=view.canManage?railName(m.name):m.name;
@@ -491,9 +464,28 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
   };
   const timer=setInterval(update,200);update();
-  return {panel,update,dispose(){clearInterval(timer);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
+  return {panel,update,dispose(){clearInterval(timer);stopPreload();panel.remove();}};
 }
 
+/** Wait before the one second try of "Criar sala" (auditoria multijogador 29/10, achado 5: a 3G hiccup). */
+export const CREATE_RETRY_MS=800;
+export const CREATE_RETRY_TEXT='A rede engasgou. Criando sua sala de novo…';
+/**
+ * POST /rooms (the new room's code). A timeout or a network error gets one more try after CREATE_RETRY_MS; an answer
+ * from the Worker (a 4xx like the 429 "Aguarde um minuto", or a 5xx) is final: asking again gives the same answer.
+ */
+export async function createRoom(endpoint:string,body:object,options:{onRetry?:()=>void;fetcher?:typeof fetch;wait?:(ms:number)=>Promise<void>;timeoutMs?:number;device?:string}={}):Promise<string>{
+  const fetcher=options.fetcher??fetch,wait=options.wait??(ms=>new Promise<void>(r=>setTimeout(r,ms)));
+  const sent=JSON.stringify(withDevice(body,options.device));
+  for(let attempt=0;;attempt++){
+    let r:Response;
+    try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:sent,signal:AbortSignal.timeout(options.timeoutMs??10000)});}
+    catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
+    return data.code;
+  }
+}
 /** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */
 export interface LobbyOptions {room?:string;autoJoin?:boolean}
 export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
@@ -548,7 +540,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=readRoomCode(codeInput.value);
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
+      if(create){status.textContent='Criando sua sala…';code=await createRoom(endpoint,objectiveFromSearch(location.search),{onRetry:()=>{status.textContent=CREATE_RETRY_TEXT;}});codeInput.value=formatRoomCode(code);}
       if(closed)return;
       if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
       const nick=fitName(nickInput.value)||fitName(name);
@@ -594,27 +586,60 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
 export const SOLO_MANIFEST_MS=8000;
 export const SOLO_TEXT={noRooms:'As partidas ainda não estão disponíveis neste endereço.',noCity:'A cidade não baixou. Tente novamente.'} as const;
 /**
+ * What "Jogar sozinho" downloads before the room (cena-nasce-rapido; auditoria-ui-menus 5: started when the choice
+ * popup opens, not on the tap, so the seconds the player spends looking at the popup are spent downloading): the game's
+ * code (explore, scene, Phaser ~1.2 MB), the city's manifest and map (~1 MB, the room's join waits for it: loadCity
+ * shares one download per hash), the rooms' address, and the own hero's first art (P0, the waiting room's gate). Once per
+ * page; a failed part is asked again by the next call.
+ */
+interface SoloWarm {code:Promise<unknown>;manifest:Promise<(MapRef&{bytes?:number})|undefined>;city:Promise<unknown>;endpoint:Promise<string|undefined>;art?:string;
+  /** The map's bytes so far (0..1) and who wants to know (the card's bar). */
+  cityFraction:number;onCity:Set<(fraction:number)=>void>}
+let soloWarm:SoloWarm|undefined;
+function startWarm():SoloWarm{
+  const manifest=import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined);
+  const onCity=new Set<(fraction:number)=>void>();
+  const warm:SoloWarm={
+    cityFraction:0,onCity,
+    code:Promise.all([import('./explore.ts'),import('./scene.ts'),import('./coop.css'),import('./net/client.ts')]),
+    manifest,
+    city:manifest.then(ref=>ref&&import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref,f=>{warm.cityFraction=f;for(const l of onCity)l(f);}))).catch(()=>undefined),
+    endpoint:fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined),
+  };
+  // A part that failed is not kept: the next call (the tap after an error) asks again.
+  const drop=()=>{if(soloWarm===warm)soloWarm=undefined;};
+  warm.code.catch(drop);
+  void Promise.all([manifest,warm.endpoint]).then(([m,e])=>{if(!m||!e)drop();});
+  return warm;
+}
+export function warmSolo(heroId?:string):SoloWarm{
+  const warm=soloWarm??=startWarm();
+  // The hero's P0 (sheet, walk, the city's ground): the waiting room's own preloader then finds them in the cache.
+  if(heroId&&warm.art!==heroId){
+    warm.art=heroId;
+    createPreloader().add(assetsParaPartida({self:heroId,others:[],map:SOLO_MAP,search:location.search}).filter(a=>a.priority==='P0'));
+  }
+  return warm;
+}
+/**
  * "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): creates a room, joins it with the city in join.maps and
  * opens the match shell with the waiting room driving itself (setMap city, the bots, ready). `onJoined` closes the
  * confirmation dialog only once the room is joined, so an error before that shows under its buttons (the caller
- * catches it). The room's own countdown starts the match.
+ * catches it). The room's own countdown starts the match. `onStep`: each step done (the card's bar, solo-plan.ts).
  */
-export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void}){
-  // cena-nasce-rapido: what the match needs next starts with the click, not after the room answers. The menu track
-  // yields (the waiting room takes its own hold); the game's code (explore, scene, Phaser ~1.2 MB) and the city's map
-  // (~1 MB, the room's join waits for it: loadCity shares one download per hash) download beside the room's creation.
+export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void;onStep?:(step:SoloStep,fraction:number)=>void}){
+  // The menu track yields (the waiting room takes its own hold) while the match's files come down.
   let menuHold:(()=>void)|undefined=holdMenuDownload();
   const releaseMenu=()=>{menuHold?.();menuHold=undefined;};
-  void import('./explore.ts').catch(()=>undefined);void import('./scene.ts').catch(()=>undefined);
-  const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
+  const warm=warmSolo(hero.id),step=(s:SoloStep,fraction=1)=>options.onStep?.(s,fraction);
+  void warm.code.then(()=>step('code'),()=>undefined);
+  const city=(f:number)=>step('city',f);warm.onCity.add(city);if(warm.cityFraction>0)city(warm.cityFraction);
+  void warm.city.then(()=>{warm.onCity.delete(city);step('city');});
+  const [{CoopClient}]=await Promise.all([import('./net/client.ts'),import('./coop.css')]);
   const loadManifest=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
-  const manifest=loadManifest().then(ref=>{
-    if(ref)void import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref)).catch(()=>undefined);
-    return ref;
-  }).catch(()=>undefined);
-  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
+  const endpoint=await warm.endpoint;
   if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
-  const cityRef=await within(manifest,SOLO_MANIFEST_MS);
+  const cityRef=await within(warm.manifest,SOLO_MANIFEST_MS);
   if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
   const plan=soloPlan(options.bots),nick=fitName(name)||'Capivara Veloz';
   let client:CoopClient|undefined;
@@ -622,13 +647,21 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a
     // room Worker from before reads none and opens the usual room, which the solo plan still switches to the city).
     const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};
-    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
-    if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
-    client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();
+    // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time,
+    // the first on short times (solo-tenta-de-novo), none after a refusal (4xx) or the room's fatal word.
+    const joined=await soloOneRetry(async n=>{
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(withDevice(body)),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
+      if(!r.ok){const message=data.error??'Não foi possível criar a sala.';throw r.status<500?soloRefused(message):new Error(message);}
+      step('room');
+      const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;
+      const joining=fresh.join();
+      await (n===0?soloWithin(joining,SOLO_FIRST_JOIN_MS,()=>!fresh.connected&&!fresh.mapLoad):joining);
+      return fresh;
+    },error=>{const fatal=!!client?.fatal;if(!fatal){client?.leave();client=undefined;}return soloRetryable(error,fatal);});
+    step('join');
     const {openExploration}=await import('./explore.ts');
     options.onJoined?.();
-    const joined=client;
-    const opening=openExploration(hero,nick,joined);
+    const opening=openExploration(hero,nick,joined,{solo:true});
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});
     releaseMenu();

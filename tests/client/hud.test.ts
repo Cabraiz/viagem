@@ -20,8 +20,8 @@ import {WEAPON_CATALOG} from '../../src/sim/weapons/catalog.ts';
 import {PASSIVES as PASSIVE_DEFS} from '../../src/rules/passives.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../src/rules/waves.ts';
 
-const WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
-const EVOLUTIONS=['chinelo-evo','boleto-evo','cafe-evo'];
+const WEAPONS=['boleto','cafe','guarda-chuva','pombo','audio'];
+const EVOLUTIONS=['boleto-evo','cafe-evo'];
 const PASSIVES=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao'];
 
 test('round chip shows Round N/10 with critters in a wave and a countdown in the interval',()=>{
@@ -70,7 +70,7 @@ test('revive alerts: own fall first, then allies by urgency, with rescue progres
 
 test('offer copy distinguishes round upgrades from level-ups; deadline fraction',()=>{
   const [level,round]=fakeView('offer-prepare',1).offers;
-  assert.deepEqual(offerTitle(round),{title:'Oferta do round'});
+  assert.deepEqual(offerTitle(round),{title:'Escolha da rodada'});
   assert.deepEqual(offerTitle(level),{title:'Nível 12!'});
   assert.equal(offerDeadlineFraction(level,1000,1000),1);
   assert.equal(offerDeadlineFraction(level,1000+ticks(FIXTURE_INTERMISSION_SECONDS/2),1000),.5);
@@ -110,7 +110,7 @@ test('item display covers every fixed id with pt-BR copy and falls back for unkn
   for(const def of Object.values(PASSIVE_DEFS)){assert.equal(itemDisplay(def.id).name,def.name,def.id);assert.equal(itemDisplay(def.id).kind,'passive',def.id);}
   for(const item of allItemDisplays())assert.ok(item.blurb.length<=36&&item.joke.length<=22,`${item.id}: ${item.blurb.length}/${item.joke.length}`);
   assert.equal(itemDisplay('cafe-evo').kind,'evolution');assert.equal(itemDisplay('x-y').name,'X y');
-  assert.equal(levelTag('pombo',1),'Novo!');assert.equal(levelTag('pombo',4),'Nv 4');assert.equal(levelTag('boleto-evo',1),'Evolução');
+  assert.equal(levelTag('pombo',1),'Novo!');assert.equal(levelTag('pombo',4),'Nív. 4');assert.equal(levelTag('boleto-evo',1),'Evolução');
 });
 
 test('fixtures use real classes with approved portraits and cover every scenario',()=>{
@@ -192,7 +192,7 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
   const full=fakeResult(6,true,true).players[0];
   assert.equal(full.weapons.length+full.passives.length,12);
   const portrait=buildIcons(full,BUILD_SLOTS.portrait);
-  assert.deepEqual(portrait.items.map(i=>i.id),['chinelo-evo','boleto']);
+  assert.deepEqual(portrait.items.map(i=>i.id),['boleto-evo','rojao']);
   assert.equal(portrait.hidden.length,10);assert.equal(portrait.items.length+1,BUILD_SLOTS.portrait);
   assert.equal(buildIcons(full,BUILD_SLOTS.landscape).items.length,5);
   // Fits exactly: no chip wasted on a single hidden item.
@@ -288,9 +288,9 @@ test('D-050 (replaced D-021 in waves): a held offer shows only in the level-up p
 });
 
 test('etiqueta price: "Nv" plus the number, "Novo!" on the star, sentence-case words, no caps anywhere',()=>{
-  assert.deepEqual(priceTag('chinelo',6),{kind:'level',label:'Nv 6',level:6});
+  assert.deepEqual(priceTag('boleto',6),{kind:'level',label:'Nív. 6',level:6});
   assert.deepEqual(priceTag('pombo',1),{kind:'new',label:'Novo!'});
-  assert.deepEqual(priceTag('chinelo-evo',1),{kind:'evo',label:'Evolução'});
+  assert.deepEqual(priceTag('boleto-evo',1),{kind:'evo',label:'Evolução'});
   assert.deepEqual(priceTag(HEAL_CHOICE,1),{kind:'snack',label:'Lanche'});
   for(const scenario of ['offer','offer-prepare','offer-round','offer-heal'] as const)for(const offer of fakeView(scenario,1).offers)
     for(const c of offer.choices){const label=priceTag(c.itemId,c.level).label;assert.notEqual(label,label.toUpperCase(),label);}

@@ -17,9 +17,9 @@ export const KIT_PREFIX='kit:';
 /** A crate gives a kit (of its rarity's tier) instead of its row's prize this often. */
 export const KIT_CHANCE=.25;
 /** Charges of a wall kit (each `place` lays one piece); a tower kit has one. */
-export const KIT_CHARGES:Readonly<Record<FreePiece,number>>=Object.freeze({muro:6,barricada:2});
+export const KIT_CHARGES:Readonly<Record<Exclude<FreePiece,'barraca'>,number>>=Object.freeze({muro:6,barricada:2});
 /** What a kit may build: every tower that stands on the grid (not the rail's Gustavão) and the wall pieces. */
-export type KitPiece=Exclude<DefenseId,'gustavao'>|FreePiece;
+export type KitPiece=Exclude<DefenseId,'gustavao'>|Exclude<FreePiece,'barraca'>;
 const TOWER_KITS=DEFENSE_IDS.filter(id=>DEFENSES[id].size!==null) as Exclude<DefenseId,'gustavao'>[];
 /** The kits a crate of each rarity rolls, even odds (rarity 1..5 → tier; verde adds the wall pieces). */
 export const KIT_POOL:Readonly<Record<1|2|3|4|5,readonly KitPiece[]>>=Object.freeze({

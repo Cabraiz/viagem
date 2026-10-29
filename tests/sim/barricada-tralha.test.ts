@@ -17,7 +17,7 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {createStonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,TRALHA_GROUP_CELLS,TRALHA_GROUPS,UNO_BUILD_CELLS,pieceCells} from '../../src/rules/index.ts';
-import {FREE_CELL,pieceRectOf} from '../../src/sim/towers/free-build.ts';
+import {BARRICADA_DISCS,FREE_CELL,pieceRectOf} from '../../src/sim/towers/free-build.ts';
 import {TRALHA_OWNER} from '../../src/sim/towers/tralha.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -48,9 +48,15 @@ test('the map\'s barricadas: laid once, rows away from the car, blockers that ne
   const g=rig(),laid=g.squares();
   assert.ok(laid.length>=TRALHA_GROUPS,`laid ${laid.length}`);
   assert.ok(laid.length<=TRALHA_GROUPS*TRALHA_GROUP_CELLS);
-  assert.equal(g.terrain.blockers().length,laid.length,'one blocker each');
-  // barricada-2x: 2×2 squares, the ones of a row side by side (2 cells apart, never overlapping).
-  for(const p of laid)assert.deepEqual(pieceCells(p.kind),[2,2]);
+  assert.equal(g.terrain.blockers().filter(b=>b.id.startsWith('tralha')).length,laid.length*BARRICADA_DISCS,'BARRICADA_DISCS blocker discs each');
+  // barricada-tocar-no-mapa: 2×1 pieces turned along their row, end to end (2 cells apart, never overlapping).
+  for(const p of laid)assert.deepEqual(pieceCells(p.kind,p.rot??0),p.rot?[1,2]:[2,1]);
+  for(let i=1;i<laid.length;i++){
+    const a=laid[i-1],b=laid[i];
+    if(Math.abs(a.cell.c-b.cell.c)+Math.abs(a.cell.r-b.cell.r)!==2)continue;
+    assert.equal(a.rot??0,b.rot??0,'a row keeps one axis');
+    assert.equal(a.cell.c===b.cell.c?1:0,a.rot??0,'turned along the row');
+  }
   for(let i=1;i<laid.length;i++){
     const a=laid[i-1].cell,b=laid[i].cell,d=Math.abs(a.c-b.c)+Math.abs(a.r-b.r);
     assert.ok(d>=2,`${laid[i-1].id} and ${laid[i].id} overlap`);
@@ -75,7 +81,7 @@ test('DESTRUIR: at once, its blocker gone, R$ to the hero; out of reach or not a
   const before=g.terrain.blockers().length;
   assert.deepEqual(g.sys.destruir(g.ctx,'ana',a.id),{ok:true,pix:DESTRUIR_PIX});
   assert.equal(g.ana.grana,DESTRUIR_PIX);
-  assert.equal(g.terrain.blockers().length,before-1);
+  assert.equal(g.terrain.blockers().length,before-BARRICADA_DISCS,'all its discs');
   assert.ok(!g.squares().some(p=>p.id===a.id));
   assert.ok(g.events.some(e=>e.type==='structure'&&e.id===a.id&&e.hp===0));
 });

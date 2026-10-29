@@ -1,13 +1,12 @@
 // Prizes never under a thumb nor out of reach (VGM-053B review M3, pacote-bugs-ux): the server's rule against the thumb
-// zones measured on the real scene, and every boleto and coxinha of real rains and sales on the endless map.
+// zones measured on the real scene (crates and arsenal prizes use it), and real matches with no coxinha on the ground (the
+// boleto rain and the flash sale are retired: NEW-20261024-ORQ-tirar-drops-cedula-girando, NEW-20261025-ORQ-sem-coxinha-no-chao).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_WORLD,Simulation} from '../../multiplayer/simulation.ts';
 import {projectView} from '../../src/client/projection.ts';
 import {followZoom} from '../../src/client/framing.ts';
-import {BOLETO,PRIZE_SCREEN_SPAN,PROMO,PROMO_RADIUS,RAIN_RADIUS,THUMB_MARGIN_PX,THUMB_ZONES,THUMB_ZOOM,parseZueiraLab,prizeSpotSafe,underThumb} from '../../src/sim/zueira.ts';
-import {PRIZE_TOWER_CLEAR,PRIZE_WALL_CLEAR} from '../../src/sim/assemble.ts';
-import {clearSegment,walkable} from '../../src/maps/world.ts';
+import {THUMB_MARGIN_PX,THUMB_ZONES,THUMB_ZOOM,parseZueiraLab,prizeSpotSafe,underThumb} from '../../src/sim/zueira.ts';
 
 /**
  * Thumb zones relative to the hero's feet (CSS px), measured on the real scene with the camera settled
@@ -22,6 +21,8 @@ const THUMBS=[
 /** The follow camera's look-ahead may move the hero this far on screen (15% of the useful half-width), and a sale's
  * coxinha is 1.6x a pickup (about 46 px wide): half of it counts as margin. */
 const LOOK_PX=36,PRIZE_HALF_PX=23;
+/** The widest ring a prize ever fell on (the retired boleto rain's, 1.4–5.5 u): the rule is checked over all of it. */
+const RAIN_RADIUS:readonly [number,number]=[1.4,5.5];
 
 test('a prize spot the rule accepts lands under no thumb, in any of the 4 views, both orientations, 100% and 125%',()=>{
   let checked=0;
@@ -42,7 +43,6 @@ test('a prize spot the rule accepts lands under no thumb, in any of the 4 views,
   const far=projectView({x:RAIN_RADIUS[1]/Math.SQRT2,y:-RAIN_RADIUS[1]/Math.SQRT2},0).x*followZoom({width:844,height:390});
   assert.ok(far+PRIZE_HALF_PX>191-LOOK_PX,`the old ring reached ${far.toFixed(0)} px`);
   assert.equal(prizeSpotSafe(RAIN_RADIUS[1]/Math.SQRT2,-RAIN_RADIUS[1]/Math.SQRT2),false);
-  assert.ok(PROMO_RADIUS[1]<=PRIZE_SCREEN_SPAN/Math.SQRT2+.5,'the sale ring is (almost) all inside the rule');
 });
 
 test('the server\'s thumb zones cover the measured ones; its own hero\'s ring never needs them; the projection matches',()=>{
@@ -62,40 +62,25 @@ test('the server\'s thumb zones cover the measured ones; its own hero\'s ring ne
   assert.equal(underThumb(4,-4),true);
 });
 
-test('real rains and sales on the endless map, 6 heroes: every prize near its hero with a straight walk, off the wall and towers, mostly clear of teammates\' thumbs',()=>{
-  let prizes=0,underMate=0;
+test('no coxinha on the ground in real matches (sem-coxinha-no-chao): no heal pickup is born, no sale banner, kills and chests included', ()=>{
+  let kills=0;
   for(const seed of [3,11,29]){
     const sim=new Simulation(seed,{world:DEFAULT_WORLD});
-    sim.zueiraLab=parseZueiraLab('boletos,promo');
+    // An old lab plan asking for the sale: the retired kind is ignored.
+    sim.zueiraLab=parseZueiraLab('promo,apagao,promo');
     const ids=['b0','b1','b2','b3','b4','b5'];ids.forEach((id,i)=>sim.add(id,`B${i}`,'cidadao-comum'));sim.resetRun();
-    const sw=(sim as unknown as {systems:{stonewards:{state:{wall:{x:number;y:number};wallDown:boolean;towers:{x:number;y:number}[]}}}}).systems.stonewards.state;
-    const seen=new Set<string>();
     for(let t=0;t<20*60*5&&sim.world.round.index<=3;t++){
-      for(const p of sim.players.values())p.invulnerableUntil=sim.tick+40;
-      // Heroes walk apart in circles, so the drops land on varied ground (trees, rocks, water).
+      for(const p of sim.players.values()){p.invulnerableUntil=sim.tick+40;p.hp=Math.max(1,p.hp-1);}
       ids.forEach((id,i)=>{const a=2*Math.PI*(sim.tick/200+i/6);sim.input(id,{seq:sim.tick+1,x:Math.cos(a),y:Math.sin(a),attack:false});});
-      sim.step();
-      const standing=[...sim.players.values()].filter(p=>!p.downed);
-      for(const p of sim.world.pickups.values()){
-        if((p.resource!==BOLETO&&p.resource!==PROMO)||seen.has(p.id))continue;
-        seen.add(p.id);
-        // Checked on the tick it fell, against the heroes where they stand on that tick (the zueira system runs after
-        // the players' move).
-        if(p.spawnTick!==sim.tick)continue;
-        prizes++;
-        assert.ok(walkable(p,sim.terrain),`${p.id} on unwalkable ground`);
-        assert.ok(standing.some(h=>prizeSpotSafe(p.x-h.x,p.y-h.y)&&clearSegment(h,p,sim.terrain)),
-          `${p.id} (${p.resource}) at (${p.x.toFixed(2)},${p.y.toFixed(2)}) is near no hero with a straight walk to it`);
-        // Never under its own hero's thumbs (prizeSpotSafe above). Teammates' are only counted: over every view and
-        // orientation the server cannot know, they cover almost every spot (zueira.ts `around`).
-        if(standing.some(h=>underThumb(p.x-h.x,p.y-h.y)))underMate++;
-        if(!sw.wallDown)assert.ok(Math.hypot(p.x-sw.wall.x,p.y-sw.wall.y)>=PRIZE_WALL_CLEAR,`${p.id} on the wall`);
-        for(const t of sw.towers)assert.ok(Math.hypot(p.x-t.x,p.y-t.y)>=PRIZE_TOWER_CLEAR,`${p.id} on a tower`);
+      for(const e of sim.step()){
+        assert.ok(!(e.type==='happening'&&e.kind==='promo'),`seed ${seed}: a sale fired`);
+        if(e.type==='kill')kills++;
       }
+      for(const p of sim.world.pickups.values())assert.notEqual(p.kind,'heal',`seed ${seed}: ${p.id} is a coxinha on the ground`);
       for(const id of ids){const o=sim.offers(id)[0];if(o)sim.choose(id,o.id,o.defaultIndex);}
-      for(const e of [...sim.world.enemies.values()])if(sim.tick-e.spawnTick>60)sim.world.enemies.delete(e.id);
+      // Every critter dies a second after it shows up (by a hero, so the kill rolls its loot).
+      for(const e of [...sim.world.enemies.values()])if(!e.boss&&sim.tick-e.spawnTick>20)sim.world.damageEnemy(e.id,1e6,ids[sim.tick%ids.length]);
     }
   }
-  assert.ok(prizes>=100,`only ${prizes} prizes dropped`);
-  console.log(`# prêmios ${prizes}, sob o polegar de um colega (em alguma vista/orientação) ${underMate}`);
+  assert.ok(kills>=150,`only ${kills} kills`);
 });

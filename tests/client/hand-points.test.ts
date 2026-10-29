@@ -10,8 +10,7 @@ import {FIRE_LOOK,PACK12_ITEMS} from '../../src/client/render/arsenal-rules.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movementIdle8Frame,movementPlan} from '../../src/client/sprites/movement128.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
-import {CITY_CONTOUR} from '../../src/client/render/you.ts';
-import {RING_UNDER} from '../../src/client/render/you-rules.ts';
+import {CONTOUR_DEPTH,RING_UNDER} from '../../src/client/render/you-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
 type ArtFile={file:string;figure:{left:number;top:number;right:number;bottom:number};height:number};
@@ -31,8 +30,9 @@ sharp.cache(false);sharp.concurrency(1);
  */
 const HELD=Object.keys(manifest.groups.personagens.pieces).filter(id=>Object.keys(filesOf(id)).some(n=>/^walk(16|128)-/.test(n)));
 const shown=(id:string)=>{
-  const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
-  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n))
+  // An R06 class that breathes (parado-respiracao-herois: the CLT) rests on its idle16 in the 8 directions, not the idle8.
+  const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-')),idle16=!m16&&Object.keys(files).some(n=>n.startsWith('idle16-'));
+  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):idle16?/^(walk|attack)128-|^(run|idle)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n))
 };
 /** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
 const SCREEN_PER_CELL=45/50;
@@ -40,15 +40,17 @@ const SCREEN_PER_CELL=45/50;
 const MIN_FINGERS=6;
 
 test('every sheet the game shows any hero has its hand in each frame, inside the figure', ()=>{
-  assert.equal(HELD.length,15,HELD.join());
+  assert.equal(HELD.length,16,HELD.join());
   for(const id of HELD){
     const sheets=shown(id);
-    // M16 (viciado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
-    assert.equal(sheets.length,id==='viciado-em-bet'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
+    // M16 (viciado, gato, maromba, vendedor, aposentado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs;
+    // the CLT breathes on idle16 in 8 instead of its idle8.
+    assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'||id==='maromba'||id==='vendedor-praia'||id==='aposentado'?20:id==='clt-cansado'?29:17,`${id}: the sheets it shows`);
+    // The M16 rest: 8 poses (held) or 16 (breathing, card parado-respiracao-herois), as its entry says.
     for(const [name,f] of sheets){
-      const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
+      const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?f.frames:16;
       assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);
-      assert.equal(sheet.points.length,frames,name);
+      assert.equal(sheet.points.length,frames,name);if(name.startsWith('idle16'))assert.ok(f.frames===8||f.frames===16,name);
       for(const [i,p] of sheet.points.entries()){
         assert.ok(p[0]>=f.figure.left-1&&p[0]<=f.figure.right+1&&p[1]>=f.figure.top-1&&p[1]<=f.figure.bottom+1,`${name} frame ${i} ${p} in ${JSON.stringify(f.figure)}`);
       }
@@ -138,10 +140,9 @@ test('per facing and frame shown, mirrors included: the weapon behind the body o
   }finally{setArtIndex(parseArtIndex(undefined));}
 });
 
-test('behind the body the weapon also goes under the local hero\'s Papel/Breu contour, over its ring on the ground', ()=>{
-  // At −0.02 the knife lay between the sprite and its sticker contour (−0.25…−0.15 in the city, −0.2/−0.1 on the
-  // island): the blade crossed the outline in NE and NW.
-  assert.ok(HELD_DEPTH.behind<Math.min(...CITY_CONTOUR.map(b=>b.depth),-.2),String(HELD_DEPTH.behind));
+test('behind the body the weapon also goes under the local hero\'s contour, over its ring on the ground', ()=>{
+  // At −0.02 the knife lay between the sprite and its contour copies: the blade crossed the outline in NE and NW.
+  assert.ok(HELD_DEPTH.behind<CONTOUR_DEPTH,String(HELD_DEPTH.behind));
   assert.ok(HELD_DEPTH.behind>-RING_UNDER,'over the ring on the ground');
   assert.ok(HELD_DEPTH.front>0&&HELD_DEPTH.front<.1,'in front: just over the sprite, under the hit numbers');
   const sprites={handPose:()=>({point:{x:30,y:50,behind:true},ox:.5,oy:.75,scale:.5,flip:true,direction:'NE' as const})};

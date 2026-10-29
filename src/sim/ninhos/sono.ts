@@ -30,6 +30,7 @@ import type {SimContext,Sleepers} from '../context.ts';
 import {SpatialHash} from '../spatial.ts';
 import {createEnemy,type EnemyKind} from '../enemies/catalog.ts';
 import {cancelTelegraphs} from '../telegraphs.ts';
+import {KNOCK_DECAY} from '../enemies/ai.ts';
 import {MAX_AWAKE} from '../../rules/index.ts';
 
 /** Bucket size of the sleepers' index (u): they never move, so big buckets keep a noise check to a few cells. */
@@ -65,6 +66,17 @@ export const MINERVA_REACH=1.5;
  * the nearest to a standing hero first (plan order on ties), never all on one tick.
  */
 export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
+/**
+ * The visitors (NEW-20261028-ORQ-ritmo-morto-e-viaduto: the first 2 min were dead, half the 1p runs had no level-up by
+ * 4 min). While the minuto de Minerva holds the horde, every VISIT_EVERY s from VISIT_FROM s one group of armed
+ * standing heroes (VISIT_GROUP u apart; the groups take turns, so the team's XP comes at one pace whatever its size)
+ * gets VISIT_COUNT of the weakest sleepers between VISIT_NEAR and VISIT_FAR u of it, caçando, without their bands
+ * (memory.visita: the AI's Minerva hold lets them walk). A group with VISIT_ALIVE visitors still standing near it gets
+ * none that time. A team that killed something in the last VISIT_QUIET s found its own fight (the bots roam into
+ * bands): the visit waits, so the first level-up stays in the 60–120 s of the card in 1p as in 6p. Once Minerva ends
+ * they are bodies like any other.
+ */
+export const VISIT_FROM=60,VISIT_EVERY=15,VISIT_QUIET=10,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -82,6 +94,15 @@ export const MODE={alerta:1,cacando:2,perdeu:3} as const;
  * mark in the body's memory (sx, sy, st: JSON-safe).
  */
 export const STUCK_S=20,STUCK_MOVE=1,STUCK_FAR=20,STUCK_EVERY=1;
+/**
+ * The quick net (card bot-parceiro-e-bichos-parados): an awake enemy (not the boss, out of the Minerva) that moved less
+ * than STUCK_MOVE u over STILL_S s with nothing to do (no hit nor act within STILL_HIT s, not mid-act, its nearest
+ * standing hero past STILL_NEAR u but within STUCK_FAR: farther, the safety net above frees it; no kept point within
+ * STILL_KEEP u: the car a siege presses on) is pushed STILL_PUSH u sideways to its line to that hero, one side then the
+ * other; a body of the plan pushed more than STILL_SLEEP times within STILL_FORGET s sleeps again where it stands (a
+ * group's keeps being pushed). Its mark in the body's memory (qx, qy, qt; qn, qa: the pushes; JSON-safe).
+ */
+export const STILL_S=8,STILL_HIT=2,STILL_NEAR=3,STILL_KEEP=3,STILL_PUSH=2,STILL_SLEEP=2,STILL_FORGET=30;
 
 /**
  * The noise table (proposal §3, with the radii of the decision in claims/NEW-20261014-ORQ-ninhos-sim: pistol 12,
@@ -112,12 +133,12 @@ export function noiseP(r:number):number{
   return pts[pts.length-1][1];
 }
 /**
- * The automatic game's weapons (sim/weapons/catalog.ts) on the table: the melee ones (chinelo, guarda-chuva) as the
+ * The automatic game's weapons (sim/weapons/catalog.ts) on the table: the melee one (guarda-chuva) as the
  * knife, boleto/pombo/café as the pistol, the áudio its own joke (the loudest of the light ones). Unknown: the pistol.
  * The arsenal of the manual attack (E6, weapons/arsenal.ts) brings its own radii: `weaponNoise` option.
  */
 export const AUTO_WEAPON_NOISE:Readonly<Record<string,{r:number;p:number}>>=Object.freeze({
-  chinelo:{r:6,p:.15},'chinelo-evo':{r:6,p:.15},'guarda-chuva':{r:6,p:.15},
+  'guarda-chuva':{r:6,p:.15},
   boleto:{r:12,p:.25},'boleto-evo':{r:12,p:.25},pombo:{r:12,p:.25},cafe:{r:12,p:.25},'cafe-evo':{r:12,p:.25},
   audio:{r:20,p:.3},
 });
@@ -144,7 +165,13 @@ export interface SleepBody {readonly id:string;readonly kind:EnemyKind;readonly 
  * 1 asleep, 2 awake, with its hp; and the noise window (the loudest noise per source, keys sorted). The bodies
  * themselves come back from the seed (sonoBodies).
  */
-export interface SonoState {players:number;life:[0|1|2,number][];heard:[string,Noise][]}
+export interface SonoState {players:number;life:[0|1|2,number][];heard:[string,Noise][];
+  /** The tick of the next visit (VISIT_EVERY), set on the first step in the minuto de Minerva; absent before. */
+  visitAt?:number;
+  /** Visits made (the groups' turn); absent before the first. */
+  visits?:number;
+  /** The tick of the last kill heard (VISIT_QUIET); absent before the first. */
+  killAt?:number}
 
 export interface SonoOptions {
   plan:NestPlan;
@@ -175,6 +202,8 @@ export interface SonoOptions {
    * only the sleepers within MINERVA_REACH (it walked into their reach: they hit it, standing, the enemy-ai's hold).
    */
   minerva?:(ctx:SimContext)=>boolean;
+  /** Whether a hero has a weapon to meet the visitors with (VISIT_FROM); absent: every standing hero. */
+  armed?:(p:SimPlayer)=>boolean;
 }
 
 export interface Sono {
@@ -349,7 +378,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(ev.type==='fire'){
         const n=options.weaponNoise?.(ev.weapon,ctx.players.get(ev.player))??AUTO_WEAPON_NOISE[ev.weapon]??DEFAULT_WEAPON_NOISE;
         api.noise(ev.player,{x:ev.x,y:ev.y,r:n.r,p:n.p});
-      }else if(ev.type==='kill')api.noise(ev.by??'kill',{x:ev.x,y:ev.y,...NOISE.kill});
+      }else if(ev.type==='kill'){api.noise(ev.by??'kill',{x:ev.x,y:ev.y,...NOISE.kill});state.killAt=ctx.tick;}
     }
   }
   /** End of a window: each source rolls once (keys sorted), its sleepers by plan order, on the 'ruido' fork. */
@@ -413,13 +442,35 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
   }
 
+  /**
+   * A visit (VISIT_FROM): the groups of armed standing heroes (by id, each led by its first), the turn's group gets the
+   * weakest sleepers in its ring (maxHp, then distance, then plan order), up to the cap of awake bodies. Whether it came.
+   */
+  function visit(ctx:SimContext):boolean{
+    const heroes=[...ctx.players.values()].filter(p=>standing(p)&&(options.armed?.(p)??true)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+    const groups:SimPlayer[]=[];
+    for(const p of heroes)if(!groups.some(g=>Math.hypot(g.x-p.x,g.y-p.y)<=VISIT_GROUP))groups.push(p);
+    const room=Math.min(VISIT_COUNT,maxAwake-ctx.enemies.size);
+    if(!groups.length||room<=0||!asleep.size)return false;
+    const g=groups[(state.visits??0)%groups.length];
+    let alive=0;
+    for(const e of ctx.enemies.values())if(e.memory?.visita===1&&e.hp>0&&Math.hypot(e.x-g.x,e.y-g.y)<=VISIT_FAR)alive++;
+    if(alive>=VISIT_ALIVE)return false;
+    const ring=queryAsleep(g.x,g.y,VISIT_FAR,[]).filter(e=>order.has(e.id)).map(e=>({e,d:Math.hypot(e.x-g.x,e.y-g.y)})).filter(x=>x.d>=VISIT_NEAR)
+      .sort((a,b)=>a.e.maxHp-b.e.maxHp||a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
+    if(!ring.length)return false;
+    wakeAll(ctx,ring,'chamado');
+    for(const id of ring){const e=ctx.enemies.get(id);if(e)(e.memory??={}).visita=1;}
+    return true;
+  }
   /** Whether the last step was in the minuto de Minerva (undefined before the first: a restore never releases). */
   let held:boolean|undefined;
   /** The end of the minuto de Minerva (MINERVA_REACT, MINERVA_SPREAD): the awake bodies start one by one. */
   function release(ctx:SimContext){
     const players=[...ctx.players.values()].filter(standing),list:{e:EnemyState;d:number}[]=[];
     for(const e of ctx.enemies.values()){
-      if(e.boss||!(e.hp>0))continue;
+      // A visitor already walks (VISIT_FROM): it keeps going.
+      if(e.boss||!(e.hp>0)||e.memory?.visita===1)continue;
       let d=Infinity;
       for(const p of players)d=Math.min(d,Math.hypot(p.x-e.x,p.y-e.y));
       list.push({e,d});
@@ -429,8 +480,38 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     list.forEach(({e},k)=>{e.readyTick=Math.max(e.readyTick,ctx.tick+react+Math.floor(k*spread/list.length));});
   }
 
+  /**
+   * The quick net (STILL_S, see the constant): awake bodies still with nothing to do, a hero within STUCK_FAR (farther
+   * out the safety net frees them), are pushed off where they stand; a body of the plan pushed more than STILL_SLEEP
+   * times within STILL_FORGET s sleeps again there (into `gone`). Out of the Minerva.
+   */
+  function nudge(ctx:SimContext,heroes:readonly SimPlayer[],keep:readonly Point[],gone:EnemyState[]){
+    const near2=STILL_NEAR*STILL_NEAR,far2=STUCK_FAR*STUCK_FAR,keep2=STILL_KEEP*STILL_KEEP,busy=ctx.tick-ticks(STILL_HIT);
+    for(const e of ctx.enemies.values()){
+      if(e.boss||!(e.hp>0)||gone.includes(e))continue;
+      const m=e.memory??={};
+      if(m.qa!==undefined&&ctx.tick-m.qa>ticks(STILL_FORGET)){delete m.qa;delete m.qn;}
+      // Held (the Minerva's spread start, frozen) or moving (a push too): the 8 s start over (not the pushes).
+      if(ctx.tick<e.readyTick||ctx.tick<(e.frozenUntil??-1)||m.qt===undefined||Math.hypot(e.x-(m.qx??e.x),e.y-(m.qy??e.y))>=STUCK_MOVE){
+        m.qx=e.x;m.qy=e.y;m.qt=ctx.tick;continue;
+      }
+      if(ctx.tick-m.qt<ticks(STILL_S))continue;
+      // Busy where it stands: it hit (a tower, the car, the moto) or acted (a throw, a shot) lately, or is mid-act; a hero
+      // within reach; a kept point (the car). No hero within STUCK_FAR: the safety net's.
+      let hero:SimPlayer|undefined,best=Infinity;
+      for(const p of heroes){const d=(p.x-e.x)**2+(p.y-e.y)**2;if(d<best){best=d;hero=p;}}
+      if((m.hitReady??-Infinity)>busy||(m.actReady??-Infinity)>busy||(m.state??0)!==0||best<=near2||best>far2||keep.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<=keep2)){m.qt=ctx.tick;continue;}
+      const n=(m.qn??0)+1;
+      if(n>STILL_SLEEP&&order.has(e.id)){gone.push(e);continue;}
+      // Sideways to its line to the nearest hero, one side then the other (around the corner it is caught on).
+      const a=Math.atan2(hero!.y-e.y,hero!.x-e.x)+(n%2?1:-1)*Math.PI/2;
+      e.knock={x:Math.cos(a)*STILL_PUSH*(1-KNOCK_DECAY),y:Math.sin(a)*STILL_PUSH*(1-KNOCK_DECAY)};
+      m.qn=n;m.qa=ctx.tick;m.qt=ctx.tick;
+    }
+  }
+
   /** The safety net (STUCK_S): awake enemies stuck far from every hero leave the world (see the constant). */
-  function unstick(ctx:SimContext){
+  function unstick(ctx:SimContext,minerva:boolean){
     const near=[...ctx.players.values()].filter(standing),far2=STUCK_FAR*STUCK_FAR,gone:EnemyState[]=[];
     const players:readonly Point[]=[...near,...options.keep?.(ctx)??[]];
     for(const e of ctx.enemies.values()){
@@ -441,6 +522,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(players.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<=far2)){m.st=ctx.tick;m.sx=e.x;m.sy=e.y;continue;}
       gone.push(e);
     }
+    if(!minerva)nudge(ctx,near,options.keep?.(ctx)??[],gone);
     for(const e of gone){
       const m=e.memory!;delete m.sx;delete m.sy;delete m.st;
       const i=order.get(e.id);
@@ -470,6 +552,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     recruit(ctx,route,count,tune){
       const room=Math.min(count,maxAwake-ctx.enemies.size);
       if(room<=0||!asleep.size||!route.length)return 0;
+      // One asleep on a viaduct's deck walks down the ramp to the car (enemy-ai, ritmo-morto-e-viaduto).
       const near=[...asleep.values()].filter(e=>order.has(e.id)).map(e=>({e,d:routeDistance(e,route)}))
         .sort((a,b)=>a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
       const n=wakeAll(ctx,near,'chamado');
@@ -506,14 +589,23 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       const minerva=!!options.minerva?.(ctx);
       if(held&&!minerva)release(ctx);
       held=minerva;
-      if(minerva){heard.clear();}
+      if(minerva){
+        heard.clear();
+        state.visitAt??=ctx.tick+ticks(VISIT_FROM);
+        // A kill in the last VISIT_QUIET s, nobody armed yet or no room: the visit waits a second, the next one still
+        // VISIT_EVERY after it.
+        if(ctx.tick>=state.visitAt&&ctx.tick-(state.killAt??-Infinity)>=ticks(VISIT_QUIET)){
+          if(visit(ctx)){state.visits=(state.visits??0)+1;state.visitAt=ctx.tick+ticks(VISIT_EVERY);}
+          else state.visitAt=ctx.tick+ticks(1);
+        }
+      }
       else if(ctx.tick%every===0){
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);
       }
       sight(ctx,minerva?MINERVA_REACH:WAKE_SIGHT);
       awake(ctx);
-      if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx);
+      if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx,minerva);
       reindex(true);
       if(heard.size||state.heard.length)state.heard=[...heard].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
     },

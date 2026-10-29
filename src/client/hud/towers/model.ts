@@ -94,7 +94,7 @@ export const EFFECT:Readonly<Record<DefenseId,string>>=Object.freeze({
   'holofote':'Ofusca e atrasa',
   'arame-e-sirene':'Atrasa quem encosta',
   'antiaerea-quadrupla':'Só no que voa',
-  'posto-de-radar':'+30% de alcance perto',
+  'posto-de-radar':'Pulso e +30% de alcance',
 });
 export const RAIL_NAME='Linha férrea',RAIL_EFFECT='Trilho do Gustavão';
 
@@ -121,7 +121,7 @@ export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
   switch(card.block){
     case 'balance':return `Falta ${fichasText(card.missing??0)}`;
     case 'grana':return granaShort(card.missing??0).speech;
-    case 'limit':return `O time já tem ${DEFENSE_LIMIT} defesas`;
+    case 'limit':return `A turma já tem ${DEFENSE_LIMIT} torres`;
     case 'unique':return `Só ${GUSTAVAO_LIMIT} Gustavão por partida`;
     case 'rail':return 'Precisa da linha férrea pronta';
     case 'size':return 'Não cabe neste ponto';

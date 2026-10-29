@@ -38,11 +38,28 @@ export function titleFit([top,big]:readonly [string,string]):number{
 
 /**
  * The final letreiro is a picture per hero (E7 makes it with the name and the nickname in the same design): its URL by
- * class id. Absent: the HTML letreiro above (name + plaque), until that hero's picture arrives.
+ * class id. Absent: the HTML letreiro above (name + plaque), until that hero's picture arrives. The page loads the 960 px
+ * lite copy (scripts/art-lite.mjs MENU_SIZE, NEW-20261029-ORQ-primeira-visita-leve: 144 KB instead of 659, the widest
+ * the menu draws it is ~810 px); the approved file stays in /art/menu/letreiro for the art scripts.
  */
 export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
-  'viciado-em-bet':'/art/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
-  'clt-cansado':'/art/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
+  'viciado-em-bet':'/art/lite/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
+  'clt-cansado':'/art/lite/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
+  'gato-nada-pra-comer':'/art/lite/menu/letreiro/gato-nada-pra-comer.webp', // the fish collar tag (gato-no-menu, variation 3 of 8)
+  'maromba':'/art/lite/menu/letreiro/maromba.webp', // the iron plate (tela-maromba, variation 2 of 8)
+  'vendedor-praia':'/art/lite/menu/letreiro/vendedor-praia.webp', // the blue cooler (tela-vendedor-praia, variation 1 of 8)
+  'aposentado':'/art/lite/menu/letreiro/aposentado.webp', // the workshop's wooden plaque (tela-aposentado, variation 1 of 8)
+});
+/**
+ * Letreiros taller than their sign (gato-no-menu, the user: "ampliar bem muito para cima caso precise descer"): the
+ * picture's size and, from its bottom, the height of the sign itself (the cutout the user chose); the rest is the
+ * collar, which runs up off the top of the screen. The menu lays the sign out like any other letreiro and lets the
+ * collar overflow (estadio.css .letreiro-alto, main.ts --sinal-ar/--alto-ar). Sizes of the approved file: only their
+ * ratios are used, the lite copy has the same shape.
+ */
+export const LETREIRO_ALTO:Readonly<Record<string,Readonly<{w:number,h:number,sinal:number}>>>=Object.freeze({
+  // letreiro-gato-na-cena: 915 of the 2195 rows of the cutout are variation 3's own picture (juntar-ext.py).
+  'gato-nada-pra-comer':Object.freeze({w:2436,h:4163,sinal:Math.round(4163*915/2195)}),
 });
 /**
  * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them
@@ -50,4 +67,5 @@ export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
  */
 export const ARTE_NOVA:ReadonlySet<string>=new Set<string>([]);
 export const letreiroOf=(id:string):string|undefined=>LETREIROS[id];
+export const letreiroAltoOf=(id:string)=>LETREIRO_ALTO[id];
 export const hasNewArt=(id:string)=>ARTE_NOVA.has(id);

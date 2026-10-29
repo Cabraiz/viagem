@@ -1,0 +1,695 @@
+{
+ "640x296-1-faixa": {
+  "hero": {
+   "x": 291.95906761080437,
+   "y": 128.960446469103,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    48,
+    140,
+    50,
+    50
+   ]
+  ],
+  ".rh-missao": [],
+  ".rh-missao-grande": [
+   [
+    "Volte ao Uno!",
+    196,
+    64,
+    108,
+    34
+   ]
+  ],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    158,
+    64,
+    184,
+    40
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 82 s. 5",
+    138,
+    8,
+    428,
+    34
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    18,
+    165,
+    115,
+    115
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    509,
+    166,
+    113,
+    113
+   ]
+  ]
+ },
+ "640x296-2-linha": {
+  "hero": {
+   "x": 291.95906761080437,
+   "y": 128.960446469103,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    48,
+    140,
+    50,
+    50
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    202,
+    64,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    158,
+    64,
+    184,
+    33
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 77 s. 5",
+    138,
+    8,
+    428,
+    34
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    18,
+    165,
+    115,
+    115
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    509,
+    166,
+    113,
+    113
+   ]
+  ]
+ },
+ "640x296-3-fala": {
+  "hero": {
+   "x": 291.95906761080437,
+   "y": 128.960446469103,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    48,
+    140,
+    50,
+    50
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    202,
+    64,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    158,
+    64,
+    184,
+    33
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 62 s. 5",
+    138,
+    8,
+    428,
+    34
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    18,
+    165,
+    115,
+    115
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    509,
+    166,
+    113,
+    113
+   ]
+  ]
+ },
+ "1335x620-1-faixa": {
+  "hero": {
+   "x": 625.4401362570562,
+   "y": 279.80692541454005,
+   "width": 73.38634171109418,
+   "height": 73.38634171109415
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    638,
+    198,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [],
+  ".rh-missao-grande": [
+   [
+    "Volte ao Uno!",
+    614,
+    264,
+    108,
+    34
+   ]
+  ],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    198,
+    1303,
+    106
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 78 s. 5",
+    200,
+    8,
+    1061,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    186,
+    186
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    462,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    1198,
+    472,
+    113,
+    113
+   ]
+  ]
+ },
+ "1335x620-2-linha": {
+  "hero": {
+   "x": 625.4401362570562,
+   "y": 279.80692541454005,
+   "width": 73.38634171109418,
+   "height": 73.38634171109415
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    638,
+    198,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    620,
+    264,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    198,
+    1303,
+    99
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 73 s. 5",
+    200,
+    8,
+    1061,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    186,
+    186
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    462,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    1198,
+    472,
+    113,
+    113
+   ]
+  ]
+ },
+ "1335x620-3-fala": {
+  "hero": {
+   "x": 625.4401362570562,
+   "y": 279.80692541454005,
+   "width": 73.38634171109418,
+   "height": 73.38634171109415
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    638,
+    198,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    620,
+    264,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    198,
+    1303,
+    99
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 58 s. 5",
+    200,
+    8,
+    1061,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    186,
+    186
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    462,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    1198,
+    472,
+    113,
+    113
+   ]
+  ]
+ },
+ "390x844-1-faixa": {
+  "hero": {
+   "x": 167.40034157055862,
+   "y": 402.85610739256276,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    165,
+    136,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [],
+  ".rh-missao-grande": [
+   [
+    "Volte ao Uno!",
+    141,
+    202,
+    108,
+    34
+   ]
+  ],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    136,
+    358,
+    106
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 80 s. 5",
+    138,
+    8,
+    178,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    686,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    253,
+    696,
+    113,
+    113
+   ]
+  ]
+ },
+ "390x844-2-linha": {
+  "hero": {
+   "x": 167.40034157055862,
+   "y": 402.85610739256276,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    165,
+    136,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    147,
+    202,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    136,
+    358,
+    99
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 75 s. 5",
+    138,
+    8,
+    178,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    686,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    253,
+    696,
+    113,
+    113
+   ]
+  ]
+ },
+ "390x844-3-fala": {
+  "hero": {
+   "x": 167.40034157055862,
+   "y": 402.85610739256276,
+   "width": 49.63696369636965,
+   "height": 49.63696369636954
+  },
+  "hud": "fone",
+  ".rh-minerva": [
+   [
+    "",
+    165,
+    136,
+    60,
+    60
+   ]
+  ],
+  ".rh-missao": [
+   [
+    "Volte ao Uno!",
+    147,
+    202,
+    95,
+    27
+   ]
+  ],
+  ".rh-missao-grande": [],
+  ".rh-medo": [],
+  ".rh-objetivo": [],
+  ".rh-coach": [],
+  ".rh-chaveiro-motivo": [],
+  ".rh-stack": [
+   [
+    "Volte ao Uno!Volte ao Uno!FEITOV",
+    16,
+    136,
+    358,
+    99
+   ]
+  ],
+  ".rh-top": [
+   [
+    "Onda 1Exploração: faltam 60 s. 5",
+    138,
+    8,
+    178,
+    69
+   ]
+  ],
+  ".rh-minimap": [
+   [
+    "",
+    8,
+    8,
+    124,
+    124
+   ]
+  ],
+  ".explore-stick": [
+   [
+    "",
+    24,
+    686,
+    134,
+    134
+   ]
+  ],
+  "#coop-attack": [
+   [
+    "Sem arma",
+    253,
+    696,
+    113,
+    113
+   ]
+  ]
+ }
+}

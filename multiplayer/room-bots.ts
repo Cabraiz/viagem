@@ -8,8 +8,9 @@
  * Deterministic: classes (and so names) come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
-import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
+import {attackReach,botSites,botSpotOrder,decide,holdsObra,freeCity,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {CAR_RADIUS} from '../src/contract/index.ts';
+import {cidaPick,pixAmount} from './bot-economia.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {getClass,railName} from '../src/rules/index.ts';
@@ -53,7 +54,7 @@ export const KIT_RETRY_TICKS=5*HZ;
 /**
  * NEW-20261014-ORQ-carteira-e-pix: a bot that is not the forger sends what its wallet holds above its part of the
  * chaveiro's bill (bot-brain granaReserve) to the forger by PIX (Simulation.pix: validated and evented like a
- * person's), at most once every BOT_PIX_GAP ticks and only BOT_PIX_MIN R$ or more (a toast for every R$ 1 kill would
+ * person's), up to what the forger lacks for its next purchase (bot-economia.ts pixAmount; pix-sem-acumular), at most once every BOT_PIX_GAP ticks and only BOT_PIX_MIN R$ or more (a toast for every R$ 1 kill would
  * be noise). Bots never send a PIX to a person (v1); people may send to bots, who spend it by their rule.
  */
 export const BOT_PIX_GAP=5*HZ,BOT_PIX_MIN=5;
@@ -128,6 +129,8 @@ export class RoomBots {
   built=0;
   /** PIX from a bot to the forger that went through (lab, bench and tests): count and R$. */
   pixes=0;pixed=0;
+  /** Dona Cida's sweets the bots bought (bench and tests). */
+  cidas=0;
   /** Bench --no-towers (scripts/bench-city-run.ts): the builder never gets the tower view, so no bot builds. */
   towersOff=false;
   /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
@@ -157,14 +160,21 @@ export class RoomBots {
     this.nests=sim.mode==='ninhos';
     const minds=[...this.minds.values()].sort((a,b)=>a.slot-b.slot);
     let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,builder:string|null|undefined,towers:TowerBrainView|undefined;
-    let people:boolean|undefined,bank:string|null|undefined;
+    let people:boolean|undefined,bank:string|null|undefined,partner:{bot:string;at:{x:number;y:number}}|null|undefined;
     for(const mind of minds){
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
       if(!p)continue;
       // D-052 (obra-livre-ajustes): a bot on its own free obra holds still until it is done (towers/system.ts holdsObra,
       // the sim's stepCap 0); steering then only reads as stuck (and fires unstick), so it stands and waits.
-      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){this.modes.set(mind.id,'build');sim.setBotInput(mind.id,{x:0,y:0});continue;}
+      // Card bots-build-parado: in the manual combat it still swings at a critter in reach (bot-brain attackReach), like
+      // a person on their obra; it stood idle there (6p: 46 s a match of the builder's 'build parado').
+      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){
+        this.modes.set(mind.id,'build');
+        let attack:boolean|undefined;
+        if(sim.combat==='manual'){view??=sim.botView();const me=view.players.find(q=>q.id===mind.id);attack=!!me&&attackReach(me,{x:p.x,y:p.y},view.enemies);}
+        sim.setBotInput(mind.id,{x:0,y:0},undefined,attack);continue;
+      }
       view??=sim.botView();
       people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
       if(forger===undefined)forger=this.forger(view,minds,people);
@@ -195,18 +205,23 @@ export class RoomBots {
         const at=q as typeof q&{x:number;y:number},d=Math.hypot(at.x-p.x,at.y-p.y);
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
+      // Card bot-parceiro-e-bichos-parados: one bot keeps the loneliest person company (bot-brain BrainInput.partner).
+      if(partner===undefined)partner=this.nests?this.partner(view,minds,sim,forger,builder):null;
       // Each bot sees its own wallet as the camp's Grana (NEW-20261014-ORQ-carteira-e-pix), like a phone sees its own.
       const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
-      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         // Bancos: so are the ATMs (bankTask), in both city modes.
         ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
         // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
         ...(sim.combat?{combat:sim.combat}:{}),
         ...(sim.mode==='ninhos'?{nests:true as const}:{}),
+        ...(partner?.bot===mind.id?{partner:partner.at}:{}),
+        // bots-20-mais-lentos: the bench's person seat times its trips at a person's walk (the room has none).
+        ...(sim.personPace.has(mind.id)?{walkScale:1}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
-      sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
+      sim.setBotInput(mind.id,d.direction,d.cast,d.attack,d.work,d.target);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       // D-051 manual combat: the bot's inventory (an autopilot leaves the person's alone, like their offers).
       if(d.inventory&&this.chooses){
@@ -227,18 +242,44 @@ export class RoomBots {
         if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);
-      // The surplus to the forger (BOT_PIX_GAP, BOT_PIX_MIN): bot to bot only.
+      // The surplus to the forger (BOT_PIX_GAP, BOT_PIX_MIN): bot to bot only, up to its next purchase (bot-economia.ts).
       if(bank===undefined)bank=this.forger(view,minds,people,Infinity,true);
       if(bank&&bank!==mind.id&&sim.bots.has(bank)&&(mind.pixTick===undefined||tick-mind.pixTick>=BOT_PIX_GAP)){
-        const amount=Math.min(PIX_MAX,sim.granaOf(mind.id)-granaReserve(view));
+        const amount=pixAmount(view,sim.granaOf(mind.id),sim.granaOf(bank));
         if(amount>=BOT_PIX_MIN){
           const result=sim.pix(mind.id,bank,amount,`bot-${mind.id}-${++mind.req}`);
           if(result.ok){mind.pixTick=tick;this.pixes++;this.pixed+=amount;}
         }
       }
+      // Dona Cida's sweets with what the bot keeps above its part (bot-economia.ts cidaPick).
+      const cida=cidaPick(view,mind.id,sim.granaOf(mind.id),bank===mind.id);
+      if(cida&&sim.buyCida(mind.id,cida,`bot-${mind.id}-${++mind.req}`).ok)this.cidas++;
     }
     if(view){this.thinkMs+=performance.now()-started;this.thinks++;}
     return sos;
+  }
+  /**
+   * Mode 'ninhos' (card bot-parceiro-e-bichos-parados): the bot that keeps a person company, and where that person is.
+   * The person: the standing one (the bench's person seat is one, Simulation.personPace) farthest from any other standing
+   * hero but the partner itself; the partner: the highest-slot standing roamer (odd slot), else bot, not the forger or the
+   * builder while another stands (no state of its own: the same pick from the same view). Null with no person or no bot for it (1p: none).
+   */
+  private partner(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],sim:Simulation,forger:string|null,builder:string|null){
+    const up=(q:(typeof view.players)[number])=>q.online&&!q.spectator&&!q.downed&&!q.eliminated&&q.hp>0;
+    const pos=(q:(typeof view.players)[number])=>q as typeof q&{x:number;y:number};
+    const people=view.players.filter(q=>up(q)&&(!sim.bots.has(q.id)||sim.personPace.has(q.id)));
+    const bots=minds.filter(m=>!sim.personPace.has(m.id)&&view.players.some(q=>q.id===m.id&&up(q)));
+    if(!people.length||!bots.length)return null;
+    // A roamer (odd slot: bot-brain's guards, even, keep the car), else any.
+    const free=bots.filter(m=>m.id!==forger&&m.id!==builder),pool=free.length?free:bots,roam=pool.filter(m=>m.slot%2===1);
+    const bot=(roam.length?roam:pool).at(-1)!.id;
+    let lonely:{x:number;y:number}|undefined,far=-1;
+    for(const q of people){
+      const at=pos(q);let d=Infinity;
+      for(const o of view.players)if(o.id!==q.id&&o.id!==bot&&up(o)){const b=pos(o);d=Math.min(d,Math.hypot(b.x-at.x,b.y-at.y));}
+      if(d>far){far=d;lonely={x:at.x,y:at.y};}
+    }
+    return {bot,at:lonely!};
   }
   /** City: updates and returns `mind.people` from the people in `view` (a move beyond ESCORT_IDLE_REACH restarts a track). */
   private track(mind:BotMind,view:ReturnType<Simulation['botView']>,sim:Simulation,tick:number){

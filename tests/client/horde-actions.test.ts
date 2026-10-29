@@ -4,7 +4,7 @@ import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/mani
 import {eventAction,projectileAction,actionDuration,onceColumn,deathAlpha,DEATH_FADE_MS,TELEGRAPH_ACTIONS,
   type ActionActor,type ActionCue,type ActionWorld} from '../../src/client/art/horde-actions.ts';
 import {ENEMY_ANIM_RATE,ENEMY_LOOP_RATE,applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
-  playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
+  playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,SWING_FILL,SWING_FILL_MAX_MS,SWING_RESTART,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
 import {FX,projectileTexture,type EnemyKind} from '../../src/client/render/keys.ts';
 import {Ring} from '../../src/client/render/pool.ts';
 import type {SimEvent,TelegraphKind} from '../../src/contract/index.ts';
@@ -115,7 +115,7 @@ test('an action plays once at its fps, then the loop comes back; hit never inter
   assert.ok(startAction(s,bebado,'attack',1900),'an action replaces a hit');assert.equal(s.action,'attack');
   // An enemy in an aura is hit every tick: at most one hit per hitGap (≥ 3 hit animations, ≥ 1500 ms), so it walks in between.
   const gap=hitGap(actionDuration(3,12*ENEMY_ANIM_RATE));assert.equal(gap,HIT_GAP_MIN_MS);assert.equal(hitGap(800),2400);
-  assert.equal(startAction(s,bebado,'hit',2700),false);assert.equal(currentAction(s,2700),undefined,'walking');
+  assert.equal(startAction(s,bebado,'hit',2900),false);assert.equal(currentAction(s,2900),undefined,'walking (the swing at 1900 came 900 ms after the last: SWING_FILL stretched it to 972 ms)');
   assert.equal(startAction(s,bebado,'hit',1800+gap-1),false);
   assert.ok(startAction(s,bebado,'hit',1800+gap));
   // Frames: one pass, the last frame holds (never wraps to 0 while the action lasts).
@@ -124,6 +124,25 @@ test('an action plays once at its fps, then the loop comes back; hit never inter
   assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(5000),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+5});
   assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,slowLoop(1000)),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
 });
+test('a swing that comes back fills the gap: no idle flash between two contact hits (inimigos-animacao-auditoria)',()=>{
+  const s:ActionState={at:0,end:0},drawn=actionDuration(6,12*ENEMY_ANIM_RATE),near=(a:number,b:number,m:string)=>assert.ok(Math.abs(a-b)<1e-6,`${m}: ${a} vs ${b}`);
+  assert.ok(startAction(s,bebado,'attack',1000));near(s.end-s.at,drawn,'a first swing keeps its own length');assert.equal(s.pace,1);
+  // The sim hits every second (contactCooldown 1 s): the second swing plays over that second and a bit, slower.
+  assert.ok(startAction(s,bebado,'attack',2000));near(s.end-s.at,1000*SWING_FILL,'fills the second');assert.ok(Math.abs(s.pace!-drawn/(1000*SWING_FILL))<1e-9);
+  assert.equal(currentAction(s,3040),'attack','still swinging when the next hit is a bit late');
+  // The network brings the next hit a bit early: past SWING_RESTART of the swing it restarts; before, it does not.
+  assert.equal(startAction(s,bebado,'attack',2000+1000*SWING_FILL*SWING_RESTART-5),false);
+  assert.ok(startAction(s,bebado,'attack',2950),'restarted near its end');
+  // Its frames: the column follows the drawn time, so the stretched swing reaches its last frame only at its end.
+  assert.equal(onceColumn((s.end-s.at-1)*s.pace!,6,12*ENEMY_ANIM_RATE),5);assert.equal(onceColumn(((s.end-s.at)/2)*s.pace!,6,12*ENEMY_ANIM_RATE),3);
+  // A lone swing after a pause (> SWING_FILL_MAX_MS) and a faster-than-drawn repeat keep the drawn length.
+  assert.ok(startAction(s,bebado,'attack',2950+SWING_FILL_MAX_MS+1));near(s.end-s.at,drawn,'lone swing');
+  const q:ActionState={at:0,end:0};assert.ok(startAction(q,bebado,'attack',0));assert.ok(startAction(q,bebado,'attack',drawn*.85));assert.ok(q.end-q.at>=drawn-1e-6,'never faster than drawn');
+  // A hit in between does not count as a swing.
+  const h:ActionState={at:0,end:0};assert.ok(startAction(h,bebado,'attack',0));assert.ok(startAction(h,bebado,'hit',900));assert.ok(startAction(h,bebado,'attack',1300));
+  near(h.end-h.at,1300*SWING_FILL,'the gap is from the last swing, not the hit');
+});
+
 
 test('phase 2: the still chefe idles with phase2-idle; walking, phase 1 or no such sheet keep today\'s choice',()=>{
   assert.equal(loopAnim(chefe,false,false,2),'phase2-idle');assert.equal(loopAnim(chefe,false,false,3),'phase2-idle');
@@ -244,12 +263,12 @@ test('death: plays once on the pooled death actor, holds, fades and is released;
 // ---------------------------------------------------------------- 4. projectiles
 test('projectile keys: own art → art:proj:<id> (animated), tiro-aliado → today\'s friendly key, none → today\'s key',()=>{
   // Empty manifest: no look at all, so layers.ts keeps keys.ts projectileTexture exactly.
-  for(const source of ['chinelo','boleto','cafe-evo','audio'])assert.equal(projectileLook(false,source),undefined,source);
+  for(const source of ['pombo','boleto','cafe-evo','audio'])assert.equal(projectileLook(false,source),undefined,source);
   assert.equal(projectileLook(true,'boleto-juros'),undefined);
-  assert.equal(projectileTexture(false,'chinelo'),FX.projFriendly);assert.equal(projectileTexture(true,'boleto-juros'),FX.projBoleto);
-  useArt({chinelo:strip('chinelo.webp',8),'boleto-juros':strip('boleto-juros.webp',8,48),'garrafa-molotov':strip('garrafa-molotov.webp',8),'tiro-aliado':strip('tiro-aliado.webp',4,32)});
-  assert.deepEqual({...projectileLook(false,'chinelo')},{key:'art:proj:chinelo',frames:8,fps:8});
-  assert.equal(projectileLook(false,'chinelo'),projectileLook(false,'chinelo'),'cached: no allocation per push');
+  assert.equal(projectileTexture(false,'pombo'),FX.projFriendly);assert.equal(projectileTexture(true,'boleto-juros'),FX.projBoleto);
+  useArt({pombo:strip('pombo.webp',8),'boleto-juros':strip('boleto-juros.webp',8,48),'garrafa-molotov':strip('garrafa-molotov.webp',8),'tiro-aliado':strip('tiro-aliado.webp',4,32)});
+  assert.deepEqual({...projectileLook(false,'pombo')},{key:'art:proj:pombo',frames:8,fps:8});
+  assert.equal(projectileLook(false,'pombo'),projectileLook(false,'pombo'),'cached: no allocation per push');
   assert.deepEqual({...projectileLook(false,'cafe')},{key:FX.projFriendly,frames:4,fps:8},'no own art: the shared tiro-aliado');
   assert.equal(projectileLook(true,'boleto-juros')?.key,'art:proj:boleto-juros');
   assert.equal(projectileLook(true,'molotov')?.key,'art:proj:garrafa-molotov','alias');
@@ -260,13 +279,13 @@ test('projectile keys: own art → art:proj:<id> (animated), tiro-aliado → tod
   // Frames are played only when the texture under the key has them (frameTotal counts __BASE): a failed load leaves
   // today's procedural tiro-aliado (one frame) under FX.projFriendly, which must never be stepped.
   const tex=(total:Record<string,number>)=>({exists:(k:string)=>k in total,get:(k:string)=>({frameTotal:total[k]})});
-  const chinelo=projectileLook(false,'chinelo')!,friendly=projectileLook(false,'cafe')!;
-  assert.equal(projectileFrames(tex({'art:proj:chinelo':9}),chinelo),8);
-  assert.equal(projectileFrames(tex({'art:proj:chinelo':5}),chinelo),4,'fewer frames in the texture: only those');
+  const pombo=projectileLook(false,'pombo')!,friendly=projectileLook(false,'cafe')!;
+  assert.equal(projectileFrames(tex({'art:proj:pombo':9}),pombo),8);
+  assert.equal(projectileFrames(tex({'art:proj:pombo':5}),pombo),4,'fewer frames in the texture: only those');
   assert.equal(projectileFrames(tex({[FX.projFriendly]:1}),friendly),1,'procedural texture: still');
-  assert.equal(projectileFrames(tex({}),chinelo),1);
+  assert.equal(projectileFrames(tex({}),pombo),1);
   const loads=new Map(artLoads().map(l=>[l.key,l]));
-  assert.equal(loads.get('art:proj:chinelo')?.url,'/art/projectiles/chinelo.webp');assert.deepEqual(loads.get('art:proj:chinelo')?.cell,[64,64]);
+  assert.equal(loads.get('art:proj:pombo')?.url,'/art/projectiles/pombo.webp');assert.deepEqual(loads.get('art:proj:pombo')?.cell,[64,64]);
   assert.equal(loads.get('art:proj:boleto-juros')?.url,'/art/projectiles/boleto-juros.webp');
   assert.ok(loads.has('art:proj:garrafa-molotov'));assert.ok(!loads.has('art:proj:cafe'));assert.ok(!loads.has('art:proj:tiro-aliado'));
   assert.equal(loads.get(FX.projFriendly)?.url,'/art/projectiles/tiro-aliado.webp');assert.ok(!loads.has(FX.projBoleto));

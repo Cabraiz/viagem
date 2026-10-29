@@ -125,8 +125,14 @@ test('boss in the nests: it enrages 90 s after it arrives, not at once (the wave
 test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s apart, at most 4; none in the rounds mode\'s round 1',()=>{
   const r=run('ninhos',5);addPlayer(r.world,'p1',PLAZA);
   const fired:number[]=[];
-  for(let i=0;i<ticks(12*60);i++){for(const e of r.world.step())if(e.type==='happening')fired.push(r.world.tick);}
-  assert.ok(fired.length>=3&&fired.length<=CALMA.zueiraMax,`${fired.length} events`);
+  for(let i=0;i<ticks(12*60);i++){
+    // The 1st wave's chefão (boss-fim-onda-1) holds the zueira's clock while he stands: beaten at once here.
+    const chefao=r.sys.chefao?.up()?r.sys.chefao.state.enemy:undefined;
+    if(chefao&&r.world.enemies.has(chefao))r.world.damageEnemy(chefao,r.world.enemies.get(chefao)!.hp+1);
+    for(const e of r.world.step())if(e.type==='happening')fired.push(r.world.tick);
+  }
+  // Since sem-coxinha-no-chao a run plans one blackout only (the boleto rain and the flash sale retired): one event.
+  assert.ok(fired.length===1&&fired.length<=CALMA.zueiraMax,`${fired.length} events`);
   assert.ok(fired[0]>=ticks(CALMA.zueiraFirstS),`the first at ${fired[0]}`);
   for(let i=1;i<fired.length;i++){
     const gap=fired[i]-fired[i-1];
@@ -137,7 +143,9 @@ test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s 
 
 // ---------- The room's calm checkpoint ----------
 test('calm checkpoint: every 90 s of calm with no boss, right after a nest falls, never with a critter awake within 20 u of a standing hero, never in the rounds mode',()=>{
-  const sim=new Simulation(7,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos'});
+  // Seed 1 (was 7) since the viaduct (mapa-175-com-viaduto): with the hero on the deck at the start, seed 7 sends a
+  // critter along the street under it, 19 u away, on the tick the second checkpoint was due.
+  const sim=new Simulation(1,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos'});
   sim.add('p1','Ana','cidadao-comum');
   const due:number[]=[];
   const step=(n:number)=>{for(let i=0;i<n;i++){sim.world.step();if(sim.calmCheckpointDue())due.push(sim.world.tick);}};

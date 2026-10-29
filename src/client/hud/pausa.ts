@@ -4,7 +4,8 @@
  * The room says so in the run state (`RunState.pause`, resent at each whole second of leftMs and when `waiting` changes);
  * explore.ts hands it to Hud.setPause, which keeps it in ctx.pause (E6's channel). This module is the HUD's visual layer:
  * - a dim layer over the world (under the top band, the offer and every window; it never takes a tap);
- * - the title "Escolham! 9 s" and the deadline bar, right above the offer's cards (or under the top band once this phone
+ * - the title "Escolham! 9 s" ("+2 escolhas! 9 s" when this phone has two cards to pick in the one pause: two
+ *   level-ups on one tick, or levels queued during the gap, open ONE pause, card levelup-espalhado) and the deadline bar, right above the offer's cards (or under the top band once this phone
  *   picked and its offer closed), and who the team still waits for ("Esperando: Tia e Zé", "Falta você!");
  * - the marks on the team strip (team.ts): a check on who picked, a "thinking" ficha on who did not yet.
  * The offer itself (opening by itself during the pause, with no clock of its own) is offer.ts, of Executor-6.
@@ -15,7 +16,8 @@ import type {PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../../rules/index.ts';
 import {crosses,type Rect} from './zones.ts';
-import {viewportSize} from './box-cache.ts';
+import {afterPaint,viewportSize,type Schedule} from './box-cache.ts';
+import {putTextData} from './dom-put.ts';
 
 /**
  * The pause as the room sends it (D-050, src/contract/run.ts RunPause): leftMs of the deadline, the deadline's whole
@@ -32,6 +34,11 @@ export const PAUSE_URGENT_MS=3000;
 export const PAUSE_TICK_MS=200;
 /** Names spelled out in "Esperando: …"; past them, "e mais N". */
 export const PAUSE_NAMES_MAX=3;
+/**
+ * The title's place is checked again this often while a pause lasts (a window or a row of the slot resizing), besides
+ * whenever what decides it changes. The check reads the layout after the paint (box-cache afterPaint), never in the tick.
+ */
+export const PAUSE_PLACE_MS=1000;
 /** Gap (CSS px) between the title box and the offer's cards, and the screen's edges. */
 export const PAUSE_GAP=8;
 
@@ -46,7 +53,10 @@ export interface PauseView {
   /** What is left of the deadline bar, 0..1. */
   fraction:number;
   urgent:boolean;
-  /** "Escolham! 9 s"; "Voltando em 9 s" once nobody is missing (no "Escolham!" over "Todo mundo escolheu!"). */
+  /**
+   * "Escolham! 9 s"; "+2 escolhas! 9 s" while this phone has 2+ cards left in this pause; "Voltando em 9 s" once nobody
+   * is missing (no "Escolham!" over "Todo mundo escolheu!").
+   */
   title:string;
   /** Who the team waits for ("Esperando: você, Tia e Zé", "Falta você!", "Você já escolheu. Esperando: Tia"). */
   line:string;
@@ -57,6 +67,8 @@ export interface PauseView {
   /** The waiting ids the roster knows (unknown ones are dropped). */
   waiting:string[];
   level:number;
+  /** Cards this phone still has to pick in this pause (its pending offers; 0 once it picked them all). */
+  cards:number;
 }
 
 /** The leftMs counted down from the message's arrival (`receivedAtMs`) to `nowMs`, clamped to 0..totalMs. */
@@ -80,8 +92,9 @@ const picks=(m:PauseMember|undefined)=>!!m&&!m.spectator&&!m.eliminated;
  * Pure view of the pause for this phone: the title, the bar, who is still missing. `roster` gives the names (railName,
  * the strip's short name); waiting ids it does not know are ignored; this phone's player is "você" and comes first.
  * `receivedAtMs` is when that pause arrived (pauseLeftMs); undefined pause → undefined (no overlay).
+ * `cards`: this phone's pending offers (RunView.offers.length); counted only while the room waits for it.
  */
-export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[],localId:string,nowMs:number,receivedAtMs=nowMs):PauseView|undefined{
+export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[],localId:string,nowMs:number,receivedAtMs=nowMs,cards=1):PauseView|undefined{
   if(!pause)return undefined;
   const leftMs=pauseLeftMs(pause,nowMs,receivedAtMs);
   const seconds=Math.ceil(leftMs/1000);
@@ -99,7 +112,9 @@ export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[]
   else if(localWaiting)line=`Esperando: ${namesList(['você',...names])}`;
   else if(picks(byId.get(localId)))line=`Você já escolheu. Esperando: ${namesList(names)}`;
   else line=`Esperando: ${namesList(names)}`;
-  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title:waiting.length?`Escolham! ${seconds} s`:`Voltando em ${seconds} s`,line,localWaiting,onlyLocal,waiting,level:pause.level};
+  const mine=localWaiting?Math.max(1,Math.floor(cards)||1):0;
+  const title=!waiting.length?`Voltando em ${seconds} s`:mine>1?`+${mine} escolhas! ${seconds} s`:`Escolham! ${seconds} s`;
+  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title,line,localWaiting,onlyLocal,waiting,level:pause.level,cards:mine};
 }
 
 /** A teammate's mark on the strip while a pause lasts. */
@@ -122,11 +137,12 @@ export function pickMarks(pause:RunPause|undefined,roster:readonly PauseMember[]
 
 /**
  * What the screen reader hears (aria-live polite), never every second: the pause starting ("Subiu pro nível 5! Escolham
- * a carta: 12 segundos.") and the moment only this phone is missing ("Falta você!"). Undefined: nothing new to say.
+ * a carta: 12 segundos."; "… Escolham 2 cartas: 16 segundos." with two to pick) and the moment only this phone is
+ * missing ("Falta você!"). Undefined: nothing new to say.
  */
 export function pauseAnnouncement(before:PauseView|undefined,now:PauseView|undefined):string|undefined{
   if(!now)return undefined;
-  if(!before)return `Subiu pro nível ${now.level}! Escolham a carta: ${now.seconds} segundos.`;
+  if(!before)return `Subiu pro nível ${now.level}! Escolham ${now.cards>1?`${now.cards} cartas`:'a carta'}: ${now.seconds} segundos.`;
   if(now.onlyLocal&&!before.onlyLocal)return 'Falta você!';
   return undefined;
 }
@@ -158,6 +174,18 @@ export function pauseSpot(input:{viewport:{width:number;height:number};box:{widt
   const spot=places.find(fits)??{x:first.x,y:Math.max(minY,first.y)};
   return {x:Math.round(spot.x),y:Math.round(spot.y)};
 }
+/**
+ * Over the px39 offer (offer-centro.css: a veil over the whole screen, z 30) the title box rides on top of it (z 31,
+ * `data-na-oferta`): centred over the offer's title plaque (`head`) and PAUSE_GAP above it; the offer keeps that room
+ * free at its top in a pause (--pausa-reserva). With no room above the plaque, the screen's top edge (never off screen).
+ * Card oferta-pausa-hud-consertos (auditoria-ui-menus-28-10 item 1: the clock and who is missing were under the veil).
+ */
+export function pauseOverOffer(input:{viewport:{width:number;height:number};box:{width:number;height:number};head:Rect;top?:number}):{x:number;y:number}{
+  const {viewport,box,head,top=0}=input,g=PAUSE_GAP;
+  const x=Math.max(g,Math.min(viewport.width-box.width-g,head.x+head.width/2-box.width/2));
+  const y=Math.max(top+g/2,head.y-g-box.height);
+  return {x:Math.round(x),y:Math.round(y)};
+}
 /** The title's box at a spot crosses the offer (the layout test, and a guard for the sandbox). */
 export const spotCrosses=(spot:{x:number;y:number},box:{width:number;height:number},other:Rect)=>crosses({...spot,...box},other);
 
@@ -174,7 +202,7 @@ export class PauseClock {
   }
   get pause(){return this.sample;}
   get receivedAt(){return this.at;}
-  view(roster:readonly PauseMember[],localId:string,nowMs:number){return pauseView(this.sample,roster,localId,nowMs,this.at);}
+  view(roster:readonly PauseMember[],localId:string,nowMs:number,cards=1){return pauseView(this.sample,roster,localId,nowMs,this.at,cards);}
 }
 
 const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:string,parent?:HTMLElement)=>{
@@ -185,6 +213,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:st
 export interface PausePartHost {root:HTMLElement;offer:HTMLElement;top:HTMLElement;
   /** The clock (performance.now by default; the sandbox's frozen scenes stop it). */
   now?():number;
+  /** When the title's place is measured again (afterPaint by default; tests run it at once). */
+  schedule?:Schedule;
 }
 
 /** The roster of the pause from the view's players, in the strip's order (teamOrder: this phone first, then by id). */
@@ -207,16 +237,17 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const line=el(doc,'span','rh-pausa-linha',box);
   const live=el(doc,'span','rh-sr');live.setAttribute('aria-live','polite');
   const clock=new PauseClock(),now=()=>host.now?.()??performance.now();
-  let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='';
-  let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',paints=0;
+  let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='',cards=1;
+  let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',placedAt=-Infinity,pending=false;
   const render=(view:PauseView|undefined)=>{
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
     // Over: everything hides, and the live region empties (no stale "Falta você!" for the virtual cursor).
-    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';placed='';bar='';secs=-1;live.textContent='';}last=undefined;return;}
+    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;delete box.dataset.naOferta;spot='';placed='';placedAt=-Infinity;bar='';secs=-1;live.textContent='';}last=undefined;return;}
     if(!shown){shown=true;dim.hidden=false;box.hidden=false;}
-    if(title.textContent!==view.title)title.textContent=view.title;
-    if(line.textContent!==view.line)line.textContent=view.line;
+    // The text node changes in place (dom-put putTextData): a new node each second made Chrome check the page's :has()
+    // rules up to <html> and restyle the whole document, which the place's read then paid for (BUG-20261025-ORQ-levelup-pausa-mede-1s).
+    putTextData(title,view.title);putTextData(line,view.line);
     // Laranja Cone with a pulse at ≤ 3 s, never by colour alone (the seconds say it too).
     if(('urgente' in box.dataset)!==view.urgent){if(view.urgent)box.dataset.urgente='';else delete box.dataset.urgente;}
     const scale=`scaleX(${view.fraction.toFixed(3)})`;
@@ -227,18 +258,35 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   /**
    * Above the offer window (or under the top band once it closed), clear of the minimap and of the announcement slot's
    * rows (pauseSpot). Measured only when what decides it may have changed (the box's text, the window shown or not, the
-   * screen) and once a second (a window or a row resizing), never on every paint.
+   * screen) and every PAUSE_PLACE_MS (a window or a row resizing), never on every paint; and, but for the pause's first
+   * place (the box must not show a frame at the corner), after the paint: read in the tick, right after the HUD wrote,
+   * the boxes made the browser recalculate style and layout there (50–130 ms on a 4× phone, card levelup-pausa-mede-1s).
    */
   const place=(view:PauseView)=>{
-    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${screen.width}x${screen.height}`;
-    const due=++paints%5===0;// once a second at PAUSE_TICK_MS
-    if(key===placed&&!due)return;
-    placed=key;
+    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
+    const t=now();
+    if(key===placed&&Math.abs(t-placedAt)<PAUSE_PLACE_MS)return;
+    placed=key;placedAt=t;
+    if(!spot){measure();return;}
+    if(pending)return;
+    pending=true;(host.schedule??afterPaint)(()=>{pending=false;if(shown&&!destroyed)measure();});
+  };
+  const measure=()=>{
+    const screen=viewportSize();
     const rect=(node:Element|null)=>{if(!node||(node as HTMLElement).hidden)return undefined;const r=node.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
+    const offer=rect(host.offer),head=offer&&host.offer.classList.contains('rh-ofc')?rect(host.offer.querySelector('.rh-offer-head')):undefined;
+    // The px39 offer covers the screen: the box goes over it, above the title plaque (pauseOverOffer).
+    const over=!!head;
+    if(over!==('naOferta' in box.dataset)){if(over)box.dataset.naOferta='';else delete box.dataset.naOferta;}
+    if(head){
+      const at=pauseOverOffer({viewport:screen,box:{width:box.offsetWidth,height:box.offsetHeight},head});
+      const where=`o${at.x},${at.y}`;if(where===spot)return;spot=where;
+      box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;return;
+    }
     const top=rect(host.top),minimap=rect(host.root.querySelector('.rh-minimap'));
     const rows=[...host.root.querySelectorAll('.rh-stack>:not([hidden])')].map(rect).filter((r):r is Rect=>!!r&&r.height>0);
     const at=pauseSpot({viewport:{width:screen.width,height:screen.height},box:{width:box.offsetWidth,height:box.offsetHeight},
-      top:top?top.y+top.height:0,offer:rect(host.offer),avoid:[...(minimap?[minimap]:[]),...rows]});
+      top:top?top.y+top.height:0,offer,avoid:[...(minimap?[minimap]:[]),...rows]});
     const where=`${at.x},${at.y}`;if(where===spot)return;spot=where;
     box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;
   };
@@ -246,13 +294,13 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const paint=()=>{
     const ended=host.root.classList.contains('rh-ended');
     if(ended)stop();
-    const view=ended?undefined:clock.view(roster,localId,now());
+    const view=ended?undefined:clock.view(roster,localId,now(),cards);
     render(view);
     if(view)place(view);
   };
   return {el:box,dim,live,update(view:RunView,ctx:HudContext){
     if(destroyed)return;
-    roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;
+    roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;cards=view.offers?.length??1;
     const pause=validPause(ctx.pause);
     clock.sync(pause,now());
     if(pause&&timer===undefined&&!host.root.classList.contains('rh-ended'))timer=setInterval(paint,PAUSE_TICK_MS);

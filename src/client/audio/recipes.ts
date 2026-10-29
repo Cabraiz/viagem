@@ -2,13 +2,13 @@
  * Procedural sound recipes (VGM-050). Pure data: no WebAudio here, so tests can inspect them.
  * Budget: each sound <= 1.6 s (golpe/gema <= 0.15 s), <= 8 tones, 30..8000 Hz, gain <= 0.6.
  */
-import { SOUND_IDS, type SoundId, type SoundRecipe, type Tone } from './types.ts';
+import { SOUND_IDS, type ProceduralId, type SoundRecipe, type Tone } from './types.ts';
 import type { IconName } from '../ui/icon.ts';
 import type { StickerName } from '../ui/sticker.ts';
 
 const LOW={type:'lowpass',freq:2600,q:0.7} as const;
 
-function recipe(id:SoundId,label:string,throttleMs:number,priority:number,tones:Tone[],vibrate?:number[]):SoundRecipe{
+function recipe(id:ProceduralId,label:string,throttleMs:number,priority:number,tones:Tone[],vibrate?:number[]):SoundRecipe{
   const out:SoundRecipe={id,label,throttleMs,priority,tones:Object.freeze(tones.map(t=>Object.freeze({...t})))};
   if(vibrate)out.vibrate=Object.freeze([...vibrate]);
   return Object.freeze(out);
@@ -21,7 +21,8 @@ function note(wave:Tone['wave'],freq:number,at:number,dur:number,gain:number,ext
 
 const list:SoundRecipe[]=[
   // Tiny thwack: noise click plus a fast pitch drop. Fires constantly, so it is short and quiet.
-  recipe('golpe','Golpe',45,0,[
+  // 70 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados): 300 critters made a one-note machine gun at 45 ms.
+  recipe('golpe','Golpe',70,0,[
     {wave:'noise',from:1800,to:900,at:0,dur:0.05,gain:0.3,attack:0.002,filter:{type:'bandpass',freq:1600,q:1.4}},
     {wave:'triangle',from:240,to:90,at:0,dur:0.09,gain:0.35,attack:0.002},
   ]),
@@ -52,6 +53,13 @@ const list:SoundRecipe[]=[
     {wave:'triangle',from:130,to:45,at:0.88,dur:0.3,gain:0.5,attack:0.004},
     {wave:'noise',from:300,to:120,at:0.88,dur:0.2,gain:0.3,attack:0.004,filter:{type:'lowpass',freq:420}},
   ],[60,40,140]),
+  // "Me salva" ping (NEW-20261028-ORQ-sons-da-partida-ligados): a short radio double blip, so the fall whistle plays
+  // once, at the fall, and the caído's call for help is a sound of its own.
+  recipe('sos','Me salva!',400,2,[
+    note('sine',1480,0,0.08,0.24,{attack:0.003}),
+    note('sine',1976,0.11,0.14,0.24,{attack:0.003}),
+    note('triangle',988,0.11,0.14,0.1,{attack:0.003}),
+  ],[30,40,30]),
   // Rising cheerful "tchanã".
   recipe('resgate','Resgate',200,2,[
     note('square',523,0,0.12,0.16,{filter:LOW}),
@@ -110,18 +118,46 @@ const list:SoundRecipe[]=[
     {wave:'sine',from:95,to:48,at:0,dur:0.18,gain:0.3,attack:0.002},
     {wave:'noise',from:900,to:500,at:0,dur:0.06,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:1400}},
   ],[15]),
+  // "Ufa" (NEW-20261029-ORQ-som-golpe-e-resgate): the rescued's breath of relief, a breathy fall under a soft sigh.
+  recipe('ufa','Ufa!',400,2,[
+    {wave:'noise',from:1400,to:500,at:0,dur:0.32,gain:0.18,attack:0.03,filter:{type:'bandpass',freq:900,q:0.9}},
+    {wave:'sine',from:440,to:300,at:0.02,dur:0.34,gain:0.2,attack:0.04,vibrato:{rate:5,depth:6}},
+  ]),
+  // "Tsc" (NEW-20261029-ORQ-som-golpe-e-resgate): the skill with no target, a low dry tut instead of a silent "sem alvo".
+  recipe('tsc','Sem alvo',300,1,[
+    {wave:'noise',from:700,to:400,at:0,dur:0.05,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:900}},
+    {wave:'triangle',from:180,to:120,at:0,dur:0.07,gain:0.3,attack:0.002},
+  ]),
 ];
 
-export const RECIPES:Readonly<Record<SoundId,SoundRecipe>>=Object.freeze(
+/**
+ * The gem's combo (card som-alarme-gema-e-chefe, auditoria som-impacto item 7): each gem (the kill's cédula) caught
+ * within GEM_COMBO_MS of the last plays a semitone above it, up to GEM_COMBO_MAX; after a pause it is back at the base.
+ */
+export const GEM_COMBO_MS=1000,GEM_COMBO_MAX=12;
+/** The gem's playback rate `step` semitones up (≤ 2, the engine's top). */
+export function gemRate(step:number){return 2**(Math.max(0,Math.min(GEM_COMBO_MAX,step))/12);}
+export class GemCombo {
+  private step=0;
+  private last=-Infinity;
+  /** The rate of a gem caught at `now` (ms). */
+  next(now:number){
+    this.step=now-this.last<=GEM_COMBO_MS?Math.min(GEM_COMBO_MAX,this.step+1):0;
+    this.last=now;
+    return gemRate(this.step);
+  }
+}
+
+export const RECIPES:Readonly<Record<ProceduralId,SoundRecipe>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>{
     const found=list.find(r=>r.id===id);
     if(!found)throw new Error(`missing recipe ${id}`);
     return [id,found];
-  })) as Record<SoundId,SoundRecipe>,
+  })) as Record<ProceduralId,SoundRecipe>,
 );
 
-export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
-  Object.fromEntries(SOUND_IDS.map(id=>[id,RECIPES[id].label])) as Record<SoundId,string>,
+export const SOUND_LABELS:Readonly<Record<ProceduralId,string>>=Object.freeze(
+  Object.fromEntries(SOUND_IDS.map(id=>[id,RECIPES[id].label])) as Record<ProceduralId,string>,
 );
 
 /**
@@ -129,9 +165,10 @@ export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
  * illustrated sticker (stickers.svg) or, for the stamp, its own word.
  */
 export type SoundArt={icon:IconName}|{sticker:StickerName}|{word:string};
-export const SOUND_ART:Readonly<Record<SoundId,SoundArt>>=Object.freeze({
+export const SOUND_ART:Readonly<Record<ProceduralId,SoundArt>>=Object.freeze({
   golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'podio-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
   boing:{sticker:'galo'},risada:{icon:'risada'},
-  carimbo:{word:'tum'},
+  carimbo:{word:'tum'},sos:{icon:'chamar'},
+  ufa:{word:'ufa'},tsc:{word:'tsc'},
 });

@@ -88,7 +88,8 @@ test('events reach the view once each, in order, also across a reconnection',()=
   const token=a.messages.find(m=>m.t==='welcome').token;room.disconnect(a,clock);
   const again=peer();room.connect(again,clock);command(room,again,{t:'join',protocol:ROOM_PROTOCOL,token},clock);rooms.get(room)![0]=again;
   feed.reset();pump(room,feed,again);
-  for(let i=0;i<60;i++){step(room);pump(room,feed,again);}
+  // 6 s: long enough for some fire or kill whatever the offers rolled (the rolls moved when the chinelo left the game).
+  for(let i=0;i<120;i++){step(room);pump(room,feed,again);}
   const after=feed.take().events.map(e=>e.eventId);
   assert.ok(after.length>0,'events flow again');assert.ok(after.every(e=>e>ids.at(-1)!),'nothing old comes back');
   assert.deepEqual(after,[...new Set(after)].sort((x,y)=>x-y));
@@ -177,6 +178,7 @@ test('a choose command shaped like the client\'s reaches the simulation',()=>{
   const offer=feed.take().offers[0];assert.ok(offer,'offer pushed to the client');
   const before=a.messages.length;
   command(room,a,{t:'choose',offer:offer.id,index:offer.defaultIndex,round:room.run.snapshot().round},clock);
+  step(room);
   const answer=a.messages.slice(before).find(m=>m.t==='offers');
   assert.ok(answer);assert.ok(!answer.offers.some((o:any)=>o.id===offer.id),'the picked offer is gone');
 });

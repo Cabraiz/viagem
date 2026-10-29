@@ -13,9 +13,12 @@ import {ART_SCALE,frameUv} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
 import type {LiveSheet} from './art.ts';
 import {NEST_SCALE,nestArtId,type LiveNest} from './nests.ts';
+import {CoverFader} from '../occlusion.ts';
+import {LuzesLayer} from '../../luzes/layer.ts';
+import {LUZ,LUZES_ATLAS,LUZ_CORE,luzesBudget,luzesEnabled} from '../../luzes/rules.ts';
 import {
   LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,lightScale,liveMeta,loopFps,loopFrame,loopVisible,
-  matchInsulators,onCamera,polePairs,sagLine,viewIndex,
+  lineHitsRect,matchInsulators,onCamera,polePairs,sagLine,viewIndex,
   type ArtView,type CellFrame,type DecorEntry,type LightKind,type LiveMeta,type Pt,type Rect,
 } from './rules.ts';
 
@@ -28,6 +31,10 @@ export interface CityLiveOptions {
   groundDepth:number;
   /** prefers-reduced-motion (tests pass it; the default reads the browser). */
   reduced?:boolean;
+  /** Muitas luzes (luzes/): halos of the ChatGPT atlas on windows, lanterns, signs and cars; default `?luzes` (on). */
+  luzes?:boolean;
+  /** A phone (coarse pointer): fewer halos at once (luzes/rules luzesBudget); the default reads the browser. */
+  coarse?:boolean;
 }
 export type {LiveNest};
 
@@ -79,7 +86,9 @@ const GLOW_PX=128;
 const OVERLAY_DEPTH=.25,HALO_DEPTH=.4;
 
 interface Loop {sprite:Phaser.GameObjects.Sprite;key:string;fps:number;frames:number;first:number;flicker:boolean}
-interface Light {kind:LightKind;key:string;halo:Phaser.GameObjects.Image;pool:Phaser.GameObjects.Image;alpha:number;poolAlpha:number;loop?:Loop}
+interface Light {kind:LightKind;key:string;halo:Phaser.GameObjects.Image;pool:Phaser.GameObjects.Image;alpha:number;poolAlpha:number;loop?:Loop;
+  /** Screen px per delivery px of LIGHT_LOOK (its radii), kept to restyle the glow when the atlas arrives. */
+  px:number}
 interface Attached {entry:DecorEntry;key:string;rect:Rect;loops:Loop[];light?:Light;insulators?:Pt[];depth:number;visible:boolean;
   /** Its first frame is on and nothing steps while the layer is held still. */
   still?:boolean}
@@ -87,10 +96,17 @@ interface Attached {entry:DecorEntry;key:string;rect:Rect;loops:Loop[];light?:Li
 function reducedMotion(){
   try{return typeof window!=='undefined'&&!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}catch{return false;}
 }
+function coarsePointer(){
+  try{return typeof window!=='undefined'&&!!window.matchMedia?.('(pointer: coarse)').matches;}catch{return false;}
+}
+const urlLuzes=()=>typeof location==='undefined'||luzesEnabled(location.search);
 
 export class CityLive {
   private readonly attached=new Map<string,Attached>();
-  private readonly wires=new Map<string,TriBand>();
+  private readonly wires=new Map<string,{band:TriBand;lines:Pt[][];box:Rect}>();
+  /** Wires and nests drawn over the local hero fade like the buildings (auditoria-arte-mundo items 14 and 15). */
+  private readonly fader=new CoverFader();
+  private readonly covered=new Set<string>();
   /** Every pole pair of the map (rules.polePairs), by pole key. */
   private readonly pairsOf=new Map<string,[string,string][]>();
   private readonly nests=new Map<string,{img:Phaser.GameObjects.Image;art:string}>();
@@ -98,11 +114,16 @@ export class CityLive {
   private readonly motionReduced:boolean;
   /** Reduced motion or the Leve quality level (setStill): loops and lights hold their first frame, set once. */
   private reduced:boolean;
+  /** Muitas luzes (luzes/layer.ts): the extra halos, and the lamps' glow from the atlas once it has loaded. */
+  private readonly luzes?:LuzesLayer;
+  private readonly coarse:boolean;
 
   constructor(private readonly scene:Phaser.Scene,decor:readonly DecorEntry[],private readonly options:CityLiveOptions){
     this.motionReduced=this.reduced=options.reduced??reducedMotion();
+    this.coarse=options.coarse??coarsePointer();
     for(const pair of polePairs(decor))for(const k of pair){const l=this.pairsOf.get(k);if(l)l.push(pair);else this.pairsOf.set(k,[pair]);}
     this.makeGlow();
+    if(options.luzes??urlLuzes())this.luzes=new LuzesLayer(scene,{budget:luzesBudget(false,this.coarse),reduced:this.reduced},()=>this.restyleLights());
   }
 
   /**
@@ -118,6 +139,7 @@ export class CityLive {
     if(piece)this.addLoops(a,piece,meta,f,artView);
     const kind=lightKind(entry.id);
     if(kind)a.light=this.addLight(kind,key,entry.id,f,artView,cell,base,a.loops[0]);
+    this.luzes?.attach(key,entry.id,artView,cell,f,depth);
     if(isPole(entry.id)&&meta.wires?.[artView])a.insulators=meta.wires[artView]!.map(p=>cellPoint(f,p));
     this.attached.set(key,a);
     if(a.insulators)for(const pair of this.pairsOf.get(key)??[])this.drawWire(pair);
@@ -129,7 +151,8 @@ export class CityLive {
     if(!a)return;
     for(const l of a.loops)l.sprite.destroy();
     if(a.light){a.light.halo.destroy();a.light.pool.destroy();}
-    for(const pair of this.pairsOf.get(key)??[]){const k=pair.join('|');this.wires.get(k)?.destroy();this.wires.delete(k);}
+    this.luzes?.detach(key);
+    for(const pair of this.pairsOf.get(key)??[]){const k=pair.join('|');this.wires.get(k)?.band.destroy();this.wires.delete(k);}
     this.attached.delete(key);
   }
 
@@ -137,10 +160,15 @@ export class CityLive {
   setStill(on:boolean){
     const reduced=this.motionReduced||on;if(reduced===this.reduced)return;
     this.reduced=reduced;for(const a of this.attached.values())a.still=false;
+    this.luzes?.setOptions({budget:luzesBudget(on,this.coarse),reduced});
   }
 
-  /** Per frame: loops and lights inside the camera step; the rest hide. */
-  update(camera:Rect,nowMs:number){
+  /**
+   * Per frame: loops and lights inside the camera step; the rest hide. `hero`: the local hero's box with its marks
+   * (occlusion.ts marksRect) and its draw depth; a wire or a nest drawn above it and over that box fades.
+   */
+  update(camera:Rect,nowMs:number,hero?:{rect:Rect;depth:number},dtMs=16){
+    this.fadeOver(hero,dtMs);
     for(const a of this.attached.values()){
       const on=onCamera(a.rect,camera);
       if(on!==a.visible){a.visible=on;for(const l of a.loops)l.sprite.setVisible(on);if(a.light){a.light.halo.setVisible(on);a.light.pool.setVisible(on);}}
@@ -152,8 +180,10 @@ export class CityLive {
         const L=a.light,frame=L.loop?loopFrame(nowMs,L.loop.fps,L.loop.frames,L.loop.key,this.reduced):0;
         const k=lightLevel(L.kind,nowMs,L.key,this.reduced,frame);
         L.halo.setAlpha(L.alpha*k);L.pool.setAlpha(L.poolAlpha*k);
+        this.luzes?.setLevel(a.key,k);
       }
     }
+    this.luzes?.update(camera,nowMs,dtMs);
   }
 
   /**
@@ -182,7 +212,8 @@ export class CityLive {
 
   destroy(){
     for(const k of [...this.attached.keys()])this.detach(k);
-    for(const w of this.wires.values())w.destroy();
+    this.luzes?.destroy();
+    for(const w of this.wires.values())w.band.destroy();
     this.wires.clear();
     for(const e of this.nests.values())e.img.destroy();
     this.nests.clear();
@@ -200,7 +231,7 @@ export class CityLive {
   stats(){
     let loops=0,lights=0;
     for(const a of this.attached.values()){loops+=a.loops.length;if(a.light)lights++;}
-    return {attached:this.attached.size,loops,lights,wires:this.wires.size,nests:this.nests.size};
+    return {attached:this.attached.size,loops,lights,wires:this.wires.size,nests:this.nests.size,luzes:this.luzes?.stats()};
   }
 
   private addLoops(a:Attached,piece:LivePiece,meta:LiveMeta,f:CellFrame,view:ArtView){
@@ -221,12 +252,34 @@ export class CityLive {
   private addLight(kind:LightKind,key:string,id:string,f:CellFrame,view:ArtView,cell:[number,number],base:Phaser.GameObjects.Image,loop?:Loop):Light{
     // LIGHT_LOOK radii are delivery px: × lightScale to the imported cell, × f.scale to the screen.
     const look=LIGHT_LOOK[kind],head=cellPoint(f,lightHead(id,view,cell)),px=f.scale*lightScale(kind,cell);
-    const add=(x:number,y:number)=>this.scene.add.image(x,y,GLOW_KEY).setTint(look.color).setBlendMode(Phaser.BlendModes.ADD);
-    const halo=add(head.x,head.y).setScale(look.halo*2*px/GLOW_PX).setDepth(base.depth+HALO_DEPTH).setAlpha(look.alpha);
+    const add=(x:number,y:number)=>this.scene.add.image(x,y,GLOW_KEY).setBlendMode(Phaser.BlendModes.ADD);
+    const halo=add(head.x,head.y).setDepth(base.depth+HALO_DEPTH).setAlpha(look.alpha);
     // The pool lies on the ground under the head (the base's feet line), flattened like the iso ground.
-    const pool=add(head.x,base.y).setScale(look.pool*2*px/GLOW_PX,look.pool*px/GLOW_PX).setDepth(this.options.groundDepth).setAlpha(look.poolAlpha);
-    return {kind,key,halo,pool,alpha:look.alpha,poolAlpha:look.poolAlpha,loop};
+    const pool=add(head.x,base.y).setDepth(this.options.groundDepth).setAlpha(look.poolAlpha);
+    const light:Light={kind,key,halo,pool,alpha:look.alpha,poolAlpha:look.poolAlpha,loop,px};
+    this.styleLight(light);
+    return light;
   }
+
+  /**
+   * The head glow and the ground pool: the ChatGPT atlas (lamp or fire, and the bloom for the pool) once it has
+   * loaded with luzes on, sized so its lit core matches the old radius; before that (or `?luzes=0`) the white
+   * gradient tinted per kind.
+   */
+  private styleLight(L:Light){
+    const look=LIGHT_LOOK[L.kind],px=L.px;
+    if(this.luzes?.loaded){
+      const head=L.kind==='fogueira'?LUZ.fire:LUZ.lamp,tint=L.kind==='pisca'?look.color:0xffffff,hc=LUZ_CORE[head],pc=LUZ_CORE[LUZ.bloom];
+      L.halo.setTexture(LUZES_ATLAS.key,head).setTint(tint).setDisplaySize(look.halo*2*px/hc[0],look.halo*2*px/hc[1]);
+      L.pool.setTexture(LUZES_ATLAS.key,LUZ.bloom).setTint(tint).setDisplaySize(look.pool*2*px/pc[0],look.pool*px/pc[1]);
+      return;
+    }
+    L.halo.setTexture(GLOW_KEY).setTint(look.color).setScale(look.halo*2*px/GLOW_PX);
+    L.pool.setTexture(GLOW_KEY).setTint(look.color).setScale(look.pool*2*px/GLOW_PX,look.pool*px/GLOW_PX);
+  }
+
+  /** The atlas arrived: the lamps already placed switch to it. */
+  private restyleLights(){for(const a of this.attached.values())if(a.light)this.styleLight(a.light);}
 
   private drawWire(pair:[string,string]){
     const k=pair.join('|'),a=this.attached.get(pair[0]),b=this.attached.get(pair[1]);
@@ -239,7 +292,25 @@ export class CityLive {
         g.lineStyle(L.snowWidth,L.snow,L.snowAlpha).strokePoints(pts.map(p=>({x:p.x,y:p.y-L.width/2})),false);
       }
     });
-    this.wires.set(k,band.setDepth(Math.max(a.depth,b.depth)+OVERLAY_DEPTH));
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(const pts of lines)for(const p of pts){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+    const m=L.width;
+    this.wires.set(k,{band:band.setDepth(Math.max(a.depth,b.depth)+OVERLAY_DEPTH),lines,box:{x:x0-m,y:y0-m,w:x1-x0+2*m,h:y1-y0+2*m}});
+  }
+
+  private fadeOver(hero:{rect:Rect;depth:number}|undefined,dtMs:number){
+    const covered=this.covered;covered.clear();
+    if(hero){
+      const r=hero.rect,hit=(b:Rect)=>b.x<r.x+r.w&&r.x<b.x+b.w&&b.y<r.y+r.h&&r.y<b.y+b.h;
+      for(const [k,w] of this.wires)if(w.band.depth>hero.depth&&hit(w.box)&&w.lines.some(pts=>lineHitsRect(pts,r)))covered.add(`w:${k}`);
+      for(const [id,e] of this.nests){
+        const img=e.img,box={x:img.x-img.displayWidth*img.originX,y:img.y-img.displayHeight*img.originY,w:img.displayWidth,h:img.displayHeight};
+        if(img.depth>hero.depth&&hit(box))covered.add(`n:${id}`);
+      }
+    }
+    const alphas=this.fader.update(covered,dtMs);
+    for(const [k,w] of this.wires)w.band.setAlpha(alphas.get(`w:${k}`)??1);
+    for(const [id,e] of this.nests)e.img.setAlpha(alphas.get(`n:${id}`)??1);
   }
 
   /** One white radial gradient, tinted per light. */

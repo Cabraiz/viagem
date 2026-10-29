@@ -90,6 +90,18 @@ test('relief shader: GLSL ES 1.00 safe (no reserved words, constant loop bounds)
   for(const m of code.matchAll(/vec3\((\d\.\d{4},\d\.\d{4},\d\.\d{4})\)/g))assert.ok(palette.has(m[1])||means.has(m[1]),`vec3(${m[1]}) is not a palette tone`);
 });
 
+test('snow edge (chao-da-cidade-sem-emenda): the cliff ridge height wanders along the line and its flank fades up to the snow',()=>{
+  const code=reliefShader.replace(/\/\/[^\n]*/g,'');
+  // ±30 % of BERM by a value noise over the cell, so the shaded flank is not one band width; 0 off the ridge.
+  assert.match(code,/float Hs\(vec2 f\)\{float b=berm\(f\);return H\(f\)\+\(b>0\.0\?BERM\*b\*\(0\.7\+0\.6\*n\(/);
+  // Hs is declared after the noise it uses (GLSL needs the function above its caller).
+  assert.ok(code.indexOf('float n(vec2 p)')<code.indexOf('float Hs(vec2 f)'));
+  // The flank rock is graded by the ridge profile (dark foot, light crest) and greyed towards the snow shade's hue.
+  assert.ok(code.includes('float up=berm(f);'));
+  assert.match(code,/cliffRock=mix\(cliffRock\*0\.86,mix\(cliffRock,SNOW_SHADE,0\.5\),smoothstep\(0\.05,0\.85,up\)\);/);
+  assert.match(code,/cliffRock=mix\(cliffRock,SNOW_DEEP\*/);
+});
+
 test('preview hills (sandbox only) leave streets, plaza, water and blocks at their height and only ever raise snow',()=>{
   const hilly=previewHills(mini),before=cornerHeights(mini),after=cornerHeights(hilly),W=mini.width+1;
   let raised=0;

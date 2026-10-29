@@ -28,7 +28,7 @@ import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DE
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';
 import {REPAIR_FRACTION} from '../../src/sim/stonewards/forge.ts';
-import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {CITY_DISTANCE_SCALE} from '../../src/rules/scale.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),
@@ -263,7 +263,7 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   assert.ok(sys.upgrade(ctx,'a',id).ok,'A2 → A3 (single child)');
   at(ctx,d().readyTick);
   assert.deepEqual(sys.upgrade(ctx,'a',id),{ok:false,reason:'branch'},'A3 forks');
-  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'size'},'a maxSize-2 site cannot hold the 3×3 Ninho de Metralhadora');
+  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'size'},'a maxSize-2 site cannot hold the 3×3 Ninho');
   assert.deepEqual(sys.upgrade(ctx,'a',id,'A4b'),{ok:true,defense:id,kind:'ninho-do-sniper',cost:EVOLVE_PRICE[4]},'the alternative fits');
   at(ctx,d().readyTick);
   assert.deepEqual(sys.upgrade(ctx,'a',id),{ok:true,defense:id,kind:'equipe-antimaterial',cost:EVOLVE_PRICE[5]});
@@ -450,8 +450,28 @@ test('combat: C4 anti-air hits only the flyers; C5 radar gives the defenses arou
   assert.equal(radarBonus(r.sys.state,radar,r.ctx.tick),0,'not its own');
   r.ctx.enemies.set('e',enemy('e',guard.x,guard.y+7.5));
   defensesStep(r.ctx,r.sys.state);
-  assert.deepEqual(dmg(r.ctx).map(e=>e.target),['e'],'7.5 u: beyond 6, within 7.8');
-  assert.equal(dmg(r.ctx).filter(e=>e.weapon==='posto-de-radar').length,0,'the radar itself does not fire');
+  assert.deepEqual(dmg(r.ctx).filter(e=>e.weapon===guard.kind).map(e=>e.target),['e'],'7.5 u: beyond 6, within 7.8');
+});
+
+test('combat: C5 radar pulses the densest group, ground and air, 18 and a 1 s slow (torres-animacao-idle-tiro)',()=>{
+  const r=citySetup(3000);
+  const radar=grow(r.ctx,r.sys,'obra-02',['C',undefined,undefined,undefined]);
+  assert.equal(radar.kind,'posto-de-radar');
+  at(r.ctx,radar.readyTick,'wave');
+  const R=DEFENSES['posto-de-radar'];
+  assert.deepEqual([R.range,R.damage,R.area,R.target,R.hits,R.cooldown,R.slow],[8,18,1.6,'cluster','all',ticks(1.5),ticks(1)]);
+  assert.deepEqual(R.radar,{reach:9,bonus:.3},'keeps its bonus');
+  r.ctx.enemies.set('lone',enemy('lone',radar.x+3,radar.y,{hp:500}));
+  for(let i=0;i<3;i++)r.ctx.enemies.set(`g${i}`,enemy(`g${i}`,radar.x,radar.y+6+i*.5,{hp:500}));
+  r.ctx.enemies.set('bird',enemy('bird',radar.x+.4,radar.y+6.5,{kind:'pombos',hp:500,maxHp:500}));
+  r.ctx.enemies.set('far',enemy('far',radar.x,radar.y+9.5,{hp:500}));
+  defensesStep(r.ctx,r.sys.state);
+  const hits=dmg(r.ctx).filter(e=>e.weapon==='posto-de-radar');
+  assert.deepEqual(hits.map(e=>e.target).sort(),['bird','g0','g1','g2'],'the group (and the flyer in it), not the lone one nor the far one');
+  assert.ok(hits.every(e=>e.amount===18));
+  for(const id of ['g0','g1','g2'])assert.ok((r.ctx.enemies.get(id)!.slowUntil??-1)>r.ctx.tick,`${id} slowed`);
+  const d=r.sys.state.defenses!.list.find(x=>x.id===radar.id)!;
+  assert.equal(d.fireTick,r.ctx.tick+ticks(1.5),'its cadence');
 });
 
 test('combat: the Gustavão shells the densest crowd across the map, rarely',()=>{
@@ -461,9 +481,10 @@ test('combat: the Gustavão shells the densest crowd across the map, rarely',()=
   assert.ok(sys.upgrade(ctx,'a',g0.id).ok);
   const g=sys.state.defenses!.list.find(x=>x.id===g0.id)!;at(ctx,g.readyTick,'wave');
   ctx.enemies.set('lone',enemy('lone',g.x+10,g.y,{hp:5000}));
-  // The crowd at the plaza's north mouth: (84, 80) on the .w3x-sized city, a map position, so × CITY_MAP_SCALE
-  // (NEW-20261013-ORQ-cidade-escala-1-7); the 0.5 u spacing is the bodies' and stays.
-  for(let i=0;i<6;i++)ctx.enemies.set(`c${i}`,enemy(`c${i}`,84*CITY_MAP_SCALE+i*.5,80*CITY_MAP_SCALE,{hp:5000}));
+  // The crowd at the plaza's north mouth: (84, 80) on the .w3x-sized city, a map position, so × the map's distance scale
+  // (CITY_DISTANCE_SCALE: × 1.7 since cidade-escala-1-7, ÷ 1.75 since mapa-175-com-viaduto); the 0.5 u spacing is the
+  // bodies' and stays.
+  for(let i=0;i<6;i++)ctx.enemies.set(`c${i}`,enemy(`c${i}`,84*CITY_DISTANCE_SCALE+i*.5,80*CITY_DISTANCE_SCALE,{hp:5000}));
   defensesStep(ctx,sys.state);
   assert.deepEqual(dmg(ctx).map(e=>e.target).sort(),['c0','c1','c2','c3','c4','c5']);
   assert.ok(dmg(ctx).every(e=>e.amount===600));

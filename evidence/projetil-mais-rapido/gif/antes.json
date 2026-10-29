@@ -1,0 +1,34 @@
+{
+ "report": [
+  {
+   "step": "pistola",
+   "me": {
+    "x": 80.830078125,
+    "y": 86.720703125,
+    "weapons": [
+     "faca",
+     "pistola"
+    ],
+    "hand": 1
+   }
+  },
+  {
+   "step": "tiro 1",
+   "speeds": null
+  },
+  {
+   "step": "tiro 2",
+   "speeds": null
+  },
+  {
+   "step": "tiro 3",
+   "speeds": null
+  },
+  {
+   "step": "tiro 4",
+   "speeds": null
+  }
+ ],
+ "errors": [],
+ "frames": 60
+}

@@ -20,14 +20,14 @@
  * (player-effects.ts): 'arroto' slows, 'coco' makes them slide. The effect lands before the damage (so a hit that
  * downs the player leaves nothing behind: the fall clears it) and lands even when armor takes the damage to 0.
  */
-import {RADIUS} from '../maps/index.ts';
+import {RADIUS,floorOf} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
 import {ticks} from '../contract/index.ts';
 import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData} from '../rules/index.ts';
 export {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData};
 import type {SimPlayer,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {applyTelegraphEffect} from './player-effects.ts';
+import {applyTelegraphEffect,applyTelegraphPush} from './player-effects.ts';
 
 /** Minimum warning before any telegraph deals damage: 0.8 s. */
 export const MIN_TELEGRAPH_TICKS=ticks(.8);
@@ -45,6 +45,11 @@ export function addTelegraph(ctx:SimContext,spec:TelegraphSpec,delay:number):Tel
   const telegraph:Telegraph={...spec,dx,dy,id:ctx.nextId('tg'),fireTick:ctx.tick+wait};
   if(telegraph.dx===undefined)delete telegraph.dx;
   if(telegraph.dy===undefined)delete telegraph.dy;
+  // The viaduct (maps city/viaduct.ts): it lands on its owner's floor (an enemy, a hazard's thrower, a player).
+  // An explicit `andar` (a fire's next pulse keeps its own) wins; undefined there means the ground.
+  if(!('andar' in spec)){if(floorOf(ownerBody(ctx,spec.owner)??{})===1)telegraph.andar=1;}
+  else if(telegraph.andar!==1)delete telegraph.andar;
+
   ctx.telegraphs.set(telegraph.id,telegraph);
   ctx.emit({type:'telegraph',telegraph:telegraph.id});
   return telegraph;
@@ -69,6 +74,11 @@ export function canBeTargeted(p:SimPlayer):boolean{
   return p.online&&canBeHit(p);
 }
 
+/** The body behind a telegraph owner: an enemy or player id, or the thrower of an `env:<kind>:<id>[@kind]` hazard. */
+function ownerBody(ctx:SimContext,owner:string):{andar?:1}|undefined{
+  const id=owner.startsWith('env:')?/^env:[^:]+:([^@]+)/.exec(owner)?.[1]:owner;
+  return id===undefined?undefined:ctx.enemies.get(id)??ctx.players.get(id);
+}
 function ownerGone(ctx:SimContext,owner:string){
   if(owner.startsWith('env:'))return false;
   const enemy=ctx.enemies.get(owner);
@@ -83,8 +93,13 @@ export function createTelegraphSystem():SimSystem{
     for(const t of due){
       ctx.telegraphs.delete(t.id);
       if(ownerGone(ctx,t.owner))continue;
-      const hit=[...ctx.players.values()].filter(p=>canBeHit(p)&&telegraphHits(t,p,RADIUS));
-      for(const p of hit){applyTelegraphEffect(p,t,ctx.tick);ctx.damagePlayer(p.id,t.damage,t.owner);}
+      const hit=[...ctx.players.values()].filter(p=>canBeHit(p)&&floorOf(p)===floorOf(t)&&telegraphHits(t,p,RADIUS));
+      for(const p of hit){
+        applyTelegraphEffect(p,t,ctx.tick);
+        // boss-fim-onda-1: the Tank's punch; the phones hear it (the shake, and no predicted steps while down).
+        if(applyTelegraphPush(p,t,ctx.tick))ctx.emit({type:'knock',player:p.id,untilTick:p.downUntil!});
+        ctx.damagePlayer(p.id,t.damage,t.owner);
+      }
     }
   }};
 }

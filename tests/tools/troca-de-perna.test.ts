@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
-import {MIRROR_MAX,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
+import {FLIGHT_SPREAD_MAX,LEGS_BY_CLASS,MIRROR_MAX,evenFlights,flightSpread,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 /**
@@ -17,16 +17,12 @@ const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFile
 /**
  * S/N gaits that keep one leg in front, drawn before this gate. None is shown in a run: the heroes that run (viciado,
  * CLT) show run16; the walks are the bots' (R06, card of the bots) and the heroes' walk with HERO_GAIT.run off. A
- * fixed one leaves the list (the test asks for that), a new one fails.
+ * fixed one leaves the list (the test asks for that), a new one fails. The ten bots' walk128-S/N left it on 27/10 (card
+ * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror).
  */
 const KNOWN_SN=new Set([
-  'caca-promocao walk128-N','caca-promocao walk128-S','clt-cansado walk128-N','clt-cansado walk128-S',
-  'coach walk128-N','coach walk128-S','concurseira walk128-N','concurseira walk128-S','faxineira walk128-N',
-  'faxineira walk128-S','feirante walk128-N','feirante walk128-S','maromba walk128-N','maromba walk128-S',
-  'mendigo walk128-N','mendigo walk128-S','passageira walk128-N','passageira walk128-S','pedreiro walk128-N',
-  'pedreiro walk128-S','roqueira walk128-N','roqueira walk128-S','streamer walk128-N','streamer walk128-S',
-  'universitario walk128-N','universitario walk128-S','viciado-em-bet walk128-N','viciado-em-bet walk128-S',
-  'viciado-em-bet walk16-N','viciado-em-bet walk16-S','vizinha-fofoqueira walk128-N','vizinha-fofoqueira walk128-S',
+  'clt-cansado walk128-N','clt-cansado walk128-S','maromba walk128-N','maromba walk128-S',
+  'viciado-em-bet walk128-N','viciado-em-bet walk128-S','viciado-em-bet walk16-N','viciado-em-bet walk16-S',
 ]);
 
 /** Two legs (left 2 px wide, right 4 px wide) under a body, the front one longer: a 24 px cell, pivot at 12. */
@@ -49,6 +45,21 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
   assert.ok(mirrorTest(changes,24,12).ratio<mirrorTest(limp,24,12).ratio);
 });
 
+/**
+ * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). Empty since the
+ * gato's NW run changes legs with a flight (23/10, card NEW-20261023-E3-gato-troca-perna-nw) and the maromba's SE run
+ * changes hip (card NEW-20261023-E7-maromba-troca-perna-se, legs transplanted from pose i+8).
+ */
+const KNOWN_SIDE=new Set<string>([]);
+
+/**
+ * A class may measure a lower legs band only when something it wears hangs on ONE hip and so cannot mirror (ORQ, 24/10):
+ * the vendedor's cooler box sits at 55–74 % of the figure; below the shorts' hem (74 %) the legs still must alternate.
+ */
+test('the legs band per class: only the vendedor (cooler on the left hip), below the shorts',()=>{
+  assert.deepEqual(LEGS_BY_CLASS,{'vendedor-praia':.74});
+});
+
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');
 test('every S/N looping gait changes legs (mirror ≤ '+MIRROR_MAX+' × same), but the known ones of the list',async()=>{
@@ -64,8 +75,29 @@ test('every run the heroes show (run16) changes legs: S/N by the mirror test, th
   assert.ok(runs.some((c:{id:string})=>c.id==='viciado-em-bet')&&runs.some((c:{id:string})=>c.id==='clt-cansado'),'the viciado and the CLT run');
   for(const c of runs){
     if(c.direction==='S'||c.direction==='N'){assert.ok((await measureClip(c)).ratio<=MIRROR_MAX,`${c.id} ${c.key}`);continue;}
+    if(KNOWN_SIDE.has(c.file))continue;
     const r=reviewed[c.file];
     assert.ok(r,`${c.id} ${c.key}: ${c.file} not reviewed (scripts/troca-de-perna.json: check its marked source by eye)`);
     assert.ok(r.alterna===true,`${c.id} ${c.key}: one leg always in front (${r.prova})`);
   }
+  const shown=new Set(runs.map((c:{file:string})=>c.file));
+  assert.deepEqual([...KNOWN_SIDE].filter(f=>!shown.has(f)),[],'KNOWN_SIDE: a sheet no longer in the game leaves the list');
+});
+
+/**
+ * Card BUG-20261025-ORQ-auditoria-troca-perna (the user saw the gato glide running right, no leg change): a run's phase
+ * table gives each pose its share of the stride, so of the time on screen. The poses without a planted foot share the
+ * rest evenly; the gato's first tables gave 0.02 to the ones on the ground and 0.57 to six in the air (28.6×).
+ */
+test('the run phase tables share the stride evenly between the poses without a planted foot',()=>{
+  const glide={d:[.57,.02,.02,.05,.57,.02,.02,.05],v:[[0,0],[0,0],[0,0],[2.5,0],[0,0],[0,0],[0,0],[2.5,0]]};
+  assert.ok(flightSpread(glide)>20);
+  const even=evenFlights(glide),stride=(t:{d:number[]})=>t.d.reduce((a,b)=>a+b,0);
+  assert.equal(flightSpread(even),1);
+  assert.ok(Math.abs(stride(even)-stride(glide))<1e-4,'the stride stays');
+  assert.deepEqual([even.d[3],even.d[7]],[.05,.05],'a planted pose keeps its foot travel');
+  const bad:string[]=[];
+  for(const [id,piece] of Object.entries(manifest.pieces as Record<string,{files:Record<string,{phase?:{d:number[],v:number[][]}}>}>))
+    for(const [key,f] of Object.entries(piece.files))if(key.startsWith('run16-')&&f.phase&&flightSpread(f.phase)>FLIGHT_SPREAD_MAX)bad.push(`${id} ${key} ${flightSpread(f.phase)}`);
+  assert.deepEqual(bad,[],'node scripts/troca-de-perna.mjs --fase');
 });

@@ -22,6 +22,12 @@ jobs:
           cache: npm
       - run: npm ci --include=optional
       - run: npm ci --prefix backend
+      # scripts/normalizar-quadros.py (card troca-de-perna): the per-frame scale gate of the hero sheets runs in Python,
+      # as in ci.yml; without numpy/pillow `npm test` fails here and nothing is published.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet pillow numpy
       - run: npm run check && npm test && npm run build
       # Full-size protocol run (6 clients, 10 s without area of interest; ~1 GB). Too heavy for the shared PC's
       # `npm test`, so only CI runs it: the wide-map 32 KB/s budget has a ~60 B/s margin that 2 clients cannot see.
@@ -80,6 +86,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # health-gate.mjs diffs the live Worker's build against this commit: the whole history, trees only.
+          fetch-depth: 0
+          filter: blob:none
       - name: Expected room protocol
         id: proto
         run: echo "n=$(node -p "require('./public/multiplayer.json').protocol")" >> "$GITHUB_OUTPUT"
@@ -105,9 +114,10 @@ jobs:
         # Waits (up to 30 min: the city's 25 min combat cap plus the countdown) for no room to be in a match, since a
         # deploy restarts them all; still busy, it skips the deploy and the next step decides whether the site may go.
         run: node scripts/deploy-rooms.mjs --wait 30 --skip-if-busy
-      - name: Live Worker matches the site (protocol AND maps; never publish the site out of step with the Worker)
+      - name: Live Worker matches the site (protocol, maps AND build; never publish the site out of step with the Worker)
         # scripts/health-gate.mjs: /health's protocol and maps (version + hash) against public/multiplayer.json and
-        # public/maps/*.manifest.json, asked a few times (a fresh deploy takes seconds to reach every edge).
+        # public/maps/*.manifest.json, and its build against this commit (nothing the Worker bundles may have changed
+        # since: scripts/worker-files.mjs), asked a few times (a fresh deploy takes seconds to reach every edge).
         run: |
           code=$(curl -sS -o /dev/null -w '%{http_code}' https://viagem-salas.viagem.workers.dev/)
           echo "rooms Worker answered $code"

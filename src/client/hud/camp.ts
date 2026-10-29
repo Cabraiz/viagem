@@ -17,13 +17,13 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
-import {putAttr,putData,putHidden,putText} from './dom-put.ts';
+import {putAttr,putData,putHidden,putIconNumber,putText,putTextData} from './dom-put.ts';
 import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
-import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
-import {fallLine,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {sticker,type StickerName} from '../ui/sticker.ts';
+import {exploraLeft,fallLine,type ExploraWindows,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
@@ -31,6 +31,7 @@ import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 import {carBar} from './chaveiro.ts';
 import {effectivePhase,nestsRun} from '../calm-phase.ts';
 import {HUD_SWITCH} from './arrows.ts';
+import {getAudio} from '../audio/engine.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -61,6 +62,11 @@ export interface CampOptions {
    * 'reparo' repairs ('barricada-N'), only for a city barricade; the wall's tags never send one.
    */
   onForge(recipe:RecipeId,target?:string):number|undefined;
+  /**
+   * BUG-20261025-ORQ-ima-dinheiro-demora: R$ of the cédulas the hero caught on screen that the room has not paid yet
+   * (render/cedula-catch.ts): the top bar's Grana shows them at once. Only shown: every price compares the room's wallet.
+   */
+  pendingGrana?():number;
 }
 /** Where the hero is (client prediction) and where the base lies on screen (degrees, 0 = right, clockwise). */
 export interface HeroSpot {x:number;y:number;bearing?:number}
@@ -122,12 +128,22 @@ export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.
  * the intermission's countdown before the next wave ("12 s", urgent at 5 s and under, like the round chip); none in a
  * wave. `aria`: the same in words, for the screen reader (the bar's picture is aria-hidden).
  */
-export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean;
+export interface BarClock {
+  /** The sticker before the number: none on the chaveiro's clock nor the time to explore (the user 25/10: no moto there). */
+  icon?:'relogio'|'cadeado';text:string;aria:string;urgent:boolean;
+  /** The chaveiro's clock stopped by the chefão (hud/chaveiro.ts ChaveiroClock.held): the padlock, the number grey. */
+  held?:boolean;
   /** D-051 nests mode: the nests still standing ("6/8") after the clock. */
   nests?:string}
-export function barClock(view:RunView):BarClock|undefined{
+export function barClock(view:RunView,windows?:ExploraWindows):BarClock|undefined{
   const round=roundInfo(view),nests=nestCount(view);
-  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:nests?`${round.chaveiro.aria}. ${nests.aria}`:round.chaveiro.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  // The time to explore (card topo-sem-icone-contagem-exploracao): the seconds left as a bare number, "120", "119"…
+  const left=exploraLeft(view.tick,windows);
+  if(left!==undefined)return {text:String(left),aria:`Exploração: faltam ${left} s`,urgent:false};
+  if(round?.chaveiro){
+    const c=round.chaveiro;
+    return {...(c.held?{icon:'cadeado' as const,held:true}:{}),text:c.clock,aria:nests?`${c.aria}. ${nests.aria}`:c.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  }
   // The nests mode has no intermission: no countdown to show.
   if(nests)return undefined;
   if(round?.phase==='prepare'&&round.countdown!==undefined)return {icon:'relogio',text:`${round.countdown} s`,aria:round.detail,urgent:round.countdown<=5};
@@ -143,7 +159,7 @@ export function baseBar(view:Pick<RunView,'structures'|'objective'>):BaseBar{
   const car=carBar(view.objective);
   if(car)return {fraction:car.fraction,value:car.left,low:car.low,label:car.label,car:true};
   const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da muralha',car:false};
+  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da barricada',car:false};
 }
 /** Whether the hero stands in the camp (the forge works there). */
 export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!hero&&!!wall&&Math.hypot(hero.x-wall.x,hero.y-wall.y)<=CAMP_RADIUS;
@@ -183,6 +199,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 export interface CampPart extends HudPart {
   /** The base ficha, for the top band. */
   readonly readout:HTMLElement;
+  /** Only the R$ of the top bar, again: the cédulas caught on screen moved (render/cedula-catch.ts) between two renders. */
+  refreshGrana():void;
   /** The horn / wall notice, for the announcement slot. */
   readonly notice:HTMLElement;
   /** The forge window. */
@@ -200,13 +218,16 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Base ficha ----------
   const readout=el('div','rh-camp');readout.hidden=true;readout.setAttribute('role','group');readout.setAttribute('aria-label','Base');
   const wallRow=el('span','rh-camp-wall',readout);
-  // The base has one symbol everywhere (design onda 6 D10): the tent with its flag, as on the map, the arrows and the minimap.
+  // The base has one symbol everywhere (design onda 6 D10): the Uno (icone-base-vira-uno; the tent left), as on the arrows and the objective.
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
   // The bar and the number each in their own box (.rh-camp-barra, .rh-camp-num): the chaveiro's car bar takes these
   // places later (Executor-4), the order unchanged. The bar is what gives way on a narrow screen.
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
-  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da barricada');
+  // resultado-e-topo-com-rotulo: a sticker before each number of the band ("170" read as nothing): the heart before the
+  // life, the wallet before the R$, the tower in its ring before the fichas. Decorative: the bar and the pills say it in words.
+  num.insertAdjacentHTML('afterbegin',icon('coracao',{className:'rh-camp-num-ic'}));
   // The phone's minimal top (hud-mobile-minimo, fone.css): the life's number, or a clock (barClock: the chaveiro's, D-047,
   // or the intermission's countdown), rides over the bar, small; the round chip that carries them elsewhere is not on the
   // phone. Over the bar's box, not inside the track (its overflow would cut the clock at 125 %). Hidden on the desktop,
@@ -214,12 +235,13 @@ export function createCamp(options:CampOptions):CampPart{
   const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
   let lastClock:string|undefined;
-  const paintClock=(view:RunView)=>{
-    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.nests??''}`:'';
+  const paintClock=(view:RunView,w:ExploraWindows)=>{
+    const bar=barClock(view,w),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
     if(key===lastClock)return;
-    lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>${bar.nests?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${bar.nests}</b></i>`:''}`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
-    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
+    lastClock=key;putHidden(clock,!bar);readout.classList.toggle('rh-camp-com-relogio',!!bar);
+    if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+      if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
+    else{putTextData(clockWords,'');putText(clockPicture,'');delete clock.dataset.urgente;delete clock.dataset.parado;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{
@@ -232,6 +254,7 @@ export function createCamp(options:CampOptions):CampPart{
   };
   // My wallet (D-048, carteira-e-pix), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
+  grana.insertAdjacentHTML('afterbegin',sticker('carteira',{size:24,className:'rh-camp-grana-ic'}));
   const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
   let lastGrana:string|undefined;
   // The team's fichas de torre (D-048): one sticker in its ring and the count; rewritten only when the pile changes.
@@ -286,7 +309,7 @@ export function createCamp(options:CampOptions):CampPart{
   const fall=el('p','rh-window-fall rh-forge-fall',head);fall.hidden=true;fall.setAttribute('role','status');
   const overflow=watchOverflow(list);
 
-  let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined,bocas:CityBocas|undefined;
+  let last:RunView|undefined,ctxId='',windows:ExploraWindows={},hero:HeroSpot|undefined,bocas:CityBocas|undefined;
   let dismissed=false,stint=-1,lastPlace='',yielded=false;
   /** Where the hero stands now (render): in the camp, and the barricade he can repair (city only). */
   let home=false,spot:BarricadeSpot<StructureView>|undefined;
@@ -334,15 +357,19 @@ export function createCamp(options:CampOptions):CampPart{
 
   const label=(name:string,describe:string,cost:number,reason:string|undefined,recipe:RecipeId)=>
     `${name}: ${describe}. Custa ${forgePriceLabel(cost).speech}.${reason?` ${refusal(reason,recipe)}`:''}`;
+  const paintGrana=(wallet:number)=>{
+    const money=granaReadout(wallet+(options.pendingGrana?.()||0));
+    if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
+    return money;
+  };
   const render=()=>{
     const view=last;
     const camp=view?.camp;
     putHidden(readout,!camp);
     if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view);
-    const money=granaReadout(camp.grana);
-    if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
+    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,windows);
+    const money=paintGrana(camp.grana);
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
     // D-051 nests: no intermission, the forge opens when the hero is calm (calm-phase.ts).
@@ -350,7 +377,7 @@ export function createCamp(options:CampOptions):CampPart{
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
     // (Only with a wall: with the chaveiro's car in its place, D-047, there is no wall to warn about.)
     if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown&&wall)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){
-      warning={text:`Muralha em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
+      warning={text:`Barricada em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
       clearTimeout(warnTimer);warnTimer=setTimeout(render,WALL_WARNING_MS+20);
     }
     lastFraction=fraction;
@@ -413,8 +440,9 @@ export function createCamp(options:CampOptions):CampPart{
 
   return {
     el:forge,readout,notice,forge,
-    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;render();},
+    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;windows={minervaAteTick:ctx.minervaAteTick,explora:ctx.explora};render();},
     setHero(at){hero=at;if(last)render();},
+    refreshGrana(){if(last?.camp)paintGrana(last.camp.grana);},
     setBocas(next){bocas=next;},
     yieldTo(obra){if(yielded===obra)return;yielded=obra;if(last)render();},
     forged(answer){
@@ -425,7 +453,12 @@ export function createCamp(options:CampOptions):CampPart{
         button.classList.add('rh-forge-done');clearTimeout(stampTimer);
         stampTimer=setTimeout(()=>button.classList.remove('rh-forge-done'),FORGE_STAMP_MS);
         say(done);
-      }else say(refusal(answer.reason??'',recipe));
+        // The forge's hammering: a tower, a gambiarra or a repair stands (audio/sfx.ts torre-construir).
+        const audio=getAudio();if(audio.unlocked)audio.play('torre-construir');
+      }else{
+        say(refusal(answer.reason??'',recipe));
+        const audio=getAudio();if(audio.unlocked)audio.play('ui-erro');
+      }
     },
     destroy(){overflow.destroy();clearTimeout(stampTimer);clearTimeout(noteTimer);clearTimeout(warnTimer);if(pending)clearTimeout(pending.timer);readout.remove();notice.remove();forge.remove();},
   };

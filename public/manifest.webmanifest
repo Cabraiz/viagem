@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "viagem",
+  "short_name": "viagem",
+  "description": "A free browser game for up to six players. You survive waves of creatures in a city as one of six city characters, from a gambler to a hungry cat.",
+  "lang": "pt-BR",
+  "categories": ["games"],
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#2E1A52",
+  "theme_color": "#5B3F8C",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/menu-retrato.webp", "sizes": "1080x1920", "type": "image/webp", "form_factor": "narrow", "label": "O menu do viagem no celular" },
+    { "src": "/screenshots/menu-paisagem.webp", "sizes": "1920x1080", "type": "image/webp", "form_factor": "wide", "label": "O menu do viagem no computador" }
+  ]
+}

@@ -1,0 +1,19 @@
+/* The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts). Tokens only (lint-design.mjs, D-020).
+   - The veil: Breu over the world while the camera is on him (its opacity follows the camera), under every HUD part; no taps.
+   - The title: his name in the poster voice, big, Papel with the Breu edge, and the subtitle in the system voice, low on
+     the screen (he stands at its centre, his head over it). It comes in (scale and fade) while the camera holds on him.
+   - From the 2nd scene the whole screen is the skip button ("Toque para pular"); before, it never takes a tap. */
+.rh-cena-veu{position:absolute;inset:0;background:var(--c-breu);opacity:0;pointer-events:none}
+.rh-cena{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;
+  margin:0;padding:0 16px 22vh;border:0;background:none;color:var(--c-papel);font:inherit;text-align:center;text-shadow:var(--s-texto);
+  pointer-events:none;cursor:default}
+.rh-cena.rh-cena-pulavel{pointer-events:auto;cursor:pointer}
+.rh-cena-nome,.rh-cena-sub{opacity:0;transform:scale(.86);transition:opacity .18s ease-out,transform .22s ease-out}
+.rh-cena-on .rh-cena-nome,.rh-cena-on .rh-cena-sub{opacity:1;transform:none}
+.rh-cena-nome{max-width:min(92vw,900px);font:400 var(--t-48)/1 var(--f-cartaz);color:var(--c-papel);
+  -webkit-text-stroke:2px var(--c-breu);paint-order:stroke fill;text-wrap:balance}
+.rh-cena-sub{max-width:min(88vw,620px);font:700 var(--t-21)/1.25 var(--f-sistema);text-wrap:balance}
+.rh-cena-pular{margin-top:8px;padding:3px 10px;border-radius:var(--r-etiqueta);background:var(--c-ficha);font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh[data-hud='fone'] .rh-cena-nome{font-size:var(--t-36)}
+.rh[data-hud='fone'] .rh-cena-sub{font-size:var(--t-16)}
+@media (prefers-reduced-motion:reduce){.rh-cena-nome,.rh-cena-sub{transform:none;transition:opacity .18s linear}}

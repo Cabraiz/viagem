@@ -68,7 +68,7 @@ export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
 
 /**
  * The defeat's second line (UX-resultado-revanche): "O que derrubou a turma: Tio do Pavê (4 quedas)" and, with rounds,
- * "Faltou 3 rounds pro síndico". Undefined on a win or with nothing to say.
+ * "Faltou 3 rodadas pro síndico". Undefined on a win or with nothing to say.
  */
 export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'|'objective'>,causes:CauseLog){
   if(result.victory)return undefined;
@@ -76,7 +76,7 @@ export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'
   const team=topCause(causes);
   if(team)parts.push(`O que derrubou a turma: ${causeCopy(team.kind).name} (${team.count} ${team.count===1?'queda':'quedas'})`);
   const left=result.objective?0:result.totalRounds-result.round;
-  if(left>0)parts.push(`Faltou ${left===1?'1 round':`${left} rounds`} pro síndico`);
+  if(left>0)parts.push(`Faltou ${left===1?'1 rodada':`${left} rodadas`} pro síndico`);
   return parts.length?parts.join('. '):undefined;
 }
 
@@ -141,6 +141,18 @@ export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},askin
 export const MANAGE_LABEL='Arrumar a sala';
 /** The same verb where three buttons share one row (portrait): the crown says whose button it is (BUG-resultado-dono-6p-rola). */
 export const MANAGE_SHORT='Arrumar';
+/** The result's picture button: the same word on every screen, and what it does for screen readers and the tooltip. */
+export const SHARE_LABEL='Foto',SHARE_ARIA='Foto dos prêmios: compartilhar';
+/**
+ * What "Foto" says for a moment after a try (compartilhar-avisa-falha): a failure and a download speak, on the button
+ * (short, it is narrow) and to the screen reader (whole); a share or a cancel the player saw happen stay quiet.
+ */
+export function shareOutcome(how:'shared'|'downloaded'|'cancelled'|'failed'):{label:string;say:string}|undefined{
+  if(how==='failed')return {label:'Não deu',say:'Não deu pra compartilhar. Tente de novo.'};
+  if(how==='downloaded')return {label:'Salva',say:'Imagem salva'};
+  return undefined;
+}
+export const SHARE_OUTCOME_MS=2500;
 /**
  * The candidates for a card's name, longest first (design review of pacote-bugs-ux: "Seu", "Tia" alone lose the person,
  * and a name is never cut inside a word without "…"): the whole name, then whole words with "…", then the first word
@@ -157,8 +169,9 @@ export function nameCandidates(name:string):string[]{
 }
 /** Writes into `el` the longest candidate of `name` that takes at most `lines` lines and has no word poking out. */
 export function fitCardName(el:HTMLElement,name:string,lines:number){
+  // offsetHeight, not the client rect: the PC card is zoomed (hud.css) and the rect would count the zoom the line height doesn't
   const line=parseFloat(getComputedStyle(el).lineHeight)||0;
-  const fits=()=>el.scrollWidth<=el.clientWidth+1&&(!line||el.getBoundingClientRect().height<=line*lines+1);
+  const fits=()=>el.scrollWidth<=el.clientWidth+1&&(!line||el.offsetHeight<=line*lines+1);
   for(const text of nameCandidates(name)){el.textContent=text;if(fits())return text;}
   return el.textContent;
 }
@@ -185,7 +198,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const titles=el('div','rh-result-titles',head);
   const title=el('h2','rh-result-title',titles);title.id='rh-result-title';
   const subtitle=el('p','rh-result-sub',titles);
-  // The defeat's "O que derrubou a turma … Faltou N rounds pro síndico" (UX-resultado-revanche).
+  // The defeat's "O que derrubou a turma … Faltou N rodadas pro síndico" (UX-resultado-revanche).
   const lost=el('p','rh-result-lost',titles);lost.hidden=true;
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);
@@ -209,6 +222,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
 
   const grid=el('div','rh-result-grid',root);
 
+  // The enemies the local hero killed that became matches (hud/perfis.ts fillResult); hidden with none.
+  const matches=el('section','rh-result-matches',root);matches.hidden=true;matches.setAttribute('aria-label','Seus matches');
   const actions=el('div','rh-result-actions',root);
   const rematch=el('button','rh-result-btn rh-result-rematch',actions);rematch.type='button';
   // The owner's "Arrumar turma" (D-025): the cards trade their prizes for "Expulsar" / "Tirar bot", plus "Adicionar bot".
@@ -243,16 +258,27 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     asked=true;syncRematch();
     options.onRematch();
   });
-  // "Compartilhar" (camera sticker): a picture of the prizes for the group chat.
+  // "Foto" (camera sticker): a picture of the prizes for the group chat. One word on every screen (resultado-e-topo-com-rotulo:
+  // the icon alone in portrait read as nothing): beside the sticker where the row is wide, under it where four buttons share it.
   const share=el('button','rh-result-btn rh-result-share');share.type='button';
-  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-long">Compartilhar</span>`;share.setAttribute('aria-label','Compartilhar os prêmios');
+  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-label">${SHARE_LABEL}</span>`;share.setAttribute('aria-label',SHARE_ARIA);share.title=SHARE_ARIA;
+  const shareLabel=share.querySelector<HTMLElement>('.rh-share-label')!;
+  const shareSaid=el('span','rh-sr');shareSaid.setAttribute('role','status');
+  let shareTimer:ReturnType<typeof setTimeout>|undefined;
+  const shareSay=(how:Parameters<typeof shareOutcome>[0])=>{
+    clearTimeout(shareTimer);
+    const out=shareOutcome(how);
+    shareLabel.textContent=out?.label??SHARE_LABEL;shareSaid.textContent=out?.say??'';
+    if(out)shareTimer=setTimeout(()=>{shareLabel.textContent=SHARE_LABEL;shareSaid.textContent='';},SHARE_OUTCOME_MS);
+  };
   share.addEventListener('click',()=>{
     if(!shownResult||share.disabled)return;
     share.disabled=true;
     const {result,ctx,awards}=shownResult,players=teamOrder(result.players,ctx.localId);
-    void shareResultImage(document,shareCard(resultHeadline(result),players,awards,ctx.localId),result.victory).finally(()=>{share.disabled=false;});
+    void shareResultImage(document,shareCard(resultHeadline(result),players,awards,ctx.localId),result.victory)
+      .then(shareSay,()=>shareSay('failed')).finally(()=>{share.disabled=false;});
   });
-  actions.insertBefore(share,exit);
+  actions.insertBefore(share,exit);actions.insertBefore(shareSaid,exit);
   let exited=false;
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 
@@ -430,7 +456,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   landscape?.addEventListener('change',onTurn);
 
   return {
-    el:root,
+    el:root,matches,
     show(result:MapRunResult,ctx:HudContext,nests?:{down:number;total:number}){
       const headline=resultHeadline(result);
       root.dataset.outcome=result.victory?'victory':'defeat';

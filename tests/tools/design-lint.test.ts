@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 // @ts-expect-error plain ESM script without types
-import {declarations,emojiCount,lintCss,lintDesign,sizePx} from '../../scripts/lint-design.mjs';
+import {declarations,emojiCount,lintCss,lintDesign,minFont,sizePx,upperPx} from '../../scripts/lint-design.mjs';
 
 type Violation={file:string;line:number;rule:string;msg:string};
 const rules=(css:string,file='src/client/coop.css')=>(lintCss(file,css) as Violation[]).map(v=>v.rule);
@@ -23,6 +23,7 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.deepEqual(rules('.a{border-radius:999px}'),['radius']);
   assert.deepEqual(rules('.a{border-radius:var(--r-janela) var(--r-janela) 0 0}'),[]);
   assert.deepEqual(rules('.a{border-radius:50%}'),[]);
+  assert.deepEqual(rules('.a{border-radius:var(--r-perfil-foto)}'),[]);
   assert.deepEqual(rules('.a{box-shadow:0 3px 12px var(--c-sombra)}'),['shadow']);
   assert.deepEqual(rules('.a{box-shadow:var(--s-1),inset 0 0 0 2px var(--c-papel)}'),[]);
   assert.deepEqual(rules('.a{--rh-shadow:0 3px 12px var(--c-breu)}'),['shadow']);
@@ -59,6 +60,25 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.deepEqual(rules('.a{font-size:var(--x,12px)}','src/client/hud/hud.css'),[]);
   assert.deepEqual(rules('.a{font-size:max(12px,var(--t-13))}','src/client/hud/hud.css'),[]);
   assert.equal(sizePx('clamp(13px,3vw,16px)'),13);assert.equal(sizePx('calc(2 * var(--t-13))'),26);
+});
+
+test('design lint: 12 px in the rest of the match, em from the parent rule, cqw from the container (auditoria L6)',()=>{
+  assert.equal(minFont('src/client/hud/hud.css'),13);assert.equal(minFont('src/client/hud/fortify/fortify.css'),12);
+  assert.equal(minFont('src/client/coop.css'),10);
+  assert.deepEqual(rules('.a{font-size:11px}','src/client/hud/fortify/fortify.css'),['font-size']);
+  assert.deepEqual(rules('.a{font-size:calc(var(--t-13) - 1px)}','src/client/hud/fortify/fortify.css'),[]);
+  // em: the nearest rule whose selector is an ancestor compound; alone it stays unknown.
+  assert.deepEqual(rules('.p{font-size:clamp(10px,2vh,40px)}.p i{font-size:.8em}','src/client/ui/insta.css'),['font-size']);
+  assert.deepEqual(rules('.p{font-size:clamp(12px,2vh,40px)}.p i{font-size:max(12px,.8em)}','src/client/ui/insta.css'),[]);
+  assert.deepEqual(rules('.p i{font-size:.5em}','src/client/ui/insta.css'),[]);
+  assert.deepEqual(rules('.p{font-size:20px}.q i{font-size:.5em}','src/client/ui/insta.css'),[]);
+  // cqw: 1 % of the narrowest container whose width the file tells.
+  const card='.c{container-type:inline-size;width:min(150px,40vw)}';
+  assert.deepEqual(rules(card+'.c b{font:400 5cqw/1 var(--f-sistema)}','src/client/hud/missao.css'),['font-size']);
+  assert.deepEqual(rules(card+'.c b{font:400 max(12px,5cqw)/1 var(--f-sistema)}','src/client/hud/missao.css'),[]);
+  assert.deepEqual(rules('.c b{font-size:5cqw}','src/client/hud/missao.css'),[]);
+  assert.equal(upperPx('clamp(100px,50vw,240px)'),240);assert.equal(upperPx('var(--w)',new Map([['--w',['180px','150px']]])),150);
+  assert.equal(upperPx('max(100px,50vw)'),undefined);
 });
 
 test('design lint: no infinite animation (it plays once or twice when it shows up, then stops)',()=>{

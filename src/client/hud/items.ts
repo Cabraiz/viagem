@@ -3,7 +3,7 @@
  * the server (VGM-034/035/036) owns the real numbers. Names mirror the server catalogs (a test keeps them in sync,
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
-import {isStickerName,type StickerName} from '../ui/sticker.ts';
+import {goldSticker,isStickerName,type StickerName} from '../ui/sticker.ts';
 import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
@@ -12,22 +12,20 @@ export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
 export interface ItemDisplay {id:string;kind:ItemDisplayKind;name:string;icon:StickerName;blurb:string;joke:string}
 
 const items:ItemDisplay[]=[
-  {id:'chinelo',kind:'weapon',name:'Chinelo da Mãe',icon:'chinelo',blurb:'Gira em volta e acerta quem chega.',joke:'Mãe aprovou.'},
   {id:'boleto',kind:'weapon',name:'Boleto Vencido',icon:'boleto',blurb:'Atravessa uma fila de bichos.',joke:'Vence hoje. Neles.'},
   {id:'cafe',kind:'weapon',name:'Café Derramado',icon:'cafe',blurb:'Poça quente que queima quem pisa.',joke:'Sem açúcar, sem dó.'},
   {id:'guarda-chuva',kind:'weapon',name:'Guarda-chuva da Vó',icon:'guarda-chuva',blurb:'Empurra bichos e bloqueia tiros.',joke:'Abriu dentro de casa.'},
   {id:'pombo',kind:'weapon',name:'Pombo da Praça',icon:'pombo',blurb:'Persegue o bicho mais perto.',joke:'Veio do nada.'},
   {id:'audio',kind:'weapon',name:'Áudio de 5 Minutos',icon:'audio',blurb:'Onda que acha o bicho e empurra.',joke:'"Oi, sumida…"'},
-  {id:'chinelo-evo',kind:'evolution',name:'Havaianas do Caos',icon:'chinelo-evo',blurb:'Chinelos em dobro, sem parar.',joke:'Todo mundo usa.'},
   {id:'boleto-evo',kind:'evolution',name:'Carnê Infinito',icon:'boleto-evo',blurb:'Boletos que nunca acabam.',joke:'Parcela 1 de 999.'},
   {id:'cafe-evo',kind:'evolution',name:'Cafeteira Industrial',icon:'cafe-evo',blurb:'Poças enormes e constantes.',joke:'Expediente eterno.'},
   {id:'cafe-forte',kind:'passive',name:'Café Coado na Meia',icon:'cafe-forte',blurb:'Armas recarregam mais rápido.',joke:'Meia limpa. Juramos.'},
   {id:'marmita',kind:'passive',name:'Marmita da Vó',icon:'marmita',blurb:'Mais vida máxima.',joke:'Tem farofa.'},
   {id:'tenis',kind:'passive',name:'Tênis de Feira',icon:'tenis',blurb:'Anda mais rápido.',joke:'Nike? Naique.'},
   {id:'megafone',kind:'passive',name:'Megafone do Carro do Ovo',icon:'megafone',blurb:'Ataques em área maior.',joke:'Olha o ovo!'},
-  {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte nos drops e ofertas.',joke:'Aba reta, sorte torta.'},
+  {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte no que cai e nas cartas.',joke:'Aba reta, sorte torta.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'oculos',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
-  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
+  {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Cada caixa aberta dá grana.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
   {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'coxinha',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
   // D-051 arsenal (sim/weapons/arsenal.ts, manual combat): the new weapons wait for their stickers (the user's art), the
@@ -39,7 +37,6 @@ const items:ItemDisplay[]=[
   {id:'rifle',kind:'weapon',name:'Cano Longo',icon:'rifle',blurb:'De longe, atravessa a fila.',joke:'E o vizinho dele.'},
   {id:'macarico',kind:'weapon',name:'Maçarico do Tio',icon:'macarico',blurb:'Fogo na frente: derrete enxame.',joke:'Era pro portão.'},
   {id:'rojao',kind:'weapon',name:'Rojão de Réveillon',icon:'rojao',blurb:'Explode em área onde cair.',joke:'Feliz ano novo!'},
-  {id:'chinelo-lendario',kind:'weapon',name:'Chinelo da Mãe',icon:'chinelo-evo',blurb:'Lendária: chinelos voando longe.',joke:'Mãe em fúria.'},
   {id:'boleto-lendario',kind:'weapon',name:'Boleto Vencido',icon:'boleto-evo',blurb:'Lendária: carnês que voltam.',joke:'Parcela eterna.'},
   {id:'cafe-lendario',kind:'weapon',name:'Café Derramado',icon:'cafe-evo',blurb:'Lendária: poça gigante te segue.',joke:'Expresso na cara.'},
   {id:'guarda-chuva-lendario',kind:'weapon',name:'Guarda-chuva da Vó',icon:'guarda-chuva',blurb:'Lendária: bloqueia e empurra.',joke:'A vó tá certa.'},
@@ -63,14 +60,11 @@ const items:ItemDisplay[]=[
   {id:'espeto',kind:'weapon',name:'Espeto de Churrasco',icon:'espeto',blurb:'Atravessa uma fila de bichos.',joke:'Com queijo coalho.'},
   {id:'sacole',kind:'weapon',name:'Sacolé de Groselha',icon:'sacole',blurb:'Deixa o bicho lento.',joke:'Congela o cérebro.'},
   {id:'tampa-voadora',kind:'weapon',name:'Tampa de Panela',icon:'tampa-de-panela',blurb:'Vai e volta acertando todos.',joke:'TEIN!'},
-  {id:'pandeiro',kind:'weapon',name:'Pandeiro do Pagode',icon:'pandeiro',blurb:'Três giram em volta de você.',joke:'Ninguém fica parado.'},
   {id:'colher-de-pau',kind:'weapon',name:'Colher de Pau da Vó',icon:'colher-de-pau',blurb:'Arco de perto que joga longe.',joke:'PÁ!'},
   {id:'peixeira',kind:'weapon',name:'Peixeira do Nordeste',icon:'peixeira',blurb:'Estocada rápida na frente.',joke:'Corta peixe e bicho.'},
   {id:'bola-murcha',kind:'weapon',name:'Bola Murcha da Pelada',icon:'bola-murcha',blurb:'Quica de cabeça em cabeça.',joke:'Remendada, mas joga.'},
   {id:'traque',kind:'weapon',name:'Traque de São João',icon:'traque',blurb:'Estouros em volta do bicho.',joke:'Pá-pá-pá-pá!'},
   {id:'buscape',kind:'weapon',name:'Buscapé',icon:'buscape',blurb:'Corre atrás do mais perto.',joke:'Nem ele sabe pra onde.'},
-  {id:'figa',kind:'weapon',name:'Figa de Madeira',icon:'figa',blurb:'Gira e bloqueia tiro de bicho.',joke:'Isola!'},
-  {id:'vela-esoterica',kind:'weapon',name:'Vela Aromática da Tia Esotérica',icon:'vela-esoterica',blurb:'Anel largo de velas em volta.',joke:'Lavanda não acalma.'},
   {id:'facao',kind:'weapon',name:'Facão de Roçar',icon:'facao',blurb:'Golpe em volta inteira.',joke:'Roça mato e bicho.'},
   {id:'sal-grosso',kind:'weapon',name:'Sal Grosso da Vó',icon:'sal-grosso',blurb:'Círculo que empurra pra fora.',joke:'Daqui não passa.'},
   {id:'tijolo-baiano',kind:'weapon',name:'Tijolo Baiano',icon:'tijolo-baiano',blurb:'Jogado longe, estoura em área.',joke:'Oito furos de física.'},
@@ -94,12 +88,12 @@ const items:ItemDisplay[]=[
   {id:'bola-de-cristal',kind:'weapon',name:'Bola de Cristal da Cartomante',icon:'bola-de-cristal',blurb:'Lendária: raios caem do céu.',joke:'Ela viu chegando.'},
   {id:'cristal-quantico',kind:'weapon',name:'Cristal Quântico do Coach',icon:'cristal-quantico',blurb:'Lendária: pula seis vezes.',joke:'Vibra no dano.'},
 ];
-// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, Construir puts it ahead of the hero (hud/kit-place).
+// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, a tap on the map places it (hud/kit-place).
 for(const id of KIT_IDS){
   const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
   const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
   items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
-    blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
+    blurb:wall?`Toca e põe ${KIT_CHARGES[piece]} no chão.`:'Toca e põe a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));
 
@@ -121,10 +115,12 @@ export function priceTag(id:string,level:number):PriceTag{
   const kind=itemDisplay(id).kind;
   if(kind==='evolution')return {kind:'evo',label:'Evolução'};
   if(kind==='snack')return {kind:'snack',label:'Lanche'};
-  return level<=1?{kind:'new',label:'Novo!'}:{kind:'level',label:`Nv ${level}`,level};
+  return level<=1?{kind:'new',label:'Novo!'}:{kind:'level',label:`Nív. ${level}`,level};
 }
 
 /** Sentence-case seal text: "Novo!" for a first pick, "Nv N" otherwise, "Evolução", "Lanche" for the coxinha. */
+/** An item's sticker at its level: a weapon at the dourada level wears its dourada edition (ui/sticker.ts goldSticker). */
+export const itemSticker=(id:string,level=1):StickerName=>goldSticker(itemDisplay(id).icon,level);
 export const levelTag=(id:string,level:number)=>priceTag(id,level).label;
 
 export const allItemDisplays=():readonly ItemDisplay[]=>items;

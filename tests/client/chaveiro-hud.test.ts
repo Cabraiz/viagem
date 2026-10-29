@@ -10,7 +10,7 @@ import type {RunView} from '../../src/contract/view.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import {nestTally,nestsMode,roundInfo} from '../../src/client/hud/model.ts';
 import {marqueeFor} from '../../src/client/hud/topbar.ts';
-import {baseBar} from '../../src/client/hud/camp.ts';
+import {barClock,baseBar} from '../../src/client/hud/camp.ts';
 import {resultHeadline,resultRoundLine} from '../../src/client/hud/result.ts';
 import {computeZones} from '../../src/client/hud/zones.ts';
 import {COVERING,WINDOWS} from '../../src/client/hud/edges.ts';
@@ -32,8 +32,21 @@ test('the chaveiro clock: whole seconds as m:ss, never negative',()=>{
   assert.equal(etaClock(Number.NaN),'0:00');
   assert.equal(reais(120),'R$ 120');
   assert.equal(reais(-5),'R$ 0');
-  assert.deepEqual(chaveiroClock({etaS:588,moto:{x:0,y:0,mode:'anda'}}),{clock:'9:48',seconds:588,aria:'Chaveiro chega em 9:48'});
+  assert.deepEqual(chaveiroClock({etaS:588,moto:{x:0,y:0,mode:'anda'}}),{clock:'9:48',seconds:588,aria:'Chaveiro chega em 9:48',held:false});
   assert.match(chaveiroClock({etaS:12,moto:{x:0,y:0,mode:'abrindo'}}).aria,/abrindo o carro: 0:12/);
+});
+
+test("the chefão up (boss-fim-onda-1): the clock is held, padlock and grey on the chip and on the phone's bar; the Síndico does not hold it",()=>{
+  const chefao={id:'b1',kind:'mapinguari-do-shopping',x:0,y:0,hp:900,maxHp:1100,boss:true};
+  const up=(enemy:object)=>({...withObjective(objective()),enemies:[enemy]}) as unknown as RunView;
+  const held=roundInfo(up(chefao))!.chaveiro!;
+  assert.equal(held.held,true);
+  assert.match(held.aria,/parado até o chefão cair/);
+  const bar=barClock(up(chefao))!;
+  assert.deepEqual({icon:bar.icon,held:bar.held},{icon:'cadeado',held:true});
+  assert.equal(roundInfo(up({...chefao,hp:0}))!.chaveiro!.held,false,'he fell: it runs');
+  assert.equal(roundInfo(up({...chefao,kind:'sindico'}))!.chaveiro!.held,false,'the final boss does not hold it');
+  assert.equal(barClock(up({...chefao,hp:0}))!.icon,undefined,'running: no sticker (topo-sem-icone-contagem-exploracao)');
 });
 
 test('the round chip: "Onda N" plus his clock while the objective runs, "Round N/10" without it or once it ended',()=>{
@@ -104,11 +117,14 @@ test('why he stopped: the card\'s words, one short line each, shown once per sto
   assert.ok(REASON_MS>=2000&&REASON_MS<=3000);
   const r=new MotoReason();
   assert.deepEqual(r.step('anda'),{drop:false});
-  const dead=r.step('morta');
-  assert.equal(dead.show?.text,'Moto morta: empurra!');
-  assert.equal(dead.show?.urgent,true);
-  assert.deepEqual(r.step('morta'),{drop:false},'the same stop never queues twice');
-  assert.deepEqual(r.step('anda'),{drop:true});
+  // Card objetivo-com-verbo: the stops that need the team are the mission line's (MOTO_ACTIONS), no second row.
+  assert.deepEqual(r.step('morta'),{drop:false});
+  assert.deepEqual(r.step('tombo'),{drop:false});
+  assert.deepEqual(r.step('anda'),{drop:false});
+  assert.equal(r.step('entrega').show?.text,'Entregando');
+  assert.deepEqual(r.step('entrega'),{drop:false},'the same stop never queues twice');
+  assert.deepEqual(r.step('morta'),{drop:true},'the mission takes over: the waiting row leaves');
+  assert.deepEqual(r.step('anda'),{drop:false});
   assert.equal(r.step('volta').show?.urgent,false);
   // A new stop replaces the old one at once (volta → lombada), and the end takes it off.
   assert.equal(r.step('lombada').show?.text,'Lombada');
@@ -131,7 +147,7 @@ test('the car in the base ficha: hits it still takes over the limit, Cone under 
   const v=withObjective(objective());
   assert.deepEqual(baseBar({...v,structures:[]}),{fraction:.75,value:90,low:false,label:bar!.label,car:true});
   const wall=baseBar({structures:[{id:'w',kind:'muralha',x:0,y:0,hp:150,maxHp:600}]});
-  assert.deepEqual(wall,{fraction:.25,value:150,low:true,label:'Vida da muralha',car:false});
+  assert.deepEqual(wall,{fraction:.25,value:150,low:true,label:'Vida da barricada',car:false});
 });
 
 test('Dona Cida\'s reach: the sim\'s 3 u to show, a little more to hide (the predicted spot never blinks the button)',()=>{

@@ -110,16 +110,16 @@ export function playerScale(players:number){
 export const ROUND_NAMES:readonly string[]=[
   // D-033 joke pass (heavy tone, humor-reviewed).
   'Saideira Que Nunca Acaba','Vaquinha Pro Presente do Chefe','Caixinha de Som no Ônibus',
-  'Arroto Que Derrubou um Poste','Pombo Cagou no Pastel','Chá Revelação Pegou Fogo','Happy Hour de Guerra',
-  'Agiota Mandou Áudio de 8 Minutos','Acordou no Ponto Final','Carvão Acabou no Meio do Churrasco',
-  'Acendeu o Carvão com Cachaça','Tio Abriu Mais Um Botão','Agiota de Óculos à Noite','Reunião Que Podia Ser um Email',
+  'Arroto Que Derrubou um Poste','Saci Roubou o Pastel','Chá Revelação Pegou Fogo','Happy Hour de Guerra',
+  'Mendigo Mandou Áudio de 8 Minutos','Acordou no Ponto Final','Carvão Acabou no Meio do Churrasco',
+  'Acendeu o Carvão com Cachaça','Tio Abriu Mais Um Botão','Saci de Óculos à Noite','Reunião Que Podia Ser um Email',
   'Vômito na Escada do Prédio','Isopor Sem Gelo','Pastel de Vento e Porrada','Caldo de Cana Batizado',
-  'Bar Fechou, Bêbado Não','Obra do Vizinho às 7h de Sábado','Revoada na Rodoviária','Tio Pegou o Microfone',
-  'Fiado Só Amanhã','Almoço de Domingo na Sogra','Assembleia de Bêbados','O Garçom Desistiu','Sexta-feira, 18h01',
+  'Bar Fechou, Saci Não','Obra do Vizinho às 7h de Sábado','Redemoinho na Rodoviária','Tio Pegou o Microfone',
+  'Fiado Só Amanhã','Almoço de Domingo na Sogra','Mendigo Abriu um CNPJ','O Garçom Desistiu','Sexta-feira, 18h01',
   'Feriado Prolongado de Porrada','Cheque Voltou, Tio Também','Penúltima Dose do Fim do Mundo',
   // Kept from the VGM-033/VGM-055 packs to hold the 60-name minimum (no repeats across a run).
-  'Vomitou na Fila do Banco','Grupo da Família às 6h','Wi-Fi da Vizinha','Leve 3, Pague 3','Rodízio de Bêbado',
-  'Feriado que Caiu no Sábado','Liquidação de Pombo','Visita Surpresa da Tia','Dedinho na Quina','Celular com 2%',
+  'Vomitou na Fila do Banco','Grupo da Família às 6h','Wi-Fi da Vizinha','Leve 3, Pague 3','Rodízio de Saci',
+  'Feriado que Caiu no Sábado','Mendigo Parcelou o Abraço','Visita Surpresa da Tia','Dedinho na Quina','Celular com 2%',
   'Pote de Sorvete com Feijão','Chinelo Voador','Acordou Abraçado na Privada','Amigo Oculto de 20 Reais','Feirante Gritando no Ouvido',
   'Vizinho Gritou Gol Antes','Pisou de Meia no Molhado','Uva-Passa em Tudo','Telemarketing no Domingo',
   'Ensaboado e Sem Água','Vó Disse Que Tá Magrinho','Pagou Academia, Nunca Foi','Fecha Essa Geladeira!',

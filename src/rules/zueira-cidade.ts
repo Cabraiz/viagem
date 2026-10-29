@@ -83,18 +83,18 @@ const deepFreeze=<T>(value:T):T=>{
 export const CIDADE_ROUND_NAMES:readonly string[]=deepFreeze([
   'Chinelo na Neve','Achei Que Neve Era Isopor','Cueca Congelou no Varal','Dedo Grudou no Poste',
   'Tombo na Frente de Todo Mundo','Quentão Batizado Duas Vezes','Cachaça Pra Esquentar, Juro',
-  'Termômetro Pediu Demissão','Escreveu o Nome na Neve','Pombo Congelado em Pleno Voo','Vômito Virou Picolé',
-  'Meia com Chinelo e Orgulho','Molotov Pra Aquecer as Mãos','Agiota Cobrando de Luva',
+  'Termômetro Pediu Demissão','Escreveu o Nome na Neve','Saci Patinando de Uma Perna Só','Vômito Virou Picolé',
+  'Meia com Chinelo e Orgulho','Mendigo Vendendo Cobertor a Prazo','Mendigo Cobrando Juros de Luva',
   'Churrasco na Neve, Tio Insistiu','Fatura Chegou Junto com a Neve','Tio de Regata a Menos Dez',
   'Corrente de Ouro Grudou no Peito','Lá em Casa, 18 Graus É Inverno','Fogueira de Boleto Vencido',
-  'Ponto de Ônibus a Menos Cinco','Latinha Estourou no Congelador','Cocô de Pombo Virou Pedra','Engavetamento de Trenó',
+  'Ponto de Ônibus a Menos Cinco','Latinha Estourou no Congelador','Cachimbo do Saci Congelou','Engavetamento de Trenó',
   'Neve Amarela, Não Come','Hipotermia com Pochete','Esquiando na Ladeira do Bar','Firma Não Dá Folga Pra Nevasca',
   'Cachecol de Toalha de Praia','Guerra de Neve com Pedra Dentro',
 ]);
-/** Round 5: the elite tio-pavê with a chest. */
+/** Round 5: the elite (the saci today, rules/inimigos-liberados.ts) with a chest. */
 export const CIDADE_ELITE_ROUND_NAMES:readonly string[]=deepFreeze([
-  'Tio Já Morou no Canadá','Puxa-Saco Congelado','Coroa de Papel Molhou na Neve','Chefe Pediu Café na Nevasca',
-  'Tio Chegou de Trenó com o Baú',
+  'Saci Já Morou no Canadá','Puxa-Saco Congelado','Coroa de Papel Molhou na Neve','Chefe Pediu Café na Nevasca',
+  'Saci Chegou de Trenó com o Baú',
 ]);
 /** Round 10: the boss in the plaza. */
 export const CIDADE_BOSS_ROUND_NAMES:readonly string[]=deepFreeze([
@@ -122,7 +122,7 @@ export const CIDADE_MODIFIERS:readonly CidadeModifier[]=deepFreeze<CidadeModifie
   {id:'frozen-fountain',name:'Chafariz Congelado',description:'Rinque grátis, tombo pago.',
     ice:{slide:.8,plazaOnly:true},countMult:1.1,banRounds:[]},
   // Snowstorm: less view, fewer and slower enemies. ~0.9 counted, ~1.0 felt. Banned on the elite round (hides the chest).
-  {id:'whiteout',name:'Nevasca Braba',description:'Quem é esse aí? Ah, o bêbado.',
+  {id:'whiteout',name:'Nevasca Braba',description:'Quem é esse aí? Ah, o mendigo.',
     visibility:.55,countMult:.9,speedMult:.95,banRounds:[5]},
   // Only Leste and Oeste spawn, alternating; cleared road is fast. ~1.05.
   {id:'snowplow',name:'Limpa-Neve',description:'Só Leste e Oeste. Verba acabou.',
@@ -135,7 +135,7 @@ export const CIDADE_MODIFIERS:readonly CidadeModifier[]=deepFreeze<CidadeModifie
     share:{pombos:.55},normalizeThreat:true,countMult:.95,groupSizeMult:1.3,cadenceMult:1.3,
     kindMult:{pombos:{speedMult:.75,hpMult:1.6,zigzagMult:.6}},banRounds:[6]},
   // Small at the avenue end, big at the plaza mouth: kill them early. ~0.95 (average hp ~1.05 over the walk).
-  {id:'snowball',name:'Bola de Neve',description:'Cresce igual juros de agiota.',
+  {id:'snowball',name:'Bola de Neve',description:'Cresce igual dívida no fiado.',
     sizeMult:.8,hpMult:.8,growth:{sizeMult:1.3,hpMult:1.3},countMult:.9,banRounds:[5]},
   // The agiota turns into a short-range bruiser for one round. ~1.0. Agiotas debut on round 4; round 6 is the breather.
   {id:'frozen-ink',name:'Impressora Congelou',description:'Agiota cobra no soco.',
@@ -217,8 +217,8 @@ export const CIDADE_FORGE_LINES:Readonly<Record<CidadeRecipeId,readonly string[]
 /** The return horn in the cold: back to the plaza before the horde comes down the avenues. */
 export const CIDADE_HORN_LINES:readonly string[]=deepFreeze([
   'Último na praça é picolé de chuchu!','A corneta congelou, mas toca. Corre!','Corre igual quando a mãe grita o nome!',
-  'Pro chafariz! Vem bêbado em bando!','Volta! O agiota sabe onde cê tá!','Pfffrrr! Corneta com ressaca, mas toca!',
-  'Larga tudo! Os pombos tão vindo armados!','Solta o quentão, porra! Pra praça!',
+  'Pro chafariz! Vem mendigo em bando!','Volta! O saci sabe onde cê tá!','Pfffrrr! Corneta com ressaca, mas toca!',
+  'Larga tudo! O saci vem de redemoinho!','Solta o quentão, porra! Pra praça!',
 ]);
 
 /** Longest left-behind line (cidade-07): a balloon over the hero, a bit wider than the enemy barks. */

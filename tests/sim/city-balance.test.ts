@@ -220,8 +220,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 // Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
+// Re-recorded for piadas-so-elenco-ativo (29/10): only round names in the events (rules/waves.ts ROUND_NAMES, same count, same draws); this tree with the old names gives the previous hashes exactly.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'e90551f1a18407a9',
+  'tutorial seed 3 r4':'c2497fd790e638e6','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'2ba3482a74071899',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

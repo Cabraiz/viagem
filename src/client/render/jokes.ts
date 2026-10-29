@@ -19,6 +19,17 @@ export const DEATH_LINES:Record<EnemyKind,readonly string[]>={
   motoboy:['PEDIDO ESPALHADO!','CHOVEU FEIJÃO!','MARMITADA!','SAIU PRA ENTREGA!','FREIOU NO POSTE!','BIIII... PLAFT!'],
   influencer:['PANTURRILHA FOI!','SHAPE DESMONTOU!','CÃIBRA AO VIVO!','STORY ENCERRADO!','UNFOLLOW ETERNO!','TÁ PAGO... AI!'],
 };
+/**
+ * Death pops of the enemies in the game (rules/inimigos-liberados.ts, plus the sanfoneiro, held until his rule lands),
+ * by roster id: they win over the roster's single pop and the role's pops. The mendigo is the schemer of his gag (the
+ * hug with interest), never the joke of being poor.
+ */
+export const ELENCO_POPS:Readonly<Record<string,readonly string[]>>={
+  mendigo:['ABRAÇO COM JUROS!','TROCO NÃO DEVOLVIDO!','O CARRINHO FUGIU!','VIROU SUCATA BOA!','CADÊ MEU TROCADO?!'],
+  'aberracao-saci':['SÓ SOBROU O CACHIMBO!','REDEMOINHO DESLIGOU!','CAIU DE UMA PERNA SÓ!','NÓ NA PRÓPRIA PERNA!','PULOU PRO FOLCLORE!'],
+  sanfoneiro:['FOLE FURADO!','FIM DO ARRASTA-PÉ!','ANARRIÊ PRO CHÃO!','DESAFINOU DE VEZ!','FOM-FOM... PLOFT!'],
+};
+const elencoPops=(kind:string)=>Object.hasOwn(ELENCO_POPS,kind)?ELENCO_POPS[kind]:undefined;
 
 export interface KindStyle {
   /** Pop text fill and stroke (CSS colors). */
@@ -39,9 +50,16 @@ export const KIND_STYLES:Record<EnemyKind,KindStyle>={
   motoboy:{fill:'#f6ffe6',stroke:'#3f6a18',tint:0xd4f0a8},
   influencer:{fill:'#fff0f7',stroke:'#b0246a',tint:0xffc4e0},
 };
+/** Pop and poof style of the ELENCO_POPS cast: the mendigo's coat brown, the saci's cap red, the sanfoneiro's leather tan. */
+export const ELENCO_STYLES:Readonly<Record<string,KindStyle>>={
+  mendigo:{fill:'#fff6e6',stroke:'#5a4122',tint:0xe6d2b0},
+  'aberracao-saci':{fill:'#fff1ee',stroke:'#a3221c',tint:0xffc0b8},
+  sanfoneiro:{fill:'#fff6e0',stroke:'#8a5a1c',tint:0xf2d6a6},
+};
+const elencoStyle=(kind:string)=>Object.hasOwn(ELENCO_STYLES,kind)?ELENCO_STYLES[kind]:undefined;
 
-/** Death pops of a kind: the nine's own, a roster entry's pop (P0) or its role's pops, else GENERIC_LINES. */
-export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:entryLines(kind)?.pops??GENERIC_LINES;
+/** Death pops of a kind: the nine's own, the active cast's (ELENCO_POPS), a roster entry's pop (P0) or its role's pops, else GENERIC_LINES. */
+export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:elencoPops(kind)??entryLines(kind)?.pops??GENERIC_LINES;
 export function deathLine(kind:string,id:string){
   const lines=deathLines(kind);return lines[Math.floor(hashPhase(id)*lines.length)%lines.length];
 }
@@ -69,11 +87,12 @@ function rosterStyle(kind:string,accent:number):KindStyle{
 }
 export const kindStyle=(kind:string):KindStyle=>{
   if(isEnemyKind(kind))return KIND_STYLES[kind];
+  const own=elencoStyle(kind);if(own)return own;
   const accent=fallbackAccent(kind);
   return accent===undefined?GENERIC_STYLE:rosterStyle(kind,accent);
 };
 /** Cache key of a kind's pop text style: the kind itself when it has its own style, else 'generic'. */
-export const styleKey=(kind:string)=>isEnemyKind(kind)||isRosterId(kind)?kind:'generic';
+export const styleKey=(kind:string)=>isEnemyKind(kind)||elencoStyle(kind)||isRosterId(kind)?kind:'generic';
 
 export const CRIT_LABEL='CRÍTICO!';
 /** Damage number text; crits get the comic "!" suffix. */

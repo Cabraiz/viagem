@@ -466,12 +466,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
   const json=JSON.stringify({events:ctx.events,sentAt:ctx.sentAt,created:log.created,ends:log.ends,state:director.state,round:ctx.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies; again for textos-rodada-nivel-tom, only the round name 'Rodada do Pavê' in the events). */
+/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies; again for textos-rodada-nivel-tom, only the round name 'Rodada do Pavê' in the events; again for piadas-so-elenco-ativo (29/10): only round names in the events (rules/waves.ts ROUND_NAMES, same count, same draws); this tree with the old names gives the previous hashes exactly). */
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'7c183b3dff9c67bb','ilha kill=40 seed 1':'cd2162e5d002df58',
-  'ilha kill=Infinity seed 0':'fcf570024f5ad32b',
-  'infinito kill=40 seed 0':'6c4dd60bb3eac2b1','infinito kill=40 seed 1':'318f68913410405d',
-  'infinito kill=Infinity seed 0':'cc46f17cd95df8aa',
+  'ilha kill=40 seed 0':'961cdc67837005b9','ilha kill=40 seed 1':'cd2162e5d002df58',
+  'ilha kill=Infinity seed 0':'ffc15a98723933be',
+  'infinito kill=40 seed 0':'f1ca3fa7596231f6','infinito kill=40 seed 1':'9132c70e56e3baab',
+  'infinito kill=Infinity seed 0':'af0d46133ab7ca94',
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

@@ -57,6 +57,7 @@
  */
 import {HUD_SWITCH,shownTargets,missionKeys,nestTarget} from '../hud/arrows.ts';
 import type {EdgeKind} from '../hud/edges.ts';
+import {ROTATE_S} from '../hud/missao.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
@@ -301,7 +302,8 @@ const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[],extr
 /**
  * Card objetivo-com-verbo: `caixas=N` the team opened N crates in this window (with `minerva=`/`explora=`: the line's
  * count), `escuro=0..1` the dark on p1 (from DARK_PRESS: "Volte ao Uno!"). The run is shown once without them first, as
- * the window's opening view.
+ * the window's opening view. The objective's line takes turns with the optional nests (ROTATE_S): `turno=ninhos` moves
+ * the frozen tick into the nests' turn. `solo=1` keeps only p1 in the city's run (a dead moto nobody can push).
  */
 function missionScene(run:RunView):{before:RunView;after:RunView}|undefined{
   const crates=Number(params.get('caixas')),dark=Number(params.get('escuro'));
@@ -620,10 +622,12 @@ if(cidade)void (async()=>{
   const cidaAt=params.get('chaveiro')==='1'&&params.has('cida');
   // state=camp-forge: the hero by the plaza's wall (inside CAMP_RADIUS), where the forge opens.
   let hero=tutorial?spot(params.get('ponto')):scenario==='camp-forge'?{x:map.plaza.x+1.5,y:map.plaza.y+1.5}:at(82,125);
-  const people:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
+  const crew:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
     ?[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:P.inicio.x-1.4,y:P.inicio.y+.6},{id:'p3',name:'Zé do Pix',x:P.inicio.x+1.2,y:P.inicio.y+1}]
     :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',...at(58,100)},
       {id:'p3',name:'Zé do Pix',...at(118,142),downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',...at(86,128)}];
+  // Card objetivo-com-verbo: `solo=1` the hero alone (a dead moto starts by itself: "Moto morta: proteja o Uno").
+  const people=params.get('solo')==='1'?crew.slice(0,1):crew;
   const rnd=(()=>{let s=7;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};})();
   const blob=(prefix:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${prefix}${i}`,x:cx*S+(rnd()*2-1)*2,y:cy*S+(rnd()*2-1)*2}));
   // 12 coming down the north avenue, 7 on the west one, 3 (a clover on the minimap only) south-east, 1 alone (nowhere).
@@ -666,6 +670,8 @@ if(cidade)void (async()=>{
   // D-051 (ninhos-rounds-fora): the same 8 nests, 2 fallen, in the city's run (the chip and the phone bar read them).
   if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
   // The sandbox's ticker (unless frozen=1) keeps updating this run; the mission's scene (caixas, escuro) on top of it.
+  // `turno=ninhos`: the optional nests' turn of the objective's line (missao.ts ROTATE_S), the frozen tick moved into it.
+  if(params.get('turno')==='ninhos')run.tick+=ROTATE_S*SIM_HZ;
   const mission=missionScene(run);
   hud.update(mission?.before??run);
   view=mission?.after??run;hud.update(view);

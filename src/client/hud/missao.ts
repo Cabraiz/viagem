@@ -15,13 +15,18 @@
  *  - the dark pressing on the hero (fear >= DARK_PRESS): "Volte ao Uno!" (urgent, over everything, the Uno's arrow);
  *  - the crates the team opened this window in the Minerva's and the explore's lines: "Junte caixas (2)";
  *  - the moto stopped for the team (morta, tombo): "Moto morta: vá empurrar" / "A moto tombou: tire os bichos" (urgent,
- *    the moto's arrow; hud/chaveiro.ts MotoReason leaves these two to the line);
- *  - the nests mode out of a window, nests standing: "Derrube os ninhos (5)", the nearest nest's arrow.
+ *    the moto's arrow; hud/chaveiro.ts MotoReason leaves these two to the line). A dead moto with fewer than
+ *    MOTO_PUSHERS standing (solo, bots count) cannot be pushed, it starts by itself (sim MORTA_ALONE_SECONDS): "Moto morta:
+ *    proteja o Uno", calm, the Uno's arrow (the ORQ 29/10, E4's finding);
+ *  - the objective (the user 29/10: the nests are NOT needed to win; protect the Uno until the chaveiro arrives):
+ *    "Proteja o Uno até o chaveiro" (the Uno's arrow), and with nests standing it takes turns every ROTATE_S with
+ *    "Opcional: derrube ninhos (5)" (the nearest nest's arrow). Both small, never the big band: no line may sound like
+ *    an obligation to knock the nests down.
  * Time comes from the sim tick (the clock's), so a phone and a PC agree. The tracker is pure (tests); createMission
  * paints the two elements.
  */
 import {SIM_HZ,type MotoMode,type RunView} from '../../contract/index.ts';
-import {MOTO_ACTIONS} from './chaveiro.ts';
+import {MOTO_ACTIONS,MOTO_PUSHERS} from './chaveiro.ts';
 
 export const MISSION_BIG_MS=4000;
 /** "Volte ao Uno." shows (and the Uno gets its arrow) in the last seconds of a window. */
@@ -32,6 +37,8 @@ export const TOWERS_MAX_S=30;
 export const DEFEND_MS=4000;
 /** The dark presses (rules/fear.ts: 0 alone in light, 1 consumed): from half of it the line says come back to the Uno. */
 export const DARK_PRESS=.5;
+/** The objective's line and the optional nests' take turns this long each. */
+export const ROTATE_S=8;
 
 export const MISSION_TEXT=Object.freeze({
   minerva:'Junte caixas e volte ao Uno.',
@@ -40,15 +47,19 @@ export const MISSION_TEXT=Object.freeze({
   torres:'Ponha as torres perto do Uno.',
   defenda:'Eles vão atrás do Uno. Defenda.',
   escuro:'Volte ao Uno!',
+  sozinho:'Moto morta: proteja o Uno',
+  proteja:'Proteja o Uno até o chaveiro',
 });
-/** The lines that carry a count: the crates the team opened this window, the nests standing. */
+/** The lines that carry a count: the crates the team opened this window, the nests standing (optional). */
 export const missionCount={
   minerva:(n:number)=>n>0?`Junte caixas (${n})`:MISSION_TEXT.minerva,
   explora:(n:number)=>n>0?`Junte caixas em dupla (${n})`:MISSION_TEXT.explora,
-  ninhos:(n:number)=>`Derrube os ninhos (${n})`,
+  ninhos:(n:number)=>`Opcional: derrube ninhos (${n})`,
 };
 
-export type MissionKey='minerva'|'explora'|'volta'|'torres'|'defenda'|'escuro'|'moto'|'ninhos';
+export type MissionKey='minerva'|'explora'|'volta'|'torres'|'defenda'|'escuro'|'moto'|'sozinho'|'proteja'|'ninhos';
+/** The calm lines: always the small row (never the big band), so they never read as an order. */
+const CALM:ReadonlySet<MissionKey>=new Set(['proteja','ninhos']);
 /** What the line's edge arrow points at (rescue.ts; the arrow shows only while the target is off screen). */
 export type MissionArrow={kind:'uno';urgent:boolean}|{kind:'moto'}|{kind:'ninho';id:string;x:number;y:number};
 /** The run's view as the line reads it (missionFacts); every field optional, absent = not in this run. */
@@ -59,6 +70,8 @@ export interface MissionFacts {
   nests?:{alive:number;nearest?:{id:string;x:number;y:number}};
   /** The chaveiro's moto while the objective runs. */
   moto?:MotoMode;
+  /** While the objective runs: the players standing (bots too), who could push a dead moto (MOTO_PUSHERS). */
+  pushers?:number;
   /** The local hero's dark (PlayerView.fear, 0..1). */
   dark?:number;
 }
@@ -103,7 +116,11 @@ export function missionFacts(view:Pick<RunView,'players'|'structures'|'objective
     out.nests={alive:up.length,...(near?{nearest:{id:near.id,x:near.x,y:near.y}}:{})};
   }
   const o=view.objective;
-  if(o&&!o.ended)out.moto=o.moto.mode;
+  if(o&&!o.ended){
+    out.moto=o.moto.mode;
+    // The sim's crew (chaveiro/system.ts countCrew, revive.ts isStanding): online, seated, not down, alive.
+    out.pushers=view.players.filter(p=>p.online!==false&&!p.spectator&&!p.downed&&!p.eliminated&&!(p.hp<=0)).length;
+  }
   if(me?.fear!==undefined)out.dark=me.fear;
   return out;
 }
@@ -146,6 +163,8 @@ export class MissionTracker {
       return back?this.show('volta',tick,true,explora.until,undefined,{kind:'uno',urgent:true})
         :this.show('explora',tick,false,explora.until,missionCount.explora(this.crates(explora.until,facts.crates)));
     }
+    // A dead moto nobody can push (solo): it starts by itself, so the Uno is the job meanwhile.
+    if(facts.moto==='morta'&&facts.pushers!==undefined&&facts.pushers<MOTO_PUSHERS)return this.show('sozinho',tick,true,undefined,undefined,{kind:'uno',urgent:false});
     // The moto stopped for the team: go there.
     const action=facts.moto?MOTO_ACTIONS[facts.moto]:undefined;
     if(action)return this.show('moto',tick,false,undefined,action,{kind:'moto'});
@@ -154,9 +173,11 @@ export class MissionTracker {
     if(this.after==='torres'&&(!input.towerKit||tick-this.afterSince>=ms(TOWERS_MAX_S*1000))){this.after='defenda';this.afterSince=tick;}
     if(this.after==='defenda'&&tick-this.afterSince>=ms(DEFEND_MS))this.after='feito';
     if(this.after==='torres'||this.after==='defenda')return this.show(this.after,tick,false);
-    // The nests mode: knock them down, the nearest one pointed.
-    const nests=facts.nests;
-    if(nests&&nests.alive>0)return this.show('ninhos',tick,false,undefined,missionCount.ninhos(nests.alive),nests.nearest?{kind:'ninho',...nests.nearest}:undefined);
+    // The objective: protect the Uno; the nests standing are optional, in turns with it (alone without the objective).
+    const nests=facts.nests,objective=facts.moto!==undefined;
+    const nestTurn=!objective||Math.floor(tick/ms(ROTATE_S*1000))%2===1;
+    if(nests&&nests.alive>0&&nestTurn)return this.show('ninhos',tick,false,undefined,missionCount.ninhos(nests.alive),nests.nearest?{kind:'ninho',...nests.nearest}:undefined);
+    if(objective)return this.show('proteja',tick,true,undefined,undefined,{kind:'uno',urgent:false});
     return this.show(undefined,tick,false);
   }
   private show(key:MissionKey|undefined,tick:number,pointUno:boolean,windowEnd?:number,text?:string,arrow?:MissionArrow):MissionOutput{
@@ -164,7 +185,7 @@ export class MissionTracker {
     if(key!==this.key||windowEnd!==this.windowEnd&&key!==undefined&&windowEnd!==undefined){this.key=key;this.since=tick;}
     this.windowEnd=windowEnd;
     if(!key)return {pointUno};
-    const age=tick-this.since,big=key==='defenda'||age<ms(MISSION_BIG_MS);
+    const age=tick-this.since,big=key==='defenda'||!CALM.has(key)&&age<ms(MISSION_BIG_MS);
     return {pointUno,...(arrow?{arrow}:{}),line:{key,text:text??MISSION_TEXT[key as keyof typeof MISSION_TEXT],big,urgent:key==='volta'||key==='escuro'||key==='moto'}};
   }
 }

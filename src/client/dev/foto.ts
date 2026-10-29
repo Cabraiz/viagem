@@ -59,8 +59,12 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'hud-topo':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1',descricao:'HUD em onda na cidade (topo, time, controles)'},
   // Card objetivo-com-verbo: the mission line, one verb at a time, and its edge arrow.
   'objetivo-caixas':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&explora=80&caixas=2',descricao:'objetivo-com-verbo: "Junte caixas em dupla (2)" na exploração'},
-  'objetivo-ninhos':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Derrube os ninhos (6)" e a seta para o ninho mais perto'},
+  // The user 29/10: the nests are optional; the objective is to protect the Uno until the chaveiro arrives.
+  'objetivo-proteja':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Proteja o Uno até o chaveiro" e a seta do Uno (vez do objetivo)'},
+  'objetivo-ninhos':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&turno=ninhos&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Opcional: derrube ninhos (6)" e a seta para o ninho mais perto (vez dos ninhos)'},
   'objetivo-moto':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=tombo&state=wave&frozen=1',descricao:'objetivo-com-verbo: "A moto tombou: tire os bichos" e a seta da moto'},
+  'objetivo-moto-morta':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=morta&state=wave&frozen=1',descricao:'objetivo-com-verbo: em grupo, "Moto morta: vá empurrar" e a seta da moto'},
+  'objetivo-moto-solo':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=morta&solo=1&state=wave&frozen=1',descricao:'objetivo-com-verbo: sozinho, "Moto morta: proteja o Uno" (ela pega sozinha) e a seta do Uno'},
   'objetivo-escuro':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&escuro=.7',descricao:'objetivo-com-verbo: o escuro aperta, "Volte ao Uno!" e a seta do Uno'},
   'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},

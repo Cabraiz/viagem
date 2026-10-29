@@ -7,8 +7,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SIM_HZ} from '../../src/contract/index.ts';
-import {DARK_PRESS,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,RETURN_SECONDS,TOWERS_MAX_S,missionFacts} from '../../src/client/hud/missao.ts';
-import {MOTO_ACTIONS} from '../../src/client/hud/chaveiro.ts';
+import {DARK_PRESS,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,RETURN_SECONDS,ROTATE_S,TOWERS_MAX_S,missionCount,missionFacts} from '../../src/client/hud/missao.ts';
+import {MOTO_ACTIONS,MOTO_PUSHERS} from '../../src/client/hud/chaveiro.ts';
+import {PUSH_PLAYERS} from '../../src/sim/chaveiro/system.ts';
 import {missionKeys,nestKey,nestTarget,shownTargets} from '../../src/client/hud/arrows.ts';
 
 const s=(n:number)=>Math.round(n*SIM_HZ);
@@ -96,15 +97,17 @@ test('the HUD mounts the band and the row right under the clock; the Uno arrow i
 });
 
 // Card objetivo-com-verbo (auditoria-jogabilidade item 8): one sentence with a verb, with its target's arrow.
-const view=(o:{chests?:number[];nests?:{hp:number;x:number}[];moto?:string;fear?:number;ended?:boolean}={})=>({
-  players:(o.chests??[0]).map((c,i)=>({id:`p${i+1}`,stats:{damage:0,kills:0,revives:0,pickups:0,chests:c},...(i===0&&o.fear!==undefined?{fear:o.fear}:{})})),
+const view=(o:{chests?:number[];nests?:{hp:number;x:number}[];moto?:string;fear?:number;ended?:boolean;down?:number[]}={})=>({
+  players:(o.chests??[0]).map((c,i)=>({id:`p${i+1}`,hp:100,online:true,spectator:false,stats:{damage:0,kills:0,revives:0,pickups:0,chests:c},
+    ...(o.down?.includes(i)?{downed:{progress:0,bleedOutTick:9}}:{}),...(i===0&&o.fear!==undefined?{fear:o.fear}:{})})),
   structures:(o.nests??[]).map((n,i)=>({id:`ninho-${i}`,kind:'ninho',x:n.x,y:0,hp:n.hp,maxHp:40,phase:n.hp>0?'dormindo':'destruido'})),
   ...(o.moto?{objective:{moto:{x:0,y:0,mode:o.moto},ended:!!o.ended}}:{}),
 }) as unknown as Parameters<typeof missionFacts>[0];
 
 test('the facts: the team\'s crates, the nests standing and the nearest to the hero, the moto, the dark',()=>{
   const f=missionFacts(view({chests:[2,1],nests:[{hp:0,x:1},{hp:40,x:30},{hp:40,x:12}],moto:'morta',fear:.3}),'p1',{x:0,y:0});
-  assert.deepEqual(f,{crates:3,nests:{alive:2,nearest:{id:'ninho-2',x:12,y:0}},moto:'morta',dark:.3});
+  assert.deepEqual(f,{crates:3,nests:{alive:2,nearest:{id:'ninho-2',x:12,y:0}},moto:'morta',pushers:2,dark:.3});
+  assert.equal(missionFacts(view({chests:[0,0,0],moto:'morta',down:[1]}),'p1').pushers,2,'the downed cannot push');
   assert.deepEqual(missionFacts(view({moto:'tombo',ended:true}),'p1'),{crates:0},'an ended objective has no moto');
 });
 
@@ -133,25 +136,45 @@ test('the dark pressing says "Volte ao Uno!" over every line, urgent, with the U
 
 test('the moto stopped for the team: a verb and the moto\'s arrow; the reason row leaves those two to the line',()=>{
   const m=new MissionTracker();
-  const dead=m.step({tick:START,towerKit:false,playing:true,facts:{moto:'morta'}});
+  const dead=m.step({tick:START,towerKit:false,playing:true,facts:{moto:'morta',pushers:2}});
   assert.deepEqual(dead.line,{key:'moto',text:'Moto morta: vá empurrar',big:true,urgent:true});
   assert.deepEqual(dead.arrow,{kind:'moto'});
   const fell=m.step({tick:START+1,towerKit:false,playing:true,facts:{moto:'tombo'}});
   assert.equal(fell.line?.text,'A moto tombou: tire os bichos');assert.equal(fell.line?.big,true,'same key: the band goes on');
-  assert.equal(m.step({tick:START+2,towerKit:false,playing:true,facts:{moto:'anda'}}).line,undefined);
+  assert.equal(m.step({tick:START+2,towerKit:false,playing:true,facts:{moto:'anda'}}).line?.key,'proteja','he rides: back to the objective');
   for(const text of Object.values(MOTO_ACTIONS))assert.ok(text!.length<=31,text);
 });
 
-test('the nests mode out of a window: "Derrube os ninhos (5)" with the nearest nest\'s arrow; none standing, no line',()=>{
-  const m=new MissionTracker(),nearest={id:'ninho-3',x:4,y:5};
-  const out=m.step({tick:START,towerKit:false,playing:true,facts:{nests:{alive:5,nearest}}});
-  assert.deepEqual(out.line,{key:'ninhos',text:'Derrube os ninhos (5)',big:true,urgent:false});
-  assert.deepEqual(out.arrow,{kind:'ninho',...nearest});
-  assert.equal(out.pointUno,false);
-  assert.equal(m.step({tick:START+s(5),towerKit:false,playing:true,facts:{nests:{alive:4,nearest}}}).line?.text,'Derrube os ninhos (4)');
-  assert.equal(m.step({tick:START+s(6),towerKit:false,playing:true,facts:{nests:{alive:0}}}).line,undefined);
-  // A time to explore and the moto outrank the nests.
-  assert.equal(m.step({tick:START+s(7),towerKit:false,playing:true,facts:{nests:{alive:3},moto:'morta'}}).line?.key,'moto');
+test('solo (fewer than MOTO_PUSHERS standing): a dead moto starts by itself, so the line says protect the Uno',()=>{
+  assert.equal(MOTO_PUSHERS,PUSH_PLAYERS,'the HUD reads the sim rule');
+  const m=new MissionTracker();
+  const solo=m.step({tick:START,towerKit:false,playing:true,facts:{moto:'morta',pushers:1}});
+  assert.deepEqual(solo.line,{key:'sozinho',text:'Moto morta: proteja o Uno',big:true,urgent:false});
+  assert.equal(solo.pointUno,true);assert.deepEqual(solo.arrow,{kind:'uno',urgent:false});
+  assert.equal(m.step({tick:START+1,towerKit:false,playing:true,facts:{moto:'morta',pushers:2}}).line?.text,'Moto morta: vá empurrar','a second one stands: push');
+  assert.equal(m.step({tick:START+2,towerKit:false,playing:true,facts:{moto:'tombo',pushers:1}}).line?.text,'A moto tombou: tire os bichos','anyone clears a fall');
+  assert.equal(missionFacts(view({moto:'morta'}),'p1').pushers,1);
+});
+
+test('the nests are optional (the user 29/10): "Opcional: derrube ninhos (5)" takes turns with "Proteja o Uno até o chaveiro"',()=>{
+  const m=new MissionTracker(),nearest={id:'ninho-3',x:4,y:5},turn=s(ROTATE_S);
+  const at=(tick:number,alive:number,moto?:'anda')=>m.step({tick,towerKit:false,playing:true,facts:{nests:{alive,nearest},...(moto?{moto}:{})}});
+  // Without the objective (the nests mode alone) the optional line holds.
+  const out=at(START,5);
+  assert.deepEqual(out.line,{key:'ninhos',text:'Opcional: derrube ninhos (5)',big:false,urgent:false},'never the big band: not an order');
+  assert.deepEqual(out.arrow,{kind:'ninho',...nearest});assert.equal(out.pointUno,false);
+  assert.equal(at(START+s(5),4).line?.text,'Opcional: derrube ninhos (4)');
+  // With the objective: protect the Uno, the nests in turns.
+  const base=Math.ceil(START/(2*turn))*2*turn;
+  const protect=at(base,4,'anda');
+  assert.deepEqual(protect.line,{key:'proteja',text:'Proteja o Uno até o chaveiro',big:false,urgent:false});
+  assert.deepEqual(protect.arrow,{kind:'uno',urgent:false});assert.equal(protect.pointUno,true);
+  assert.equal(at(base+turn,4,'anda').line?.key,'ninhos');
+  assert.equal(at(base+2*turn,4,'anda').line?.key,'proteja');
+  assert.equal(at(base+turn,0,'anda').line?.key,'proteja','none standing: the objective only');
+  assert.equal(m.step({tick:base+turn+1,towerKit:false,playing:true,facts:{nests:{alive:3},moto:'morta',pushers:2}}).line?.key,'moto','the moto outranks them');
+  for(const text of [missionCount.ninhos(99),MISSION_TEXT.proteja,MISSION_TEXT.sozinho])assert.ok(text.length<=31,text);
+  for(const text of [MISSION_TEXT.proteja,missionCount.ninhos(5)])assert.doesNotMatch(text,/^Derrube/);
 });
 
 test('the arrows: the moto and the nearest nest join the shown keys only while the line points there',()=>{

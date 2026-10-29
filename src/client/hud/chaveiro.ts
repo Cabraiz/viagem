@@ -66,6 +66,8 @@ export const MOTO_ACTIONS:Readonly<Partial<Record<MotoMode,string>>>=Object.free
   morta:'Moto morta: vá empurrar',
   tombo:'A moto tombou: tire os bichos',
 });
+/** The sim's PUSH_PLAYERS (chaveiro/system.ts): fewer standing cannot push a dead moto, it starts by itself. */
+export const MOTO_PUSHERS=2;
 
 /**
  * When the reason's row comes and goes (the row itself waits its turn in the announcement slot, RunHud.queueRow, and

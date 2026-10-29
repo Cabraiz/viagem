@@ -69,6 +69,19 @@ test('/sobre/: linked from the menu footer, next to the privacy policy', () => {
   assert.match(menu,/<nav class="menu-rodape" aria-label="[^"]+"><a class="menu-privacidade" href="\/privacidade\/">Privacidade<\/a><a class="menu-sobre" href="\/sobre\/">Sobre<\/a><\/nav>/);
 });
 
+test('privacy pages: /sobre/ in the footer and the sitemap, og and twitter in the head', () => {
+  for(const dir of ['privacidade','privacy','privacy/ja']){
+    const html=fs.readFileSync(`public/${dir}/index.html`,'utf8');
+    assert.match(html,/<a class="back" href="\/sobre\/">/,dir);
+    assert.match(html,new RegExp(`<meta property="og:url" content="https://viagem\.cyou/${dir}/">`),dir);
+    assert.match(html,/<meta property="og:title" content="viagem · [^"]+">/,dir);
+    assert.match(html,/<meta property="og:image" content="https:\/\/viagem\.cyou\/og\.jpg\?v=2b">/,dir);
+    assert.match(html,/<meta name="twitter:card" content="summary_large_image">/,dir);
+  }
+  assert.match(fs.readFileSync('public/privacidade/index.html','utf8'),/<meta property="og:locale" content="pt_BR">/);
+  assert.match(fs.readFileSync('public/sitemap.xml','utf8'),/<loc>https:\/\/viagem\.cyou\/sobre\/<\/loc>/);
+});
+
 test('head and manifest: the number of heroes is the open ones', () => {
   const six=['','one','two','three','four','five','six','seven','eight'][PERSONAGENS_LIBERADOS.length];
   const description=index.match(/<meta name="description" content="([^"]*)"/)![1];

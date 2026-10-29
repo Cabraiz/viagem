@@ -386,6 +386,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
     ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     ...(options.goldLab!==undefined?{goldChance:options.goldLab}:{}),
+    // comeca-armado item 2: the near start crates stay off the Uno's body (the team spawns beside it).
+    car:()=>chaveiro?.state.car,
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),

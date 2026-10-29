@@ -63,7 +63,7 @@ import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/k
 import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
-import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
+import {SafeClock,arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip,safeAlpha} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos,stackedLabelOffsetCss} from './render/map-labels.ts';
 import {ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
@@ -1107,6 +1107,8 @@ export class IslandScene extends Phaser.Scene {
   private vignette?:Vignette;
   /** The chefão's arena in the dark (boss-fim-onda-1, render/arena-rules.ts): built on the first chefão. */
   private readonly arenaClock=new ArenaClock();
+  /** Who the server keeps untouchable (getting up, the start grace): their sprite blinks (you-rules.ts SafeClock). */
+  private readonly safe=new SafeClock();
   private arenaDark?:ArenaDark;
   private readonly arenaSpots:ArenaSpotPx[]=[];
   /** A circle of `radius` u around `at` as drawn (world px ellipse). */
@@ -1551,6 +1553,7 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
+      this.safe.push(runView.tick,runView.events,!!runView.round);
       this.cheers.push(this.time.now,runView.events,runView.players.map(p=>{const at=net.players.get(p.id);return {id:p.id,x:at?.x??NaN,y:at?.y??NaN,bot:!!p.bot};}),runView.enemies);
       this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
@@ -1602,7 +1605,7 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): its fall (downed16, queda-6-herois) or, without one, turned on its feet; still
     // opaque enough to be found; out/watching fades.
-    this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown&&!hasDowned16(this.hooks.classId)?-90:0);
+    this.actor.setAlpha(safeAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4,this.safe.on(net.id,this.viewTick),time,this.reduced)).setAngle(selfDown&&!hasDowned16(this.hooks.classId)?-90:0);
     // Bicos: without a work16 the hero is gone through the shop's door (the silhouette follows the body's alpha).
     if(this.shopWorkers.has(net.id)&&!hasWork16(this.hooks.classId))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
@@ -1636,7 +1639,7 @@ export class IslandScene extends Phaser.Scene {
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const inShop=this.shopWorkers.has(player.id)&&!hasWork16(player.classId);
-      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down&&!hasDowned16(player.classId)?-90:0);
+      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(safeAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4,this.safe.on(player.id,this.viewTick),time,this.reduced)).setAngle(down&&!hasDowned16(player.classId)?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       // Each ally casts its frame on the ground like the hero (card sombra-silhueta), in every world and quality.

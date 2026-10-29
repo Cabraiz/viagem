@@ -188,7 +188,7 @@ export const ACTION_PEAK_MAX=1.15;
  * projectiles.ts collideHostile marks the player it hurts (DEVENDO). Tuned 4.5 u/s for 3 s, flown through rules
  * PROJECTILE_SPEED_MULT (2.25 u/s for 6 s): the same 13.5 u reach.
  */
-export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5*PROJECTILE_SPEED_MULT,radius:.18,damage:7,life:ticks(3/PROJECTILE_SPEED_MULT),cooldown:ticks(3),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
+export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5*PROJECTILE_SPEED_MULT,radius:.18,damage:7,life:ticks(3/PROJECTILE_SPEED_MULT),cooldown:ticks(3),aim:ticks(.8),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
 /**
  * Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35).
  * The joke is the warning (BUG-20261012-E6-cidade-velocidades-relativas): when it starts he locks the charge on the
@@ -219,7 +219,7 @@ export const BURP_SLOW_LINES:readonly string[]=Object.freeze(['Arrotou na tua ca
 export const MOLOTOV=Object.freeze({
   minRange:4,maxRange:6,fireRange:7.5,aim:ticks(.5),flight:ticks(1),radius:.9,damage:9,cooldown:ticks(4.5),retry:ticks(1),
   pulses:3,pulseEvery:ticks(.8),pulseRadius:.75,pulseDamage:3,maxActive:2,maxGlobal:8,
-  deathRadius:1.6,deathDamage:15,deathEnemyDamage:30,deathDelay:ticks(.8),
+  deathRadius:1.4,deathDamage:15,deathEnemyDamage:30,deathDelay:ticks(1),
 });
 /** Floater when a hero steps in the molotov's fire (D-033). Used when the client/sim wires the event; nothing reads it yet. */
 export const FIRE_GROUND_LINES:readonly string[]=Object.freeze(['Pisou na cachaça em chamas!','Arde mais que cachaça barata!','Churrasquinho de herói!','Pé no fogo! Dança, porra!','Flambado no álcool do anão']);
@@ -296,9 +296,12 @@ export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coa
  * (blocked) or knocked off the line: he crashes, the bag explodes ('explosao' circle owned by `env:marmita:<id>`,
  * `blastRadius`, `blastDamage`, warned `blastDelay`, players only) and he dies through ctx.damageEnemy with no player
  * credit (XP and loot once). No line (budget full) → no charge (retry after `retry`); no blast outside the wave.
+ * inimigos-avisos-justos: `trigger` sits inside the run plus the touch (city ~3.7 + .54 u, endless ~5.7 + .54; at 7 the
+ * line stopped short and he never hit), `aim` is the .8 s floor (MIN_TELEGRAPH_TICKS) and the blast's 1 s lets a hero at its centre walk out
+ * (1 s × 1.99 u/s ≥ blastRadius + body + .3), like the anão's death blast (MOLOTOV death*) and the agiota's .8 s aim.
  */
-export const MOTOBOY=Object.freeze({trigger:7,aim:ticks(1),charge:ticks(1.6),chargeSpeed:3,hitDamage:12,retry:ticks(1),
-  blastRadius:1.4,blastDamage:12,blastDelay:ticks(.8)});
+export const MOTOBOY=Object.freeze({trigger:4,aim:ticks(.8),charge:ticks(1.6),chargeSpeed:3,hitDamage:12,retry:ticks(1),
+  blastRadius:1.4,blastDamage:12,blastDelay:ticks(1)});
 export const MOTOBOY_HONK_LINES:readonly string[]=Object.freeze(['BIIIIII! SAI DA FRENTE!','Pedido saindo! ABRE ALAS!','Três... dois... BIIIIII!','GPS mandou passar por você!','Tô vendo a tua porta!','FOM-FOM! Desvia, se puder!']);
 /** Said by the motoboy as he crashes (limiter, key 'motoboy:boom'). */
 export const MARMITA_BOOM_LINES:readonly string[]=Object.freeze(['Arroz, feijão e estilhaço!','Ovo frito em órbita!','Entregue! Pra rua inteira!','Bife a milhão por hora!','Feijoada de fragmentação']);
@@ -309,10 +312,16 @@ export const MARMITA_BOOM_LINES:readonly string[]=Object.freeze(['Arroz, feijão
  * homing projectile that hits him is reflected (projectiles.ts collideFriendly, isReflecting): it turns hostile (owner =
  * him), its velocity reverses, damage × REFLECT.mult (× his coach buff), pierce 0, hit list reset, and it lives at least
  * REFLECT.minLife more. Orbiters, follow/area zones and the instant cone still hurt him: the counterplay.
+ * inimigos-avisos-justos: one pose sends back at most REFLECT.cap damage in all (the shot that crosses it is clipped);
+ * then the pose breaks (memory.until = now, enemy-ai walks and starts the cooldown) and the next shots hit him. Each
+ * reflection and the break emit a 'pose' event (contract SimEvent) for the client's signal.
  */
 export const POSE=Object.freeze({trigger:6,duration:ticks(2),cooldown:ticks(5)});
-/** minLife: the tuned 1 s through PROJECTILE_SPEED_MULT (2 s), so a reflected shot flies back as far at its slower speed. */
-export const REFLECT=Object.freeze({mult:.6,minLife:ticks(1/PROJECTILE_SPEED_MULT)});
+/**
+ * minLife: the tuned 1 s through PROJECTILE_SPEED_MULT (2 s), so a reflected shot flies back as far at its slower speed.
+ * cap: reflected damage per pose, all shooters together (6p fed him 10 downs in the audit with no cap).
+ */
+export const REFLECT=Object.freeze({mult:.6,minLife:ticks(1/PROJECTILE_SPEED_MULT),cap:18});
 /** memory.state of the pose (enemies/ai.ts STATE.pose). */
 export const POSE_STATE=6;
 export const POSE_LINES:readonly string[]=Object.freeze(['Ninguém atira! Tô gravando!','Pera, achei a luz boa!','Pose de bíceps: modo escudo!','Contrai o abdômen! Sorri!','Mais uma! Agora de perfil!','Para tudo: hora do pump!']);

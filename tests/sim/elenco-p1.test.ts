@@ -184,7 +184,7 @@ test('weapons aim at a live coach in range right after the tapped target, before
 
 // ---------- Motoboy ----------
 /** A motoboy at O and a player `along` u ahead (+x); one step: honk and aim. */
-function aim(options:EnemyAiOptions={},along=5,phase:'wave'|'prepare'='wave'){
+function aim(options:EnemyAiOptions={},along=3.5,phase:'wave'|'prepare'='wave'){
   const A=arena(6,3,options);
   A.world.round.phase=phase;
   const p=addPlayer(A.world,'p',at(along));
@@ -223,7 +223,7 @@ test('motoboy: warned investida line ≥ 0.8 s as long as the capped run, then a
 });
 
 test('motoboy: the run ends in a warned marmita blast (env:marmita), he dies once with no credit; a hero in the way is hit',()=>{
-  const M=aim({},5);
+  const M=aim({},3.5);
   // The hero stays in the line: contact at the cap → hitDamage, then the crash.
   M.step(MOTOBOY.aim+MOTOBOY.charge+2);
   assert.deepEqual(damageTo(M.events,'p',M.e.id),[MOTOBOY.hitDamage],'one charge hit');
@@ -242,7 +242,7 @@ test('motoboy: the run ends in a warned marmita blast (env:marmita), he dies onc
   assert.deepEqual(damageTo(M.events,'p',blast.t.owner),[MOTOBOY.blastDamage],'blast hits once');
   assert.equal(M.events.filter(e=>e.type==='kill'&&e.enemy===M.e.id).length,1,'still one kill');
   // A full run of the same: he crashes at the end of the line when nobody is in it.
-  const N=aim({},5);N.p.y+=3;
+  const N=aim({},3.5);N.p.y+=3;
   N.step(MOTOBOY.aim+MOTOBOY.charge+2);
   assert.ok(!N.world.enemies.has(N.e.id),'crashed at the end of the run');
   const end=N.made.find(m=>m.t.owner===`env:marmita:${N.e.id}`)!;
@@ -256,10 +256,10 @@ test('motoboy: telegraph budget full → no line, no charge; outside the wave �
   assert.ok(full.world.enemies.has(full.e.id),'never charged, never crashed');
   assert.notEqual(full.e.memory!.state,STATE.charge);
   assert.equal(full.made.length,0,'no hazard at all');
-  const prepare=aim({},5,'prepare');
+  const prepare=aim({},3.5,'prepare');
   assert.equal(prepare.line,undefined,'no aim in the intermission');
   // Charge started in the wave, round over mid-run: he crashes into the intermission without a blast.
-  const late=aim({},5);late.p.y+=3;
+  const late=aim({},3.5);late.p.y+=3;
   late.step(MOTOBOY.aim+2);
   assert.equal(late.e.memory!.state,STATE.charge);
   late.world.round.phase='prepare';
@@ -279,7 +279,7 @@ test('motoboy: a line annulled mid-aim calls the charge off; a crowd pushing him
   assert.equal(M.made.filter(m=>m.t.owner.startsWith('env:marmita:')).length,0);
   // A neighbor overlapping him when the aim starts: he stays on the line he drew and charges.
   const A=arena(6,3);
-  const p=addPlayer(A.world,'p',at(5));
+  const p=addPlayer(A.world,'p',at(3.5));
   const e=createEnemy(A.world,'motoboy',O),crowd=createEnemy(A.world,'bebado',at(-.2,.1));
   crowd.frozenUntil=1e9;
   A.step(1);
@@ -298,7 +298,7 @@ test('motoboy: in a full run his crash drops his XP once (kill hook, no credit)'
   d.nextGroup=d.plan.groups.length;d.pending=[];
   const ids=[...w.enemies.keys()],p=sim.players.get('a')!;
   for(const id of ids.slice(2))w.damageEnemy(id,1e6,'a');
-  const moto=createEnemy(w,'motoboy',{x:p.x+5,y:p.y});
+  const moto=createEnemy(w,'motoboy',{x:p.x+3.5,y:p.y});
   const other=w.enemies.get(ids[1])!;other.x=p.x+15;other.frozenUntil=1e9;   // keeps the wave going
   w.damageEnemy(ids[0],1e6,'a');
   p.invulnerableUntil=1e9;p.build.weapons=[];
@@ -522,7 +522,7 @@ test('a lecture next to the boss leaves his phase alone and emits no boss-phase 
 });
 
 test('a coached motoboy hits ×PALESTRA.damageMult with his charge and his marmita blast (M5, M7)',()=>{
-  const M=aim({},5);
+  const M=aim({},3.5);
   (M.e as CoachedEnemy).coachedUntil=1e9;
   M.step(MOTOBOY.aim+MOTOBOY.charge+2);
   const hit=damageTo(M.events,'p',M.e.id);
@@ -553,7 +553,7 @@ test('a coached anão: his death explosion is set ×PALESTRA.damageMult (M6)',()
 /** An obstacle with open ground in front of its west side (along its own row), and its east side walkable. */
 function rockAhead():{o:{x:number;y:number;radius:number};start:Point;target:Point}{
   for(let x=-200;x<=200;x+=4)for(let y=-200;y<=200;y+=4)for(const o of obstaclesNear({x,y},2,TERRAIN)){
-    if(o.radius<.3)continue;
+    if(o.radius<.3||2.5+2*o.radius+.6>MOTOBOY.trigger)continue;   // the hero within his trigger
     const start={x:o.x-o.radius-2.5,y:o.y},target={x:o.x+o.radius+.6,y:o.y};
     let clear=walkable(target,TERRAIN);
     for(let dx=-1.5;clear&&dx<=2;dx+=.05)for(const dy of [-.5,0,.5]){

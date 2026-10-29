@@ -283,7 +283,13 @@ export type SimEvent=
    */
   | {type:'vehicle';player:string;kind:VehicleKind;what:'pegou'|'acabou'|'largou';pickup?:string}
   /** boss-fim-onda-1: a chefão's pancada threw `player`, down until untilTick (the Tank's punch). */
-  | {type:'knock';player:string;untilTick:number};
+  | {type:'knock';player:string;untilTick:number}
+  /**
+   * inimigos-avisos-justos: the influencer's pose (enemies/catalog.ts POSE, REFLECT). The pose itself is EnemyView.phase 1;
+   * 'reflect': he sent a shot back at (x, y), `amount` of damage, fired by `player`; 'break': the pose hit REFLECT.cap and
+   * broke (he is hittable again). Sim only for now (no protocol4 spec: the wire skips it) until the client draws it.
+   */
+  | {type:'pose';enemy:string;act:'reflect'|'break';x:number;y:number;player?:string;amount?:number};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

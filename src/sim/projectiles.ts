@@ -140,13 +140,24 @@ function segmentDistance(ax:number,ay:number,bx:number,by:number,px:number,py:nu
  * back. It turns hostile (owner = him, so collideHostile hurts players and names him), its velocity reverses, damage ×
  * REFLECT.mult (× his coach buff), pierce 0, an empty hit list, plain linear motion, and at least REFLECT.minLife more
  * ticks to fly. Area shots (rehit), orbiters and anchored ones are never reflected. Flags one line for enemy-ai.
+ * One pose sends back at most REFLECT.cap in all (memory.reflectPose = the pose's `until`, memory.reflected = the sum so
+ * far): the shot that crosses it is clipped and the pose breaks (memory.until = now, so isReflecting is false from this
+ * tick and enemy-ai starts the cooldown). Emits 'pose' 'reflect' (and 'break').
  */
-export function reflectShot(p:WeaponProjectile,enemy:EnemyState,tick:number){
+export function reflectShot(ctx:SimContext,p:WeaponProjectile,enemy:EnemyState){
+  const tick=ctx.tick,memory=(enemy.memory??={}),shooter=p.owner;
+  if(memory.reflectPose!==memory.until){memory.reflectPose=memory.until??tick;memory.reflected=0;}
+  const left=REFLECT.cap-(memory.reflected??0);
   p.hostile=true;p.owner=enemy.id;p.vx=-p.vx;p.vy=-p.vy;
-  p.damage*=REFLECT.mult*coachMult(enemy,tick);p.pierce=0;p.hit=[];p.motion='linear';
+  p.damage=Math.min(p.damage*REFLECT.mult*coachMult(enemy,tick),left);p.pierce=0;p.hit=[];p.motion='linear';
   p.untilTick=Math.max(p.untilTick,tick+REFLECT.minLife);
   delete p.homing;delete p.seek;delete p.turn;delete p.returnTick;delete p.knockback;delete p.slowTicks;delete p.blocksHostile;delete p.anchor;delete p.mechanic;delete p.data;
-  (enemy.memory??={}).reflectSay=1;
+  memory.reflectSay=1;memory.reflected=(memory.reflected??0)+p.damage;
+  ctx.emit({type:'pose',enemy:enemy.id,act:'reflect',x:enemy.x,y:enemy.y,player:shooter,amount:p.damage});
+  if(memory.reflected>=REFLECT.cap-1e-9){
+    memory.until=tick;memory.reflectPose=tick;
+    ctx.emit({type:'pose',enemy:enemy.id,act:'break',x:enemy.x,y:enemy.y});
+  }
 }
 
 const wrapAngle=(a:number)=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;};
@@ -252,7 +263,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       }else{
         if(p.hit.includes(e.id))continue;
         // A posing influencer sends a moving linear/homing shot back (no damage to him); it is hostile from now on.
-        if(p.motion!=='orbit'&&p.motion!=='follow'&&Math.hypot(p.vx,p.vy)>1e-6&&isReflecting(e,ctx.tick)){reflectShot(p,e,ctx.tick);return true;}
+        if(p.motion!=='orbit'&&p.motion!=='follow'&&Math.hypot(p.vx,p.vy)>1e-6&&isReflecting(e,ctx.tick)){reflectShot(ctx,p,e);return true;}
         p.hit.push(e.id);
       }
       const moving=Math.hypot(p.vx,p.vy)>1e-6&&p.motion!=='orbit';

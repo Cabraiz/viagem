@@ -119,8 +119,8 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
   assert.match(main,/aria-label="Menos um bot"/);assert.match(main,/aria-label="Mais um bot"/);
   assert.match(main,/class="solo-bots-value" aria-live="polite"/);
   assert.match(main,/const island=islandFlag\(location\.search\);/);
-  // danca-no-podio: the menu dance lets go of its pages before the island loads (menu-dance.ts hold).
-  assert.match(main,/if\(island\)\{\s*const releaseDance=menuDance\.hold\(\);\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
+  // menu-sem-danca: no menu dance to hold before the island loads.
+  assert.match(main,/if\(island\)\{\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
   assert.match(main,/await openSolo\(selected,nickname\.trim\(\),\{bots,\s*onStep:[^\n]*\n\s*onJoined:/);
   assert.equal(main.match(/openExploration\(/g)?.length,1,'the island opens from one place only');
   const lobby=read('src/client/lobby.ts');

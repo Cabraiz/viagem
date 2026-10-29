@@ -102,7 +102,7 @@
   /* Perfil do celular em pé (NEW-20261023-ORQ-selecao-mobile-instagram): a tela clara estilo Instagram da referência do
      usuário (folha-8), cores medidas nela. Só ui/insta.css. */
   --insta-fundo:#FBFAF8;--insta-chip:#F0EFED;--insta-linha:#E2DDDA;
-  --insta-texto:#170D36;--insta-cinza:#7E7C87;
+  --insta-texto:#170D36;--insta-cinza:#6B6974;
   --insta-roxo:#8623CC;--insta-botao-a:#9440F2;--insta-botao-b:#680DCC;--insta-botao-c:#7A1EDB;--insta-botao-borda:#4F1696;--insta-botao-coroa:#C9A2FF;
   --insta-anel-a:#F2B347;--insta-anel-b:#D45FB0;--insta-anel-c:#9A1DD3;
   /* BUG-20261023-ORQ-instagram-letreiro-do-perfil: os ícones dos chips em cinza-escuro como na referência; o coração
@@ -113,8 +113,8 @@
   /* BUG-20261024-ORQ-stories-texto-estilo-instagram: as cores do seletor de texto do Instagram (faixa por linha, letra,
      hashtag) e os stickers dele (enquete, caixa de pergunta, coração). Só ui/insta.css .insta-st-*. */
   --insta-st-branco:#FFFFFF;--insta-st-preto:#000000;--insta-st-azul:#3897F0;--insta-st-verde:#70C050;
-  --insta-st-amarelo:#FDCB5C;--insta-st-laranja:#FD8D32;--insta-st-vermelho:#ED4956;--insta-st-rosa:#D10869;--insta-st-roxo:#A307BA;
-  --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#8E8E8E;
+  --insta-st-amarelo:#FDCB5C;--insta-st-laranja:#FD8D32;--insta-st-vermelho:#D93444;--insta-st-rosa:#D10869;--insta-st-roxo:#A307BA;
+  --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#6B6B6B;
   --insta-st-sombra-texto:0 1px 6px color-mix(in srgb,var(--insta-st-preto) 55%,transparent);
   --insta-st-sombra-sticker:0 2px 10px color-mix(in srgb,var(--insta-st-preto) 25%,transparent);
   /* Cartão de app de namoro do inimigo novo (NEW-20261024-ORQ-nome-inimigo-rede-social, mockup 8 que o usuário

@@ -111,7 +111,7 @@ const DEFS:readonly AwardDef[]=[
   {id:'evolucao',title:'Evolução de novela',icon:'borboleta',vice:'Evolução de reprise',solo:true,person:true,
     metric:f=>evolutions(f),
     line:()=>'Evoluiu. Último capítulo!'},
-  {id:'marombeiro',title:'Marombeiro de upgrade',icon:'halter',vice:'Frequenta a academia',solo:true,person:true,
+  {id:'marombeiro',title:'Marombeiro de melhoria',icon:'halter',vice:'Frequenta a academia',solo:true,person:true,
     metric:f=>buildLevels(f.player),
     line:v=>`${v} níveis de build. Só treina.`},
 ];

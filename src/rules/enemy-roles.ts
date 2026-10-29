@@ -14,7 +14,7 @@ export type EnemyRole=typeof ENEMY_ROLES[number];
  * Mirrors sim/enemies/catalog.ts EnemyBehavior (rules may not import sim): chase walks straight and hits; stagger is the
  * bêbado's (burp); swarm the pombos' (poop drops); joker the Tio's joke and warned charge; ranged the agiota's shot;
  * thrower the anão's molotov; coach the lecture buff; kamikaze the motoboy's warned charge and blast; poser the
- * influencer's reflecting pose; brute walks and shoves on contact; summoner keeps distance and calls minions with a
+ * influencer's reflecting pose; brute walks, shoves on contact and stomps a telegraphed circle; summoner keeps distance and calls minions with a
  * spawn-warning; minichefe walks, shoves and slams a telegraphed circle; boss is boss.ts.
  */
 export type RoleBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'coach'|'kamikaze'|'poser'|'brute'|'summoner'|'minichefe'|'boss';
@@ -128,7 +128,7 @@ export const ROLE_PROFILES:Readonly<Record<EnemyRole,RoleProfile>>=Object.freeze
     reactionLines:['PANCADA NO CHÃO!','Treme o chão!','Segura essa, formiga!'],
     pops:['CHEFINHO CAIU!','DERRUBADO!','GIGANTE NO CHÃO!'],cause:'O grandão te esmagou'}),
   chefe:role({id:'chefe',label:'Chefe',behavior:'boss',base:'chefe',speed:1,damage:1,radius:1,xp:1,cell:384,threat:0,
-    barks:['Eu sou o fim da linha','Tremam. Ou peçam desconto.','Ninguém passa de mim','Último round, última dor'],
+    barks:['Eu sou o fim da linha','Tremam. Ou peçam desconto.','Ninguém passa de mim','Última rodada, última dor'],
     deathLines:['Impossível... eu era o chefe','Fim da minha era','Volto na sequência. Juro.'],
     reactionLines:['Fase dois, otários!','Ajoelhem, plebeus!','Chega de brincadeira!'],
     pops:['CHEFE DERRUBADO!','FIM DE REINADO!','CAIU O CHEFÃO!'],cause:'O chefão te esmagou'}),

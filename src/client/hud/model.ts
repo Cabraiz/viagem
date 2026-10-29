@@ -258,7 +258,7 @@ export function reviveBanner(view:RunView,localId:string,network?:string,causes?
 
 /** Offer header copy (DSG-voz): one title, no eyebrow chip. */
 export function offerTitle(offer:OfferView){
-  return {title:offer.source==='round'?'Oferta do round':`Nível ${offer.level}!`};
+  return {title:offer.source==='round'?'Escolha da rodada':`Nível ${offer.level}!`};
 }
 
 /**

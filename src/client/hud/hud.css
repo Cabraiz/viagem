@@ -60,7 +60,7 @@
   .rh-top>.rh-round{order:0;flex:0 0 calc(100% - 150px);margin:0 0 0 150px;padding-inline:8px}
   .rh-round-label{font-size:var(--t-16)}
   .rh-xp{order:1}
-  .rh-camp{gap:4px}
+  .rh-camp{gap:10px}
   .rh-top>.rh-camp{padding-inline:6px}
   /* A boss fight's bar (row 3) also ends before the minimap. */
   .rh-top>.rh-boss{margin:0 26px 0 0;flex-basis:calc(100% - 26px)}
@@ -845,10 +845,8 @@
 .rh-rcard-topa{position:absolute;top:-13px;right:-5px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-amarelo);border:2px solid var(--c-breu);color:var(--c-breu);font:800 var(--t-13)/1.2 var(--f-sistema);transform:rotate(4deg);box-shadow:0 2px 0 var(--c-breu);pointer-events:none}
 /* The defeat's "O que derrubou a turma … Faltou N rounds pro síndico". */
 .rh-result-lost{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-amarelo)}
-/* "Compartilhar" (camera sticker): the icon alone in portrait (the row already has Revanche and Sair), the word in landscape. */
-.rh-result .rh-result-share{flex:0 0 auto;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
-.rh-result .rh-result-share .rh-share-long{margin-left:6px}
-@media (min-height:501px){.rh-result .rh-result-share .rh-share-long{display:none}}
+/* "Foto" (camera sticker): the same word on every screen (resultado-e-topo-com-rotulo), beside the sticker. */
+.rh-result .rh-result-share{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
 .rh-result .rh-result-rematch.rh-waiting:disabled{opacity:1}
 .rh-result .rh-result-rematch{white-space:nowrap}
 /* Landscape: the two numbers read in one line ("18,4k dano  1 salvou"), which pays for the defeat's extra line. */
@@ -859,8 +857,8 @@
 /* The first row's "✓ topa" sticks out of its card: the grid keeps room for it above (it scrolls, so it would clip). */
 .rh-result-grid{padding-top:12px}
 @media (max-height:500px){.rh-result-grid{padding-top:10px}}
-/* The owner's row has four buttons: the share is the icon alone everywhere, and in portrait the rest tighten. */
-.rh-result .rh-result-actions.has-manage .rh-result-share .rh-share-long{display:none}
+/* The owner's row has four buttons: "Foto" goes under its sticker, small, and in portrait the rest tighten. */
+.rh-result .rh-result-actions.has-manage .rh-result-share{flex-direction:column;gap:0;padding:2px 8px;font-size:var(--t-13);line-height:1}
 @media (min-height:501px){
   .rh-result .rh-result-actions.has-manage{gap:6px}
   .rh-result .rh-result-actions.has-manage .rh-result-btn{padding-inline:8px}
@@ -900,4 +898,18 @@
 @media (min-width:1200px) and (min-height:680px){
   .rh[data-hud=mesa] :is(.rh-top,.rh-team,.rh-inv){zoom:1.25}
   .rh[data-hud=mesa] .rh-inv{right:calc((max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px) / 1.25);bottom:calc(max(24px,env(safe-area-inset-bottom)) / 1.25)}
+}
+/* resultado-e-topo-com-rotulo, portrait and the PC (not landscape phones): the block (head, notice, cards, buttons) sits in
+   the middle of the screen, so one or two cards leave no purple hole between them and the buttons; six cards still fill
+   it and scroll inside the grid as before (its row shrinks to what is left). The buttons stop at 520 px on a wide screen. */
+@media (min-height:501px){
+  .rh-result{grid-template-rows:auto auto minmax(0,auto) auto;align-content:safe center}
+  .rh-result-actions{justify-self:center;width:min(100%,520px)}
+}
+/* The PC: one or two cards grow (their words were 13 px in a 1280 px screen). */
+@media (min-height:501px) and (min-width:900px){
+  .rh-result-grid:is([data-count="1"],[data-count="2"]){grid-template-columns:minmax(0,470px)}
+  .rh-result-grid[data-count="2"]{grid-template-columns:repeat(2,minmax(0,470px))}
+  .rh-result-grid:is([data-count="1"],[data-count="2"]) .rh-rcard{zoom:1.3}
+  .rh-result-shame{width:min(100%,640px)}
 }

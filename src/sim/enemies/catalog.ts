@@ -6,7 +6,7 @@ import type {Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
-import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
+import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,enemyFeel,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
  * Any roster id (rules/enemy-roster.ts, D-040): the nine hand-tuned kinds of D-033 and the P1 trio (LegacyKind, their
@@ -21,7 +21,7 @@ export type {LegacyKind};
  * thrower: keeps distance and lobs telegraphed molotovs (anao-molotov); coach: keeps distance, no melee, lectures and
  * buffs the allies around him (PALESTRA); kamikaze: warned locked charge that ends in a marmita blast (MOTOBOY);
  * poser: slow tank whose pose reflects friendly shots (POSE, REFLECT); chase: walks straight (siege, generic);
- * boss: driven by VGM-038. Roles of the roster (D-040): brute walks and shoves on contact (BRUTE); summoner keeps the
+ * boss: driven by VGM-038. Roles of the roster (D-040): brute walks, shoves on contact (BRUTE) and stomps (BRUTE_SLAM); summoner keeps the
  * coach's distance and calls minions with a spawn-warning (SUMMON); minichefe walks, shoves and slams (SLAM).
  */
 export type EnemyBehavior=RoleBehavior;
@@ -342,6 +342,11 @@ export const SUMMON_STATE=7;
 export const SLAM=Object.freeze({trigger:2.6,radius:1.6,damage:16,delay:ticks(1.2),recover:ticks(.4),cooldown:ticks(5)});
 export const SLAM_STATE=8;
 /**
+ * Brutamontes' own stomp (auditoria-inimigos F: a wall of hp that hardly hurt): the mini-chefe's, smaller and slower to
+ * come back, so the brute stops being only a body to chew through. Same warned 'pancada' circle, same stand-still.
+ */
+export const BRUTE_SLAM=Object.freeze({trigger:1.8,radius:1.1,damage:10,delay:ticks(1.2),recover:ticks(.5),cooldown:ticks(6)});
+/**
  * True while `enemy` is a live influencer in his pose (reflects friendly shots). A retreating one (D-010, memory.retreat)
  * never reflects: retreaters deal no damage, and enemy-ai also drops his pose when the retreat starts.
  */
@@ -373,19 +378,21 @@ const ROSTER_DEFS=new Map<string,EnemyDef>();
 /**
  * Def of a pack entry: its role's hp (roleHp) and profile on the role's base kind (speed, damage, radius × cell / role cell, xp;
  * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).
+ * A clone with a feel (rules/enemy-feel.ts) scales speed, hp, radius and sway on top.
  */
 function rosterDef(kind:string):EnemyDef|undefined{
   const cached=ROSTER_DEFS.get(kind);if(cached)return cached;
   const entry=rosterEntry(kind),lines=entryLines(kind);
   if(!entry||!lines)return undefined;
-  const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base];
+  const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base],feel=enemyFeel(kind)??{speed:1,hp:1,radius:1,sway:1};
   const def:EnemyDef=Object.freeze({
     id:entry.id,name:entry.name,behavior:role.behavior,
-    hp:roleHp(entry.role,base.hp),speed:base.speed*role.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
-    radius:base.radius*role.radius*entry.cell/role.cell,xp:Math.max(1,Math.round(base.xp*role.xp)),
+    hp:feel.hp===1?roleHp(entry.role,base.hp):Math.round(roleHp(entry.role,base.hp)*feel.hp),speed:base.speed*role.speed*feel.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
+    radius:base.radius*role.radius*entry.cell/role.cell*feel.radius,xp:Math.max(1,Math.round(base.xp*role.xp)),
     contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,
-    // The swarm's and the stagger's walk sway like their base's (pombos, bêbado).
-    ...((role.behavior==='swarm'||role.behavior==='stagger')&&base.zigzag?{zigzag:base.zigzag}:{}),
+    // The swarm's and the stagger's walk sway like their base's (pombos, bêbado), wider or straighter with the feel.
+    ...((role.behavior==='swarm'||role.behavior==='stagger')&&base.zigzag?{zigzag:feel.sway===1?base.zigzag
+      :{freq:base.zigzag.freq*Math.sqrt(feel.sway),amp:base.zigzag.amp*feel.sway}}:{}),
     ...(role.behavior==='ranged'?{shotSource:GENERIC_SHOT_SOURCE}:{}),
     // D-041: flying is per entry (RosterEntry.flying: every voador, the aerial swarms, the bodies whose concept flies):
     // anti-air reaches it, ground fire and the wire pass under; it still walks like its role.

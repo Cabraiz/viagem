@@ -42,7 +42,7 @@ const jokes:Record<OfferSource,readonly string[]>={
     'Promoção relâmpago de poder',
     'Brinde do síndico por sobreviver',
     'Leva um, os bichos pagam o outro',
-    'Oferta válida só neste intervalo',
+    'Carta válida só neste intervalo',
   ],
 };
 
@@ -148,7 +148,7 @@ export interface OfferPanelOptions {
 }
 
 export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
-  // D-052: the centred window "Ofertas de melhoria" (offer-centro.css) on every screen; `.rh-offer` stays for the zones.
+  // D-052: the centred window "Escolha uma melhoria" (offer-centro.css) on every screen; `.rh-offer` stays for the zones.
   const root=el('section','rh-offer rh-ofc');root.hidden=true;
   root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
   // BUG-20261013-ORQ-oferta-e-dicas-menores: a compact window. The clock is a thin bar along its top edge (no row of
@@ -165,7 +165,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const note=el('span','rh-offer-auto',head);note.setAttribute('role','img');note.setAttribute('aria-label',AUTO_NOTE);note.title=AUTO_NOTE;
   const time=el('span','rh-offer-time',head);
   const later=el('button','rh-offer-later',head);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
-  later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
+  later.setAttribute('aria-label','Depois: guarda as cartas no chip, que abre de novo');
   // Someone fell while the window is open: a Cone ficha under the title, first name and live seconds (janela-caido).
   const fall=el('p','rh-window-fall',root);fall.hidden=true;fall.setAttribute('role','status');
   const joke=el('p','rh-offer-joke',root);
@@ -231,10 +231,10 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     else line.textContent=item.blurb;
     el('span','rh-card-blurb',body).textContent=item.blurb;
     el('em','rh-card-joke',body).textContent=item.joke;
-    // "Novo!" lives in the price slot, like "Nv N" (the price of a launch); never floating over the icon.
+    // "Novo!" lives in the price slot, like "Nív. N" (the price of a launch); never floating over the icon.
     if(price.kind==='level'){
       const tag=el('span','rh-card-price',card);
-      el('small','rh-card-price-unit',tag).textContent='Nv';
+      el('small','rh-card-price-unit',tag).textContent='Nív.';
       el('b','rh-card-price-value',tag).textContent=String(price.level);
     }else if(price.kind==='new')el('span','rh-card-star',card).append(Object.assign(document.createElement('span'),{textContent:price.label}));
     else el('span','rh-card-tag',card).textContent=price.label;

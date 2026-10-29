@@ -160,7 +160,7 @@ export interface RoundModifier {
  * Names and descriptions of the kind-specific ones follow the D-033 cast (the D-033 joke pass left the base modifiers as they are).
  */
 export const MODIFIERS:readonly RoundModifier[]=[
-  {id:'uncle-party',name:'Round do Pavê',description:'Só tio. É pavê ou pa comê?',
+  {id:'uncle-party',name:'Rodada do Pavê',description:'Só tio. É pavê ou pa comê?',
     weights:{'tio-pave':1},normalizeThreat:true,banRounds:[5,6]},
   {id:'mosquito-swarm',name:'Revoada de Pombos',description:'Quem jogou milho?!',
     share:{pombos:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},

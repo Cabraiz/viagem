@@ -106,7 +106,7 @@ export function createTopBar():HudPart{
     if(band)put('chegouFill',`scaleX(${Math.round(band.fraction*100)/100})`,v=>{arrivalFill.style.transform=v;});
     const fraction=xpFraction(view);
     put('xp',`scaleX(${fraction})`,v=>{fill.style.transform=v;});
-    put('level',`Nv ${view.team.level}`,v=>{level.textContent=v;});
+    put('level',`Nív. ${view.team.level}`,v=>{level.textContent=v;});
     put('xpAria',String(Math.round(fraction*100)),v=>xp.setAttribute('aria-valuenow',v));
     if(lastLevel>=0&&view.team.level>lastLevel){xp.classList.remove('rh-pop');void xp.offsetWidth;xp.classList.add('rh-pop');}
     lastLevel=view.team.level;
@@ -122,7 +122,7 @@ export function createTopBar():HudPart{
 
 /** Lines for the interval marquee, picked by round index so it is stable per round. */
 const intervalLines=[
-  'Respira, bebe água e escolhe o upgrade',
+  'Respira, bebe água e escolhe a melhoria',
   'Intervalo comercial: resgata a galera',
   'Pausa pro cafezinho. Rápido!',
   'Hora de fingir que tem estratégia',

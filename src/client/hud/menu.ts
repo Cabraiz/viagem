@@ -52,7 +52,7 @@ export function backOnline(input:{downMs:number;cameBack:boolean;phase?:string;r
   if(input.phase!=='combat')return undefined;
   if(input.downMs<BACK_ONLINE_MIN_MS&&!input.cameBack)return undefined;
   const round=Math.max(1,Math.floor(input.round??1));
-  return `Voltou! O round tá no ${round}`;
+  return `Voltou! Tá na rodada ${round}`;
 }
 
 /**

@@ -9,6 +9,8 @@
  * asking quietly, so a build that does come out still reloads.
  * Pure: the clock, the fetch and the reload are injected (tests/client/update-retry.test.ts).
  */
+// update-toast.ts lives in the entry chunk (main.ts imports it), so this adds no chunk edge.
+import {UPDATE_NEWS} from './update-toast.ts';
 
 /** Seconds between two asks while the site still serves this build. */
 export const RETRY_S=10;
@@ -16,7 +18,7 @@ export const RETRY_S=10;
 export const SAME_BUILD_ASKS=2;
 /** The window's lines (pt-BR): short, no "espera 1 minuto". */
 export const UPDATE_TEXT={
-  title:'Saiu versão nova do jogo.',
+  title:UPDATE_NEWS,
   checking:'Procurando a versão nova…',
   waiting:(s:number)=>`A versão nova ainda está saindo do forno. Tento de novo em ${s} s.`,
   reloading:'Achei! Atualizando…',

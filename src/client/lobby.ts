@@ -7,6 +7,7 @@ import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
+import {withDevice} from './net/room-return.ts';
 import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
@@ -460,11 +461,12 @@ export const CREATE_RETRY_TEXT='A rede engasgou. Criando sua sala de novo…';
  * POST /rooms (the new room's code). A timeout or a network error gets one more try after CREATE_RETRY_MS; an answer
  * from the Worker (a 4xx like the 429 "Aguarde um minuto", or a 5xx) is final: asking again gives the same answer.
  */
-export async function createRoom(endpoint:string,body:unknown,options:{onRetry?:()=>void;fetcher?:typeof fetch;wait?:(ms:number)=>Promise<void>;timeoutMs?:number}={}):Promise<string>{
+export async function createRoom(endpoint:string,body:object,options:{onRetry?:()=>void;fetcher?:typeof fetch;wait?:(ms:number)=>Promise<void>;timeoutMs?:number;device?:string}={}):Promise<string>{
   const fetcher=options.fetcher??fetch,wait=options.wait??(ms=>new Promise<void>(r=>setTimeout(r,ms)));
+  const sent=JSON.stringify(withDevice(body,options.device));
   for(let attempt=0;;attempt++){
     let r:Response;
-    try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(options.timeoutMs??10000)});}
+    try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:sent,signal:AbortSignal.timeout(options.timeoutMs??10000)});}
     catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
     const data=await r.json().catch(()=>({}));
     if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
@@ -634,7 +636,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};
     // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time.
     const joined=await soloOneRetry(async()=>{
-      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(withDevice(body)),signal:AbortSignal.timeout(10000)});const data=await r.json();
       if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
       step('room');
       const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;await fresh.join();

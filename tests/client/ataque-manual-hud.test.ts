@@ -96,7 +96,8 @@ test('rodada-legado: the page always asks for the nests and the manual combat; ?
   // The class room's create always sends that body (createRoom, with its one retry: F5 volta pra sala, achado 5).
   const lobby=read('src/client/lobby.ts');
   assert.match(lobby,/createRoom\(endpoint,objectiveFromSearch\(location\.search\),/);
-  assert.match(lobby,/method:'POST',body:JSON\.stringify\(body\),/);
+  assert.match(lobby,/const sent=JSON\.stringify\(withDevice\(body,options\.device\)\);/);
+  assert.match(lobby,/method:'POST',body:sent,/);
 });
 
 function peer(){

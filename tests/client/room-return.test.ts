@@ -2,7 +2,7 @@
 // and the one short retry of "Criar sala" (achado 5).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEAT_KEY,readSeat,saveSeat,forgetSeat,pruneSeats,withRoom,markRoom,unmarkRoom} from '../../src/client/net/room-return.ts';
+import {SEAT_KEY,DEVICE_KEY,readSeat,saveSeat,forgetSeat,pruneSeats,withRoom,markRoom,unmarkRoom,deviceId,withDevice} from '../../src/client/net/room-return.ts';
 import {createRoom,CREATE_RETRY_MS} from '../../src/client/lobby.ts';
 
 function fakeStore(){
@@ -69,8 +69,8 @@ test('room-return: markRoom replaces the history entry only when the address cha
 type Fetcher=typeof fetch;
 const ok=(code:string)=>new Response(JSON.stringify({code}),{status:200});
 function scripted(...steps:(Response|Error)[]){
-  const calls:{url:string;method?:string}[]=[];
-  const fetcher=(async(url:URL,init?:RequestInit)=>{calls.push({url:String(url),method:init?.method});const s=steps.shift()!;if(s instanceof Error)throw s;return s;}) as unknown as Fetcher;
+  const calls:{url:string;method?:string;body?:string}[]=[];
+  const fetcher=(async(url:URL,init?:RequestInit)=>{calls.push({url:String(url),method:init?.method,body:String(init?.body)});const s=steps.shift()!;if(s instanceof Error)throw s;return s;}) as unknown as Fetcher;
   return {calls,fetcher};
 }
 
@@ -97,4 +97,30 @@ test('createRoom: an answer from the server (4xx, 429, 5xx) is not retried: the 
   }
   const {fetcher}=scripted(new Response('<html>',{status:502}));
   await assert.rejects(createRoom('https://x',{},{fetcher}),/Não foi possível criar a sala/);
+});
+
+test("device: one random id per device, kept in localStorage, in the Worker's format; storage off keeps one per page",()=>{
+  const local=fakeStore();
+  const id=deviceId(local);
+  assert.match(id,/^[\w-]{8,64}$/);
+  assert.equal(local.map.get(DEVICE_KEY),id);
+  assert.equal(deviceId(local),id,'read back');
+  local.setItem(DEVICE_KEY,'bad id!');
+  assert.notEqual(deviceId(local),'bad id!','a junk value is replaced');
+  const broken={getItem:()=>{throw new Error('denied');},setItem:()=>{throw new Error('denied');},removeItem:()=>{}};
+  assert.equal(deviceId(broken),deviceId(broken),'private window: the same id for this page');
+  assert.equal(deviceId(undefined),deviceId(broken));
+  assert.deepEqual(withDevice({map:'cidade-nevada',solo:true},'phone-0001'),{map:'cidade-nevada',solo:true,device:'phone-0001'});
+});
+
+test("createRoom: both tries send the class body plus this device's id, under the Worker's 256-byte read",async()=>{
+  const {calls,fetcher}=scripted(new TypeError('Failed to fetch'),ok('ABCDEF1234'));
+  const body={map:'cidade-nevada',solo:true,objective:'chaveiro',combat:'manual'};
+  await createRoom('https://x',body,{fetcher,wait:async()=>{},device:'a1B2-c3_d4'});
+  for(const c of calls){
+    assert.deepEqual(JSON.parse(c.body!),{...body,device:'a1B2-c3_d4'});
+    assert.ok(new TextEncoder().encode(c.body!).length+64-10<=256,'room for a 64-char id');
+  }
+  const own=scripted(ok('ABCDEF1234'));await createRoom('https://x',{},{fetcher:own.fetcher});
+  assert.match(JSON.parse(own.calls[0].body!).device,/^[\w-]{8,64}$/,"no id given: this device's own");
 });

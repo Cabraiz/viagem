@@ -68,3 +68,26 @@ export function unmarkRoom(code:string,at=place()){
   if(!at||inviteCode(at.location.search)!==code)return;
   try{at.history.replaceState(at.history.state,'',withRoom(at.location.href,undefined));}catch{}
 }
+
+/**
+ * This device's id for POST /rooms (sala-aguenta-cidade-e-rajada: the Worker's create limit is per IP + device, so a
+ * group behind one Wi-Fi or a carrier's shared IP no longer shares one phone's budget). Random, kept in localStorage;
+ * storage off (private window): one id for this page, so its own retries still count as one phone.
+ */
+export const DEVICE_KEY='viagem:device';
+const DEVICE_RE=/^[\w-]{8,64}$/;
+let pageDevice:string|undefined;
+function newDevice():string{
+  const bytes=new Uint8Array(16);globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes,b=>'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[b&63]).join('');
+}
+export function deviceId(store=local()):string{
+  try{const saved=store?.getItem(DEVICE_KEY);if(saved&&DEVICE_RE.test(saved))return saved;}catch{}
+  const id=pageDevice??=newDevice();
+  try{store?.setItem(DEVICE_KEY,id);}catch{}
+  return id;
+}
+/** A POST /rooms body with this device's id (the Worker ignores a field it does not know: an old room Worker is fine). */
+export function withDevice<T extends object>(body:T,device=deviceId()):T&{device:string}{
+  return {...body,device};
+}

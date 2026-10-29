@@ -15,7 +15,7 @@ test('a tombo freezes the clock: the time it adds shows, grows, and stays a mome
   assert.equal(t.step('tombo',300,SIM_HZ),undefined);
   assert.equal(t.step('tombo',300,SIM_HZ*(1+CLOCK_ADDED_MIN_S)-1),undefined,'under the minimum: rounding noise');
   const shown=t.step('tombo',300,SIM_HZ*5);
-  assert.deepEqual(shown,{mode:'tombo',text:'Moto tombou: +4 s',added:4,urgent:true});
+  assert.deepEqual(shown,{mode:'tombo',label:'Moto tombou',text:'Moto tombou: +4 s',added:4,urgent:true});
   // Rides again: the last line stays CLOCK_ADDED_HOLD_S, then goes.
   assert.equal(t.step('anda',299,SIM_HZ*6)?.text,'Moto tombou: +4 s');
   assert.equal(t.step('anda',290,SIM_HZ*(5+CLOCK_ADDED_HOLD_S)+1),undefined);
@@ -25,7 +25,7 @@ test('a lombada adds what the crawl costs; a stop the clock already counts says 
   const t=new ClockStopTracker();
   // Half pace: the ETA falls half a second per second.
   for(let s=0;s<=6;s++)t.step('lombada',200-s/2,s*SIM_HZ);
-  assert.deepEqual(t.step('lombada',196,8*SIM_HZ),{mode:'lombada',text:'Lombada: +4 s',added:4,urgent:false});
+  assert.deepEqual(t.step('lombada',196,8*SIM_HZ),{mode:'lombada',label:'Lombada',text:'Lombada: +4 s',added:4,urgent:false});
   const planned=new ClockStopTracker();
   for(let s=0;s<=20;s++)assert.equal(planned.step('entrega',100-s,s*SIM_HZ),undefined);
 });

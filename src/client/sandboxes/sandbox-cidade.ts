@@ -44,7 +44,7 @@
  *   `1` a showcase (A3 atiradores, B3 morteiro and C2 holofote firing, C3 arame, B5 obuseiro danificada, a Vigia in
  *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the east (in a landscape print with the rest), whose shells shake the screen and leave a
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
- *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
+ *   `hero=76,86`, beside a building block), whose shots that building covers),
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
  *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
  *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;

@@ -62,7 +62,8 @@ test('a real match: the Uno driven into a square of tralha runs it over, and its
   s.add('p0','P0','cidadao-comum');s.resetRun();s.step();
   const pieces=()=>((s.run.stonewards.state as unknown as {defenses?:{pieces?:PieceState[]}}).defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER);
   const all=pieces();
-  assert.ok(all.length>=8,`${all.length} squares`);
+  // NEW-20261029-ORQ-sem-tralha-nas-entradas: off the entrances, fewer squares (4–8 a match); one is enough here.
+  assert.ok(all.length>=1,`${all.length} squares`);
   const target=all[0],r=pieceRectOf(target),car=s.run.chaveiro!.state.car;
   // The car's nose into the square's left side, along +x.
   car.x=r.x-.3;car.y=r.y+r.h/2;car.heading=0;

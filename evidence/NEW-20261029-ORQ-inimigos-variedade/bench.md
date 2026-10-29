@@ -28,7 +28,7 @@ ms/tick em 6p (seeds 1–4): 0.70 → 0.94.
 
 ## Leitura
 
-- No modo padrão, as partidas duram um pouco mais e o 6p ganha uma a mais. Os clones "rápido" (vida 0.8) morrem mais rápido do que os "tanque" seguram.
+- No modo padrão, as partidas duram um pouco mais e o 6p ganha uma a mais.
 - No chaveiro + ninhos, quase toda partida acaba na rodada 1 dos dois lados. A diferença de vitórias (1 → 0 em 1p) é ruído.
 - As partidas de ninhos terminam de 0.2 a 1 min mais cedo depois da mudança. O pisão (F) e os clones mais rápidos chegam antes no carro. É um sinal fraco: não muda nenhuma vitória e fica dentro da variação entre seeds.
 - O balanço que segura o nível de ameaça (speed × hp ≈ 1 por clone) se mantém no geral. Não vi motivo para mexer nos números neste card.

@@ -278,6 +278,7 @@ if(pausa)setInterval(sendPause,200);
  * holds a Morteiro kit and a muro kit.
  */
 const inv=(['meio','cheio','kit'] as const).find(v=>v===params.get('inv'));
+const pente=params.get('pente');
 const INV_HERO={x:12,y:15};
 const INV_FIXTURE={
   meio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'coxinha',level:2}],
@@ -351,7 +352,9 @@ function load(next:HudScenario){
   }
   // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").
   if(inv){
-    view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1}:p)};
+    // `pente=cheio|recarga` (pente-e-recarga): the pistola in the hand with 5 shots left, or half way through its reload.
+    const mag=pente==='cheio'?{mag:5}:pente==='recarga'?{mag:0,reloadUntil:view.tick+10,reloadTicks:20}:{};
+    view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1,...mag}:p)};
     if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'audio-lendario'}];
   }
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);

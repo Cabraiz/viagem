@@ -269,7 +269,7 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
   // BUG-20261023-ORQ-armas-sem-projetil: the shotgun's flash stays at the barrel; its pellets fly (render/shot-flight.ts).
-  escopeta:{art:'clarao2-escopeta',kind:'muzzle',size:120,ms:150},
+  escopeta:{art:'clarao3-escopeta',kind:'muzzle',size:150,ms:420},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
   // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
@@ -281,8 +281,8 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
 export const SLASH_AHEAD=1;
 /** Texture key of an `efeitos` strip loaded for the arsenal. */
 /** tiros-realistas-chatgpt: the shotgun pellet's painted streak, and the dust puff where each pellet ends. */
-export const PELLET_ART='chumbo2';
-export const PELLET_HIT:FireLook={art:'impacto2-poeira',kind:'blast',size:64,ms:320};
+export const PELLET_ART='risco3';
+export const PELLET_HIT:FireLook={art:'impacto3-neve',kind:'blast',size:72,ms:750};
 export const fxKey=(art:string)=>`arsenal:fx:${art}`;
 /** Frame of a strip of `frames` frames `ageMs` into an effect of `ms` (the last one holds). */
 export const fxFrame=(ageMs:number,ms:number,frames:number)=>frames<=1?0:Math.min(frames-1,Math.floor(Math.max(0,ageMs)/ms*frames));

@@ -70,7 +70,7 @@ interface PelletFx {image:Image;born:number;x:number;y:number;ux:number;uy:numbe
  * The pellet's texture (made once): a short hot streak (Amarelo core, Breu edge: it reads on the snow and on the grass),
  * drawn rotated along its flight, PELLET_PX long at body 1.
  */
-const PELLET_KEY=PELLET_TEX.key,PELLET_W=PELLET_TEX.w,PELLET_H=PELLET_TEX.h,PELLET_PX=36,PELLET_PAINTED_PX=58;
+const PELLET_KEY=PELLET_TEX.key,PELLET_W=PELLET_TEX.w,PELLET_H=PELLET_TEX.h,PELLET_PX=36,PELLET_PAINTED_PX=44;
 interface BurstFx {image:Image;born:number;x:number;y:number;rarity:Rarity}
 /** A crate's prize: pending (look undefined) until a view shows what the opener got, then `start` is when it rises. */
 interface PrizeFx {sticker:Image;glow:Image;rays:Image;label:Phaser.GameObjects.Text;born:number;start:number;x:number;y:number;

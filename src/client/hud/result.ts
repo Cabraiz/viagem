@@ -454,6 +454,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
+  // The text scale (100/125%, <html data-texto>) can change with the result open (the settings): fit again at the new size.
+  const textScale=typeof MutationObserver!=='undefined'?new MutationObserver(onTurn):undefined;
+  textScale?.observe(document.documentElement,{attributes:true,attributeFilter:['data-texto']});
 
   return {
     el:root,matches,
@@ -523,6 +526,6 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const before=JSON.stringify(rematchVotes?.votes??[]);rematchVotes=next;syncRematch();
       if(shownResult&&!root.hidden&&JSON.stringify(next?.votes??[])!==before){root.classList.remove('rh-result-in');renderGrid(shownResult.result,shownResult.ctx);}
     },
-    destroy(){landscape?.removeEventListener('change',onTurn);clearTimeout(disarm);root.remove();},
+    destroy(){landscape?.removeEventListener('change',onTurn);textScale?.disconnect();clearTimeout(disarm);root.remove();},
   };
 }

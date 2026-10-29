@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {STEP,reconcile,simulate} from '../../src/maps/prediction.ts';
 import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.ts';
-import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
+import {Room,LAB_REACH,ROOM_MAX_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,MSG_BURST,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
@@ -87,7 +87,7 @@ test('delta can reconstruct full state and removes departed players',()=>{
   assert.deepEqual([...players.values()],after.players);assert.ok(JSON.stringify(patch).length<JSON.stringify(after).length+100);
 });
 test('message flooding and oversized payloads close connection',()=>{
-  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<50;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
+  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<=MSG_BURST;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
   const b=peer();join(r,b,'B',1000);r.receive(b,'a'.repeat(1025),1000);assert.equal(b.closes[0].code,1009);
 });
 
@@ -360,21 +360,22 @@ test('a late spectator alone does not keep an empty combat alive (review 1)',()=
 });
 
 test('no new run starts without time for a whole run; a run near the room end is closed as a timeout (review 2)',()=>{
-  const created=1000,lateAt=created+ROOM_LIFETIME_MS-RUN_START_WINDOW_MS+1;
-  const room=new Room(created),a=peer(),b=peer();join(room,a);join(room,b,'B');
+  // At the end of a room's renewals (sala-aguenta-cidade: before it, a ready or a rematch renews the room instead).
+  const created=1000,end=created+ROOM_MAX_LIFETIME_MS,lateAt=end-RUN_START_WINDOW_MS+1;
+  const room=new Room(created,undefined,{closesAt:end}),a=peer(),b=peer();join(room,a);join(room,b,'B');
   command(room,a,{t:'ready',round:1,ready:true},lateAt);
   assert.ok(room.run.snapshot().members.every(m=>!m.ready),'ready refused');
   assert.deepEqual(a.messages.filter(m=>m.t==='notice').map(m=>m.message),[ROOM_CLOSING_NOTICE]);
   assert.equal(a.closes.length,0,'a notice never closes the connection');
   command(room,a,{t:'ready',round:1,ready:false},lateAt);assert.equal(a.messages.filter(m=>m.t==='notice').length,1,'un-ready is always fine');
   // Inside the window everything works, and a run still going near the end gets a result before the 4004.
-  const ok=new Room(created),c=peer();join(ok,c);startRun(ok,[c]);
+  const ok=new Room(created,undefined,{closesAt:end}),c=peer();join(ok,c);startRun(ok,[c]);
   // Pings keep the peer fresh across the jump in time (a stale peer would be dropped and the run lost instead).
   const at=(t:number)=>{command(ok,c,{t:'ping',at:t},t);ok.advance(t);};
-  at(created+ROOM_LIFETIME_MS-60_000);assert.equal(ok.run.snapshot().phase,'combat');
-  at(created+ROOM_LIFETIME_MS-29_000);
+  at(end-60_000);assert.equal(ok.run.snapshot().phase,'combat');
+  at(end-29_000);
   assert.equal(ok.run.snapshot().outcome,'timeout');assert.deepEqual(results(c).map(m=>m.outcome),['timeout']);
-  command(ok,c,{t:'rematch',round:1},created+ROOM_LIFETIME_MS-28_000);
+  command(ok,c,{t:'rematch',round:1},end-28_000);
   assert.equal(ok.run.snapshot().phase,'result','rematch refused too');
   assert.equal(c.messages.filter(m=>m.t==='notice').length,1);
 });

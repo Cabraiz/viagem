@@ -34,9 +34,27 @@ export function ringSize(figWidth:number,s:number,k=1):{w:number;h:number}{
   const w=Math.max(RING_CSS.width*s*k,figWidth*.8);
   return {w:w*RING_SCALE,h:Math.max(RING_CSS.height*s*k,w*.5)*RING_SCALE};
 }
-/** Sticker contour on the hero's sprite (§2.4): Papel 2 px, then Breu 1 px outside, hard (no blur). */
-export const STICKER_CSS={papel:2,breu:3} as const;
-/** 8 directions for the sticker contour copies (unit offsets). */
+/**
+ * The local hero's own contour (card heroi-contorno-fino): ONE line, `HERO_LINE_CSS` outside the figure, of tint-filled
+ * copies of the sprite in 8 directions. The old sticker (Breu + Papel 2 + Breu) read as a sticker pasted on the scene
+ * and swallowed the cap and the hands; the ground ring and the "Você" arrow already say "you".
+ * 'traco': a thin Breu line, the line every figure has in the city (CITY_RING, baked in the hero's city copy), so in the
+ * city it adds nothing. 'brilho': a 1 px rim in Lilás Janela ("você"), outside the city copy's Breu ring.
+ */
+export type ContourStyle='traco'|'brilho';
+export const HERO_CONTOUR:ContourStyle='traco';
+export const HERO_LINE_CSS=1;
+/** The contour copies sit this far under the sprite on top, over the ring on the ground (RING_UNDER). */
+export const CONTOUR_DEPTH=-.2;
+/**
+ * The contour's line for `style`: its colour token and width in CSS px, or none. `ringed`: the sprite shows its city
+ * copy, whose Breu ring is already the line (until the copy is built, and off the city, the copies draw it).
+ */
+export function contourLine(style:ContourStyle,ringed:boolean):{token:'--c-breu'|'--c-voce';css:number}|undefined{
+  if(style==='brilho')return {token:'--c-voce',css:HERO_LINE_CSS};
+  return ringed?undefined:{token:'--c-breu',css:HERO_LINE_CSS};
+}
+/** 8 directions for the contour copies (unit offsets). */
 export const OUTLINE_DIRS:readonly {x:number;y:number}[]=Array.from({length:8},(_,i)=>({x:Math.round(Math.cos(i*Math.PI/4)*1e6)/1e6,y:Math.round(Math.sin(i*Math.PI/4)*1e6)/1e6}));
 
 /** Outer Breu band of the ring in the Cidade Nevada, CSS px (card cidade-contorno-breu: Lilás and Papel vanish on snow). */

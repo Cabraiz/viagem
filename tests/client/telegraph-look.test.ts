@@ -56,8 +56,8 @@ test('each hazard plans its own drawing, with its own colors, within the op budg
   const key=(s:Set<number>)=>[...s].sort().join(',');
   const signatures=new Set(HAZARDS.map(k=>key(colors.get(k)!)));
   assert.equal(signatures.size,HAZARDS.length,'every hazard draws with its own palette');
-  // What reads at a glance on a phone: the falling bottle is glass green, the poop brown and white, the fire red.
-  assert.ok(colors.get('molotov')!.has(0x3f8a3a));assert.ok(colors.get('coco')!.has(0x7a4b24)&&colors.get('coco')!.has(0xf7f2e6));
+  // What reads at a glance on a phone: the falling bottle is blue glass, the poop brown and white, the fire red.
+  assert.ok(colors.get('molotov')!.has(0x2a5fb0));assert.ok(colors.get('coco')!.has(0x7a4b24)&&colors.get('coco')!.has(0xf7f2e6));
   assert.ok(colors.get('fogo')!.has(0xe0381a));assert.ok(colors.get('arroto')!.has(0xe4f08a));
 });
 

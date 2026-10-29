@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {ADS_CONFIG,activeAds,type AdsConfig} from '../../src/client/ads/config.ts';
 import {startAds} from '../../src/client/ui/ads-boot.ts';
+import {ORDER,RTL,UPDATED,buildAll,pathOf} from '../../scripts/privacy/build.mjs';
 import {Ads,FALLBACK_MS,MAX_AD_MS,SCRIPT_URL,adBreakThen,soloRoom,type AdBreakPlacement,type AdsDeps,type BreakOutcome} from '../../src/client/ads/ads.ts';
 
 const ON:AdsConfig={enabled:true,client:'ca-pub-1234567890123456',test:true,minGapMs:180_000,hosts:['viagem.cyou']};
@@ -54,20 +55,48 @@ test('ads.txt: the publisher line at the root of the site (public/ → dist/), m
   assert.equal(`ca-${txt.split(', ')[1]}`,ADS_CONFIG.client);
 });
 
-test('privacy policy: /privacidade/ in PT-BR with an English section covers Google ads cookies, LGPD, GDPR and a contact; the menu links it', () => {
+test('privacy policy: /privacidade/ in PT-BR covers Google ads cookies, LGPD, GDPR and a contact; the menu links it', () => {
   const html=fs.readFileSync(new URL('../../public/privacidade/index.html',import.meta.url),'utf8');
-  for(const must of ['GDPR','id="english" lang="en"','sessionStorage'])assert.ok(html.includes(must),must);
+  for(const must of ['GDPR','sessionStorage'])assert.ok(html.includes(must),must);
   assert.match(html,/<html lang="pt-BR">/);
   assert.match(html,/<title>viagem · Política de Privacidade<\/title>/);
-  assert.doesNotMatch(html,/noindex/,'AdSense and search engines must read it');
-  for(const must of ['https://policies.google.com/technologies/partner-sites','https://adssettings.google.com/','LGPD','localStorage','ANPD','https://github.com/Cabraiz/viagem/issues'])
-    assert.ok(html.includes(must),must);
-  assert.doesNotMatch(html,/<script/,'a static page: no code, no tracker');
-  assert.ok(html.includes('<a href="mailto:mateusccabr@gmail.com">mateusccabr@gmail.com</a>'),'the contact e-mail the user chose');
-  assert.doesNotMatch(html,/CONTATO/,'no placeholder left');
+  for(const must of ['LGPD','localStorage','ANPD'])assert.ok(html.includes(must),must);
   const menu=fs.readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
   assert.match(menu,/<a class="menu-privacidade" href="\/privacidade\/">Privacidade<\/a>/);
-  assert.match(fs.readFileSync(new URL('../../public/sitemap.xml',import.meta.url),'utf8'),/<loc>https:\/\/viagem\.cyou\/privacidade\/<\/loc>/);
+});
+
+test('privacy policy in every language: generated from scripts/privacy/texts, same e-mail and date, Google links, reciprocal hreflang, RTL where needed', () => {
+  const files=buildAll();
+  const codes=ORDER.filter(code=>files.has(`${pathOf(code).slice(1)}index.html`));
+  assert.equal(codes.length,ORDER.length,'every listed language has a text');
+  const fixed:Record<string,string>={'pt-BR':'/privacidade/',en:'/privacy/',es:'/privacidad/',fr:'/confidentialite/',de:'/datenschutz/',it:'/privacy/it/',ja:'/privacy/ja/','zh-Hans':'/privacy/zh-hans/'};
+  for(const [code,url] of Object.entries(fixed))assert.equal(pathOf(code),url,`${code} keeps its URL`);
+  const sitemap=fs.readFileSync(new URL('../../public/sitemap.xml',import.meta.url),'utf8');
+  assert.equal(sitemap,files.get('sitemap.xml'),'sitemap.xml is generated: run node scripts/privacy/build.mjs');
+  for(const code of codes){
+    const rel=`${pathOf(code).slice(1)}index.html`;
+    const html=fs.readFileSync(new URL(`../../public/${rel}`,import.meta.url),'utf8');
+    assert.equal(html,files.get(rel),`${rel} is stale: run node scripts/privacy/build.mjs`);
+    assert.match(html,new RegExp(`<html lang="${code}"${RTL.has(code)?' dir="rtl"':''}>`),`${code}: lang and dir`);
+    assert.equal(/dir="rtl"/.test(html),['ar','ur','fa','he'].includes(code),`${code}: right-to-left only for ar, ur, fa, he`);
+    assert.ok(html.includes('<a href="mailto:contact@cabraiz.com">contact@cabraiz.com</a>'),`${code}: the contact e-mail the user chose`);
+    assert.doesNotMatch(html,/mateusccabr/,`${code}: the old e-mail is gone everywhere`);
+    assert.doesNotMatch(html,/cabraiz@cabraiz\.com/,`${code}: the mistaken interim e-mail is gone too`);
+    assert.ok(html.includes(`<time datetime="${UPDATED}">`),`${code}: same update date`);
+    for(const must of ['https://policies.google.com/technologies/partner-sites?hl=','https://adssettings.google.com/','https://www.aboutads.info/choices/','https://www.gov.br/anpd/','https://github.com/Cabraiz/viagem/issues','LGPD','AdSense','localStorage','sessionStorage'])
+      assert.ok(html.includes(must),`${code}: ${must}`);
+    assert.match(html,/GDPR|RGPD|DSGVO/,`${code}: the European regulation, under its local name where it has one`);
+    assert.equal((html.match(/<h2>/g)??[]).length,11,`${code}: the same 11 sections`);
+    for(const other of codes)assert.ok(html.includes(`<link rel="alternate" hreflang="${other}" href="https://viagem.cyou${pathOf(other)}">`),`${code} → ${other}`);
+    assert.ok(html.includes('<link rel="alternate" hreflang="x-default" href="https://viagem.cyou/privacy/">'),`${code}: x-default`);
+    assert.ok(html.includes(`<link rel="canonical" href="https://viagem.cyou${pathOf(code)}">`),`${code}: canonical`);
+    assert.equal(/class="note"/.test(html),code!=='pt-BR'&&code!=='en',`${code}: courtesy-translation note except pt and en`);
+    assert.doesNotMatch(html,/noindex/,`${code}: AdSense and search engines must read it`);
+    assert.doesNotMatch(html,/<script|http-equiv="refresh"/,`${code}: a static page: no code, no tracker, no redirect`);
+    assert.doesNotMatch(html,/@import|fonts\.googleapis|@font-face/,`${code}: system fonts only`);
+    assert.doesNotMatch(html,/CONTATO|\{email\}|\{issues\}|\{site\}|\]\(\w+\)/,`${code}: no placeholder left`);
+    assert.ok(sitemap.includes(`<loc>https://viagem.cyou${pathOf(code)}</loc>`),`${code}: in the sitemap`);
+  }
 });
 
 test('on the site: startAds waits for the load event before scheduling anything', () => {

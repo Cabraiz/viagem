@@ -30,7 +30,9 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  * offers: the pending-offer list (JSON) this peer last received, so each change is pushed once.
  * encoder: this client's protocol 4 encoder (VGM-042b), created on join; a reconnect gets a fresh one.
  */
-type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number;
+type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;
+  /** Message token bucket (MSG_RATE, MSG_BURST): tokens left and when it was last refilled. */
+  tokens:number;refilled:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number;
   /** Its slot came up during a catch-up burst (N17): the frame goes once, on the burst's last tick. */
   owed?:boolean;
   /** When the recent frames left (seq → ms, a ring of FRAME_TIMES): an ack says how late this phone runs. */
@@ -78,6 +80,10 @@ export interface RoomOptions {
    * in storage under its own key (one row per round, apart from the roster's) and a restarted object resumes it.
    */
   onCheckpoint?:(checkpoint:RoomCheckpoint)=>void;
+  /** When this room closes (Room.closesAt), as stored after a renewal; createdAt + ROOM_LIFETIME_MS when absent. */
+  closesAt?:number;
+  /** sala-aguenta-cidade: a ready or a rematch pushed the room's end (Room.closesAt); the Durable Object moves its alarm. */
+  onLifetime?:(closesAt:number)=>void;
   /** One line per socket end (closeLogLine): the Durable Object passes console.log, so `wrangler tail` shows it. */
   log?:(line:string)=>void;
   /**
@@ -220,11 +226,25 @@ export const ROSTER_BOTS_MS=1000;
  * the first (kept on the phone); a fresh browser with the same name is refused too. A new name gets in: no IP is kept.
  */
 export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
-/** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
-/** 50 min (D-043): a lobby plus the city's 30 min combat cap (cidade-escala-1-7) fit, with room for a rematch's countdown. */
 /** No room emits this many events per ms (20 ticks/s: 2 500 per tick): the floor of event ids after a restart. */
 const EVENTS_PER_MS_CEIL=50;
+/**
+ * A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later), unless a
+ * run asked for more (Room.closesAt, sala-aguenta-cidade): 50 min (D-043) is a lobby plus one city run.
+ */
 export const ROOM_LIFETIME_MS=50*60_000;
+/**
+ * The most a room lives, renewals included (sala-aguenta-cidade): a ready or a rematch that finds less than its map's
+ * start window left pushes the room's end to now + that window, never past this. An idle lobby still ends at
+ * ROOM_LIFETIME_MS; only people starting runs keep a room open (and it only ticks while someone is connected).
+ */
+export const ROOM_MAX_LIFETIME_MS=4*60*60_000;
+/**
+ * Message rate per connection (sala-aguenta-cidade, achado 6): a token bucket of MSG_BURST that refills MSG_RATE a
+ * second. A phone at 20 Hz input plus its acks sends ~30/s; after a 3 s stall on 3G the TCP hands the room everything
+ * at once (~90-150), which the bucket takes. Only a sustained flood past MSG_RATE empties it and gets 4008.
+ */
+export const MSG_RATE=45,MSG_BURST=150;
 /**
  * Autopilot slots (3g-rede-sem-teleporte): 7, 9, 11… — apart from the room bots' 0..5 (own gather node and think tick)
  * and odd, so the bot brain makes them roamers that follow the team, not wall guards.
@@ -248,9 +268,15 @@ const branchOk=(b:unknown)=>b===undefined||(typeof b==='string'&&(BRANCH.test(b)
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
  * (MAX_STRETCH_PER_RUN). The worst case on paper (every round to its timeout, every stretch, boss at its nominal 90 s)
  * is 16.6 min, so 18 (tests/sim/sim-stonewards.test.ts). Starting later would end with the room closing (4004) instead of a
- * result. The 20 min tick cap stays a safety net.
+ * result. The 20 min tick cap stays a safety net. This is the endless map's window; the city has its own.
  */
 export const RUN_START_WINDOW_MS=18*60_000;
+/**
+ * The city's start window (sala-aguenta-cidade, achado 4): its 30 min combat cap (CITY_RUN_DURATION_TICKS, D-043) in sim
+ * time, plus 5 min of wall clock the sim does not count (the level-up pauses of D-050, the chefão's scene, the
+ * countdown) and the closing margin. A city run starting with less than this left would be cut before its cap.
+ */
+export const CITY_START_WINDOW_MS=CITY_RUN_DURATION_TICKS/RUN_HZ*1000+5*60_000;
 /** A run still going this close to the room's end is closed as a timeout, so the result always reaches the players. */
 export const ROOM_CLOSING_MARGIN_MS=30_000;
 /** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */
@@ -329,6 +355,9 @@ export class Room {
   /** One per room (D-018): every encoder maps server ids to the same wire ids; reset with each new run. */
   readonly ids=new WireIds();
   readonly createdAt:number;
+  /** When the room stops taking connections (createdAt + ROOM_LIFETIME_MS, pushed by renewLifetime). */
+  closesAt:number;
+  private readonly onLifetime?:(closesAt:number)=>void;
   readonly perf:RoomPerf={ticks:0,tickMs:0,maxTickMs:0,encodeMs:0,frames:0,bytes:0,jsonBytes:0,rosterWrites:0,samples:[],encodeSamples:[]};
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
@@ -434,7 +463,10 @@ export class Room {
     if(options.labGold!==undefined&&options.labGold>=0&&options.labGold<=1)this.sim.goldLab=options.labGold;
     this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
-    this.onRoster=options.onRoster;this.onCheckpoint=options.onCheckpoint;this.log=options.log;
+    this.onRoster=options.onRoster;this.onCheckpoint=options.onCheckpoint;this.log=options.log;this.onLifetime=options.onLifetime;
+    const closes=options.closesAt;
+    this.closesAt=createdAt+ROOM_LIFETIME_MS;
+    if(Number.isFinite(closes))this.closesAt=Math.max(this.closesAt,Math.min(closes!,createdAt+ROOM_MAX_LIFETIME_MS));
     // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
     // The default needs the city asset (the Worker always passes it); a room built without it (tests, tools) is simply
     // the endless map, without a fallback log. An explicit options.map still asks and logs when it can't be played.
@@ -587,9 +619,9 @@ export class Room {
   private rosterCore='';
   private rosterWrittenAt=-Infinity;
   connect(peer:Peer,now=Date.now()){
-    if(now-this.createdAt>ROOM_LIFETIME_MS){this.logClose(undefined,'room',4004,'Sala encerrada. Crie uma nova.',null,now);peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
+    if(now>this.closesAt){this.logClose(undefined,'room',4004,'Sala encerrada. Crie uma nova.',null,now);peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
     if(this.connections.size>=12){this.logClose(undefined,'room',4008,'Muitas conexões.',null,now);peer.close(4008,'Muitas conexões.');return;}
-    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0,lag:0,lateAcks:0});
+    this.connections.set(peer,{peer,opened:now,tokens:MSG_BURST,refilled:now,seen:now,offers:'[]',bytes:0,frames:0,received:0,lag:0,lateAcks:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
     this.handle(peer,raw,now);this.flushRoster(now);
@@ -598,8 +630,8 @@ export class Room {
     const c=this.connections.get(peer);if(!c)return;
     c.received++;
     if(raw.length>1024){this.logClose(c,'room',1009,'Mensagem muito grande.',null,now);peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
-    if(now-c.window>=1000){c.window=now;c.count=0;}
-    if(++c.count>45){this.logClose(c,'room',4008,'Limite de mensagens.',null,now);peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
+    c.tokens=Math.min(MSG_BURST,c.tokens+Math.max(0,now-c.refilled)*MSG_RATE/1000);c.refilled=now;
+    if(--c.tokens<0){this.logClose(c,'room',4008,'Limite de mensagens.',null,now);peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
     let m:any;try{m=JSON.parse(raw);}catch{return;}
     if(!m||typeof m!=='object')return;
     c.seen=now;
@@ -700,11 +732,11 @@ export class Room {
     else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
-      if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
+      if(m.ready&&!this.renewLifetime(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
     }
     else if(m.t==='rematch'){
-      if(!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
+      if(!this.renewLifetime(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       // A "topa" (UX-resultado-revanche): the new run starts when everyone online voted, else the votes go out.
       if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();}
       this.pushRun();
@@ -1226,8 +1258,23 @@ export class Room {
     for(const other of this.connections.values())if(other!==except&&other.encoder)used[other.encoder.slot]++;
     return used.indexOf(Math.min(...used));
   }
-  /** True while the room has time left for a whole run (RUN_START_WINDOW_MS). */
-  canStartRun(now=Date.now()){return this.createdAt+ROOM_LIFETIME_MS-now>=RUN_START_WINDOW_MS;}
+  /** How long a run of the room's map may take on the wall clock: CITY_START_WINDOW_MS or RUN_START_WINDOW_MS. */
+  startWindowMs(){return this.map.id==='cidade-nevada'?CITY_START_WINDOW_MS:RUN_START_WINDOW_MS;}
+  /** True while the room has time left for a whole run of its map (startWindowMs). */
+  canStartRun(now=Date.now()){return this.closesAt-now>=this.startWindowMs();}
+  /**
+   * A ready or a rematch (sala-aguenta-cidade, achado 4): a room short of its map's start window lives on to now + that
+   * window (after a whole city run the 50 min no longer hold a second one), up to ROOM_MAX_LIFETIME_MS. False when even
+   * that does not fit: the room is closing, the players get ROOM_CLOSING_NOTICE and open a new one.
+   */
+  renewLifetime(now=Date.now()){
+    if(this.canStartRun(now))return true;
+    const until=now+this.startWindowMs();
+    if(until>this.createdAt+ROOM_MAX_LIFETIME_MS)return false;
+    this.closesAt=until;
+    try{this.onLifetime?.(until);}catch{/* the Durable Object keeps its own copy; the room goes on */}
+    return true;
+  }
   /** Non-fatal message for one peer (a client stops on 'error'; 'notice' only shows). */
   private notice(c:Connection,message:string){this.sendJson(c,{t:'notice',message});}
   /** Tells the peer why and closes it (4003: the client stops and forgets the token). */
@@ -1301,14 +1348,14 @@ export class Room {
   advance(now=Date.now(),flush=true){
     const started=performance.now();this.lastNow=now;
     for(const c of [...this.connections.values()]){
-      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.logClose(c,'room',4004,'Conexão expirada.',null,now);this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
+      if(now>this.closesAt||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.logClose(c,'room',4004,'Conexão expirada.',null,now);this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
     // Nobody left to play (the last participant's session expired; late arrivals are spectators; bots do not play for
     // no one): a defeat, not ~18 min of empty combat.
     if(this.run.snapshot().phase==='combat'&&!this.run.snapshot().members.some(m=>!m.spectator&&!m.bot)){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();}
     // The room is about to close: end the run now so the result is announced before the 4004.
-    else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout',this.sim.shameMoment()))this.announce();}
+    else if(this.run.snapshot().phase==='combat'&&now>=this.closesAt-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout',this.sim.shameMoment()))this.announce();}
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     // D-050: a team level-up in a wave pauses the run for the picks (multiplayer/levelup-pause.ts): no step, no clock.
     // Card boss-fim-onda-1: the chefão's arrival scene holds it the same way (multiplayer/boss-scene.ts), the pause after it.

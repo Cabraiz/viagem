@@ -58,7 +58,7 @@
  */
 import type {Point} from '../../maps/index.ts';
 import {BANK_IDS,BICO_IDS,Rng,SIM_HZ,ticks,type BankName,type BankState,type BankView,type BicoId,type EnemyState,type SimPlayer} from '../../contract/index.ts';
-import {BANCO,BICO,BICOS} from '../../rules/index.ts';
+import {BANCO,BICO,BICOS,bicoSaldo} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {baitEnemy} from '../enemies/ai.ts';
@@ -275,6 +275,8 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
       row.saldo=BICO.saldo;row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
       ctx.emit({type:'bank-refill',bank:b.id});
     }
+    // The shift by seat (bicoSaldo): a team's shop holds less; one who joins mid-shift trims what is left.
+    row.saldo=Math.min(row.saldo,bicoSaldo(ctx.players.size));
     delete row.fila;
     const workers=shift(ctx,i);
     if(workers.length){

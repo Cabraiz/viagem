@@ -54,7 +54,7 @@ test('the fall whistles once; the caído\'s call is its own sos ping (a recipe, 
 
 test('a rescue: the rescuer full, the rescued sighs "ufa", the team quietly; rescue.ts plays it no more',()=>{
   assert.deepEqual(cueForEvent({type:'revived',player:OTHER,by:ME},ME),{id:'resgate'});
-  assert.deepEqual(cueForEvent({type:'revived',player:ME,by:OTHER},ME),{id:'ufa'});
+  assert.deepEqual(cueForEvent({type:'revived',player:ME,by:OTHER},ME),{id:'ufa',with:{id:'levantar'}},'the rescued sighs and gets up');
   assert.deepEqual(cueForEvent({type:'revived',player:OTHER,by:'p3'},ME),{id:'resgate',gain:TEAM_RESCUE_GAIN});
   assert.ok(TEAM_RESCUE_GAIN<.5);
   const src=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
@@ -170,7 +170,7 @@ test('one rescue sounds once on each phone: resgate for the rescuer, ufa for the
   const event:SimEvent={type:'revived',player:'p2',by:'p1'};
   const heard=(local:string)=>{const calls:[SoundId,unknown][]=[];playEvents({play:(id,opts)=>{calls.push([id,opts]);return true;}},[event],local);return calls;};
   assert.deepEqual(heard('p1'),[['resgate',{}]]);
-  assert.deepEqual(heard('p2'),[['ufa',{}]]);
+  assert.deepEqual(heard('p2'),[['ufa',{}],['levantar',{}]],'the rescued also gets up');
   assert.deepEqual(heard('p3'),[['resgate',{gain:TEAM_RESCUE_GAIN}]]);
   // 'ufa' and 'tsc' are recipes only: no file asked for, short and heard over the crowd's hits.
   for(const id of ['ufa','tsc'] as const){

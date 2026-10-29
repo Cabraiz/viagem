@@ -21,5 +21,7 @@ test('insta greys and the red likes badge reach 4.5 on their worst background',(
 
 test('no insta text floor under 12 px, and style.css keeps nothing under 12 px',()=>{
   for(const m of insta.matchAll(/font(?:-size)?:[^;}]*?(?:clamp|max)\((\d+)px/g))assert.ok(+m[1]>=12,m[0]);
+  // A sticker part smaller than its sticker (.85em) keeps the floor too: the pergunta field was 11.2 px at 390x844.
+  for(const m of insta.matchAll(/font-size:\s*([^;}]*?)(?<!\d)\.\d+em/g))assert.match(m[1],/max\(12px,\s*$/,m[0]);
   for(const m of style.matchAll(/font(?:-size)?:[^;}]*?(?<![\w.-])(\d+(?:\.\d+)?)px/g))assert.ok(+m[1]>=12,m[0]);
 });

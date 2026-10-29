@@ -17,7 +17,9 @@
 import Phaser from 'phaser';
 import type {Projector,Pt} from '../projector.ts';
 import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
-import {LIT_SHADOW,lightEnabled} from '../light.ts';
+import {lightEnabled} from '../light.ts';
+import {SOFT_SHADOW} from '../shadow-rules.ts';
+import {fillSoftShadow} from '../silhouette.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
 import {CAR_LOW,HIT_POPS_MAX,carLife,hitFlash,hitPop,PART_FALL_MS,TIO_SPOT,tioSpot,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap,deliveryKey,deliveryPulse,fallenKey} from './rules.ts';
@@ -29,6 +31,7 @@ import {UsableGlow} from '../usable-glow.ts';
 import {inFrontOfCar,towardViewer,type CarSort} from './car-sort.ts';
 import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_SMOKE_H,UNO_SMOKE_KEY,UNO_SMOKE_SCALE,UNO_SMOKE_TINT,UNO_SMOKE_LOW_TINT,UNO_SMOKE_SRC,UNO_SMOKE_URL,UNO_SMOKE_W,UNO_URL,unoBox,unoFootY,unoFrame,unoSmoke} from './uno-art.ts';
 import {HEIGHT_PX} from '../city/projection.ts';
+import {UnoFarois} from '../luzes/farois.ts';
 import type {Speaker} from './lines.ts';
 
 const LIGHT=lightEnabled();
@@ -143,6 +146,9 @@ export class ChaveiroRenderer {
   private unoSmokeImg?:Phaser.GameObjects.Image;
   /** contorno-usavel-wc3: the car is pulled on its rope: the Warcraft 3 gold outline around the imported Uno. */
   private glow?:UsableGlow;
+  /** Muitas luzes: the Uno's headlights (luzes/farois.ts). */
+  private farois?:UnoFarois;
+  /** Card sombras-e-fala-do-uno (auditoria-arte-mundo item 3): the car's and the moto's soft shadows on the ground. */
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
     this.scene=scene;this.options=options;
@@ -223,7 +229,7 @@ export class ChaveiroRenderer {
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
     for(const t of this.popTexts)t.setVisible(false);
-    if(!view){this.sort=undefined;this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.unoSmokeImg?.setVisible(false);this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
+    if(!view){this.sort=undefined;this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.unoSmokeImg?.setVisible(false);this.farois?.hide();this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -267,6 +273,14 @@ export class ChaveiroRenderer {
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
       uno.setAlpha(this.coversBox(unoTop,carDepth,this.sort)?COVER_ALPHA:1);
+      // Card muitas-luzes: its headlights in the fog, off once wrecked.
+      const farois=this.farois??=new UnoFarois(this.scene);
+      if(wrecked)farois.hide();
+      else{
+        const c=view.car,l=CAR_HALF.l,w=CAR_HALF.w*.7,lamp=.55*M,sh=(p:Pt):Pt=>({x:p.x+shake.x,y:p.y+shake.y});
+        farois.show({left:sh(this.at(c.x,c.y,l,w,lamp)),right:sh(this.at(c.x,c.y,l,-w,lamp)),nose:sh(this.at(c.x,c.y,l,0,lamp)),
+          ahead:this.at(c.x,c.y,l+3*M,0,0),tail:this.at(c.x,c.y,-l,0,lamp)},carDepth,uno.alpha);
+      }
       // Card uno-capo-fumaca: the engine smokes out of the raised hood (behind the car where the hood hides the engine);
       // tinted mid grey (white smoke vanished on the light paving), under CAR_LOW of its life (card inimigos-querem-o-uno)
       // the same smoke turns dark. It never fades with the car (COVER_ALPHA): it is see-through already.
@@ -324,6 +338,12 @@ export class ChaveiroRenderer {
     d.moto.x=d.chaveiro.x=mx;d.moto.y=d.chaveiro.y=my;d.moto.lift=d.chaveiro.lift=RIDERS_TOP*HEIGHT_PX;
     d.car.x=view.car.x;d.car.y=view.car.y;d.car.lift=CAR_TOP*HEIGHT_PX;
     const tio=tioSpot(view.car,proj.view,this.carHeading);d.tio.x=tio.x;d.tio.y=tio.y;d.tio.lift=TIO_SPOT.top*HEIGHT_PX;
+    // Card sombras-e-fala-do-uno (item 10): with the painted Uno (taller than the boxes) the Tio's and the alarm's balloons
+    // stand over its roof as drawn, not on the lataria.
+    if(unoTop){
+      d.car.lift=Math.max(d.car.lift,carAt.y-unoTop.y);
+      d.tio.lift=Math.max(d.tio.lift,proj.project(tio.x,tio.y,this.q).y-unoTop.y);
+    }
     const standing=mode==='entrega'||mode==='abrindo'||view.ended==='victory';
     if(!standing){this.frozenOpener.hide();this.standImg.setVisible(false);}
     if(mode==='entrega'){
@@ -383,7 +403,7 @@ export class ChaveiroRenderer {
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
     this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
     this.motoImg.destroy();this.standImg.destroy();
-    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;this.unoSmokeImg?.destroy();this.unoSmokeImg=undefined;this.glow?.destroy();this.glow=undefined;
+    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;this.unoSmokeImg?.destroy();this.unoSmokeImg=undefined;this.farois?.destroy();this.farois=undefined;this.glow?.destroy();this.glow=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 
@@ -447,15 +467,14 @@ export class ChaveiroRenderer {
       if(f.line)g.lineStyle(1.2*k,this.c.breu,.9*alpha).strokePoints(pts,true);
     }
   }
-  /** A figure's cast shadow: its footprint pushed toward the lower right (away from the sun). */
+  /**
+   * A vehicle's cast shadow (card sombras-e-fala-do-uno, item 3): a soft ellipse through its footprint (the old hard
+   * box read as a lilac parallelogram longer than the Uno), pushed a little toward the lower right (away from the sun).
+   */
   private drawShadow(x:number,y:number,hl:number,hw:number,heading:number){
-    const v=this.options.projector.view,p=this.options.projector.project(x,y,this.q),ax=p.x+10,ay=p.y+4;
-    const corners=[[hl,hw],[-hl,hw],[-hl,-hw],[hl,-hw]].map(([u,w])=>{
-      const o=isoOffset(u*Math.cos(heading)-w*Math.sin(heading),u*Math.sin(heading)+w*Math.cos(heading),0,v);
-      return {x:ax+o.x*1.12,y:ay+o.y*1.12};
-    });
-    const color=LIGHT?LIT_SHADOW.color:this.c.breu,alpha=LIGHT?LIT_SHADOW.alpha:.25;
-    this.ground.fillStyle(color,alpha).fillPoints(corners,true);
+    const v=this.options.projector.view,p=this.options.projector.project(x,y,this.q),c=Math.cos(heading),s=Math.sin(heading);
+    const a=isoOffset(hl*c,hl*s,0,v),b=isoOffset(-hw*s,hw*c,0,v),k=SOFT_SHADOW.pad;
+    fillSoftShadow(this.ground,p.x+SOFT_SHADOW.x,p.y+SOFT_SHADOW.y,a.x*k,a.y*k,b.x*k,b.y*k,LIGHT?SOFT_SHADOW.alpha:SOFT_SHADOW.alpha*.7);
   }
   /** The next delivery: a ring on the ground (frozen, breathing by scale) and a tag with the seconds until he gets there. */
   private drawDelivery(d:{x:number;y:number;etaS:number},k:number){

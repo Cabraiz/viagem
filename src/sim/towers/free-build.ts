@@ -20,7 +20,7 @@
  * - State: JSON-safe, in TowersState.pieces (created on the first piece); a fallen piece leaves the list.
  */
 import {RADIUS,walkable,CITY_BUILD_CELL,type CellRect,type CityTerrain,type FlowGrid,type Point,type Rect,type TerrainField} from '../../maps/index.ts';
-import {ticks,type FreePiece} from '../../contract/index.ts';
+import {carBodyDiscs,ticks,type FreePiece} from '../../contract/index.ts';
 import {DEFENSES,FREE_PIECE_DEFS,UNO_ALERT_CELLS,UNO_ALERT_SECONDS,pieceCells,type BuildPiece} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {blockingCity} from '../stonewards/barricades.ts';
@@ -41,7 +41,7 @@ export interface FreeOrder {piece:BuildPiece;c:number;r:number;rot?:0|1}
 /** What the free build reads from the objective (assemble.ts wires the chaveiro); all optional. */
 export interface FreeBuildHooks {
   /** The car's centre and body radius (D-047; absent: no car, e.g. the wall mode). */
-  car?(tick:number):{x:number;y:number;radius:number}|undefined;
+  car?(tick:number):{x:number;y:number;radius:number;heading?:number}|undefined;
   /** Where the moto is now (the tranca check keeps it a way to the car). */
   moto?(tick:number):Point|undefined;
   /** Living nests (D-051): no piece within CAR_NEST_KEEP_OUT of one. */
@@ -271,14 +271,22 @@ const rectGap=(r:Rect,p:Point)=>Math.hypot(Math.max(r.x-p.x,0,p.x-(r.x+r.w)),Mat
  * The car near a barricada (user, 21/10): the car's body within UNO_ALERT_CELLS cells of a standing barricada sounds its
  * alert (alertUntil; the view's untilTick, the client glows it red); the car out of that range calls it off; still in
  * range at alertUntil, the barricada is destroyed (its blocker too; a 'structure' event at hp 0). Returns the ids destroyed this tick.
+ * NEW-20261028-ORQ-uno-atravessa-tralha (the user, 28/10: "muitas tralhas que vão me atrapalhar a caminhar com o carro"):
+ * the map's own tralha (owner 'mapa') never stops the car; the body (carBodyDiscs) on a square runs it over at once
+ * (the same fall: the client's break and sound). The enemies and the heroes still meet it as before.
  */
-export function unoAlertStep(ctx:SimContext,terrain:TerrainField|undefined,state:StonewardsState,car:{x:number;y:number;radius:number}|undefined,onTerrainChanged?:(rect:CellRect)=>void):string[]{
+export function unoAlertStep(ctx:SimContext,terrain:TerrainField|undefined,state:StonewardsState,car:{x:number;y:number;radius:number;heading?:number}|undefined,onTerrainChanged?:(rect:CellRect)=>void):string[]{
   const list=state.defenses?.pieces,gone:string[]=[];
   if(!list?.length)return gone;
-  const reach=UNO_ALERT_CELLS*FREE_CELL;
+  const reach=UNO_ALERT_CELLS*FREE_CELL,body=car?carBodyDiscs(car.x,car.y,car.heading):[];
   for(let i=list.length-1;i>=0;i--){
     const p=list[i];
     if(p.kind!=='barricada')continue;
+    if(p.owner==='mapa'&&body.some(d=>rectGap(pieceRectOf(p),d)<d.r)){
+      list.splice(i,1);setMuro(terrain,p,true,onTerrainChanged);gone.push(p.id);
+      ctx.emit({type:'structure',id:p.id,hp:0,maxHp:p.maxHp});
+      continue;
+    }
     const near=!!car&&rectGap(pieceRectOf(p),car)<car.radius+reach;
     if(!near){delete p.alertUntil;continue;}
     if(p.alertUntil===undefined){p.alertUntil=ctx.tick+ticks(UNO_ALERT_SECONDS);continue;}

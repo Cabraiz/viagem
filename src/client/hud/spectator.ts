@@ -9,6 +9,7 @@
  */
 import {icon} from '../ui/icon.ts';
 import type {RunPhase} from '../../contract/index.ts';
+import {railName} from '../../rules/index.ts';
 
 /** What the bar needs from the frame: the run phase, the local player's state and who the camera follows. */
 export interface SpectatorInput {
@@ -20,8 +21,8 @@ export interface SpectatorInput {
 }
 export interface SpectatorView {show:boolean;name:string;classId?:string;arrows:boolean;ghost?:boolean}
 
-/** First word, at most 9 letters: the same cut as the banner's "Assistindo: Tia" (hud/model.ts watchingText). */
-export const shortName=(name:string)=>name.trim().split(/\s+/)[0]?.slice(0,9)??'';
+/** The rail's short name (rules/names.ts railName): the same as the banner's "Assistindo: Tia" and the team rail, bot number kept. */
+export const shortName=railName;
 /** No one left standing to watch (everybody out): the bar still offers the lobby and the chinelo lands in the middle. */
 export const NOBODY_TEXT='Ninguém em pé';
 /** The ghost walking free (the bar's "Fantasma" label comes from spectator.css). */

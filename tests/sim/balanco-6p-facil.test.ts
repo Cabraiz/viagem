@@ -27,21 +27,22 @@ const OPEN=cityFlowGrid(new CityTerrain(city.asset,city.signature));
 const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city);
 
-function rig(players:number,ride:readonly number[]|undefined,restore?:ChaveiroState){
+function rig(players:number,ride:readonly number[]|undefined,restore?:ChaveiroState,finalNotBefore?:number){
   const team=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain:city,seed:7,players:team,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   for(let i=0;i<players;i++)team.set(`p${i}`,{id:`p${i}`,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
     stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x:CAR.x,y:CAR.y,ack:0,score:0} as SimPlayer);
-  const sys=createChaveiro({wallet:{seated:()=>seatedPlayers(team)},seed:7,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{},...(ride?{ride}:{})},restore);
+  const sys=createChaveiro({wallet:{seated:()=>seatedPlayers(team)},seed:7,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{},...(ride?{ride}:{}),...(finalNotBefore!==undefined?{finalNotBefore}:{})},restore);
   const step=(n=1)=>{for(let i=0;i<n;i++){world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);}};
   return {world,sys,step};
 }
 
-test('CHAVEIRO_PACE: 1p-3p ride MOTO_RIDE_SECONDS as before; a bigger room never rides faster, six the longest',()=>{
+test('CHAVEIRO_PACE: 2p-3p ride MOTO_RIDE_SECONDS as before, a solo shorter (solo-uno-aguenta-1a-onda); from 2p a bigger room never rides faster, six the longest',()=>{
   const ride=CHAVEIRO_PACE.ride;
   assert.equal(ride.length,6);
-  for(const n of [1,2,3])assert.equal(rideSecondsFor(ride,n),MOTO_RIDE_SECONDS,`${n}p`);
-  for(let n=2;n<=6;n++)assert.ok(rideSecondsFor(ride,n)>=rideSecondsFor(ride,n-1),`${n}p not faster than ${n-1}p`);
+  for(const n of [2,3])assert.equal(rideSecondsFor(ride,n),MOTO_RIDE_SECONDS,`${n}p`);
+  assert.ok(rideSecondsFor(ride,1)<MOTO_RIDE_SECONDS,`1p rides shorter: ${rideSecondsFor(ride,1)} s`);
+  for(let n=3;n<=6;n++)assert.ok(rideSecondsFor(ride,n)>=rideSecondsFor(ride,n-1),`${n}p not faster than ${n-1}p`);
   assert.ok(rideSecondsFor(ride,6)>MOTO_RIDE_SECONDS,`6p rides longer: ${rideSecondsFor(ride,6)} s`);
   // Out of range rooms clamp to 1..6.
   assert.equal(rideSecondsFor(ride,0),rideSecondsFor(ride,1));assert.equal(rideSecondsFor(ride,9),rideSecondsFor(ride,6));
@@ -81,12 +82,26 @@ test('a checkpoint keeps the ride: restored on a fresh world, the moto rides on 
   c.step(10);assert.equal(c.sys.state.ride,undefined);
 });
 
-test('NEST_PACE.crowd: 1p-3p bodies as before (× 1); a bigger room never meets weaker ones, six the strongest',()=>{
+// bots-resgatam: the bots that rescue first won 3p 15/16, so 3p meets stronger bodies too (1p-2p as before).
+test('NEST_PACE.crowd: 1p-2p bodies as before (× 1); a bigger room never meets weaker ones, 3p up stronger, six the strongest',()=>{
   for(const k of ['march','hp','damage'] as const){
     assert.equal(NEST_PACE.crowd[k].length,6,k);
-    for(const n of [1,2,3])assert.equal(crowd(k,n),1,`${k} ${n}p`);
+    for(const n of [1,2])assert.equal(crowd(k,n),1,`${k} ${n}p`);
+    assert.ok(crowd(k,3)>1,`${k} 3p: ${crowd(k,3)}`);
     for(let n=2;n<=6;n++)assert.ok(crowd(k,n)>=crowd(k,n-1),`${k} ${n}p ≥ ${n-1}p`);
     assert.ok(crowd(k,6)>1,`${k} 6p: ${crowd(k,6)}`);
     assert.equal(crowd(k,0),crowd(k,1));assert.equal(crowd(k,9),crowd(k,6));
   }
+});
+
+test('solo-uno-aguenta-1a-onda: a solo never pushes, so the hold counts his dead motos at their by-itself time and his first ETA is the same 540 s as a team',()=>{
+  const FINAL=540;
+  for(const n of [1,3]){
+    const r=rig(n,CHAVEIRO_PACE.ride,undefined,FINAL);r.step(1);
+    const eta=r.sys.eta(r.world.tick);
+    assert.ok(eta<=FINAL+1&&eta>=FINAL-15,`${n}p first ETA ${eta} s`);
+  }
+  // At the old 420 s ride a solo's three dead motos (MORTA_ALONE_SECONDS each) put him far past it.
+  const old=rig(1,[MOTO_RIDE_SECONDS,...CHAVEIRO_PACE.ride.slice(1)],undefined,FINAL);old.step(1);
+  assert.ok(old.sys.eta(old.world.tick)>FINAL+120,`1p at 420 s: ${old.sys.eta(old.world.tick)} s`);
 });

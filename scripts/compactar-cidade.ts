@@ -503,11 +503,14 @@ export async function sourceAsset():Promise<CityAsset>{
  * then its dead ends opened (scripts/becos-cidade.ts abrirBecos, version + 1: mapa-conexoes-sem-beco). The passages come
  * after the scenery so the scenery stays where it was (placed anew on the opened ground, a place with life closed a
  * street the Uno drove down); the pieces on an opened cell go. Last, the streets too narrow for the Uno widen
- * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo).
+ * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo), then the narrow ways into the hero's ground widen for
+ * the Uno's body and the loose fences in the open go (becos-cidade.ts alargarAreaUno, tirarCercasSoltas, version + 1:
+ * uno-atravessa-tralha), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
+ * version + 1: sem-tralha-nas-entradas).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
-  const {decorate}=await import('./cenario-cidade.ts');
-  const {abrirBecos,alargarParaUno}=await import('./becos-cidade.ts');
+  const {decorate,semDecorNasBocas}=await import('./cenario-cidade.ts');
+  const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno}=await import('./becos-cidade.ts');
   const {text,log}=await compactText();
   const decorated=decodeCityAsset(decorate(text));
   if(!decorated.ok)throw new Error(decorated.error);
@@ -516,6 +519,15 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
   // Then the narrow streets the Uno does not get down (version + 1: uno-anda-mapa-todo).
   const wide=alargarParaUno(opened.data);opened.data.version++;
   Object.assign(log,{celulasAlargadas:wide.cells.length,ruasAlargadas:wide.widened,alargarRecusado:wide.refused,entulhoUno:wide.rubble.length,caixasAoUno:wide.moved,caixasUno:`${wide.before}→${wide.after}/${wide.total}`});
+  // The hero's ground the Uno's body misses: its narrow ways widened (version + 1: uno-atravessa-tralha).
+  const area=alargarAreaUno(opened.data);opened.data.version++;
+  Object.assign(log,{celulasArea:area.cells.length,areaAlargada:area.widened,areaRecusada:area.refused,caixasAoCorpo:area.moved,areaUno:`${(100*area.before).toFixed(1)}→${(100*area.after).toFixed(1)}%`});
+  // Then the loose fences in the open, junk in the Uno's way (the widening may have left a bit of one alone).
+  const loose=tirarCercasSoltas(opened.data);
+  Object.assign(log,{cercasSoltas:loose.taken.length,celulasCerca:loose.taken.flat().length,cercaRecusada:loose.refused});
+  // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
+  const bocas=semDecorNasBocas(opened.data);opened.data.version++;
+  Object.assign(log,{decorNasBocas:bocas.length});
   return {text:encodeCityAsset(opened.data),log};
 }
 

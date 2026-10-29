@@ -16,7 +16,7 @@ import {CITY_PALETTE,MATERIALS} from '../palette.ts';
 import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y} from '../projection.ts';
 import {SUN_GLSL,gradeGlsl} from '../../light.ts';
-import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS} from './albedo-meta.ts';
+import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS,ALBEDO_TILED} from './albedo-meta.ts';
 
 const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toFixed(4)).join(',')})`;
 
@@ -30,15 +30,16 @@ export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7
  * World units one photo spans (its mirrored pair twice that). Larger than life on purpose: at the game's camera a real
  * sett (~28 in a photo of ~2.8 m) is ~4 px and reads as grain; the paving and the ice are drawn ~3× life size.
  */
-export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4,agua:6.6} as const;
+export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:3,gelo:6.6,terra:4.4,agua:6.6} as const;
 /** How strongly the photo's detail shows over the palette tone (0 none .. 1 all): the snows stay quiet under the figures. */
 export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8,agua:1} as const;
 /** The albedo's detail never takes a tone further than this from its palette base (the palette's contrast rule). */
 export const ALBEDO_SPAN={lo:.72,hi:1.22} as const;
 const slot=(name:typeof ALBEDO_SLOTS[number])=>ALBEDO_SLOTS.indexOf(name).toFixed(1);
 const mean=(name:typeof ALBEDO_SLOTS[number])=>`vec3(${ALBEDO_MEANS[ALBEDO_SLOTS.indexOf(name)].map(v=>v.toFixed(4)).join(',')})`;
+const tiled=(name:typeof ALBEDO_SLOTS[number])=>(ALBEDO_TILED as readonly string[]).includes(name);
 const albedo=(name:typeof ALBEDO_SLOTS[number])=>
-  `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${(1/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)})`;
+  `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${(1/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)},${tiled(name)?'1.0':'0.0'})`;
 
 /**
  * Water with the atlas (card NEW-20261022-ORQ-agua-realista): the painted tile in its own colours (chroma and strength
@@ -117,13 +118,14 @@ vec3 kinds(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel1,clamp(f/gridSi
 vec3 cover(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel2,clamp(f/gridSize,e,1.0-e)).rgb;}
 // Ridge profile across the footprint (the bilinear cell mask is 0.5 on its edge, 1 in the middle of a cell).
 float berm(vec2 f){float m=smoothstep(0.3,0.95,cover(f).b);return m*m*(3.0-2.0*m);}
-// Height the ray and the light see: the ground plus the cliff ridges.
-float Hs(vec2 f){return H(f)+BERM*berm(f);}
 
 // Sine-free hash (Hoskins) and value noise, as in terrain/shaders.ts.
 float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
 float fbm(vec2 p){return n(p)*0.52+n(p*2.13+37.2)*0.27+n(p*4.37+91.7)*0.14+n(p*8.61)*0.07;}
+// Height the ray and the light see: the ground plus the cliff ridges, whose height wanders ±30 % along the line so the
+// shaded flank under the snow is not a band of one width (card chao-da-cidade-sem-emenda).
+float Hs(vec2 f){float b=berm(f);return H(f)+(b>0.0?BERM*b*(0.7+0.6*n(f*0.45+vec2(3.7,9.1))):0.0);}
 
 // Ground albedo (scripts/chao-albedo.mjs): a 4×2 atlas of seamless material photos, each slot padded by mirroring.
 // material() as in Crônicas (terrain/shaders.ts): two reads, the second turned and offset, blended by fbm, with mirrored
@@ -133,11 +135,20 @@ const float ALBEDO_INSET=${(ALBEDO_GRID.pad/ALBEDO_GRID.tile).toFixed(5)};
 vec2 materialUV(vec2 p){return clamp(1.0-abs(fract(p*0.5)*2.0-1.0),0.001,0.999);}
 vec3 albedoAt(float slot,vec2 uv){vec2 cell=vec2(mod(slot,ALBEDO_GRID.x),floor(slot/ALBEDO_GRID.x));return texture2D(iChannel3,(cell+ALBEDO_INSET+uv*(1.0-2.0*ALBEDO_INSET))/ALBEDO_GRID).rgb;}
 vec3 material(float slot,vec2 p){vec2 q=mat2(0.8,-0.6,0.6,0.8)*p*1.37+vec2(3.27,8.41);float blend=smoothstep(0.30,0.70,fbm(p*1.7))*0.55;return mix(albedoAt(slot,materialUV(p)),albedoAt(slot,materialUV(q)),blend);}
+// A TILED slot (card chao-pedra-nitida: sett rows, which a mirror would show as doubled rows) holds its image 2×2, so it
+// repeats every half slot. Plain fract() would put a one-pixel seam at the wrap (the mip level jumps there), so each axis
+// has two wrapped coordinates half a slot apart, a (seam at even p) and b (seam at odd p): all 4 reads are made and the
+// one whose coordinates are both far from their own wrap is kept. p counts images (ALBEDO_SPAN_UNITS each).
+vec3 materialTiled(float slot,vec2 p){
+ vec2 a=fract(p*0.5),b=fract(p*0.5+0.5),k=step(abs(a-0.5),vec2(0.25));
+ vec3 aa=albedoAt(slot,a),ab=albedoAt(slot,vec2(a.x,b.y)),ba=albedoAt(slot,vec2(b.x,a.y)),bb=albedoAt(slot,b);
+ return mix(mix(bb,ab,k.x),mix(ba,aa,k.x),k.y);
+}
 // The photo's detail as a ratio around 1 over its own mean: its light and shade, and the chroma share of its own colour. The
 // caller multiplies the palette tone by it (1 when the atlas is not in: the procedural ground of before).
-vec3 albedoDetail(float slot,vec2 w,vec3 mean,float chroma,float perUnit,float strength){
+vec3 albedoDetail(float slot,vec2 w,vec3 mean,float chroma,float perUnit,float strength,float tiled){
  if(albedoOn<0.5)return vec3(1.0); // uniform branch: no texture reads at all without the atlas
- vec3 a=material(slot,w*perUnit);
+ vec3 a=tiled>0.5?materialTiled(slot,w*perUnit):material(slot,w*perUnit);
  float l=dot(a,vec3(.299,.587,.114))/dot(mean,vec3(.299,.587,.114));
  vec3 r=clamp(mix(vec3(l),a/mean,chroma),${ALBEDO_SPAN.lo.toFixed(2)},${ALBEDO_SPAN.hi.toFixed(2)});
  return mix(vec3(1.0),r,strength);
@@ -243,6 +254,14 @@ void main(){
  float flank=smoothstep(0.85,0.6,normal.z)*cliff*smoothstep(-0.1,0.2,normal.x+normal.y);
  vec3 cliffRock=mix(CLIFF_LIGHT,CLIFF_DARK,smoothstep(-0.25,0.25,normal.x-normal.y));
  cliffRock=mix(cliffRock,CLIFF_DARK,smoothstep(0.5,0.8,grain)*0.35);
+ // Snow edge (card chao-da-cidade-sem-emenda): not a flat lilac band. The wall tones go half way to a grey of the snow
+ // shade's hue (less saturated, bluer), darkest at the foot and fading towards the snow up the flank, and the snow line
+ // on it is ragged (the band's width varies with the ridge height in Hs, too).
+ float up=berm(f);
+ vec3 luma=vec3(0.299,0.587,0.114);
+ cliffRock=mix(cliffRock,SNOW_DEEP*(dot(cliffRock,luma)/dot(SNOW_DEEP,luma)),0.5);
+ cliffRock=mix(cliffRock*0.86,mix(cliffRock,SNOW_SHADE,0.5),smoothstep(0.05,0.85,up));
+ flank*=1.0-smoothstep(0.6,0.95,up+(macro-0.5)*0.7+(grain-0.5)*0.12);
  color=mix(color,mix(CLIFF_CAP,SNOW_SUN,0.5),cliff*(1.0-flank)*0.5);
  color=mix(color,cliffRock,flank*(1.0-smoothstep(0.7,0.85,fine+grain*0.3)*0.5));
 

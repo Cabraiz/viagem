@@ -48,9 +48,15 @@ export const MOTO_RIDE_SECONDS=420;
  * won 16/16, the Uno untouched (~0.3 hits of 224), with the car open after 2-3 waves at ~10 min; no wave knob took them
  * off it, so a bigger room waits longer for him (more waves before the car opens): 6p 900 s, with NEST_PACE.crowd
  * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
+ * solo-uno-aguenta-1a-onda (headless audit fim.ts, armed, seeds 1-8, with comeca-armado + solo-segunda-chance): a solo
+ * never pushes a dead moto (each one waits MORTA_ALONE_SECONDS), so at 420 s his first ETA was ~752 s against 3p's 540;
+ * 1p ride 210 s puts it at 540 (holdTick). limit 1p × 1.6 (192 hits): the first wave pinned the Uno at the rate cap
+ * while the solo hero (level 4) fought ~40 bodies at it; with NEST_PACE.trickle 1p .4: 1p 3/8 → 6/8, 3p 6/8 → 8/8.
+ * After ritmo-morto-e-viaduto (visitors, deck sleepers recruited to the car) 1p fell to 3/8 (13/32); ride 150 (ETA0 still
+ * 540: the moto waits at the last delivery) with NEST_PACE.march 1p .7: 6/8 (22/32), 3p 7/8. ride 90/120 → 15/32, 7/16.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[],rate:3};
+export const CHAVEIRO_PACE={ride:[150,420,420,580,740,900] as number[],limit:[1.6,1,1,1,1,1] as number[],rate:3};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**
@@ -113,9 +119,10 @@ export interface ChaveiroState {
   /**
    * movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step; heading,
    * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
-   * pulling, and who a hit knocked off it (no gesture until then).
+   * pulling, and who a hit knocked off it (no gesture until then); leans: card uno-nao-empurra-sem-querer, the ticks each
+   * person has leaned on it (a push starts at PUSH_LEAN_S).
    */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number;rateAt?:number;rateUsed?:number};
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];leans?:Record<string,number>;rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number;rateAt?:number;rateUsed?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -307,10 +314,12 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   /**
    * Standing players at the last step (or car hit): a dead moto ahead takes PUSH_SECONDS with PUSH_PLAYERS of them, else
    * it starts by itself (MORTA_ALONE_SECONDS). Read from the context on every step and hit, so the ETA (and the boss's
-   * call) is the same after a checkpoint; before the first one, the team is assumed big enough.
+   * call) is the same after a checkpoint; before the first one, the team is assumed big enough. `room`: the players in
+   * the run (standing or not); a room smaller than PUSH_PLAYERS (solo) can never push, so its hold counts every dead
+   * moto at its by-itself time (holdTick).
    */
-  let crew=PUSH_PLAYERS;
-  const countCrew=(ctx:SimContext)=>{crew=0;for(const p of ctx.players.values())if(isStanding(p))crew++;};
+  let crew=PUSH_PLAYERS,room=PUSH_PLAYERS;
+  const countCrew=(ctx:SimContext)=>{crew=room=0;for(const p of ctx.players.values()){if(p.spectator)continue;room++;if(isStanding(p))crew++;}};
   /** Ticks a dead moto still needs: the push left with a crew, else its by-itself countdown. */
   const mortaLeft=()=>crew>=PUSH_PLAYERS?Math.min(moto.left,PUSH_TICKS-moto.push):moto.left;
   const mortaTicks=()=>crew>=PUSH_PLAYERS?PUSH_TICKS:ticks(MORTA_ALONE_SECONDS);
@@ -339,13 +348,15 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   /**
    * The tick before which he does not leave the last delivery (options.finalNotBefore), or null: the run's start +
    * finalNotBefore less the fastest rest after it (the road, every dead moto pushed, abrindo), so the car opens no
-   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later.
+   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later. A solo room never pushes
+   * (solo-uno-aguenta-1a-onda): its dead motos count at MORTA_ALONE_SECONDS, so a solo car opens at finalNotBefore too.
    */
   function holdTick(tick:number){
     const last=lastEntrega();
     if(options.finalNotBefore===undefined||last<0)return null;
     let rest=rideTicks(stops[last].s,last+1)+ticks(ABRINDO_SECONDS);
-    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=PUSH_TICKS;
+    const morta=room>=PUSH_PLAYERS?PUSH_TICKS:ticks(MORTA_ALONE_SECONDS);
+    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=morta;
     return (state.startTick??tick)+ticks(options.finalNotBefore)-Math.ceil(rest);
   }
   function eta(tick:number){

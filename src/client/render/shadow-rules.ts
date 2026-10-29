@@ -26,10 +26,30 @@ export function contactWidth(feet:EnemyFeet|undefined,asleep:boolean,cellScreenW
  * The enemies' contact shadow (study V2): a radial Breu blot, `alpha` at the centre, soft to 0 at the edge, in a w×h
  * texture; drawn `width`× the contact width and `height`× it tall (flat on the ground, under the soles).
  */
-export const CONTACT={w:64,h:24,color:[30,21,48] as const,alpha:.72,width:.95,height:.38} as const;
+export const CONTACT={w:64,h:24,color:[23,21,26] as const,alpha:.78,width:.95,height:.38} as const;
 
 /** The silhouette: length on the ground over the figure's height, its opacity. */
 export const SILHOUETTE={flatten:.38,alpha:.36} as const;
+/**
+ * Card sombras-e-fala-do-uno (auditoria-arte-mundo item 9): the enemies' silhouette in a neutral dark (the hero's dusky
+ * blue read as a lilac "ghost" with a tail on the snow), shorter (`length` × the hero's) and fainter, so the contact
+ * shadow at the soles is what reads.
+ */
+export const ENEMY_SILHOUETTE={color:0x17151a,length:.55,alpha:.22} as const;
+/**
+ * Item 3: the soft shadow of a vehicle (the Uno, the moto) instead of the old hard footprint box: an ellipse through the
+ * footprint (`pad` × its half sides), soft to 0 at the rim, neutral dark at `alpha`, pushed (x, y) world px away from
+ * the sun. `rings`: nested fills from rim to centre (alpha stacks, darkest inside); `sides`: each ring's polygon.
+ */
+export const SOFT_SHADOW={color:[23,21,26] as const,alpha:.62,pad:1.3,x:14,y:8,rings:7,sides:28} as const;
+/**
+ * The ellipse through conjugate semi-diameters (ax, ay) and (bx, by) (a rectangle's half sides seen on screen) as an
+ * image's rotation and semi-axes: the eigen axes of a·aᵀ + b·bᵀ.
+ */
+export function conjugateEllipse(ax:number,ay:number,bx:number,by:number):{rx:number;ry:number;rotation:number}{
+  const p=ax*ax+bx*bx,q=ax*ay+bx*by,r=ay*ay+by*by,m=(p+r)/2,d=Math.hypot((p-r)/2,q);
+  return {rx:Math.sqrt(m+d),ry:Math.sqrt(Math.max(0,m-d)),rotation:.5*Math.atan2(2*q,p-r)};
+}
 /** Screen direction a shadow falls (unit, away from the sun: right and down). */
 export const SHADOW_DIR=(()=>{const l=Math.hypot(SUN_VIEW[0],SUN_VIEW[1]);return {x:-SUN_VIEW[0]/l,y:-SUN_VIEW[1]/l};})();
 /**

@@ -68,8 +68,11 @@
 #coop-attack[data-work] .skillbtn-fill{stroke:var(--c-papel)}
 #coop-attack[data-work=dentro]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
 #coop-attack[data-work=dentro] .skillbtn-word{color:var(--c-papel)}
-/* torre-limite-rebocar-sem-arma: empty hands, "Sem arma" dimmed (the first crate gives a weapon). */
-#coop-attack[data-unarmed]:not([data-tow]):not([data-work]):not([data-build]){opacity:.62;filter:saturate(.4)}
+/* exploracao-espera-carregar-e-sem-arma: empty hands, the button dances ("Dançar", full colour: it answers; the icon
+   is a pose of the hero's own dance sheet, hud/skill.ts danceIcon). The first time in a run the note "Abra uma caixa
+   para pegar uma arma" sits over the button as a ficha (too long for the button itself). */
+#coop-attack .skillbtn-danca{display:block;flex:none}
+#coop-attack[data-note-kind=caixa] .skillbtn-word{position:absolute;right:0;bottom:calc(100% + 8px);top:auto;width:max-content;max-width:min(60vw,240px);white-space:normal;text-align:center;padding:6px 8px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto)}
 /* torre-limite-rebocar-sem-arma: at the Uno's rope end Atacar turns Rebocar (the interaction colour, like Trabalhar); on the rope, Soltar pressed in. */
 #coop-attack[data-tow]{background:var(--c-cartolina);color:var(--c-breu);text-shadow:none}
 #coop-attack[data-tow] .skillbtn-fill{stroke:var(--c-papel)}
@@ -286,3 +289,15 @@
 /* Retrato a 125%, convidado com 5 ou 6 na sala: a janela rolaria (59 px). A linha da classe sai; o rosto continua
    mostrando a classe e o leitor de tela continua lendo. */
 @media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}
+/* PC (data-input=mouse, auditoria-ui 28/10 item 17): the attack says its key, a cap hanging on the circle's foot. */
+[data-input=mouse] #coop-attack::after{content:'Espaço';position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);padding:3px 8px;border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:800 12px/1 var(--f-sistema);text-shadow:none;white-space:nowrap;pointer-events:none}
+/* "Jogar sozinho" (solo-sem-sala-de-espera): no room on screen. Over the loading cover, without the box: the line,
+   the faces (self first, with its download ring) and the 3-2-1. The code, the buttons and the lines stay hidden. */
+.coop-wait.is-solo{top:50%;bottom:auto;transform:translate(-50%,-50%);max-height:none;overflow:visible;padding:0;border:0;background:none;box-shadow:none;pointer-events:none}
+.coop-wait.is-solo .coop-wait-code,.coop-wait.is-solo .coop-wait-actions,.coop-wait.is-solo .coop-wait-line,.coop-wait.is-solo .coop-wait-owner{display:none}
+.coop-wait.is-solo .coop-wait-headline{margin:0 0 14px;font:400 var(--t-28)/1.1 var(--f-cartaz);color:var(--c-papel);text-shadow:0 3px 0 var(--c-breu)}
+.coop-wait.is-solo .coop-wait-members{gap:10px}
+.coop-wait.is-solo .coop-wait-members li{min-height:0;padding:0;border:0;border-radius:50%;background:none}
+.coop-wait.is-solo .coop-wait-members .coop-wait-face{width:56px;height:56px;margin:0;box-shadow:0 0 0 2px var(--c-breu)}
+.coop-wait.is-solo .coop-wait-members .coop-wait-ring{margin:0;padding:4px}
+.coop-wait.is-solo .coop-wait-count{margin-top:12px}

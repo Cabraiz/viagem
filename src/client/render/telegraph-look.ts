@@ -21,13 +21,17 @@ export interface TelegraphLook {
   decor:DecorStyle;
 }
 
-/** Hazard colors (cartoon, hard edges; the outline bands stay Breu/Papel/Cone for every kind). */
+/**
+ * Hazard colors (cartoon, hard edges; the outline bands stay Breu/Papel/Cone for every kind). Legibility audit 29/10:
+ * the falling bottle is blue glass (the old green, 0x3f8a3a, vanished on the grass even for full color vision), and the
+ * explosion's yellow is a lighter one so the gas (yellow-green) and the explosion do not merge for protan/deutan eyes.
+ */
 export const HAZARD={
   gas:0xb9cf34,gasLight:0xe4f08a,gasDark:0x55620f,
   fireRed:0xe0381a,fireOrange:0xff8a1f,fireYellow:0xffd84a,
   poop:0x7a4b24,poopDark:0x3f230e,poopWhite:0xf7f2e6,
-  boomYellow:0xffc93a,boomRed:0xd2392f,boomWhite:0xfff6c8,
-  ink:0xb3261e,wood:0x9b5a2a,glass:0x3f8a3a,glassLight:0x9fd38a,
+  boomYellow:0xffe27a,boomRed:0xd2392f,boomWhite:0xfff6c8,
+  ink:0xb3261e,wood:0x9b5a2a,glass:0x2a5fb0,glassLight:0x9cc4f0,
   breu:0x1e1530,papel:0xeeddb8,
 } as const;
 

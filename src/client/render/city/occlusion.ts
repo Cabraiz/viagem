@@ -70,6 +70,15 @@ export function heroRect(x:number,y:number,z:number,view:number,pivot:Pt=VIEW_PI
 }
 
 /**
+ * The local hero's box with its marks (auditoria-arte-mundo item 15): the ground ring and the hp bar hang under the
+ * feet and the ring is wider than the body, so a wire or a nest over them fades too. Fractions of the figure's box.
+ */
+export const MARKS_PAD=Object.freeze({side:.3,below:.3});
+export function marksRect(r:Rect,pad=MARKS_PAD):Rect{
+  return {x:r.x-r.w*pad.side,y:r.y,w:r.w*(1+2*pad.side),h:r.h*(1+pad.below)};
+}
+
+/**
  * Iso box rule in view space: the hero point is behind the box iff it is on the back side of both front
  * faces (qx < x1 and qy < y1) and not inside the footprint. Exactly on a front edge counts as in front.
  */

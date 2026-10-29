@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {BACK_ONLINE_MIN_MS,BackOnlineWatch,MENU_TEXTS,WAKE_WINDOW_MS,backOnline,menuBack,menuTitle} from '../../src/client/hud/menu.ts';
+import {BACK_ONLINE_MIN_MS,BackOnlineWatch,MENU_TEXTS,SOLO_LINE,WAKE_WINDOW_MS,backOnline,menuBack,menuTitle,quietStatus,roomLine} from '../../src/client/hud/menu.ts';
 import {LINK_LOST,reconnectBanner} from '../../src/client/net/client.ts';
 import {needsUpdate} from '../../src/protocol/index.ts';
 
@@ -62,4 +62,26 @@ test('explore.ts: in a room the gear opens the menu and leaving asks first',()=>
   assert.match(src,/\$\('\.explore-exit'\)\.hidden=true/,'no exit without the question in a room');
   assert.match(src,/menu\?\.show\('menu'\);settings\.showModal\(\)/,'the gear always opens on the menu');
   assert.match(src,/net\.fatal===LINK_LOST\?\{action:\{label:BACK_TO_ROOM/);
+});
+
+test('the menu head says "Partida solo" or how many people are in, never the raw room id (auditoria-ui-menus 15)',()=>{
+  const me={id:'a',online:true};
+  assert.equal(roomLine([me],'a'),SOLO_LINE);
+  assert.equal(roomLine([me,{id:'b1',online:true,bot:true},{id:'b2',online:true,bot:true}],'a'),SOLO_LINE,'bots do not count');
+  assert.equal(roomLine([me,{id:'b',online:false}],'a'),SOLO_LINE,'a friend who left does not count');
+  assert.equal(roomLine([me,{id:'b',online:true},{id:'c',online:true},{id:'x',online:true,bot:true}],'a'),'3 jogadores na sala');
+  assert.equal(roomLine(undefined,'a'),SOLO_LINE);
+  assert.ok(quietStatus('Conectado. Cabe até seis na sala.',true));
+  assert.ok(!quietStatus('Conectado. Cabe até seis na sala.',false));
+  assert.ok(!quietStatus('Conexão caiu. Tentando voltar à mesma sala…',true));
+});
+
+// auditoria-ui-menus 4: in landscape the settings are two columns, the sound panel (Vibrar) beside the quality.
+test('landscape settings: two columns, the sound panel in the first screen',()=>{
+  const css=readFileSync(new URL('../../src/client/explore.css',import.meta.url),'utf8');
+  const block=css.slice(css.indexOf('@media (max-height:500px) and (min-width:600px){\n  .explore-settings:is('));
+  assert.ok(block.length>0);
+  assert.match(block,/\.explore-settings-content\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(block,/\.explore-settings-content>\.explore-sound\{grid-column:2;grid-row:1\/span 3\}/);
+  assert.match(block,/:is\(:not\(\.game-menu-host\),\[data-view=settings\]\)\{width:min\(800px,calc\(100vw - 28px\)\)/,'the menu view keeps its width');
 });

@@ -1,0 +1,102 @@
+{
+ "idle": {
+  "S": {
+   "emenda": 0.14,
+   "emendaVsMaior": 0.08,
+   "alturaMin": 0.99,
+   "alturaMax": 1.08
+  },
+  "SW": {
+   "emenda": 0.71,
+   "emendaVsMaior": 0.3,
+   "alturaMin": 1.0,
+   "alturaMax": 1.05
+  },
+  "W": {
+   "emenda": 0.16,
+   "emendaVsMaior": 0.08,
+   "alturaMin": 0.95,
+   "alturaMax": 1.09
+  },
+  "NW": {
+   "emenda": 0.57,
+   "emendaVsMaior": 0.19,
+   "alturaMin": 0.99,
+   "alturaMax": 1.07
+  },
+  "N": {
+   "emenda": 0.29,
+   "emendaVsMaior": 0.17,
+   "alturaMin": 0.94,
+   "alturaMax": 1.27
+  },
+  "NE": {
+   "emenda": 0.57,
+   "emendaVsMaior": 0.19,
+   "alturaMin": 0.99,
+   "alturaMax": 1.07
+  },
+  "E": {
+   "emenda": 0.16,
+   "emendaVsMaior": 0.08,
+   "alturaMin": 0.95,
+   "alturaMax": 1.09
+  },
+  "SE": {
+   "emenda": 0.71,
+   "emendaVsMaior": 0.3,
+   "alturaMin": 1.0,
+   "alturaMax": 1.05
+  }
+ },
+ "fire": {
+  "S": {
+   "emenda": 2.32,
+   "emendaVsMaior": 0.74,
+   "alturaMin": 0.74,
+   "alturaMax": 1.0
+  },
+  "SW": {
+   "emenda": 1.05,
+   "emendaVsMaior": 0.76,
+   "alturaMin": 0.81,
+   "alturaMax": 1.0
+  },
+  "W": {
+   "emenda": 1.28,
+   "emendaVsMaior": 0.81,
+   "alturaMin": 0.88,
+   "alturaMax": 1.06
+  },
+  "NW": {
+   "emenda": 1.06,
+   "emendaVsMaior": 0.64,
+   "alturaMin": 0.81,
+   "alturaMax": 1.0
+  },
+  "N": {
+   "emenda": 2.46,
+   "emendaVsMaior": 0.9,
+   "alturaMin": 0.7,
+   "alturaMax": 1.0
+  },
+  "NE": {
+   "emenda": 1.06,
+   "emendaVsMaior": 0.64,
+   "alturaMin": 0.81,
+   "alturaMax": 1.0
+  },
+  "E": {
+   "emenda": 1.28,
+   "emendaVsMaior": 0.81,
+   "alturaMin": 0.88,
+   "alturaMax": 1.06
+  },
+  "SE": {
+   "emenda": 1.05,
+   "emendaVsMaior": 0.76,
+   "alturaMin": 0.81,
+   "alturaMax": 1.0
+  }
+ }
+}

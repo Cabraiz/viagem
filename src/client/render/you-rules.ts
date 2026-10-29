@@ -3,7 +3,7 @@
  * and when a tree canopy hides a hero. Pure module (no Phaser) so node tests pin the rules down.
  */
 import {BURPEE_TICKS,ticks,type VehicleKind} from '../../contract/index.ts';
-import {VEICULO} from '../../rules/index.ts';
+import {REVIVE_INVULNERABLE_TICKS,START_GRACE_S,VEICULO} from '../../rules/index.ts';
 
 /** The "Você" arrow shows this long at the start of each round and when the hero gets back up. */
 export const ARROW_MS=2000;
@@ -24,7 +24,7 @@ export const RING_CSS={width:52,height:26,breu:2,voce:4,papel:2,beak:8} as const
  * Band widths, the beak and the Breu edge keep their CSS px, so it reads the same on every ground.
  */
 export const RING_SCALE=.7;
-/** The ring sits this far under the sprite on top (its sticker contour is at −0.2/−0.1, its shadow at −1). */
+/** The ring sits this far under the sprite on top (its contour copies at CONTOUR_DEPTH, its shadow at −1). */
 export const RING_UNDER=.3;
 /**
  * Ellipse (world px) of the ring for a drawn figure `figWidth` wide at `s` world px per CSS px. `k`: the hero's draw
@@ -34,9 +34,27 @@ export function ringSize(figWidth:number,s:number,k=1):{w:number;h:number}{
   const w=Math.max(RING_CSS.width*s*k,figWidth*.8);
   return {w:w*RING_SCALE,h:Math.max(RING_CSS.height*s*k,w*.5)*RING_SCALE};
 }
-/** Sticker contour on the hero's sprite (§2.4): Papel 2 px, then Breu 1 px outside, hard (no blur). */
-export const STICKER_CSS={papel:2,breu:3} as const;
-/** 8 directions for the sticker contour copies (unit offsets). */
+/**
+ * The local hero's own contour (card heroi-contorno-fino): ONE line, `HERO_LINE_CSS` outside the figure, of tint-filled
+ * copies of the sprite in 8 directions. The old sticker (Breu + Papel 2 + Breu) read as a sticker pasted on the scene
+ * and swallowed the cap and the hands; the ground ring and the "Você" arrow already say "you".
+ * 'traco': a thin Breu line, the line every figure has in the city (CITY_RING, baked in the hero's city copy), so in the
+ * city it adds nothing. 'brilho': a 1 px rim in Lilás Janela ("você"), outside the city copy's Breu ring.
+ */
+export type ContourStyle='traco'|'brilho';
+export const HERO_CONTOUR:ContourStyle='traco';
+export const HERO_LINE_CSS=1;
+/** The contour copies sit this far under the sprite on top, over the ring on the ground (RING_UNDER). */
+export const CONTOUR_DEPTH=-.2;
+/**
+ * The contour's line for `style`: its colour token and width in CSS px, or none. `ringed`: the sprite shows its city
+ * copy, whose Breu ring is already the line (until the copy is built, and off the city, the copies draw it).
+ */
+export function contourLine(style:ContourStyle,ringed:boolean):{token:'--c-breu'|'--c-voce';css:number}|undefined{
+  if(style==='brilho')return {token:'--c-voce',css:HERO_LINE_CSS};
+  return ringed?undefined:{token:'--c-breu',css:HERO_LINE_CSS};
+}
+/** 8 directions for the contour copies (unit offsets). */
 export const OUTLINE_DIRS:readonly {x:number;y:number}[]=Array.from({length:8},(_,i)=>({x:Math.round(Math.cos(i*Math.PI/4)*1e6)/1e6,y:Math.round(Math.sin(i*Math.PI/4)*1e6)/1e6}));
 
 /** Outer Breu band of the ring in the Cidade Nevada, CSS px (card cidade-contorno-breu: Lilás and Papel vanish on snow). */
@@ -115,6 +133,37 @@ export function canopyCovers(hero:{x:number;y:number},tree:CanopyBox){
 /** Events in a view that bring the arrow back: a round starting, or the local player getting back up. */
 export function arrowTrigger(events:readonly {type:string;phase?:unknown;player?:unknown}[],selfId:string){
   return events.some(e=>(e.type==='round'&&e.phase==='wave')||(e.type==='revived'&&e.player===selfId));
+}
+
+/**
+ * comeca-armado-e-levanta-seguro (itens 2 e 3): while the server keeps a hero untouchable his sprite blinks, hard (alpha
+ * steps, no glow filter): REVIVE_INVULNERABLE_TICKS after a `revived`, and the start grace (the run's first
+ * START_GRACE_S until his first crate). The state is server-only, so the client keeps the same clock from the events.
+ */
+export const SAFE_BLINK_MS=110,SAFE_ALPHA=.4,SAFE_ALPHA_REDUCED=.7;
+export class SafeClock {
+  private readonly revived=new Map<string,number>();
+  private readonly opened=new Set<string>();
+  private last=-1;private run=false;
+  /** One run view: its tick, its events, and whether a run is on (the waiting room has no round). */
+  push(tick:number,events:readonly {type:string;player?:unknown;kind?:unknown}[],run:boolean){
+    // A rematch restarts the tick: the old run's clocks go.
+    if(tick<this.last){this.revived.clear();this.opened.clear();}
+    this.last=tick;this.run=run;
+    for(const e of events){
+      if(typeof e.player!=='string')continue;
+      if(e.type==='revived')this.revived.set(e.player,tick+REVIVE_INVULNERABLE_TICKS);
+      else if(e.type==='pickup'&&e.kind==='chest')this.opened.add(e.player);
+    }
+  }
+  on(id:string,tick:number){
+    return this.run&&(tick<(this.revived.get(id)??-1)||tick<ticks(START_GRACE_S)&&!this.opened.has(id));
+  }
+}
+/** The sprite's alpha while safe: `base` (down, offline, in the shop) wins; reduced motion keeps a steady see-through. */
+export function safeAlpha(base:number,on:boolean,now:number,reduced=false){
+  if(!on||base<1)return base;
+  return reduced?SAFE_ALPHA_REDUCED:Math.floor(now/SAFE_BLINK_MS)%2?SAFE_ALPHA:1;
 }
 
 /**

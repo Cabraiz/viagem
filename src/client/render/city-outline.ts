@@ -11,11 +11,11 @@
  * destroyed a few frames later, once every draw site has switched.
  */
 import type Phaser from 'phaser';
-import {bandsRgba,outlineRgba} from './outline.ts';
+import {outlineRgba} from './outline.ts';
 import type {OutlineReply} from './outline-worker.ts';
 import {nextJobId,onReply,pixelWorker,post} from './outline-jobs.ts';
 import {queueUpload} from '../preload/upload-queue.ts';
-import {CITY_RING,CITY_STICKER,CITY_STICKER_CSS,MAX_COPIES_PER_BASE,changedEnough,copyResolution,cityKey,isCityKey,rimForGround,slotOf,textureBytes,variantGeometry,variantOrigin,
+import {CITY_RING,MAX_COPIES_PER_BASE,changedEnough,copyResolution,cityKey,isCityKey,rimForGround,slotOf,textureBytes,variantGeometry,variantOrigin,
   type CellCrop,type Rim,type VariantGeometry} from './city-outline-rules.ts';
 
 export interface CityOutlineHost {
@@ -36,20 +36,18 @@ const BUILDS_PER_FRAME=1;
 
 type Img=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
 /** A copy being painted in the worker: registered on arrival unless a rebuild, releaseBase or destroy dropped it. */
-interface Job {base:string;drawScale:number;geom:VariantGeometry;width:number;height:number;slots:{name:string;x:number;y:number}[];sticker?:string}
+interface Job {base:string;drawScale:number;geom:VariantGeometry;width:number;height:number;slots:{name:string;x:number;y:number}[]}
 
 export class CityOutlines {
   /** The current copies of each base key (one per draw-scale window, at most MAX_COPIES_PER_BASE). */
   private variants=new Map<string,CityVariant[]>();
   /** Copies built since the scene started (rebuilds included), for tests and the dev probes. */
   built=0;
-  /** The "você" stickers (CITY_STICKER bands) of current copies, by the copy's key. */
-  private stickers=new Map<string,CityVariant>();
   /** Every copy alive (current and retiring) by its own key. */
   private byKey=new Map<string,CityVariant>();
   private failed=new Set<string>();
   private retired:{key:string;at:number}[]=[];
-  /** Copies in the worker, by job id; the bases (and stickers' copy keys) that have one, so a job is never doubled. */
+  /** Copies in the worker, by job id; the bases that have one, so a job is never doubled. */
   private jobs=new Map<number,Job>();
   private painting=new Set<string>();
   private unlisten?:()=>void;
@@ -113,24 +111,6 @@ export class CityOutlines {
     image.setOrigin(o.x,o.y).setScale(sx*v.geom.kx,sy*v.geom.ky);
     return true;
   }
-  /**
-   * The local hero's city "você" sticker for the copy shown under texture key `copyKey` (render/you.ts): the same
-   * sheet, crop and draw scale (so the same kx, ky and figure px) with CITY_STICKER's bands baked around the figure
-   * instead of the ring, or undefined (not in the city, not a current copy, or not built yet: one build per frame).
-   */
-  sticker(copyKey:string):CityVariant|undefined{
-    this.tick();
-    if(!this.on)return undefined;
-    const done=this.stickers.get(copyKey);if(done)return done;
-    const copy=this.byKey.get(copyKey);
-    if(!copy||!this.variants.get(copy.base)?.includes(copy)||this.failed.has(copyKey)||this.painting.has(copyKey)||this.builds>=BUILDS_PER_FRAME)return undefined;
-    this.builds++;
-    const next=this.build(copy.base,copy.drawScale,copy.geom.crop,copyKey);
-    if(next==='painting')return undefined;
-    if(!next){this.failed.add(copyKey);return undefined;}
-    this.stickers.set(copyKey,next);this.byKey.set(next.key,next);
-    return next;
-  }
   /** The copy registered under texture key `key` (a city key), if alive. */
   copyOf(key:string):CityVariant|undefined{return this.byKey.get(key);}
   /** Copies alive and their texture memory (bytes), for the report and the dev probes. */
@@ -138,15 +118,13 @@ export class CityOutlines {
     let bytes=0,count=0;const list:{key:string;width:number;height:number;mb:number}[]=[];
     const add=(v:CityVariant)=>{count++;bytes+=v.bytes;list.push({key:v.key,width:v.width,height:v.height,mb:+(v.bytes/1048576).toFixed(3)});};
     for(const copies of this.variants.values())copies.forEach(add);
-    this.stickers.forEach(add);
     return {count,built:this.built,mb:+(bytes/1048576).toFixed(3),zoom:this.builtZoom,res:this.builtRes,retiring:this.retired.length,list};
   }
-  /** Drops derivatives of an unleased streamed atlas, including retired copies and the local hero's sticker. */
+  /** Drops derivatives of an unleased streamed atlas, including retired copies. */
   releaseBase(base:string){
     const gone=new Set<string>();
     for(const [key,v] of this.byKey)if(v.base===base){gone.add(key);this.drop(key);}
     this.variants.delete(base);this.failed.delete(base);
-    for(const [key,v] of this.stickers)if(v.base===base){this.stickers.delete(key);this.failed.delete(key);}
     for(const [id,job] of this.jobs)if(job.base===base)this.cancel(id);
     this.retired=this.retired.filter(r=>!gone.has(r.key));
   }
@@ -155,10 +133,9 @@ export class CityOutlines {
     // A game teardown may have destroyed the texture and animation managers already: nothing left to free then.
     try{
       for(const copies of this.variants.values())for(const v of copies)this.drop(v.key);
-      for(const v of this.stickers.values())this.drop(v.key);
       for(const r of this.retired)this.drop(r.key);
     }catch{/* managers gone with the game */}
-    this.variants.clear();this.stickers.clear();this.byKey.clear();this.retired.length=0;this.failed.clear();
+    this.variants.clear();this.byKey.clear();this.retired.length=0;this.failed.clear();
     for(const id of [...this.jobs.keys()])this.cancel(id);
     this.unlisten?.();this.unlisten=undefined;
   }
@@ -174,8 +151,7 @@ export class CityOutlines {
     const zoom=this.host.zoom(),res=copyResolution(globalThis.devicePixelRatio);
     if((this.variants.size||this.jobs.size)&&(changedEnough(this.builtZoom,zoom)||res!==this.builtRes)){
       for(const copies of this.variants.values())for(const v of copies)this.retire(v.key);
-      for(const v of this.stickers.values())this.retire(v.key);
-      this.variants.clear();this.stickers.clear();this.failed.clear();
+      this.variants.clear();this.failed.clear();
       for(const id of [...this.jobs.keys()])this.cancel(id);
     }
     if(!this.variants.size&&!this.jobs.size){this.builtZoom=zoom;this.builtRes=res;}
@@ -192,60 +168,52 @@ export class CityOutlines {
     this.scene.textures.remove(key);
     if(source&&source instanceof ImageBitmap)source.close();
   }
-  private cancel(id:number){const job=this.jobs.get(id);if(!job)return;this.jobs.delete(id);this.painting.delete(job.sticker??job.base);}
+  private cancel(id:number){const job=this.jobs.get(id);if(!job)return;this.jobs.delete(id);this.painting.delete(job.base);}
   /** A worker copy is back: uploaded within the upload queue's budget, then registered like a sync build. */
   private arrive(reply:OutlineReply){
     const job=this.jobs.get(reply.id);
     if(!job){if('bitmap' in reply)reply.bitmap.close();return;}
-    if(!('bitmap' in reply)){this.cancel(reply.id);this.failed.add(job.sticker??job.base);return;}
+    if(!('bitmap' in reply)){this.cancel(reply.id);this.failed.add(job.base);return;}
     const bitmap=reply.bitmap;
     queueUpload(job.width*job.height,()=>{
       if(this.jobs.get(reply.id)!==job){bitmap.close();return;}
       this.cancel(reply.id);
       const textures=this.scene.textures,key=cityKey(job.base,++this.serial);
       const tex=textures.addImage(key,bitmap as unknown as HTMLImageElement);
-      if(!tex){bitmap.close();this.failed.add(job.sticker??job.base);return;}
+      if(!tex){bitmap.close();this.failed.add(job.base);return;}
       for(const s of job.slots)tex.add(s.name,0,s.x,s.y,job.geom.slotW,job.geom.slotH);
       this.built++;
       const next:CityVariant={key,base:job.base,drawScale:job.drawScale,geom:job.geom,width:job.width,height:job.height,bytes:textureBytes(job.width,job.height)};
       this.byKey.set(key,next);
-      if(job.sticker){
-        const copy=this.byKey.get(job.sticker);
-        // The copy it was made for went away meanwhile: nothing will ask for this sticker.
-        if(!copy||!this.variants.get(copy.base)?.includes(copy)){this.drop(key);return;}
-        this.stickers.set(job.sticker,next);
-      }else{
-        let copies=this.variants.get(job.base);
-        if(!copies){copies=[];this.variants.set(job.base,copies);}
-        copies.push(next);
-      }
+      let copies=this.variants.get(job.base);
+      if(!copies){copies=[];this.variants.set(job.base,copies);}
+      copies.push(next);
     });
   }
-  /** A copy of `base` at `drawScale`: the CITY_RING around each figure, or with `sticker`, CITY_STICKER's bands. */
   /**
-   * `sticker`: the copy key the "você" sticker is for. 'painting' when the worker took the job (the copy arrives in a
-   * later frame through arrive()); else the copy painted here, or undefined when it cannot be made.
+   * A copy of `base` at `drawScale`: the CITY_RING around each figure. 'painting' when the worker took the job (the
+   * copy arrives in a later frame through arrive()); else the copy painted here, or undefined when it cannot be made.
    */
-  private build(base:string,drawScale:number,crop?:CellCrop,sticker?:string):CityVariant|undefined|'painting'{
+  private build(base:string,drawScale:number,crop?:CellCrop):CityVariant|undefined|'painting'{
     const textures=this.scene.textures,tex=textures.get(base);
     const names=tex.getFrameNames(),single=!names.length;
     const first=tex.get(single?'__BASE':names[0]);
-    const geom=variantGeometry(first.cutWidth,first.cutHeight,drawScale,this.builtZoom,this.builtRes,crop,sticker?CITY_STICKER_CSS:CITY_RING.cssPx);
+    const geom=variantGeometry(first.cutWidth,first.cutHeight,drawScale,this.builtZoom,this.builtRes,crop);
     if(!geom)return undefined;
     const frames=(single?['__BASE']:names).map(name=>{const f=tex.get(name);return {name,f,...slotOf(geom,f.cutX,f.cutY)};});
     let cols=1,rows=1;for(const s of frames){cols=Math.max(cols,s.col+1);rows=Math.max(rows,s.row+1);}
     const width=cols*geom.slotW,height=rows*geom.slotH;
     if(pixelWorker()){
       const src=tex.getSourceImage() as ImageBitmapSource,k=geom.crop,id=nextJobId();
-      const job:Job={base,drawScale,geom,width,height,slots:single?[]:frames.map(s=>({name:s.name,x:s.col*geom.slotW,y:s.row*geom.slotH})),sticker};
-      this.jobs.set(id,job);this.painting.add(sticker??base);
+      const job:Job={base,drawScale,geom,width,height,slots:single?[]:frames.map(s=>({name:s.name,x:s.col*geom.slotW,y:s.row*geom.slotH}))};
+      this.jobs.set(id,job);this.painting.add(base);
       this.unlisten??=onReply(reply=>this.arrive(reply),()=>{this.jobs.clear();this.painting.clear();});
       const cells=frames.map(s=>({sx:s.f.cutX+k.x,sy:s.f.cutY+k.y,sw:k.w,sh:k.h,dx:s.col*geom.slotW+geom.pad,dy:s.row*geom.slotH+geom.pad,dw:geom.cw,dh:geom.ch}));
       createImageBitmap(src).then(source=>{
         if(this.jobs.get(id)!==job){source.close();return;}
         post({kind:'outline',id,source,width,height,cells,slotW:geom.slotW,slotH:geom.slotH,
-          ...(sticker?{bands:CITY_STICKER.map(b=>({width:b.css*geom.perCss,color:b.color}))}:{ring:{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha}})});
-      },()=>{if(this.jobs.get(id)===job){this.cancel(id);this.failed.add(sticker??base);}});
+          ring:{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha}});
+      },()=>{if(this.jobs.get(id)===job){this.cancel(id);this.failed.add(base);}});
       return 'painting';
     }
     const key=cityKey(base,++this.serial);
@@ -256,8 +224,7 @@ export class CityOutlines {
       const k=geom.crop;
       for(const s of frames)c.drawImage(src,s.f.cutX+k.x,s.f.cutY+k.y,k.w,k.h,s.col*geom.slotW+geom.pad,s.row*geom.slotH+geom.pad,geom.cw,geom.ch);
       const img=c.getImageData(0,0,width,height);
-      img.data.set(sticker?bandsRgba(img.data,width,height,CITY_STICKER.map(b=>({width:b.css*geom.perCss,color:b.color})),geom.slotW,geom.slotH)
-        :outlineRgba(img.data,width,height,{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha,cellW:geom.slotW,cellH:geom.slotH}));
+      img.data.set(outlineRgba(img.data,width,height,{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha,cellW:geom.slotW,cellH:geom.slotH}));
       c.putImageData(img,0,0);
       if(!single)for(const s of frames)ct.add(s.name,0,s.col*geom.slotW,s.row*geom.slotH,geom.slotW,geom.slotH);
       ct.refresh();

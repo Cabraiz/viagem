@@ -2,7 +2,7 @@
  * The HUD side of the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho, etapa 3; the scene draws the dark and the
  * arrow, render/fear-dark.ts): fed every frame through the scene's hooks.fear.
  * - the notice in the top band's announcement slot: "Não se afaste do bando" the first time the hero is alone (right at
- *   the start too), "Volte pro bando!" (Cone, urgent) over the last stretch;
+ *   the start too); the last stretch has none (card heroi-fala-cade-amigos: the hero says it in a balloon, scene.ts);
  * - the allies' portraits dim while the hero is alone and they are out of reach (data-longe on the strip's member);
  * - the sound of the dark (audio/fear-sound.ts): the whisper and the heartbeat.
  * DOM writes only when something changed (the frame comes 60 times a second).
@@ -36,19 +36,17 @@ export function createFearRow(doc:Document,team:HTMLElement):FearRow{
       if(far!==(member.dataset.longe!==undefined)){if(far)member.dataset.longe='';else delete member.dataset.longe;}
     }
   };
-  const notice=(value:string,final:boolean)=>{
+  const notice=(value:string)=>{
     putHidden(el,!value);
     if(text.textContent!==value)text.textContent=value;
-    const kind=final?'final':'aviso';
-    if(value&&el.dataset.kind!==kind)el.dataset.kind=kind;
   };
   return {el,
     frame(frame,far){
-      notice(frame.notice?.text??'',!!frame.notice?.final);
+      notice(frame.notice?.text??'');
       dim(far);
       (sound??=new FearSound(getAudio())).update(frame.seconds,frame.thump,frame.look.final);
     },
-    clear(){notice('',false);dim([]);sound?.stop();},
+    clear(){notice('');dim([]);sound?.stop();},
     destroy(){sound?.stop();sound=undefined;},
   };
 }

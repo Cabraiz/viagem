@@ -31,7 +31,7 @@ import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
 import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
-import {contactWidth} from './shadow-rules.ts';
+import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
@@ -47,6 +47,7 @@ import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 import {MapLabel} from './map-labels.ts';
 import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
 import {enemyLook} from './enemy-variety.ts';
+import {BOSS_SHAKE_PX,HitStop,deathImpact,gemGlow,shakeIntensity,type DeathImpact} from './impact-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -217,6 +218,8 @@ const BUBBLE_MS=2200;
 const PLAYER_BUBBLE_LIFT=116;
 /** A non-player speaker's balloon tail stands this far over its head (world px at ui scale 1). */
 const SPEAKER_BUBBLE_GAP=14;
+/** A balloon keeps this far (CSS px) inside the screen's edges. */
+const BUBBLE_EDGE_CSS=8;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 /** Eyes in the dark, CSS px at the follow zoom: 9×12 Papel with a 2 px Breu edge, 4 px pupils looking at the hero. */
@@ -282,6 +285,8 @@ const TARGET_RING={};
 export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
 /** Hit numbers on a player sit above balloons (96000) and the heroes (96500): damage on you is never under a joke. */
 export const PLAYER_HIT_DEPTH=96600;
+/** The caught gem's glow: its ring's radius (CSS px, × gemGlow's size) and its height over the feet (world px × actorScale). */
+const GEM_GLOW_CSS=26,GEM_GLOW_CHEST=34;
 /** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
 export const TELEGRAPH_TOP_DEPTH=99000;
 /** Balloon bodies: one step under the balloon text, so nothing falls between a balloon's body and its words. */
@@ -376,6 +381,10 @@ export class HordeRenderer{
   private targetId?:string;
   private snapNext=false;
   private at:Pt={x:0,y:0};
+  /** An elite's or a boss's death pauses the drawn clock (impact-rules.ts); push() asks, the next update() starts it. */
+  private readonly hitStop=new HitStop();private stopAsk=0;
+  /** When the local hero last caught a gem (the kill's cédula): its glow (impact-rules.ts gemGlow). */
+  private gemAt=-Infinity;
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
   /** Inset centre line of the imported border strip (drawBorderArt). */
   private ptsIn:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
@@ -413,7 +422,7 @@ export class HordeRenderer{
     };
     const showEnemy=(o:EnemyActor,active:boolean)=>{showImage(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);o.contact.setVisible(false).setActive(false);}};
     // The silhouette: just over the pickups' and shots' contact shadows (-9980), under every body; one flat dark tint, set once.
-    const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979));
+    const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979,ENEMY_SILHOUETTE.color));
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
@@ -478,8 +487,15 @@ export class HordeRenderer{
     this.telegraphs.end();
   }
 
-  /** Every frame: interpolate and animate. */
+  /**
+   * Every frame: interpolate and animate, on the drawn clock (`timeMs` less the hit-stops: a big death holds the
+   * horde still HIT_STOP_MS while the sim runs on).
+   */
   update(timeMs:number,_deltaMs:number){
+    if(this.stopAsk){this.hitStop.start(timeMs,this.stopAsk);this.stopAsk=0;}
+    this.frame(this.hitStop.clock(timeMs));
+  }
+  private frame(timeMs:number){
     this.now=timeMs;
     const since=Math.max(0,timeMs-this.pushAt)/this.tickMs;
     const glided=Math.max(0,timeMs-this.pushAt)/this.glide;
@@ -501,6 +517,7 @@ export class HordeRenderer{
     for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
+    this.drawGemGlow();
     this.glow.end();
     this.warnings.retain(this.drawWarning);
     this.poofs.retain(this.drawPoof);
@@ -518,7 +535,7 @@ export class HordeRenderer{
     this.enemies.forEach(a=>{a.px=a.nx;a.py=a.ny;a.screenX=NaN;});
     this.pickups.forEach(a=>{a.px=a.nx;a.py=a.ny;});
     this.projectiles.forEach(this.aim);
-    this.snapNext=true;this.update(this.now,0);
+    this.snapNext=true;this.frame(this.now);
   }
 
   /** City on/off: every live shadow takes the city's Breu 38% texture, or FX.shadow back (idle ones on reuse). */
@@ -714,6 +731,10 @@ export class HordeRenderer{
       // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
       // D-033: the agiota's boleto marks a player as owing money: a short red tag over them instead of the line.
       case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line,false,sayPriority(event.key));break;}
+      // My gem (xp, a resource, a cédula not caught on screen, whose catch glowed already) lights the glow.
+      case 'pickup':
+        if(event.player===this.options.selfId?.()&&(event.kind==='xp'||event.kind==='resource'||(event.kind==='grana'&&!this.catcher.get(event.pickup))))this.gemAt=this.now;
+        break;
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss){boss.flashAt=this.now;boss.bossPhase=event.phase;}break;}
     }
   }
@@ -792,6 +813,9 @@ export class HordeRenderer{
     // Art v2: the imported death plays on a pooled death actor where (and facing where) the enemy was last drawn,
     // instead of today's puff and stars; the death joke below stays.
     const dying=this.enemies.get(id);
+    // An elite's (on screen) or a boss's death trembles the screen and holds the drawing a beat (never with reduced motion).
+    const impact=deathImpact(k==='chefe'||!!dying?.boss,!!dying?.elite&&!dying.culled,this.reduced);
+    if(impact)this.impact(impact);
     const art=enemyArtId(kind,k);
     if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
@@ -819,6 +843,21 @@ export class HordeRenderer{
     const pop=this.pops.spawn();
     pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45*body;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
+  }
+  private impact(i:DeathImpact){
+    const cam=this.scene.cameras.main,s=shakeIntensity(i.shakePx,cam.width,cam.height,cam.zoom);
+    // A boss's tremble takes over an elite's still running.
+    cam.shake(i.shakeMs,new Phaser.Math.Vector2(s.x,s.y),i.shakePx>=BOSS_SHAKE_PX);
+    this.stopAsk=Math.max(this.stopAsk,i.stopMs);
+  }
+  /** The caught gem's glow: a warm halo on the ground under the hero and a ring at his chest, growing and fading. */
+  private drawGemGlow(){
+    const at=this.selfAt,glow=at&&gemGlow(this.now-this.gemAt,this.reduced);
+    if(!glow)return;
+    const q=this.project(at),r=GEM_GLOW_CSS*glow.size*this.css(),chest=q.y-GEM_GLOW_CHEST*this.body;
+    this.ground.fillStyle(0xfff1a8,.45*glow.alpha).fillEllipse(q.x,q.y,r*2.2,r*1);
+    this.heroBalloons.lineStyle(3*this.css(),0xffe066,glow.alpha).strokeEllipse(q.x,chest,r*2,r*1.7);
+    this.heroBalloons.fillStyle(0xfffbe0,.18*glow.alpha).fillEllipse(q.x,chest,r*2,r*1.7);
   }
   /**
    * The caster's line over their head (E7-skill-hud-wiring). It is the answer to a tap; when the budget is full the
@@ -904,7 +943,7 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art));
+    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;
@@ -1177,7 +1216,7 @@ export class HordeRenderer{
   /** A cédula drawn at (a.x, a.y): the local hero's when he is within the room's magnet and the nearest standing hero. */
   private catchNote(a:PickupActor,now:number){
     const c=this.catcher.near(now,a.id,a.value,a.x,a.y,this.selfAt,this.othersAt);
-    if(c)this.caughtTotal++;
+    if(c){this.caughtTotal++;this.gemAt=now;}
     return c;
   }
   private drawProjectile=(a:ProjectileActor,id:string)=>{
@@ -1388,7 +1427,7 @@ export class HordeRenderer{
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
     const alive=drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art,d.costume);
     // The shadow falls and fades with the body (card sombra-silhueta: it never outlives or skips the death).
-    castSilhouette(d.sil,d.image,gx,gy,alive);
+    castSilhouette(d.sil,d.image,gx,gy,alive,undefined,artShadowLength(d.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     castContact(d.contact,d.image,gx,gy,d.contactW,alive);
     return alive;
   };
@@ -1425,20 +1464,26 @@ export class HordeRenderer{
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;
     b.text.setVisible(true).setAlpha(alpha).setScale((this.reduced||age>=160?1:.7+.3*age/160)*this.ui);
-    const t=8*this.ui,e=2*this.css(),o=b.player?this.heroBalloons:this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
+    const t=8*this.ui,e=2*this.css(),o=b.player?this.heroBalloons:this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight;
+    // Card sombras-e-fala-do-uno (auditoria-arte-mundo item 10): the balloon stays inside the screen (the Tio's line ran
+    // off the edge); the tail keeps pointing at its speaker as far as the body allows.
+    const v=this.view,m=BUBBLE_EDGE_CSS*this.css(),half=bw/2+e;
+    const bx=v.right-v.x>2*(half+m)?Math.min(Math.max(q.x,v.x+m+half),v.right-m-half):q.x;
+    const by=Math.max(q.y-b.lift,v.y+m+bh+e),tq=Math.min(Math.max(q.x,bx-bw/2+t+e),bx+bw/2-t-e);
+    tx.setPosition(bx,by);
     // Imported frame (balloon or "DEVENDO" tag) over today's body box, just above the code tail; the text stays on top.
     const frame=this.art.slice(b.text,sliceArt(b.tag?'tag':'balloon'),o.depth+.5,tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,this.ui);
     if(frame){
       frame.setAlpha(alpha);
-      o.fillStyle(PALETTE.breu,alpha).fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
-      o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillTriangle(q.x-t,by-1,q.x+t,by-1,q.x,by+t*1.25);
+      o.fillStyle(PALETTE.breu,alpha).fillTriangle(tq-t-e,by-1,tq+t+e,by-1,tq,by+t*1.25+e*1.6);
+      o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillTriangle(tq-t,by-1,tq+t,by-1,tq,by+t*1.25);
       return true;
     }
     // Balloon: Papel body with a 2 px Breu edge (it vanished on the light sand), then the Papel tail over it.
     o.fillStyle(PALETTE.breu,alpha).fillRoundedRect(tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,10*this.ui)
-      .fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
+      .fillTriangle(tq-t-e,by-1,tq+t+e,by-1,tq,by+t*1.25+e*1.6);
     o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillRoundedRect(tx.x-bw/2,by-bh,bw,bh,8*this.ui)
-      .fillTriangle(q.x-t,by-1,q.x+t,by-1,q.x,by+t*1.25);
+      .fillTriangle(tq-t,by-1,tq+t,by-1,tq,by+t*1.25);
     return true;
   };
 

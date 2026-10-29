@@ -58,6 +58,17 @@ export const MOTO_REASONS:Readonly<Record<MotoMode,string|undefined>>=Object.fre
 });
 /** The modes where the team can do something: the row wears Cone (morta: 2 to push; tombo: clear the critter). */
 export const reasonUrgent=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
+/**
+ * Card objetivo-com-verbo: the stops that need the team say what to do, with a verb, in the mission line (hud/missao.ts,
+ * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size. Card
+ * ordens-menos-e-claras (auditoria-primeiro-minuto item 5: "Uno" and "moto" read as one vehicle, only the Uno on
+ * screen): the line names the chaveiro, as the top's clock and the moto's arrow ("Chaveiro parado") do; the Uno is the
+ * team's car, the moto is his.
+ */
+export const MOTO_ACTIONS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
+  morta:'Moto do chaveiro: vá empurrar',
+  tombo:'Chaveiro caiu: tire os bichos',
+});
 
 /**
  * When the reason's row comes and goes (the row itself waits its turn in the announcement slot, RunHud.queueRow, and
@@ -69,9 +80,10 @@ export class MotoReason {
   step(mode:MotoMode|undefined):{show?:{text:string;urgent:boolean;mode:MotoMode};drop:boolean}{
     if(mode===this.mode)return {drop:false};
     const was=this.mode;this.mode=mode;
-    const text=mode?MOTO_REASONS[mode]:undefined;
+    // The team's stops are the mission line's (MOTO_ACTIONS): no second row with the same news.
+    const text=mode&&!MOTO_ACTIONS[mode]?MOTO_REASONS[mode]:undefined;
     if(text&&mode)return {show:{text,urgent:reasonUrgent(mode),mode},drop:false};
-    return {drop:!!was&&!!MOTO_REASONS[was]};
+    return {drop:!!was&&!!MOTO_REASONS[was]&&!MOTO_ACTIONS[was]};
   }
   reset(){this.mode=undefined;}
 }

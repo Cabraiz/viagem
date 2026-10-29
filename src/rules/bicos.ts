@@ -50,7 +50,9 @@ export const BICO_EXPULSO='O gerente te botou pra fora';
  * (evidence/NEW-20261024-ORQ-bancos-viram-bicos/bench-bicos*.json; 1, 1.5 and 1.8 R$/s beside it).
  * - porSegundo: R$/s of one hero alone in a shift; dupla: R$/s EACH when two or more work it ("o chefe divide o salário").
  * - nota: the pay goes into the wallet in notes of this much (and each note lures the critters around, BANCO.iscaR).
- * - saldo: R$ in a shift; spent, the shop closes for BANCO.recargaS and opens with another gig.
+ * - saldo: R$ in a shift; spent, the shop closes for BANCO.recargaS and opens with another gig. The solo's
+ *   shift: a team gets bicoSaldo(seats) (NEW-20261029-ORQ-economia-caixa-e-forja, auditoria-economia-29-10).
+ *   Keep BANCO.saldo equal (the client's ring reads it).
  * - filaCorte: pay × (1 − filaCorte × critters in the queue); filaExpulsa critters in it throw everyone out.
  * - expulsoS: an expelled hero walks slowed (PLAYER_SLOW_MULT) this long; banidoS: he cannot clock in again this long.
  * - lote: the shop needs this clear (u, a disc around the ring: the building stands behind it, door to the camera, in
@@ -62,3 +64,10 @@ export const BICO=Object.freeze({
   expulsoS:1,banidoS:3,
   lote:4,
 });
+/**
+ * R$ in a shift for a team of `seats` heroes (bots count): BICO.saldo/√seats, down to whole notes (1p 40, 2p 25, 3–4p 20,
+ * 5–6p 15). At 40 for everyone the shops gave 48–53 % of the 3p/6p Grana (every bot drains one each reopen) and 31 % of
+ * the 1p's; a flat 20 brought the 3p to 30 % but the 1p to 17 % and its wins 1/4 → 0/4 (the solo drains them too).
+ */
+export const bicoSaldo=(seats:number)=>Math.max(BICO.nota,Math.floor(BICO.saldo/Math.sqrt(Math.max(1,seats))/BICO.nota)*BICO.nota);
+

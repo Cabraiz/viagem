@@ -7,7 +7,7 @@
  * built from the rules port's tree (the client may not import src/sim).
  * - chao: the intermission, menu closed: empty sites, a Vigia and an Atiradores ready (evolve arrows), one in obra, the rail;
  * - arvore: the tree open on the Vigia of a 1×1 site (A2 blocked: "Não cabe"; B2/C2 open);
- * - evoluir: the tree open on the Atiradores do Telhado (A3, evolve arrow): A4 or the alternative A4b, R$ 25 each;
+ * - evoluir: the tree open on the Andaime (A3, evolve arrow): A4 or the alternative A4b, R$ 25 each;
  * - gustavao: the tree open on the Obuseiro (the Gustavão: "Sem trilho" until the rail is laid and done).
  * Confirming applies the choice to the fake state (fichas with the rules' payUnits, an evolution from the Grana by
  * priceOf), so the flow can be tapped through.

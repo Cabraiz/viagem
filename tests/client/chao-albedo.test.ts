@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
-import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS,ALBEDO_URL} from '../../src/client/render/city/relevo/albedo-meta.ts';
+import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS,ALBEDO_TILED,ALBEDO_URL} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {ALBEDO_CHROMA,ALBEDO_SPAN,ALBEDO_SPAN_UNITS,ALBEDO_STRENGTH,reliefShader} from '../../src/client/render/city/relevo/shader.ts';
 import {matchAssets} from '../../src/client/preload/match-assets.ts';
 
@@ -54,4 +54,23 @@ test('the atlas is bound by its GL texture (no Shader textureData: no re-upload,
   const city=matchAssets({self:'cidadao-comum',others:[],map:'cidade-nevada'});
   assert.ok(city.some(a=>a.url===ALBEDO_URL&&a.priority==='P0'&&a.kind==='ground'));
   assert.ok(!matchAssets({self:'cidadao-comum',others:[],map:'cidade-nevada',search:'?chao=0'}).some(a=>a.url===ALBEDO_URL));
+});
+
+// Card NEW-20261028-ORQ-chao-pedra-nitida: the sett rows repeat (a mirror doubles a row at every image edge).
+test('the calcada slot repeats: 2×2 copies padded by wrapping, read by materialTiled without the turned double read',async()=>{
+  assert.deepEqual([...ALBEDO_TILED],['calcada']);
+  const {tile,pad,cols}=ALBEDO_GRID,i=ALBEDO_SLOTS.indexOf('calcada'),inner=tile-2*pad,half=inner/2;
+  const {data,info}=await sharp(fileURLToPath(file)).extract({left:(i%cols)*tile,top:Math.floor(i/cols)*tile,width:tile,height:tile})
+    .removeAlpha().raw().toBuffer({resolveWithObject:true});
+  const px=(x:number,y:number)=>[0,1,2].map(c=>data[(y*info.width+x)*3+c]);
+  // Mean absolute difference between two pixel columns / rows over the slot (lossy WebP: a few levels of noise).
+  const col=(a:number,b:number)=>{let d=0;for(let y=0;y<tile;y++)d+=px(a,y).reduce((s,v,c)=>s+Math.abs(v-px(b,y)[c]),0);return d/tile/3;};
+  const row=(a:number,b:number)=>{let d=0;for(let x=0;x<tile;x++)d+=px(x,a).reduce((s,v,c)=>s+Math.abs(v-px(x,b)[c]),0);return d/tile/3;};
+  assert.ok(col(pad,pad+half)<6&&row(pad,pad+half)<6,'the two copies match: the slot repeats every half');
+  assert.ok(col(pad-4,pad+inner-4)<6&&row(pad-4,pad+inner-4)<6,'the padding wraps the opposite edge');
+  assert.ok(col(pad-4,pad+3)>6,'not mirrored');
+  const code=reliefShader;
+  assert.ok(code.includes('vec3 materialTiled(float slot,vec2 p){'));
+  assert.ok(code.includes(`albedoDetail(${i.toFixed(1)},w,`)&&/albedoDetail\(2\.0,w,[^;]*,1\.0\)/.test(code),'calcada passes tiled 1');
+  for(const s of ALBEDO_SLOTS.filter(s=>s!=='calcada'))assert.ok(new RegExp(`albedoDetail\\(${ALBEDO_SLOTS.indexOf(s)}\\.0,w,[^;]*,0\\.0\\)`).test(code),s);
 });

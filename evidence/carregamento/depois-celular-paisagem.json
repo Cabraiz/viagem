@@ -1,0 +1,224 @@
+{
+ "url": "https://viagem.cyou",
+ "local": "127.0.0.1:4302",
+ "tela": "paisagem",
+ "cpu": 4,
+ "espera": 800,
+ "rede": "4g",
+ "rodadas": {
+  "frio": {
+   "menu": 3250,
+   "pronta": 7539,
+   "rede": {
+    "n": 123,
+    "bytes": 67540,
+    "corpo": 1579024,
+    "ultimo": 2941
+   },
+   "linha": [
+    {
+     "ms": 22,
+     "botao": "Baixando o jogo…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "0%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 237,
+     "botao": "Abrindo a sala…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "70%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 1295,
+     "botao": "Entrando…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "85%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 1975,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 0%|p0=0",
+     "pronta": false
+    },
+    {
+     "ms": 2736,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Tô pronto!|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 4448,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "countdown|Começando…|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 6900,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 7539,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "",
+     "pronta": true
+    }
+   ]
+  },
+  "quente": {
+   "menu": 987,
+   "pronta": 9197,
+   "rede": {
+    "n": 124,
+    "bytes": 15798,
+    "corpo": 1755336,
+    "ultimo": 3183
+   },
+   "linha": [
+    {
+     "ms": 21,
+     "botao": "Baixando o jogo…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "0%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 235,
+     "botao": "Abrindo a sala…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "70%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 1508,
+     "botao": "Entrando…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "85%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 1873,
+     "botao": "Entrando…",
+     "popup": true,
+     "shell": false,
+     "capa": "",
+     "carga": "100%",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 2493,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 0%|p0=0",
+     "pronta": false
+    },
+    {
+     "ms": 2904,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Baixando: 66%|p0=66",
+     "pronta": false
+    },
+    {
+     "ms": 3151,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "lobby|Tô pronto!|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 6008,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "Arrumando a ilha pra visita…",
+     "carga": "",
+     "sala": "countdown|Começando…|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 8243,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "",
+     "carga": "",
+     "sala": "countdown|Começando…|p0=100",
+     "pronta": false
+    },
+    {
+     "ms": 8719,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "",
+     "carga": "",
+     "sala": "",
+     "pronta": false
+    },
+    {
+     "ms": 9197,
+     "botao": "Jogar sozinho",
+     "popup": false,
+     "shell": true,
+     "capa": "",
+     "carga": "",
+     "sala": "",
+     "pronta": true
+    }
+   ]
+  }
+ }
+}

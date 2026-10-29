@@ -211,9 +211,11 @@ const EFEITOS=Object.freeze({
   'anel-alvo':strip(128,4),'anel-habilidade':strip(128,4),'marcador-destino':strip(128,4),
   'heroi-voce':strip(128,1),'caido-resgate':strip([128,256],6),'sombra-contato':strip([128,64],1),
   'olhos-escuro':strip([64,32],4,P1),'veu-apagao':{priority:P1},
-  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery: the balloon's left/bottom corner
-  // keeps its tail whole; the bars keep their 3–4 px frame.
-  'balao-fala':{priority:P0,kind:'nineslice',cell:[96,64],slice:[28,25,20,24]},
+  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery; the bars keep their 3–4 px frame.
+  // The balloon is its body only, edge to edge (card heroi-fala-cade-amigos): the 16/10 cell had 12–19 px of empty
+  // margin and its own tail inside the slices, so the body sized to the text shrank to a thin strip; the code draws the
+  // tail (layers.ts drawBubble, pointing at the speaker).
+  'balao-fala':{priority:P0,kind:'nineslice',cell:[74,28],slice:[10,9,10,9]},
   'etiqueta-devendo':{priority:P0,kind:'nineslice',cell:[96,64],slice:[16,24,16,24]},
   ...Object.fromEntries(['moldura','preenchimento','moldura-elite','preenchimento-elite']
     .map(p=>[`barra-vida-${p}`,{priority:P0,kind:'nineslice',cell:[64,12],slice:[4,3,4,3]}])),
@@ -319,14 +321,15 @@ export {ENEMY_ROLES,ENEMY_TABLE};
  * Towers (board design/proximos/08-TORRES.md), folder `torres/<id>/`, kind 'tower':
  *  - `base.png` + `base.json` {"kind":"views","cell":[W,H],"views":4,"rows":[…],"anchor":[0.5,Y],"meta":{"footprint":[a,b],"mount":[x,y]}}:
  *    4 views (VIEW_NAMES) × the rows TOWER_ROWS (a wall: TOWER_WALL_ROWS, and no weapon);
- *  - weapon + crew `idle.png` (TOWER_IDLE_FRAMES frames), `fire.png`, `reload.png` (any frame count): 8 rows
+ *  - weapon + crew `idle.png` (one of TOWER_IDLE_FRAMES frame counts), `fire.png`, `reload.png` (any frame count): 8 rows
  *    (DIRECTIONS) of `meta.json` {"cell":[W,H],"anchor":[0.5,0.88],"fps":{…}} cells. Absent animations are notes.
  * Like the enemies, each animation may come as one PNG per direction `<anim>-<DIR>.png` (assembled by the importer).
  */
 export const TOWER_ROWS=Object.freeze(['obra-1','obra-2','obra-3','pronta','danificada','ruina']);
 export const TOWER_WALL_ROWS=Object.freeze(['pronta','danificada','ruina']);
 export const TOWER_ANIMS=Object.freeze(['idle','fire','reload']);
-export const TOWER_IDLE_FRAMES=4;
+/** Idle frame counts: the 4-frame breath, or 8 for a crew with a gag (ramo A, card torres-ramo-a-postos). */
+export const TOWER_IDLE_FRAMES=Object.freeze([4,8]);
 /**
  * Accepted formats per group; `kind` is the default when the piece has no sidecar saying otherwise. `character`: the
  * messages talk about feet and the figure ("boneco"); other groups talk about the drawing and its base.

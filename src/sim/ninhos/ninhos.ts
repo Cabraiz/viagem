@@ -77,7 +77,7 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row);
  *  - explore: the time to explore after a wave is over (s); waveMin, waveCap: a wave holds it at least / at most (s);
  *  - crowd: × march, hp and damage of a wave's body by room size (1..6 players, on top of march/hp/damage), so a big
- *    room meets stronger bodies while 1p-3p stay as before (a pair would move 3p too).
+ *    room meets stronger bodies while 1p-2p stay as before (a pair would move 2p too).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, 1p and 6p, evidence/NEW-20261022-ORQ-monstros-espalhados/bench): with the quota at 10 % of today's
@@ -91,12 +91,22 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // balanco-6p-facil (production bench, 6p × 16): six bots won 16/16 with the Uno untouched, the car open after 2-3 waves.
 // The chaveiro's ride alone (CHAVEIRO_PACE.ride, 6p 420 → 1080 s) left 15/16 at 23.5 min, and so did march / size alone;
 // the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
-const CROWD={march:[1,1,1,1.083,1.167,1.25] as number[],hp:[1,1,1,1.333,1.667,2] as number[],damage:[1,1,1,1.1,1.2,1.3] as number[]};
+// bots-resgatam (headless audit, 16 seeds): the bots that rescue first and keep by the Uno won 3p 15/16 and 6p 14/16
+// (target 7–11). 3p hp ×1.5 → 14/16, ×2 → 12, ×2.5 → 11, ×3 → 7; 6p hp ×2.5 → 14, ×3 (march 1.35, damage 1.6) → 10.
+// The live bench is harder than the headless audit: 3p ×2.75 (headless 11/16) won 4/16 there, so 3p is back to ×1.5
+// (headless 14/16); 4p and 5p in between; 1p and 2p as before.
+// solo-uno-aguenta-1a-onda (headless audit, armed, seeds 1-8): the solo hero stays by the Uno and the first wave's map
+// share (~80 bodies) piled ~40 on it at 1 a second, the Uno down at ~6 min in half the seeds. A trickle under 1 now adds
+// up (warmTrickle did nothing for a solo before) and 1p leaves at .4 a second (× .34 while warming): with CHAVEIRO_PACE
+// 1p (ride 210, limit × 1.6) 1p 6/8 (16 seeds 11/16; .5 → 5/8, .3 → 3/8), 3p 8/8. Same bodies: the rest sleeps at waveCap.
+// After ritmo-morto-e-viaduto 1p fell to 3/8 (13/32); march 1p .85 → .7 with ride 150: 6/8 (22/32), 3p 7/8. Not more:
+// .6 → 15/32; crowd hp 1p .8 → 20/32 alone, 15/32 with .7; crowd damage .8 → 19/32 (the bench swings ±3 seeds in 32).
+const CROWD={march:[1,1,1.08,1.17,1.26,1.35] as number[],hp:[1,1,1.5,2,2.5,3] as number[],damage:[1,1,1.15,1.3,1.45,1.6] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
   // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
   size:[CLASH_BODIES[0],1.85*CLASH_BODIES[1]] as [number,number],mapShare:[.1*CLASH_BODIES[0],.1*CLASH_BODIES[1]] as [number,number],
-  trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
+  trickle:[.4,3] as [number,number],march:[.7,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
   explore:120,waveMin:20,waveCap:150,crowd:CROWD};
 /** NEST_PACE.crowd's factor `k` for a room of `players` (1..6). */
 export const crowd=(k:keyof typeof CROWD,players:number)=>NEST_PACE.crowd[k][clampPlayers(players)-1]??1;
@@ -151,8 +161,9 @@ export interface NestsState {
   log?:WaveLog[];
   /** The end tick of the minuto de Minerva (start + NEST_PACE.minerva); absent in a checkpoint from before it. */
   minervaUntil?:number;
-  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick. */
-  drip?:{door:number;left:number;tick:number};
+  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick,
+   * the batch's fraction carried to the next second (a trickle under 1). */
+  drip?:{door:number;left:number;tick:number;carry?:number};
   /** Tick the last wave left while it is not over yet (absent between waves: the time to explore runs). */
   waveOpen?:number;
   /** The last time to explore (NEST_PACE.explore): its first tick and its end (the next wave's tick). */
@@ -211,6 +222,13 @@ export interface NestsSystem extends SimSystem {
   alive():number;
   /** Whether the minuto de Minerva still holds at `tick` (true before the first step: nothing moves before the run). */
   minerva(tick:number):boolean;
+  /**
+   * The room still waits for the team to load (multiplayer/load-wait.ts, card exploracao-espera-carregar): the minuto de
+   * Minerva ends a whole NEST_PACE.minerva after `tick` and the first wave keeps its distance from it. It moves half a
+   * second at a time (the clock rounds up, so it still reads the full minute): two {t:'run'} a second, not one a tick.
+   * Nothing before the first step nor once the Minerva is over.
+   */
+  holdMinerva(tick:number):void;
   /** The time to explore running at `tick` ([first tick, end tick]), undefined outside one (the Minerva is not one). */
   exploring(tick:number):{from:number;until:number}|undefined;
   /** The plan the run plays (drawn on the first step); undefined before it. */
@@ -328,7 +346,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const d=state.drip,door=d?options.entrances?.[d.door]:undefined;
     if(!d||!door||!options.recruit){if(d){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}return;}
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size);
-    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1))),room),tune);
+    // solo-uno-aguenta-1a-onda: a batch under 1 a second adds up (1p: .4, × .34 while warming → one every ~7 s), where it used to round
+    // up to 1 and warmTrickle did nothing for a solo; the first batch leaves with the wave.
+    const rate=pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1);
+    const carry=d.carry===undefined?Math.max(1,Math.round(rate)):d.carry+rate,batch=Math.floor(carry);
+    if(batch<1){d.carry=carry;return;}
+    d.carry=carry-batch;
+    const got=options.recruit(ctx,door.route,Math.min(d.left,batch,room),tune);
     d.left-=Math.max(got,0);
     const entry=state.log?.find(l=>l.tick===d.tick);
     if(entry){entry.map+=got;entry.total+=got;}
@@ -402,6 +426,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     plan:()=>plan,
     alive:()=>state.nests.filter(n=>!n.down).length,
     minerva:tick=>state.startTick===null||tick<(state.minervaUntil??0),
+    holdMinerva(tick){
+      if(state.minervaUntil===undefined||tick>=state.minervaUntil)return;
+      const by=tick+ticks(NEST_PACE.minerva)-state.minervaUntil;
+      if(by<ticks(.5))return;
+      state.minervaUntil+=by;
+      if(state.nextWave!==undefined)state.nextWave+=by;
+    },
     exploring:tick=>state.exploreFrom!==undefined&&state.exploreUntil!==undefined&&tick>=state.exploreFrom&&tick<state.exploreUntil?{from:state.exploreFrom,until:state.exploreUntil}:undefined,
     bossSpot(){
       let best:NestRun|undefined;

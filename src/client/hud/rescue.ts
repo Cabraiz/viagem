@@ -5,10 +5,11 @@
  *   design/cidade-hud.md §7) the city's arrows instead (groups, active mouths, base with the horn seconds; hud/city),
  *   switched per frame since the map can change in the lobby; the WC3 minimap at ≤ 10 Hz on every map (wc-minimap);
  * - "Me salva": while caído the skill button's place becomes a big ping button (3 s anti-spam, EmoteGate); the room
- *   relays the ping with the position to every phone, which lights the caído's arrow and dot, plays the fall whistle
- *   (and its buzz, VGM-050 settings) and shows the caído's own help line over the body;
+ *   relays the ping with the position to every phone, which lights the caído's arrow and dot, plays the 'sos' ping
+ *   (and its buzz, VGM-050 settings; the fall whistle itself played once at the fall) and shows the caído's own help
+ *   line over the body;
  * - lines over heads (fun/lines, 053A): the fall (what got you, else the class line), the rescuer's "Segura aí, Zé!"
- *   while it holds the rescue, the class rescue line, and the rescue sound with its buzz for the rescuer.
+ *   while it holds the rescue and the class rescue line (the rescue's sound is the match's, audio/events.ts).
  * Its pure helpers (holdLine, sosButton) live in radar.ts (tests); this part needs the DOM, the scene and the socket.
  */
 import type {CoopClient} from '../net/client.ts';
@@ -29,11 +30,10 @@ import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
 import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
-import {playEvents} from '../audio/events.ts';
+import {GEMS,playEvents} from '../audio/events.ts';
 import {Footsteps,allyGain,type StepFigure} from '../audio/footsteps.ts';
-import {AlarmLoop} from '../audio/alarm.ts';
-/** The alarm stays loud this long after the car's last hit (ms). */
-const ALARM_HIT_MS=1500;
+import {AlarmLoop,alarmHit} from '../audio/alarm.ts';
+import {alarmOn} from '../render/chaveiro/rules.ts';
 import {heroRuns} from '../sprites/movement128.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
@@ -44,7 +44,7 @@ import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
-import {shownTargets} from './arrows.ts';
+import {shownTargets,missionKeys,nestTarget} from './arrows.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
 export const CITY_TARGETS_MS=100;
@@ -146,7 +146,7 @@ export class RescueBoard {
     if(!this.pings.add(ping,performance.now()))return;
     // The caller's own echo: the room took it and every phone now shows the arrow (UX onda 6: confirm to the caído).
     if(ping.id===this.net.id){this.scene()?.say(this.net.id,SOS_HEARD);return;}
-    const audio=getAudio();if(audio.unlocked)audio.play('queda');
+    const audio=getAudio();if(audio.unlocked)audio.play('sos');
     this.say(ping.id,'down',ping.tick);
   }
   /** The view the HUD shows: one clock for the arrows, the team strip and the map fichas (UX onda 6, aresta 1). */
@@ -163,7 +163,8 @@ export class RescueBoard {
     // The local hero's shots already heard on the press are not played again (net/attack-predict.ts).
     const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
     // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e));
+    // An elite's kill: its body is still in the feed on the kill's tick (the tombstone comes a few ticks later).
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite,undefined,{hero:this.net.predicted,side:p=>this.scene()?.screenSide(p)??0,boss:id=>!!this.net.feed.enemies.get(id)?.boss,telegraph:id=>view.telegraphs.find(t=>t.id===id)});
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -191,7 +192,6 @@ export class RescueBoard {
           // Right after the rescuer's balloon (they stand side by side): one balloon at a time, never one over the other.
           const by=this.net.players.get(e.by)?.name;
           if(by&&e.player!==e.by){const who=e.player,t=setTimeout(()=>{this.timers.delete(t);this.scene()?.say(who,thanks(by));},THANKS_AFTER_MS);this.timers.add(t);}
-          if(e.by===this.net.id){const audio=getAudio();if(audio.unlocked)audio.play('resgate');}
         }
       }
     }
@@ -225,7 +225,9 @@ export class RescueBoard {
     const objective=objectiveOf(this.last),live=!!objective&&!objective.ended&&!!this.net.run;
     if(!live&&!this.alarmLoop)return;
     const loop=this.alarmLoop??=new AlarmLoop(getAudio()),hero=this.net.predicted;
-    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,now-this.carHitAt<=ALARM_HIT_MS);
+    // Loud while the sim's alarm runs (its alarmUntil, the waves drawn on the car), not only right after a hit seen here.
+    const alarmed=!!objective&&!!this.last&&alarmOn(objective,this.last.tick);
+    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,alarmHit(alarmed,now-this.carHitAt));
   }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
@@ -242,7 +244,7 @@ export class RescueBoard {
     this.alarm(now);
     // The cédula the hero walked into clinks the moment it flies into him (render/cedula-catch.ts), not at the room's word.
     const caught=scene?.cedulasCaught()??0;
-    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema');}
+    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema',{rate:GEMS.next(now)});}
     this.caught=caught;
     const pending=scene?.pendingGrana()??0;
     if(pending!==this.pending){this.pending=pending;hud.granaMoved();}
@@ -356,11 +358,13 @@ export class RescueBoard {
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
     const banks=last.banks,car=objective&&!objective.ended?{x:objective.car.x,y:objective.car.y,hit:now-this.carHitAt<=UNO_HIT_MS}:undefined;
-    const point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined;
+    const point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined,aim=this.hud.missionArrow;
     const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),...(car?{car}:{}),...(uno?{uno}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
-    this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
+    // The mission line's target (objetivo-com-verbo): the moto's arrow, or the nearest nest's, joins the shown ones.
+    if(aim?.kind==='ninho'&&!inView(locate(aim),seen))targets.push(nestTarget(aim,focus,locate));
+    this.cityTargets=shownTargets(targets,missionKeys(aim));this.groupKeys=groupKeys;
   }
   /** Destroyed: a late room view or a frame already queued draws nothing (the island may be gone). */
   private dead=false;

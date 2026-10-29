@@ -5,6 +5,7 @@
  */
 import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
+import './coach/dicas.css';
 import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
@@ -35,7 +36,7 @@ import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,c
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import {createMinerva} from './minerva.ts';
-import {createMission,MissionTracker,type MissionPart} from './missao.ts';
+import {createMission,MissionTracker,missionFacts,type MissionArrow,type MissionPart} from './missao.ts';
 import './missao.css';
 import {isTowerKit,kitPiece} from '../../rules/index.ts';
 import './camp.css';
@@ -55,6 +56,7 @@ import {createCenaPart} from './chefao-cena.ts';
 import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
+import {LEVELUP_BURST_MS} from '../render/levelup-fx-rules.ts';
 import './perfis.css';
 import {createProfiles,type Match,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
@@ -187,6 +189,10 @@ export class RunHud {
   private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
+  /** The level-up burst's hold on the pause's screen (card levelup-estouro-e-tremida): set while it runs. */
+  private burstHold?:ReturnType<typeof setTimeout>;
+  /** What the burst holds back: the pause's veil and title (hud/pausa.ts) and the offer. */
+  private pauseScreen:readonly HTMLElement[]=[];
   private readonly forgeEl:HTMLElement;
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
@@ -263,6 +269,7 @@ export class RunHud {
       // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
       guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],
       useful:()=>this.zones().useful});
+    this.pauseScreen=[pausa.dim,pausa.el,offer.el];
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
@@ -317,8 +324,26 @@ export class RunHud {
       // D-052: a reroll changes only the counters.
       &&JSON.stringify([was.skips,was.rerolls])===JSON.stringify([pause.skips,pause.rerolls])))return;
     if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
+    if(!was&&pause)this.holdOffer();else if(!pause)this.releaseOffer();
     if(this.last)this.update(this.last);
   }
+  /**
+   * A pause just opened: its screen (the veil that darkens the play, the title, the offer) stays invisible (and the offer
+   * untouchable) for LEVELUP_BURST_MS while the scene plays the level-up burst on the hero (render/zueira-fx.ts), bright,
+   * then shows. The room's deadline is long (D-050), 0.4 s of it is fine.
+   */
+  private holdOffer(){
+    clearTimeout(this.burstHold);
+    for(const el of this.pauseScreen)el.style.visibility='hidden';
+    this.burstHold=setTimeout(()=>this.releaseOffer(),LEVELUP_BURST_MS);
+  }
+  private releaseOffer(){
+    if(this.burstHold===undefined)return;
+    clearTimeout(this.burstHold);this.burstHold=undefined;
+    for(const el of this.pauseScreen)el.style.removeProperty('visibility');
+  }
+  /** The offer waits for the level-up burst (tests, dev probe). */
+  get offerHeld(){return this.burstHold!==undefined;}
 
   /** Minuto de Minerva: the room's RunState.minervaAteTick (combat only), or undefined; the clock reads it on each view. */
   setMinerva(untilTick?:number){
@@ -330,6 +355,8 @@ export class RunHud {
   }
   /** The Uno gets its edge arrow now (the mission: the Minerva, the last seconds of a time to explore); urgent: "Volte ao Uno.". */
   get unoArrow(){return this.unoArrowNow;}
+  /** The mission line's target (objetivo-com-verbo): the Uno, the moto, the nearest nest; rescue.ts draws its edge arrow. */
+  private missionArrowNow:MissionArrow|undefined;get missionArrow(){return this.missionArrowNow;}
 
   update(view:RunView){
     const t0=perfNow(); // ?perf=1: the HUD's work this frame
@@ -369,8 +396,8 @@ export class RunHud {
     const playing=!!me&&!me.spectator&&!me.eliminated&&!ended;
     const towerKit=!!me?.weapons.some(w=>{const piece=kitPiece(w.id);return !!piece&&isTowerKit(piece);});
     const out=this.missionTracker.step({tick:view.tick,...(this.ctx.minervaAteTick!==undefined?{minervaAte:this.ctx.minervaAteTick}:{}),
-      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing});
-    this.unoArrowNow=out.pointUno?{urgent:out.line?.key==='volta'}:undefined;
+      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing,facts:missionFacts(view,this.ctx.localId,this.routeInput?.hero)});
+    this.unoArrowNow=out.pointUno?{urgent:out.arrow?.kind==='uno'&&out.arrow.urgent}:undefined;this.missionArrowNow=out.arrow;
     this.mission.render(out.line);
   }
   /**
@@ -699,9 +726,12 @@ export class RunHud {
   /** One frame of the fear (the scene's hooks.fear); `far` the allies out of reach while alone. */
   setFear(frame:FearFrame,far:readonly string[]){
     if(this.el.hidden||this.el.classList.contains('rh-ended')){this.fear.clear();return;}
-    this.fear.frame(frame,far);
+    // "Não se afaste do bando" is an order too: inside the gap of the mission line's (ordens-menos-e-claras), it waits out.
+    const gap=frame.notice&&this.last&&this.missionTracker.orderRecent(this.last.tick);
+    this.fear.frame(gap?{...frame,notice:undefined}:frame,far);
   }
   destroy(){
+    clearTimeout(this.burstHold);
     this.fear.destroy();
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();

@@ -40,7 +40,15 @@ export const ICING_PX=Object.freeze({min:3,max:5,wavesPerCell:2});
 /** Cast shadow length on the ground per world unit of height, toward screen right-down (+qx: same screen direction in every view). */
 export const SHADOW_LENGTH=0.5;
 /** Length and opacity of the cast shadows (the lighting card passes the sun's: render/light.ts). */
-export interface ShadowLook {readonly length:number;readonly color:number;readonly alpha:number}
+export interface ShadowLook {readonly length:number;readonly color:number;readonly alpha:number;
+  /**
+   * Soft edge (card chao-da-cidade-sem-emenda): `layers` nested unions at an alpha that stacks to `alpha` in the core.
+   * Layer k (outer first) is grown by penumbra·(layers−1−k)/(layers−1) cells away from the sun (+qx) and on both sides
+   * (±qy), and its length is cut by `fade`·k/(layers−1): the edge fades out and the shadow lightens away from the caster.
+   */
+  readonly soft?:{readonly layers:number;readonly penumbra:number;readonly fade:number}}
+/** Alpha of one of `n` stacked layers so that together they reach `alpha` (1 − (1 − a)^n = alpha). */
+export const stackedAlpha=(alpha:number,n:number)=>1-Math.pow(1-alpha,1/n);
 export const FLAT_SHADOW:ShadowLook=Object.freeze({length:SHADOW_LENGTH,color:SHADOW.color,alpha:SHADOW.alpha});
 /** Ruin rubble on the bite floor (bible §4.4: ≤ 0.3 u). */
 export const BITE_RUBBLE_MAX_HEIGHT=0.28;
@@ -215,37 +223,43 @@ export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt
  * shadows must not stack (two 22% layers would break the contrast rule). Each piece's shadow is a view-space
  * rect (its footprint stretched by SHADOW_LENGTH·height along +qx, screen right-down); rects of the same base
  * height are merged by coordinate compression and split into disjoint strips. Pass the pieces of the chunk and
- * of its neighbours so shadows crossing a chunk border are drawn once, by the chunk they land on.
+ * of its neighbours so shadows crossing a chunk border are drawn once, by the chunk they land on. With `look.soft`, one
+ * such union per layer (outer first), each disjoint on its own and at the layer alpha (stackedAlpha).
  */
 export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:{x0:number;y0:number;x1:number;y1:number},view:number,pivot:Pt=VIEW_PIVOT,look:ShadowLook=FLAT_SHADOW):DecorPrim[]{
   const v=normalizeView(view),{cell,origin}=asset,out:DecorPrim[]=[];
   const q=(cx:number,cy:number)=>viewPoint(origin.x+cx*cell,origin.y+cy*cell,v,pivot);
   const ra=q(region.x0,region.y0),rb=q(region.x1,region.y1);
   const clip={x0:Math.min(ra.x,rb.x),x1:Math.max(ra.x,rb.x),y0:Math.min(ra.y,rb.y),y1:Math.max(ra.y,rb.y)};
-  const byBase=new Map<number,{x0:number;x1:number;y0:number;y1:number}[]>();
-  for(const p of pieces){
-    const a=q(p.x,p.y),b=q(p.x+p.w,p.y+p.h);
-    const seam=(['n','s','e','w'] as const).some(s=>p.seams[s]&&viewSide(s,v)==='+x');
-    const L=seam?0:look.length*p.height;
-    const r={x0:Math.max(clip.x0,Math.min(a.x,b.x)),x1:Math.min(clip.x1,Math.max(a.x,b.x)+L),y0:Math.max(clip.y0,Math.min(a.y,b.y)),y1:Math.min(clip.y1,Math.max(a.y,b.y))};
-    if(!(r.x1>r.x0&&r.y1>r.y0))continue;
-    const list=byBase.get(p.base);if(list)list.push(r);else byBase.set(p.base,[r]);
-  }
+  const n=look.soft?Math.max(1,Math.round(look.soft.layers)):1,alpha=n>1?stackedAlpha(look.alpha,n):look.alpha;
   const toScreen=(qx:number,qy:number,z:number):Pt=>({x:(qx-qy)*TILE_X,y:(qx+qy)*TILE_Y-z*HEIGHT_PX});
-  for(const base of [...byBase.keys()].sort((a,b)=>a-b)){
-    const rects=byBase.get(base)!;
-    const xs=[...new Set(rects.flatMap(r=>[r.x0,r.x1]))].sort((a,b)=>a-b),ys=[...new Set(rects.flatMap(r=>[r.y0,r.y1]))].sort((a,b)=>a-b);
-    for(let j=0;j+1<ys.length;j++){
-      // Strip [ys[j],ys[j+1]): merge covered x-intervals into runs.
-      let run=-1;
-      for(let i=0;i+1<xs.length;i++){
-        const mx=(xs[i]+xs[i+1])/2,my=(ys[j]+ys[j+1])/2;
-        const covered=rects.some(r=>mx>r.x0&&mx<r.x1&&my>r.y0&&my<r.y1);
-        if(covered&&run<0)run=i;
-        if((!covered||i+2===xs.length)&&run>=0){
-          const end=covered?xs[i+1]:xs[i];
-          out.push(poly(look.color,[toScreen(xs[run],ys[j],base),toScreen(end,ys[j],base),toScreen(end,ys[j+1],base),toScreen(xs[run],ys[j+1],base)],look.alpha));
-          run=-1;
+  for(let k=0;k<n;k++){
+    // Grown before the clip, so a penumbra crossing a chunk border is cut in the same place by both chunks.
+    const t=n>1?k/(n-1):1,grow=look.soft?look.soft.penumbra*(1-t)*cell:0,cut=look.soft?1-look.soft.fade*t:1;
+    const byBase=new Map<number,{x0:number;x1:number;y0:number;y1:number}[]>();
+    for(const p of pieces){
+      const a=q(p.x,p.y),b=q(p.x+p.w,p.y+p.h);
+      const seam=(['n','s','e','w'] as const).some(s=>p.seams[s]&&viewSide(s,v)==='+x');
+      const L=seam?0:look.length*p.height*cut;
+      const r={x0:Math.max(clip.x0,Math.min(a.x,b.x)),x1:Math.min(clip.x1,Math.max(a.x,b.x)+L+grow),y0:Math.max(clip.y0,Math.min(a.y,b.y)-grow),y1:Math.min(clip.y1,Math.max(a.y,b.y)+grow)};
+      if(!(r.x1>r.x0&&r.y1>r.y0))continue;
+      const list=byBase.get(p.base);if(list)list.push(r);else byBase.set(p.base,[r]);
+    }
+    for(const base of [...byBase.keys()].sort((a,b)=>a-b)){
+      const rects=byBase.get(base)!;
+      const xs=[...new Set(rects.flatMap(r=>[r.x0,r.x1]))].sort((a,b)=>a-b),ys=[...new Set(rects.flatMap(r=>[r.y0,r.y1]))].sort((a,b)=>a-b);
+      for(let j=0;j+1<ys.length;j++){
+        // Strip [ys[j],ys[j+1]): merge covered x-intervals into runs.
+        let run=-1;
+        for(let i=0;i+1<xs.length;i++){
+          const mx=(xs[i]+xs[i+1])/2,my=(ys[j]+ys[j+1])/2;
+          const covered=rects.some(r=>mx>r.x0&&mx<r.x1&&my>r.y0&&my<r.y1);
+          if(covered&&run<0)run=i;
+          if((!covered||i+2===xs.length)&&run>=0){
+            const end=covered?xs[i+1]:xs[i];
+            out.push(poly(look.color,[toScreen(xs[run],ys[j],base),toScreen(end,ys[j],base),toScreen(end,ys[j+1],base),toScreen(xs[run],ys[j+1],base)],alpha));
+            run=-1;
+          }
         }
       }
     }

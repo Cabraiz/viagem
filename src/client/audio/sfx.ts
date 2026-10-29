@@ -8,7 +8,10 @@ import {ALL_SOUND_IDS,type ProceduralId,type SoundId} from './types.ts';
 import {RECIPES} from './recipes.ts';
 
 export interface SfxSpec {
-  /** Takes of the sound: 1 = `<id>.webm`, n = `<id>-1.webm` … `<id>-n.webm`, drawn at random without repeating the last. */
+  /**
+   * Takes of the sound: 1 = `<id>.webm`, n = `<id>-1.webm` … `<id>-n.webm`, drawn at random without repeating the last;
+   * 0 = no file, the procedural recipe only (`sos`).
+   */
   takes:number;
   /** Minimum milliseconds between two plays (the procedural recipe's for its 13). */
   throttleMs:number;
@@ -29,12 +32,13 @@ export type SfxFormat='webm'|'m4a';
 const spec=(throttleMs:number,priority:number,gain:number,takes=1,align=false):SfxSpec=>Object.freeze({takes,throttleMs,priority,gain,...(align?{align}:{})});
 /** The groups' levels: spam (hits, footsteps, every shot) under the moments (chests, level up, the boss). */
 const UI=spec(40,2,.6),SHOT=spec(70,0,.45),PACK=spec(90,0,.4),TOWER=spec(120,0,.32);
-const own=(id:ProceduralId,gain:number)=>spec(RECIPES[id].throttleMs,RECIPES[id].priority,gain);
+const own=(id:ProceduralId,gain:number,takes=1)=>spec(RECIPES[id].throttleMs,RECIPES[id].priority,gain,takes);
 
 export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   golpe:own('golpe',.4),gema:own('gema',.45),nivel:own('nivel',.7),upgrade:own('upgrade',.6),queda:own('queda',.75),
   resgate:own('resgate',.7),chefe:own('chefe',.85),'round-inicio':own('round-inicio',.7),'round-fim':own('round-fim',.7),
-  buzina:own('buzina',.6),boing:own('boing',.6),risada:own('risada',.6),carimbo:own('carimbo',.6),
+  buzina:own('buzina',.6),boing:own('boing',.6),risada:own('risada',.6),carimbo:own('carimbo',.6),sos:own('sos',1,0),
+  ufa:own('ufa',1,0),tsc:own('tsc',1,0),
   'ui-botao':UI,'ui-abrir':UI,'ui-fechar':UI,'ui-carta':UI,'ui-erro':UI,
   // Six takes of the step (footsteps.ts draws one per contact of the foot, never the same twice in a row), each from
   // its crunch, at one level.
@@ -47,7 +51,8 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   'torre-sniper':TOWER,'torre-antimaterial':TOWER,'torre-rojao':TOWER,'torre-morteiro':TOWER,'torre-foguete':TOWER,
   'torre-obus':TOWER,'torre-gustavao':spec(300,1,.45),'torre-holofote':spec(600,0,.3),'torre-arame':spec(400,0,.3),
   'torre-antiaerea':TOWER,'torre-radar':spec(900,0,.25),
-  'bicho-acerto':spec(50,0,.3),'bicho-morte':spec(60,0,.4),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85),'chefe-passo':spec(250,1,.5),
+  // The hit 70 ms and the kill's plop 80 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados: 300 critters at once).
+  'bicho-acerto':spec(70,0,.3),'bicho-morte':spec(80,1,.4),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85),'chefe-passo':spec(250,1,.5),
   'bau-comum':spec(100,2,.65),'bau-raro':spec(100,2,.7),'bau-epico':spec(100,2,.75),'bau-lendario':spec(100,3,.8),
   // The caça-níquel when my weapon turns dourada (caixa-gamble, hud/caca-niquel.ts): the jackpot over the chest.
   'caca-niquel':spec(500,3,.85),
@@ -67,7 +72,7 @@ export function sfxUrl(id:SoundId,take:number,format:SfxFormat):string{
 }
 /** Every file name (no folder, no extension) the sounds need: the import must have made each one. */
 export function sfxNames():string[]{
-  return ALL_SOUND_IDS.flatMap(id=>SFX[id].takes>1?Array.from({length:SFX[id].takes},(_,i)=>`${id}-${i+1}`):[id]);
+  return ALL_SOUND_IDS.flatMap(id=>SFX[id].takes>1?Array.from({length:SFX[id].takes},(_,i)=>`${id}-${i+1}`):SFX[id].takes?[id]:[]);
 }
 /** Opus when the browser decodes it, else AAC (Safari before 17), else none (the procedural ones only). */
 export function pickSfxFormat(canPlay:(type:string)=>string):SfxFormat|null{

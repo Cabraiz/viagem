@@ -28,7 +28,7 @@ import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
 import { emLoop, montarAneis } from './client/ui/insta-aneis.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
-import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
+import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText, soloProgress, type SoloStep } from './client/ui/solo-plan.ts';
 import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -318,7 +318,9 @@ function renderSelected(announce=false) {
   const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
   const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
-  if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
+  // The phone held upright never shows the letreiro (insta.css): no download there (primeira-visita-leve); turning it
+  // sideways runs syncInsta → here again, and the picture comes then.
+  if(picture){if(!instaScreen.matches&&sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
   sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
   // A letreiro taller than its sign (the gato's collar): laid out by the sign's own shape, the rest over the top.
   const tall=picture?letreiroAltoOf(selected.id):undefined;sign.classList.toggle('letreiro-alto',!!tall);
@@ -432,7 +434,15 @@ document.getElementById('previous')!.addEventListener('click',()=>cycle(-1));
 document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
-nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
+// BORA! with no name (auditoria-ui-menus 9): the menu's own warning, not the browser's balloon (its look changes from
+// browser to browser): the field turns red, says it in its placeholder and shakes once; the live region reads it.
+const NAME_MISSING='Escolha um nome primeiro!',namePlaceholder=nameInput.placeholder;
+const nameMissing=(on:boolean)=>{
+  nameInput.classList.remove('nome-faltando');nameInput.placeholder=on?NAME_MISSING:namePlaceholder;
+  if(on){void nameInput.offsetWidth;nameInput.classList.add('nome-faltando');nameInput.setAttribute('aria-invalid','true');text('announcement',NAME_MISSING);}
+  else nameInput.removeAttribute('aria-invalid');
+};
+nameInput.addEventListener('input',()=>{nickname=nameInput.value;if(nameInput.classList.contains('nome-faltando'))nameMissing(false);});
 // A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
 // Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
@@ -466,8 +476,7 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!isLiberado(selected.id)) return; // a locked hero never gets past here (a click, Enter or a script)
   void autoFullscreen(tela); // inside the tap: browsers allow it only there
   if(etapaOf(etapa)==='escolher') {chooseHero();return;}
-  if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
-  nameInput.setCustomValidity('');
+  if(!nickname.trim()) {nameMissing(true);nameInput.focus();return;}
   nickname=nameInput.value=fitName(nickname);
   const saved={version:1,classId:selected.id,name:nickname,color};
   let persisted=false;
@@ -479,6 +488,8 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
   mostrarEscolha(dialog,selected.id);
   dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
+  // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
+  if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);
@@ -510,6 +521,20 @@ const showBots=()=>{
 };
 soloBots.hidden=island;showBots();
 soloBots.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.solo-bots-step');if(b&&!b.disabled){bots=saveBots(storage(),bots+Number(b.dataset.step));showBots();}});
+/** The bar under "Jogar sozinho"'s line while the match opens (0..1; undefined hides it). */
+function soloBar(button:HTMLElement){
+  let bar=button.querySelector<HTMLElement>('.carga');
+  if(!bar){
+    bar=document.createElement('span');bar.className='carga';bar.setAttribute('role','progressbar');bar.setAttribute('aria-label','Carregando a partida');
+    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');bar.hidden=true;bar.innerHTML='<span class="carga-cheio"></span>';
+    const line=rotulo(button);if(line===button)button.append(bar);else line.after(bar);
+  }
+  const el=bar;
+  return {set(fraction:number|undefined){
+    el.hidden=fraction===undefined;if(fraction===undefined)return;
+    const pct=Math.round(fraction*100);el.setAttribute('aria-valuenow',String(pct));el.style.setProperty('--carga',`${pct}%`);
+  }};
+}
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   toMatch();
@@ -523,17 +548,24 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
     finally {releaseDance();button.disabled=false;}
     return;
   }
-  const label=rotulo(button).textContent;rotulo(button).textContent='Preparando…';
+  // auditoria-ui-menus 5: the card says which step is running, over a bar of the real steps (solo-plan.ts).
+  const label=rotulo(button).textContent,parts:Partial<Record<SoloStep,number>>={};
+  const bar=soloBar(button);
+  const showStep=()=>{const p=soloProgress(parts);rotulo(button).textContent=p.text;bar.set(p.fraction);};
+  button.setAttribute('aria-busy','true');showStep();
   const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
-    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
+    await openSolo(selected,nickname.trim(),{bots,
+      onStep:(step,fraction)=>{parts[step]=Math.max(parts[step]??0,fraction);showStep();},
+      onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {releaseDance();button.disabled=false;rotulo(button).textContent=label;}
+  finally {releaseDance();button.disabled=false;button.removeAttribute('aria-busy');bar.set(undefined);rotulo(button).textContent=label;}
 });
 syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
-// with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
+// with a room, joins it by itself (the room's token in localStorage keeps the same seat, net/room-return.ts).
+// F5 in a room lands on the invite path: the welcome put ?sala= in the address (F5 volta pra sala).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
 else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();

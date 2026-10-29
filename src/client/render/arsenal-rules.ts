@@ -342,8 +342,9 @@ const firstPageUrl=(group:'ui'|'efeitos',file:ArtFile|undefined)=>{const page=fi
 const fileOf=(group:'ui'|'efeitos',id:string)=>{const piece=artPiece(group,id);if(!piece)return undefined;return piece.files.sheet??Object.values(piece.files)[0];};
 /**
  * The arsenal's textures in the current manifest (an absent piece is skipped): every item sticker and every shot strip.
- * Queued once, the first time a view shows the manual combat (render/arsenal-fx.ts), never in the preload: a match with
- * the automatic weapons downloads none of it.
+ * The stickers come with the scene's preload of a manual room (scene.ts: the map opens with crates showing their item;
+ * the waiting room fetches them first, preload/match-assets.ts); the rest is queued once, the first time a view shows
+ * the manual combat (render/arsenal-fx.ts). A match with the automatic weapons downloads none of it.
  */
 export function arsenalLoads():ArsenalLoad[]{
   const out:ArsenalLoad[]=[],seen=new Set<string>();

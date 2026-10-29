@@ -19,8 +19,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import {FlowField,UNREACHABLE,cityAsField,type FlowGrid,type Point} from '../../src/maps/index.ts';
-import {BASE_STATS,CAR_NEST_KEEP_OUT,CAR_RADIUS,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
+import {FlowField,RADIUS as PLAYER_RADIUS,UNREACHABLE,cityAsField,type FlowGrid,type Point} from '../../src/maps/index.ts';
+import {BASE_STATS,CAR_HALF_LENGTH,CAR_HALF_WIDTH,CAR_NEST_KEEP_OUT,CAR_RADIUS,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
 import {pieceCells} from '../../src/rules/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
@@ -91,8 +91,11 @@ function drive(discs:readonly Disc[],field:FlowField,goal:Point,maxTicks:number)
     if(Math.hypot(c.x-goal.x,c.y-goal.y)<2.5)return {ok:true,at:{x:c.x,y:c.y}};
     field.directionAt(c.x,c.y,dir);
     if(!dir.x&&!dir.y){dir.x=goal.x-c.x;dir.y=goal.y-c.y;const l=Math.hypot(dir.x,dir.y);dir.x/=l;dir.y/=l;}
-    // The heroes lean on the body behind the push (as sim-carro's pushers), their sticks along the field.
-    [...players.values()].forEach((p,i)=>{const side=(i-.5)*.15;p.x=c.x-dir.x*(CAR_RADIUS+.3)-dir.y*side;p.y=c.y-dir.y*(CAR_RADIUS+.3)+dir.x*side;sticks.set(p.id,{x:dir.x,y:dir.y});});
+    // The heroes lean on the body behind the push, where walking into it stops them (on the box, a hero's radius off:
+    // uno-nao-empurra-sem-querer leans only touching it), their sticks along the field.
+    const h=c.heading??0,al=Math.abs(dir.x*Math.cos(h)+dir.y*Math.sin(h)),aw=Math.abs(-dir.x*Math.sin(h)+dir.y*Math.cos(h));
+    const back=Math.min(al>1e-9?CAR_HALF_LENGTH/al:Infinity,aw>1e-9?CAR_HALF_WIDTH/aw:Infinity)+PLAYER_RADIUS;
+    [...players.values()].forEach((p,i)=>{const side=(i-.5)*.15;p.x=c.x-dir.x*back-dir.y*side;p.y=c.y-dir.y*back+dir.x*side;sticks.set(p.id,{x:dir.x,y:dir.y});});
     world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);world.flush();
   }
   return {ok:Math.hypot(c.x-goal.x,c.y-goal.y)<2.5,at:{x:c.x,y:c.y}};
@@ -104,7 +107,8 @@ const laid=new Map(SEEDS.map(s=>[s,matches.get(s)!.tralha]));
 
 test('the map\'s tralha leans on the walls and leaves the Uno room to drive past, every square of every match',()=>{
   for(const [seed,pieces] of laid){
-    assert.ok(pieces.length>=8,`seed ${seed}: ${pieces.length} squares`);
+    // NEW-20261029-ORQ-sem-tralha-nas-entradas: off the entrances, 4–8 squares a match (was ≥ 8).
+    assert.ok(pieces.length>=3,`seed ${seed}: ${pieces.length} squares`);
     pieces.forEach((p,i)=>{
       assert.ok(againstWall(city,pieceRectOf(p)),`seed ${seed}: ${p.id} in the middle of the street`);
       const others=pieces.filter((_,j)=>j!==i).flatMap(discsOf);

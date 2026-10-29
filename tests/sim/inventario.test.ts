@@ -145,12 +145,16 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   if(!loaded.ok)throw new Error(loaded.error);
   const s=new Simulation(11,{world:'cidade',terrain:loaded.terrain,cityStructures:true,combat:'manual'});
   s.add('p0','Ana','cidadao-comum');s.resetRun();
+  const spawn={x:s.players.get('p0')!.x,y:s.players.get('p0')!.y};
   let now=1000;s.step(now+=50);
   const crates=s.view('p0').pickups.filter(k=>k.kind==='chest');
   assert.equal(crates.length,crateCap(1)+START_CRATES_MIN,'the solo’s crates on the loot points and its start crates around the spawn');
   assert.ok(crates.every(k=>k.value>=1&&k.value<=3),'round 1: verde..roxa (the stage shift takes one off)');
   const loot=cityLoot(loaded.terrain)!;
-  assert.equal(crates.filter(k=>loot.aroundStart.some(a=>a.x===k.x&&a.y===k.y)&&k.value<=2).length,START_CRATES_MIN,'the start crates are verde/azul, around the spawn (caixas-sumiram)');
+  // comeca-armado-e-levanta-seguro: one of them is the verde by the hero's spawn (≤ 3 u), the rest around the start.
+  const near=crates.filter(k=>k.value===1&&Math.hypot(k.x-spawn.x,k.y-spawn.y)<=3+1e-9).length;
+  assert.equal(near,1,'a verde crate by the spawn');
+  assert.equal(crates.filter(k=>loot.aroundStart.some(a=>a.x===k.x&&a.y===k.y)&&k.value<=2).length+near,START_CRATES_MIN,'the start crates are verde/azul, around the spawn (caixas-sumiram)');
   const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
   for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
   assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');

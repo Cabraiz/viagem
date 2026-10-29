@@ -15,9 +15,12 @@ export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 /**
  * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,
  * but the others do not wait two minutes for a phone that went quiet. A drop still cancels a countdown at once; the
- * one who missed the start watches that run and plays the rematch.
+ * one who missed the start watches that run and plays the rematch. 45 s since sala-aguenta-cidade (achado 7; was 10):
+ * only a lost socket counts as away (the room's setOnline), and a phone that hid the tab to answer a message goes
+ * silent and drops after the room's 12 s (SILENT_MS) while it comes back in 20-40 s; 10 s made it a spectator of a run
+ * it was ready for.
  */
-export const LOBBY_AWAY_TICKS=10*RUN_HZ;
+export const LOBBY_AWAY_TICKS=45*RUN_HZ;
 /**
  * The collective rematch (UX-resultado-revanche): it starts when every person online said "topa", or this long after the
  * first "topa" with a majority; who did not vote watches that run and plays the next.

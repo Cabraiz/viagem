@@ -140,7 +140,7 @@ export const HERO_VOICES:Readonly<Record<string,{hit:SoundId;fall:SoundId}>>={
   mendigo:{hit:'voz-mendigo-ai',fall:'voz-mendigo-cai'},
 };
 /** An enemy kind's voice when it hits me, on top of my "ai" (the sanfoneiro's waits for his art in main). */
-export const ENEMY_VOICES:Readonly<Record<string,SoundId>>={saci:'voz-saci-risada'};
+export const ENEMY_VOICES:Readonly<Record<string,SoundId>>={'aberracao-saci':'voz-saci-risada'};
 /** At most one voice of a kind (ai, cai, risada) per this many ms, so a crowd never becomes a choir. */
 export const VOICE_MS=400;
 export const isVoice=(id:SoundId)=>id.startsWith('voz-');

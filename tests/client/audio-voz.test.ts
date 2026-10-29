@@ -16,7 +16,7 @@ import {cueForEvent,playEvents,VoiceGate,HERO_VOICES,ENEMY_VOICES,VOICE_MS,voice
 
 const ME='p1';
 const CLASSES:Record<string,string>={p1:'clt-cansado',p2:'maromba',p3:'mendigo',p4:'coach',p5:'viciado-em-bet'};
-const KINDS:Record<string,string>={e1:'pombo',e2:'saci'};
+const KINDS:Record<string,string>={e1:'pombo',e2:'aberracao-saci'};
 const world:EventWorld={classOf:id=>CLASSES[id],kindOf:id=>KINDS[id]};
 const hit=(source='e1'):SimEvent=>({type:'damage',target:ME,amount:5,source});
 const fall=(player:string):SimEvent=>({type:'downed',player});

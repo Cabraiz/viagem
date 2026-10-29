@@ -5,12 +5,13 @@
  *   leaving the slot (`-sacando`) while money leaves (hero or critter); else the provisional figure (figures.ts);
  * - on the ground, the area where a hero holds it (BANCO.holdR) and a ring with the saldo left;
  * - over it, a tag: the bank's short name and its saldo, "bicho sacando!" (Cone) or "SEM CÉDULAS m:ss";
- * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, dark away for a critter) and the
+ * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, darker away for a critter) and the
  *   "RETIRE SEU DINHEIRO" beep, now and then one of the screen's lines instead (rules.ts BankTracker).
  * Bicos (card bancos-viram-bicos, etapa 2): when the manifest has the bank's shop (bico-art.ts), the pixel-art building
  * stands behind the rings instead of the kiosk, its door lit while a hero works inside.
  * PIX voando (card bico-sem-limite-pix-voando): with `playerAt`, notes and PIX diamonds spiral around each hero on a
  * shift and every note paid pops a "+R$ 5" over them (pix.ts); the hero's note out of the screen gives way to them.
+ * Every flying note, diamond and pop is a pooled sprite of the ChatGPT painting (pix.ts PIX_KEY), none drawn in code.
  * Each kiosk draws at its own actor depth and fades while it covers the hero, like the chaveiro's figures. Pure
  * drawing: the scene pushes each view's banks and calls update every frame.
  */
@@ -21,7 +22,7 @@ import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
 import {BANCO,BICO} from '../../../rules/index.ts';
-import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
+import {ATM_HALF,ATM_TOP,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
@@ -29,11 +30,13 @@ import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,groundKeys,groundPulse,saldoShare,sc
 import {TriBand} from '../city/tri-band.ts';
 import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
 import {bicoTag,type BicoTagLook} from '../../hud/bicos.ts';
-import {POP_POOL,PixSwarm,bitPose,popPose,type BitPose} from './pix.ts';
+import {PIX_FRAME,PIX_KEY,PIX_LABEL_KEY,PIX_LABEL_URL,PIX_URL,POP_POOL,PixSwarm,bitFrame,bitPose,popPose,type BitPose} from './pix.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
 const FX_DEPTH=94880;
+/** Screen width (CSS px at zoom 1) of one frame of the money painting: a bank's note, a PIX bit, the "+R$ 5" label. */
+const NOTE_PX=22,BIT_PX=20,LABEL_PX=56;
 /** The kiosks face +x (the sim gives no heading). */
 const HEADING=0;
 const COVER_ALPHA=.45;
@@ -67,17 +70,19 @@ interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Te
 export class BankRenderer {
   private scene:Phaser.Scene;
   private options:BankRendererOptions;
-  private fx:Phaser.GameObjects.Graphics;
   private draws=new Map<string,BankDraw>();
   private state=new BankTracker();
   private now=0;
   private q:Pt={x:0,y:0};
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+  /** The flying money (the banks' notes, the PIX bits): pooled sprites, the ones past `moneyUsed` hidden each frame. */
+  private money:Phaser.GameObjects.Image[]=[];
+  private moneyUsed=0;
   /** Reused every frame (no allocation per frame): the banks in view. */
   private live=new Set<string>();
   /** The ATM's faces per name, screen look and view (boxFaces is pure). */
   private faces=new Map<string,readonly Face[]>();
-  private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0};
+  private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0,stolen:0};
   /** Each bank's imported art (undefined: the provisional figure) and whether its textures are in. */
   private arts=new Map<string,BankArt|undefined>();
   private artIn=new Set<string>();
@@ -86,19 +91,19 @@ export class BankRenderer {
   private bicoIn=new Set<string>();
   /** The PIX around the heroes on a shift, and the "+R$ 5" pops (made on the first one, then reused). */
   private swarm=new PixSwarm();
-  private popTexts:Phaser.GameObjects.Text[]=[];
+  private pops:Phaser.GameObjects.Image[]=[];
   /** Reused every frame: who is on a shift now, and a bit's pose. */
   private workers:string[]=[];
   private pose:BitPose={dx:0,dy:0,tilt:0,alpha:0,scale:1};
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
-    this.fx=scene.add.graphics().setDepth(FX_DEPTH);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
+    c.stolen=mix(0xffffff,c.breu,.45);
     // The fonts came: the tag and the balloon take their style again on the next frame (the balloon by its text).
-    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}for(const t of this.popTexts)t.setStyle(this.popStyle());});
+    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}});
     this.queueArt();
   }
 
@@ -112,6 +117,9 @@ export class BankRenderer {
     for(const s of bankSheets(index))if(!this.scene.textures.exists(s.key)){
       this.scene.load.spritesheet(s.key,s.url,{frameWidth:s.cell[0],frameHeight:s.cell[1]});queued=true;
     }
+    // The money painting (pix.ts): the banks' notes and the PIX; nothing flies until it is in.
+    if(!this.scene.textures.exists(PIX_KEY)){this.scene.load.spritesheet(PIX_KEY,PIX_URL,{frameWidth:PIX_FRAME,frameHeight:PIX_FRAME});queued=true;}
+    if(!this.scene.textures.exists(PIX_LABEL_KEY)){this.scene.load.image(PIX_LABEL_KEY,PIX_LABEL_URL);queued=true;}
     if(queued&&!this.scene.load.isLoading())this.scene.load.start();
   }
   /** The bank's art once all its textures are in. */
@@ -149,7 +157,7 @@ export class BankRenderer {
   update(time:number){
     this.now=time;
     const st=this.state;st.settle(time);
-    this.fx.clear();
+    this.moneyUsed=0;
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     const live=this.live;live.clear();
     for(const b of st.banks){
@@ -173,6 +181,7 @@ export class BankRenderer {
     }
     for(const n of st.notes)this.drawNote(n,k);
     this.drawPix(k);
+    for(let i=this.moneyUsed;i<this.money.length;i++)this.money[i].setVisible(false);
     for(const [id,d] of this.draws)if(!live.has(id)){this.destroyDraw(d);this.draws.delete(id);}
   }
 
@@ -255,8 +264,8 @@ export class BankRenderer {
   }
 
   destroy(){
-    this.fx.destroy();
-    for(const t of this.popTexts)t.destroy();this.popTexts=[];
+    for(const im of this.money)im.destroy();this.money=[];
+    for(const im of this.pops)im.destroy();this.pops=[];
     for(const d of this.draws.values())this.destroyDraw(d);
     this.draws.clear();
   }
@@ -375,61 +384,44 @@ export class BankRenderer {
     if(hero&&this.options.playerAt&&b.workers?.some(id=>this.options.playerAt!(id)))return;
     const start=this.screenAt(b),reduced=this.options.reduced;
     const dx=(hero?(n.slot-1)*14:28+n.slot*10)*k*t,dy=(hero?-70*t:-24*t+50*t*t)*k;
-    const x=start.x+dx,y=start.y+dy,w=20*k,h=11*k,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
-    const g=this.fx,cos=Math.cos(tilt),sin=Math.sin(tilt);
-    const corner=(u:number,v:number)=>({x:x+u*cos-v*sin,y:y+u*sin+v*cos});
-    const quad=[corner(-w/2,-h/2),corner(w/2,-h/2),corner(w/2,h/2),corner(-w/2,h/2)];
-    g.fillStyle(hero?BANK_COLORS.note:mix(BANK_COLORS.note,this.c.breu,.45),a).fillPoints(quad,true);
-    g.lineStyle(1.4*k,this.c.breu,a).strokePoints(quad,true);
-    // the "2" in the middle: two strokes are enough at this size
-    g.fillStyle(this.c.breu,a).fillCircle(x,y,2.6*k);
+    const x=start.x+dx,y=start.y+dy,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
+    const im=this.moneySprite(0);if(!im)return;
+    im.setPosition(x,y).setRotation(tilt).setScale(NOTE_PX*k/PIX_FRAME).setAlpha(a);
+    if(hero)im.clearTint();else im.setTint(this.c.stolen);
+  }
+  /** The next pooled money sprite of this frame, on `frame` of the painting (made the first time), or none before it is in. */
+  private moneySprite(frame:number):Phaser.GameObjects.Image|undefined{
+    if(!this.scene.textures.exists(PIX_KEY))return undefined;
+    let im=this.money[this.moneyUsed];
+    if(!im){im=this.scene.add.image(0,0,PIX_KEY,frame).setDepth(FX_DEPTH).setName('pix-voando');this.money.push(im);}
+    this.moneyUsed++;
+    return im.setFrame(frame).setVisible(true);
   }
   /**
-   * The PIX swarm (pix.ts): green notes and PIX diamonds spiralling up around each hero on a shift, drawn with the one fx
-   * Graphics, and the "+R$ 5" pops over them (a pool of POP_POOL Texts). Nothing without `playerAt`.
+   * The PIX swarm (pix.ts): notes and PIX diamonds of the painting spiralling up around each hero on a shift, and the
+   * "+R$ 5" label popping over them (a pool of POP_POOL images). Nothing without `playerAt` or before the painting is in.
    */
   private drawPix(k:number){
     const at=this.options.playerAt;if(!at)return;
     const ws=this.workers;ws.length=0;
     for(const b of this.state.banks)if(b.workers)for(const id of b.workers)ws.push(id);
-    const sw=this.swarm,now=this.now,proj=this.options.projector,g=this.fx,o=this.pose;
+    const sw=this.swarm,now=this.now,proj=this.options.projector,o=this.pose;
     sw.step(now,ws,this.options.reduced);
     for(const bit of sw.bits){
       if(!bit||!bitPose(bit,now,o))continue;
       const w=at(bit.worker);if(!w)continue;
-      const f=proj.project(w.x,w.y,this.q),x=f.x+o.dx*k,y=f.y+o.dy*k,a=o.alpha,s=o.scale*k;
-      const cos=Math.cos(o.tilt),sin=Math.sin(o.tilt),pts=this.pts;
-      if(bit.kind==='nota'){
-        const hw=8*s,hh=4.5*s;
-        pts[0].x=x-hw*cos+hh*sin;pts[0].y=y-hw*sin-hh*cos;
-        pts[1].x=x+hw*cos+hh*sin;pts[1].y=y+hw*sin-hh*cos;
-        pts[2].x=x+hw*cos-hh*sin;pts[2].y=y+hw*sin+hh*cos;
-        pts[3].x=x-hw*cos-hh*sin;pts[3].y=y-hw*sin+hh*cos;
-        g.fillStyle(BANK_COLORS.note,a).fillPoints(pts,true);
-        g.lineStyle(1.2*k,this.c.breu,a).strokePoints(pts,true);
-        g.fillStyle(this.c.breu,a).fillCircle(x,y,1.6*s);
-      }else{
-        // The PIX diamond: a square on its corner, teal with a Breu rim and a light core.
-        const r=6.5*s;
-        pts[0].x=x+r*sin;pts[0].y=y-r*cos;pts[1].x=x+r*cos;pts[1].y=y+r*sin;
-        pts[2].x=x-r*sin;pts[2].y=y+r*cos;pts[3].x=x-r*cos;pts[3].y=y-r*sin;
-        g.fillStyle(BANK_COLORS.pix,a).fillPoints(pts,true);
-        g.lineStyle(1.2*k,this.c.breu,a).strokePoints(pts,true);
-        g.fillStyle(this.c.papel,a).fillCircle(x,y,1.8*s);
-      }
+      const im=this.moneySprite(bitFrame(bit));if(!im)break;
+      const f=proj.project(w.x,w.y,this.q);
+      im.setPosition(f.x+o.dx*k,f.y+o.dy*k).setRotation(o.tilt).setScale(o.scale*k*BIT_PX/PIX_FRAME).setAlpha(o.alpha).clearTint();
     }
+    const label=this.scene.textures.exists(PIX_LABEL_KEY);
     for(let i=0;i<sw.pops.length;i++){
       const pop=sw.pops[i],pose=pop&&popPose(pop,now,this.options.reduced),w=pop&&pose&&at(pop.worker);
-      let t=this.popTexts[i];
-      if(!pop||!pose||!w){t?.setVisible(false);continue;}
-      if(!t){t=this.scene.add.text(0,0,'',this.popStyle()).setOrigin(.5,1).setDepth(FX_DEPTH+3);this.popTexts[i]=t;}
-      if(t.text!==pop.text)t.setText(pop.text);
+      let im=this.pops[i];
+      if(!label||!pop||!pose||!w){im?.setVisible(false);continue;}
+      if(!im){im=this.scene.add.image(0,0,PIX_LABEL_KEY).setOrigin(.5,1).setDepth(FX_DEPTH+3).setName('pix-mais5');this.pops[i]=im;}
       const f=proj.project(w.x,w.y,this.q);
-      t.setPosition(f.x+pose.dx*k,f.y+pose.dy*k).setScale(k).setAlpha(pose.alpha).setVisible(true);
+      im.setPosition(f.x+pose.dx*k,f.y+pose.dy*k).setScale(LABEL_PX*k/im.width).setAlpha(pose.alpha).setVisible(true);
     }
-  }
-  private popStyle(){
-    return {fontFamily:token('--f-cartaz'),fontSize:'16px',color:'#'+BANK_COLORS.note.toString(16).padStart(6,'0'),
-      stroke:token('--c-breu'),strokeThickness:4};
   }
 }

@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BICO} from '../../src/rules/bicos.ts';
-import {BIT_EVERY_MS,BIT_MS,BIT_POOL,POP_MS,POP_POOL,PixSwarm,bitPose,popPose,popText,spread,type BitPose} from '../../src/client/render/bancos/pix.ts';
+import {BIT_EVERY_MS,BIT_MS,BIT_POOL,PIX_DIAMOND_FRAME,PIX_LABEL_TEXT,POP_MS,POP_POOL,PixSwarm,bitFrame,bitPose,popPose,popText,spread,type BitPose} from '../../src/client/render/bancos/pix.ts';
 
 const pose=():BitPose=>({dx:0,dy:0,tilt:0,alpha:0,scale:0});
 const live=<T>(xs:(T|undefined)[])=>xs.filter(x=>x!==undefined) as T[];
@@ -50,4 +50,10 @@ test('cash: a "+R$ 5" pop per note over the workers by turns, two bits each; the
   assert.equal(s.pops.length,POP_POOL);assert.equal(live(s.pops).length,POP_POOL);
   const r=new PixSwarm();r.cash(0,['a'],2,BICO.nota,true);
   assert.equal(live(r.pops).length,2);assert.equal(live(r.bits).length,0);
+});
+
+test('the painting: a PIX bit shows the diamond frame, a note one of the three notes by its phase; the label is the rule',()=>{
+  assert.equal(bitFrame({kind:'pix',phase:.9}),PIX_DIAMOND_FRAME);
+  assert.deepEqual([0,.34,.67,.999].map(phase=>bitFrame({kind:'nota',phase})),[0,1,2,2]);
+  assert.equal(PIX_LABEL_TEXT,popText(),'pix-mais5.webp paints "+R$ 5": a new BICO.nota needs a new painting');
 });

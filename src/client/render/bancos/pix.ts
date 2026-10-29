@@ -3,8 +3,9 @@
  * dinheiros (pix) em volta"): while a hero works a shift (BankView.workers), notes and PIX diamonds sprout at their feet
  * and spiral up around them; every note paid (bank-cash by 'hero') pops a "+R$ 5" over their head that rises into the
  * wallet. Pure and allocation-free per frame: a fixed pool of bits and of pops, reused round-robin (the oldest gives way),
- * drawn by the bank renderer with its one Graphics and a few pooled Texts. Offsets are screen px at zoom 1 from the
- * hero's foot (the renderer multiplies by 1/zoom).
+ * drawn by the bank renderer as pooled sprites of ONE painting (user, 29/10: "nada deve ser feito com svg tudo é imagem
+ * chatgpt"; ChatGPT via Codex, scripts/import-pix-voando.mjs): three notes and the PIX diamond in pix-voando.webp, the
+ * "+R$ 5" in pix-mais5.webp. Offsets are screen px at zoom 1 from the hero's foot (the renderer multiplies by 1/zoom).
  */
 import {BICO} from '../../../rules/index.ts';
 
@@ -23,6 +24,14 @@ export interface PixPop {worker:string;born:number;text:string;
   slot:number}
 /** A bit at a time: its offset from the foot, its tilt and its alpha. */
 export interface BitPose {dx:number;dy:number;tilt:number;alpha:number;scale:number}
+
+/** The painting: the bits' sheet (frames of PIX_FRAME px: nota, nota curvada, nota dobrada, losango) and the pop's label. */
+export const PIX_KEY='fx:pix-voando',PIX_URL='/art/fx/pix-voando.webp',PIX_FRAME=96,PIX_DIAMOND_FRAME=3;
+export const PIX_LABEL_KEY='fx:pix-mais5',PIX_LABEL_URL='/art/fx/pix-mais5.webp';
+/** What the label says: the painting has the amount in it, so it is BICO.nota's (a test holds them together). */
+export const PIX_LABEL_TEXT='+R$ 5';
+/** The frame of a bit: the diamond, or one of the three notes by where it starts on the spiral. */
+export const bitFrame=(bit:Pick<PixBit,'kind'|'phase'>)=>bit.kind==='pix'?PIX_DIAMOND_FRAME:Math.min(2,Math.floor(bit.phase*3));
 
 /** The pop's text for a note of `amount` R$. */
 export const popText=(amount:number=BICO.nota)=>`+R$ ${amount}`;

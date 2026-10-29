@@ -219,8 +219,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * through thin walls and the rubble off the Uno's way open new routes for the bodies).
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+// Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'a4febc34d85c4284',
+  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'e90551f1a18407a9',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -336,7 +337,10 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // The city again for sem-arma-girando-no-chao (the chinelo and the rings out of the catalog: the offers' and crates' rolls move).
 // The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
 // reached on foot, the revive's shove).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fd1459aba23a7dd1',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+// The city again for economia-caixa-e-forja (the bico's shift by seat, bicoSaldo: 4 heroes hold R$ 20, not 40).
+// levelup-espalhado (levels 2/3 cheaper, a solo run's XP ×1.5 below level 3) leaves it: the 4-player neutral run to
+// tick 4000 hashes the same with the old curve.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a98f622f0ffe608d',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

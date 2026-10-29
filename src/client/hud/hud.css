@@ -9,7 +9,9 @@
   --rh-t:var(--sa-t);--rh-b:var(--sa-b);--rh-l:var(--sa-l);--rh-r:var(--sa-r);
   --rh-ink:var(--c-breu);--rh-paper:var(--c-papel);--rh-paper-2:var(--c-papel-claro);--rh-line:var(--c-breu);--rh-purple:var(--c-lilas);
   --rh-glass:var(--c-ficha);--rh-glass-line:var(--c-papel);--rh-cream:var(--c-papel);--rh-gold:var(--c-amarelo);--rh-gold-deep:var(--c-breu);
-  --rh-mint:var(--c-cartolina);--rh-coral:var(--c-cone);--rh-hp:var(--c-cartolina);--rh-hp-low:var(--c-cone);--rh-xp:var(--c-lilas);
+  --rh-mint:var(--c-cartolina);--rh-coral:var(--c-cone);--rh-hp:var(--c-cartolina);--rh-hp-low:var(--c-cone);
+  /* Low life with a 2nd signal (auditoria-legibilidade L4: Cartolina → Cone is ΔL 8 for deutan): Breu stripes on the Cone, static. */
+  --rh-hp-low-fill:repeating-linear-gradient(-45deg,var(--rh-hp-low) 0 4px,var(--c-breu) 4px 6px);--rh-xp:var(--c-lilas);
   --rh-shadow:var(--s-2);--rh-text-shadow:var(--s-texto);
   position:fixed;inset:0;z-index:var(--z-hud);pointer-events:none;overflow:hidden;
   font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);
@@ -879,8 +881,8 @@
 .rh-pip[hidden]{display:none}
 .rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:0 0 0 3px var(--c-breu),inset 0 0 0 2px var(--c-cone)}
 .rh-pip-bar{display:block;height:8px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:inset 0 0 0 1px var(--c-papel);overflow:hidden}
-.rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--c-cartolina)}
-.rh-pip-low .rh-pip-bar>i{background:var(--c-cone)}
+.rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--rh-hp)}
+.rh-pip-low .rh-pip-bar>i{background:var(--rh-hp-low-fill)}
 .rh[data-hud=fone] .rh-pip{--pip-w:150px;--pip-h:96px;top:calc(var(--rh-t) + 112px)}
 @media (max-height:500px){.rh[data-hud=fone] .rh-pip{--pip-w:168px;--pip-h:96px;top:calc(var(--rh-t) + 60px)}}
 /* Fear (card fear-escuridao-sozinho, hud/fear.ts): the notice in the slot, a ficha like the others ("Não se afaste do

@@ -23,7 +23,7 @@ const items:ItemDisplay[]=[
   {id:'marmita',kind:'passive',name:'Marmita da Vó',icon:'marmita',blurb:'Mais vida máxima.',joke:'Tem farofa.'},
   {id:'tenis',kind:'passive',name:'Tênis de Feira',icon:'tenis',blurb:'Anda mais rápido.',joke:'Nike? Naique.'},
   {id:'megafone',kind:'passive',name:'Megafone do Carro do Ovo',icon:'megafone',blurb:'Ataques em área maior.',joke:'Olha o ovo!'},
-  {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte nos drops e ofertas.',joke:'Aba reta, sorte torta.'},
+  {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte no que cai e nas cartas.',joke:'Aba reta, sorte torta.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'oculos',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
   {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Cada caixa aberta dá grana.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
@@ -93,7 +93,7 @@ for(const id of KIT_IDS){
   const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
   const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
   items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
-    blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
+    blurb:wall?`Toca e põe ${KIT_CHARGES[piece]} no chão.`:'Toca e põe a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));
 
@@ -115,7 +115,7 @@ export function priceTag(id:string,level:number):PriceTag{
   const kind=itemDisplay(id).kind;
   if(kind==='evolution')return {kind:'evo',label:'Evolução'};
   if(kind==='snack')return {kind:'snack',label:'Lanche'};
-  return level<=1?{kind:'new',label:'Novo!'}:{kind:'level',label:`Nv ${level}`,level};
+  return level<=1?{kind:'new',label:'Novo!'}:{kind:'level',label:`Nív. ${level}`,level};
 }
 
 /** Sentence-case seal text: "Novo!" for a first pick, "Nv N" otherwise, "Evolução", "Lanche" for the coxinha. */

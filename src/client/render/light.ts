@@ -34,15 +34,42 @@ export function lightEnabled(search:string=typeof location==='undefined'?'':loca
  * highlights above `pivot` lifted by `contrast`, a vignette darkening the corners by at most `vignette`. Darks never get
  * darker except under the vignette, so the Breu outline keeps its 3:1 (tests/client/light.test.ts).
  */
-export interface Grade {readonly cool:readonly [number,number,number];readonly warm:readonly [number,number,number];readonly contrast:number;readonly pivot:number;readonly vignette:number}
+export interface Grade {readonly cool:readonly [number,number,number];readonly warm:readonly [number,number,number];readonly contrast:number;readonly pivot:number;readonly vignette:number;readonly exposure:number}
 export type LightWorld='cidade'|'infinito'|'ilha';
 export const GRADES:Readonly<Record<LightWorld,Grade>>=Object.freeze({
   // Snow: bluish in the shade, golden in the sun (card), the strongest grade.
-  cidade:Object.freeze({cool:Object.freeze([0.93,0.97,1.07]),warm:Object.freeze([1.03,1.01,0.97]),contrast:0.05,pivot:0.6,vignette:0.03}) as Grade,
+  cidade:Object.freeze({cool:Object.freeze([0.93,0.97,1.07]),warm:Object.freeze([1.03,1.01,0.97]),contrast:0.05,pivot:0.6,vignette:0.03,exposure:1}) as Grade,
   // Tropical green (D-022): lighter touch, the palette is already warm.
-  infinito:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03}) as Grade,
-  ilha:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03}) as Grade,
+  infinito:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03,exposure:1}) as Grade,
+  ilha:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03,exposure:1}) as Grade,
 });
+/**
+ * Exposure (card jogo-mais-escuro, the user on 29/10: "iluminação total" 10–25 % darker): the world's colours times
+ * `exposure` (GRADES[world].exposure, `?exposicao=0.9` to compare), but only above the luma band's start: below
+ * EXPOSURE_BAND[0] nothing moves, at EXPOSURE_BAND[1] and up the full factor, smoothstep between (monotonic). The darks
+ * stay where they are, so the Breu outline keeps its 3:1 on every face, ground tone and tinted building (light.test.ts).
+ * Drawn per pixel by the default sprite pipeline (render/exposure-pipeline.ts): city, ground, actors, towers, effects;
+ * the HUD is DOM and the darkness (blackout) is Breu, untouched.
+ */
+export const EXPOSURE_BAND=Object.freeze([0.4,0.9] as const);
+/** `?exposicao=x` (0.5..1), the board of the card; anything else (or none) leaves the map's own. */
+export function exposureParam(search:string=typeof location==='undefined'?'':location.search):number|undefined{
+  const raw=new URLSearchParams(search).get('exposicao');if(raw===null||raw==='')return undefined;
+  const v=Number(raw);return Number.isFinite(v)?Math.max(0.5,Math.min(1,v)):undefined;
+}
+/** The exposure the world is drawn with: `?luz=0` turns it off (1) with the rest of the light. */
+export function exposureFor(world:LightWorld,search:string=typeof location==='undefined'?'':location.search):number{
+  if(!lightEnabled(search))return 1;
+  return exposureParam(search)??GRADES[world].exposure;
+}
+/** The exposure of one straight (not premultiplied) colour, r, g, b in 0..1: the TS mirror of EXPOSURE_GLSL. */
+export function exposeColor(rgb:readonly [number,number,number],k:number):[number,number,number]{
+  const L=rgb[0]*.299+rgb[1]*.587+rgb[2]*.114,m=1+(k-1)*smooth(EXPOSURE_BAND[0],EXPOSURE_BAND[1],L);
+  return [rgb[0]*m,rgb[1]*m,rgb[2]*m];
+}
+/** The same in GLSL on the pipeline's premultiplied `color` (vec4), with the factor in the `uExposicao` uniform. */
+export const EXPOSURE_GLSL=`color.rgb*=mix(1.0,uExposicao,smoothstep(${EXPOSURE_BAND[0].toFixed(2)},${EXPOSURE_BAND[1].toFixed(2)},dot(color.rgb/max(color.a,1e-4),vec3(.299,.587,.114))));`;
+
 /** Luminance band of the split toning: below it the cold tint, above it the warm one (snow in the sun is the top). */
 export const TONE_SPLIT=Object.freeze([0.3,0.95] as const);
 /** Where the vignette starts and is full, as a share of the half diagonal from the screen centre. */

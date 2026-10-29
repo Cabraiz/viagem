@@ -23,13 +23,13 @@ import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {besideFrom,freeAround} from './framing.ts';
-import {besideSelector,mapInfoText} from './lobby.ts';
+import {besideSelector,coverUp,mapInfoText} from './lobby.ts';
 import {formatRoomCode,shareLink} from './ui/invite.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
-import {showFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
+import {showFatal,hideFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
 import './hud/menu.css';
 import {BACK_ONLINE_ROW_MS,BackOnlineWatch,SOLO_LINE,createGameMenu,menuBack,menuFocus,quietStatus,roomLine,type GameMenu} from './hud/menu.ts';
 import type {RunState,RunView} from '../contract/index.ts';
@@ -37,6 +37,7 @@ import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
 import {heldReach,heldWeapon} from './hud/weapon-reach.ts';
 import {icon,compass} from './ui/icon.ts';
+import {gearTagSeen,guardBack,wantsGearTag} from './match-guard.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
@@ -86,21 +87,22 @@ const matchesFlag=(flag:string|null):{profileRng?:()=>number;profileDemo?:readon
   flag==='sempre'?{profileRng:()=>0}:flag==='demo'?{profileRng:()=>0,profileDemo:[{kind:'bebado',distance:12,tilt:-3},{kind:'pombos',distance:7,tilt:2.5},{kind:'tio-pave',distance:31,tilt:-1.5}]}:{};
 
 let active=false;
-export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
+/** `solo` ("Jogar sozinho", lobby.ts openSolo): the loading cover stays until the match, the room's 3-2-1 plays on it. */
+export async function openExploration(hero:HeroClass,name:string,net?:CoopClient,options:{solo?:boolean}={}){
   if(active)return;
   active=true;
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar-camera',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar-camera',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
-    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
+    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}${wantsGearTag()?'<span class="explore-config-tag" aria-hidden="true">Pausa</span>':''}</button>
+    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Heróis</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
       <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
       <div class="explore-map" aria-hidden="true"><svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="39" ry="39" fill="#c8d795"/><path d="M50 68 35 47 69 47 50 24 35 47" fill="none" stroke="#f7e5b2" stroke-width="5"/><g fill="#a184b4"><circle cx="35" cy="47" r="3"/><circle cx="69" cy="47" r="3"/><circle cx="50" cy="24" r="3"/></g><circle id="explore-dot" cx="50" cy="68" r="4" fill="#fff7d3" stroke="#7e638f" stroke-width="2"/></svg></div>
       <div class="explore-notice" role="status">${INPUT_TEXTS.touch.soloNotice}</div>
-      <div class="explore-loading" role="status">Arrumando a ilha pra visita…</div>
+      <div class="explore-loading" role="status">${net?'Arrumando a cidade…':'Arrumando a ilha pra visita…'}</div>
     </section>
     <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span></p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
@@ -209,7 +211,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
     // D-050: the level-up pause reaches the HUD with each run state (no frame brings it: the tick stands still).
-    net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);};
+    net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);syncCover();};
     net.onForged=answer=>hud?.forged(answer);
     net.onBought=answer=>hud?.bought(answer);
     net.onInventory=result=>hud?.inventoryAnswer(result);
@@ -342,7 +344,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   shell.append(settings);
   // The match menu (NEW-20261009-UX-menu-e-conexao): in a room the gear opens Continuar / Configurações / Copiar convite /
   // Sair da partida (with its confirmation) over today's settings, which become the menu's "Configurações" view. The room
-  // code and the connection line head the menu; "Classes" leaves the dialog (leaving the room asks first now).
+  // code and the connection line head the menu; "Heróis" leaves the dialog (leaving the room asks first now).
   let menu:GameMenu|undefined;
   if(net){
     menu=createGameMenu(settings,settings.querySelector<HTMLElement>('.explore-settings-heading h2')!,settingsContent as HTMLElement,{
@@ -366,6 +368,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // a slow network the waiting room shows long before that (manifesto-enxuto-3g; lobby-dead-controls).
   if(net)applyControls(shell,controlsFor({phase:net.run?.phase??'lobby'}));
   const abort=new AbortController(),signal=abort.signal;
+  // The match's history entry (match-guard.ts); set with the gear's handlers below.
+  let releaseBack=()=>{};
   const direction=new JoystickInput();
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
@@ -408,7 +412,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
-    if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
+    if(closed)return;closed=true;active=false;abort.abort();releaseBack();gearTagSeen();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
     ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
@@ -423,6 +427,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
   // Locked is not disabled: the button still answers a tap with the lock's stamp beat and "Gira fora da briga" (UX onda 4 D3).
   let sceneReady=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
+  if(options.solo)shell.dataset.solo='';
+  const syncCover=()=>{const cover=$('.explore-loading'),up=coverUp(sceneReady,net?.run?.phase,!!options.solo);if(cover.hidden===up)cover.hidden=!up;};
   const cameraGroup=$('.explore-camera'),lock=$('.explore-lock'),hint=$('.explore-camera-hint');
   // "Versão nova do jogo" during a round (NEW-20261012-E5-chunk-velho-deploy): a row of the HUD's announcement slot,
   // only while the round is on screen; before that (loading, countdown) it floats at the top (update-toast.ts).
@@ -477,9 +483,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
   // Esc: from the menu's settings or its exit question back to the menu, from the menu (or solo's settings) to the game.
-  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();},{signal});
+  const settingsBack=()=>{const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();};
+  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();settingsBack();},{signal});
   $('.explore-exit').addEventListener('click',close,{signal});
   shell.addEventListener('cancel',e=>{e.preventDefault();openSettings();},{signal});
+  // Back guard (celular-voltar-e-pinca A): the iPhone's edge swipe, the browser's back or an Android Back that Chrome no
+  // longer lets `cancel` stop (no tap since the last one) opens the gear or steps back in it; leaving stays "Sair".
+  releaseBack=guardBack(history,window,()=>{if(settings.open)settingsBack();else openSettings();},signal);
+  // That uncancelable Back closes a dialog by itself: the match comes back with the gear open, the gear goes as "Voltar".
+  shell.addEventListener('close',()=>{if(closed)return;shell.showModal();openSettings();},{signal});
+  settings.addEventListener('close',()=>{if(!closed&&shell.classList.contains('settings-open'))closeSettings();},{signal});
+  // No long-press menu in the match (C; explore.css .explore-shell touch-action:none keeps the page from pinch zoom).
+  shell.addEventListener('contextmenu',e=>e.preventDefault(),{signal});
   // Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): data-input="mouse" hides the joystick in every phase
   // (explore.css) and the walk words speak of keys and clicks; a finger on the screen brings the phone's controls back.
   const inputWatch=new InputKindWatch(finePointer());
@@ -684,9 +699,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           putData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{reconnect:()=>net.restart()});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
+          // "Reconectar" (nao-e-versao-nova): the client is on again, the window and the hidden HUD come back down.
+          else if(!net.fatal&&fatalShown){fatalShown=undefined;hideFatal(find('.explore-layout'));delete shell.dataset.fatal;if(hud)hud.el.hidden=false;}
           // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
           const manual=net.combat==='manual';
           if(shell.dataset.combat!==net.combat){
@@ -888,9 +905,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
-      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
+      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();
+        // Solo: the cover's line gives way to the room's ("Chamando os bots…", then the 3-2-1) until the match.
+        if(options.solo)$('.explore-loading').textContent='';
+        syncCover();$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);
-  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte às classes e tente novamente.':'Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
+  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte aos heróis e tente novamente.':'Não foi possível carregar a ilha. Volte aos heróis e tente novamente.';}}
 }

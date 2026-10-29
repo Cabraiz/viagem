@@ -6,11 +6,11 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3271,
-  "bytes": 2250235770,
-  "liteBytes": 787304792,
+  "files": 3277,
+  "bytes": 2259464048,
+  "liteBytes": 786463940,
   "worstPsnr": 31.3,
-  "worstShownPsnr": 36
+  "worstShownPsnr": 30.4
  },
  "files": {
   "city/base/barraca.webp": {
@@ -27775,51 +27775,63 @@
   },
   "menu/fundo-aposentado.webp": {
    "source": "233d4a23d71eda999ded8b2d0f3588a741a0e834098c6f1030c98660df481f6e",
-   "lite": "d080af2187a8c261a196d900c0ed0e7c6d8b386cefcdb558314e6fd697afbabd",
+   "lite": "ad209c4c87f4f3047521c3ba779062a61920df1481489dbcec444839474501c1",
    "bytes": 1230164,
-   "liteBytes": 951644,
-   "psnr": 42.9,
-   "shownPsnr": 45.1
+   "liteBytes": 378402,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 37.5,
+   "shownPsnr": 38.3
   },
   "menu/fundo-clt-cansado.webp": {
    "source": "0c2846c7a86cede1b64e6366735fa8f3a81929cb6f844742d9aa89233d579ba1",
-   "lite": "8f28b3e746f1cbab544d026eae19feec910fbb79f29f75f11a67ae2c24b08110",
+   "lite": "0e924050c3bd03ecc9bd73cf61c47d317216af82019ff858df91a4d1970253f9",
    "bytes": 960506,
-   "liteBytes": 727332,
-   "psnr": 43,
-   "shownPsnr": 44.8
+   "liteBytes": 302126,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 37.8,
+   "shownPsnr": 38.3
   },
   "menu/fundo-estadio-viciado.webp": {
    "source": "f8f7f6065b8d662a246dc1e96d664eeca67b18c35b008a81363acd0e64521387",
-   "lite": "5c623bcf8a49b8b627ae0141d11f3d8ccdeef9755c8eb703728214837d403813",
+   "lite": "668620e7de5518e36fc4ce25d7d24f724cdf982bd36e61c8b3dc59ee84b2732e",
    "bytes": 630944,
-   "liteBytes": 470902,
-   "psnr": 44.5,
-   "shownPsnr": 46
+   "liteBytes": 207472,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 39.4,
+   "shownPsnr": 39.5
   },
   "menu/fundo-gato-nada-pra-comer.webp": {
    "source": "1d0a5f795e0e66f0f0b4ce5b8d45aea22c432db459cdfa11fbe8c12b9dfd3d08",
-   "lite": "0059ccda6e80bc9cfe8199772cd00bf7d9bb05b1f593ed794cb147a120b357b6",
+   "lite": "4ed366a5d2e54b70d3a878c5bb7f3b27ab13480cf7d830ff18285c92606de02b",
    "bytes": 834604,
-   "liteBytes": 613792,
-   "psnr": 43.6,
-   "shownPsnr": 45.4
+   "liteBytes": 247466,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 38.4,
+   "shownPsnr": 39.2
   },
   "menu/fundo-maromba.webp": {
    "source": "7cca658101f203973a2a454e7d6a112b10a8b4b1c26e1f369df7f3612131af8e",
-   "lite": "a7e8a7564aee75e82e4580a752b6b30898c12b2517eaf310c7c24dde39bfb05e",
+   "lite": "30750c4207e06d3a4860fe1bd84623d3a1153ae497a281a5e81e9602158eb533",
    "bytes": 1192374,
-   "liteBytes": 894772,
-   "psnr": 42.4,
-   "shownPsnr": 44.4
+   "liteBytes": 363626,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 37.3,
+   "shownPsnr": 38.2
   },
   "menu/fundo-vendedor-praia.webp": {
    "source": "dc768829fd6e720fc021762b96a3b10bcba7636d40e836b8e8d9398048542646",
-   "lite": "2d87655cc1df6612c26f814b921c763c32a7ba5747ac3adb426f8bfcb0438934",
+   "lite": "cb0a98eb557d5c44f0622f62f3cf7e9daedae4f83f519aca8c2c32cd518dd442",
    "bytes": 1135476,
-   "liteBytes": 893418,
-   "psnr": 42.7,
-   "shownPsnr": 44.9
+   "liteBytes": 371246,
+   "liteWidth": 1920,
+   "liteQuality": 80,
+   "psnr": 37,
+   "shownPsnr": 37.7
   },
   "menu/insta/grade-aposentado-1.webp": {
    "source": "ab3e47bd0d4d6d707c5bb15fa4dfefca5d346164f378ca2a40636a9c6417da44",
@@ -28476,6 +28488,66 @@
    "liteBytes": 94794,
    "psnr": 45.5,
    "shownPsnr": 47.8
+  },
+  "menu/letreiro/aposentado.webp": {
+   "source": "566dbdf4661b8f39b7a7d21d54f5522e192650caa0cc06650334effbc6d5b652",
+   "lite": "eeb179beb55e19e114eb5f9421cdb43ddb1af074978d6d3e5a60397594a4b73a",
+   "bytes": 724658,
+   "liteBytes": 141058,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 34.8,
+   "shownPsnr": 31.8
+  },
+  "menu/letreiro/clt-cansado.webp": {
+   "source": "6e581c06de4dc30c88b6cfe23d31d1832957ef7c9a8ec85f1098b8bb41cf6483",
+   "lite": "bcbc59e1bc80e7dea7200700aaecbf1d9b1db06b04ccef5744d5dc48fbdf7fd5",
+   "bytes": 416132,
+   "liteBytes": 87542,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 36.3,
+   "shownPsnr": 32.8
+  },
+  "menu/letreiro/gato-nada-pra-comer.webp": {
+   "source": "5df4537d8d5f6e1027bd75f072ba2eba7589da696ac833c9d8cedec8dfa5f25e",
+   "lite": "68c64c3e85abc9a67ff063cb70fd68e3706b0f7c2aed412de879112be34bfee9",
+   "bytes": 1251740,
+   "liteBytes": 253610,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 35.8,
+   "shownPsnr": 33.8
+  },
+  "menu/letreiro/maromba.webp": {
+   "source": "5f5d852f23c6876322654516f09d8f400a0ab40ea8bb8c87b0bfec654f7ca298",
+   "lite": "6faad2db95c00ef135ea8f1047ee39fdb72e58eb55b67d04d9e1bc0e0baddf9b",
+   "bytes": 840996,
+   "liteBytes": 198900,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 33.7,
+   "shownPsnr": 31.9
+  },
+  "menu/letreiro/vendedor-praia.webp": {
+   "source": "3e17a6cf25157295bbb6f88abd3fc10f0534aff990ea1021d75d323d989737a2",
+   "lite": "632d539e544fcbbdbd46e98c7c0dd5546208d9c89881681a0d4aefb2aa435e75",
+   "bytes": 793628,
+   "liteBytes": 168506,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 32.5,
+   "shownPsnr": 31
+  },
+  "menu/letreiro/viciado-em-bet.webp": {
+   "source": "c11261ef45bb6282a99385701fda1a11253fc4ef92410736a297b26ea86ea7cf",
+   "lite": "8440156fa6f6a92bc08977577b61f1d6632640f8f75491fa323d52dd10e12b5f",
+   "bytes": 673838,
+   "liteBytes": 147962,
+   "liteWidth": 960,
+   "liteQuality": 90,
+   "psnr": 31.5,
+   "shownPsnr": 30.4
   },
   "menu/rosto/aposentado.webp": {
    "source": "48bd3d879d3c7216f6ed2a079945bac6058fb9ecf5f2865430e09cc55eb3ea7c",

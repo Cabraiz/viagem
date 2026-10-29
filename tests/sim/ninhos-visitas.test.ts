@@ -73,11 +73,10 @@ test('the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an 
   const first=visitors(world);
   assert.equal(first.length,VISIT_COUNT,'VISIT_COUNT came');
   const ring=sono.bodies.filter(b=>{const d=Math.hypot(b.home.x-p.x,b.home.y-p.y);return d>=VISIT_NEAR&&d<=VISIT_FAR;});
-  const weakest=Math.min(...ring.map(b=>world.enemies.get(b.id)?.maxHp??sono.sleepers.get(b.id)?.maxHp??Infinity));
-  for(const e of first){
-    assert.equal(e.memory!.sono,MODE.cacando);
-    assert.equal(e.maxHp,weakest,`${e.id} is among the weakest of the ring`);
-  }
+  // The VISIT_COUNT lowest max hp of the ring (they need not tie: the enemy kinds vary).
+  const weakest=ring.map(b=>world.enemies.get(b.id)?.maxHp??sono.sleepers.get(b.id)?.maxHp??Infinity).sort((a,b)=>a-b).slice(0,VISIT_COUNT);
+  for(const e of first)assert.equal(e.memory!.sono,MODE.cacando);
+  assert.deepEqual(first.map(e=>e.maxHp).sort((a,b)=>a-b),weakest,'the visitors are the weakest of the ring');
   // They walk to him (the city's streets, maybe around a block) and hit him; nothing else moves (none within 4 u).
   const hp=p.hp;
   while(world.tick<start+ticks(VISIT_FROM+VISIT_EVERY)-2&&p.hp===hp)world.step();

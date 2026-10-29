@@ -10,8 +10,7 @@ import {FIRE_LOOK,PACK12_ITEMS} from '../../src/client/render/arsenal-rules.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movementIdle8Frame,movementPlan} from '../../src/client/sprites/movement128.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
-import {CITY_CONTOUR} from '../../src/client/render/you.ts';
-import {RING_UNDER} from '../../src/client/render/you-rules.ts';
+import {CONTOUR_DEPTH,RING_UNDER} from '../../src/client/render/you-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
 type ArtFile={file:string;figure:{left:number;top:number;right:number;bottom:number};height:number};
@@ -141,10 +140,9 @@ test('per facing and frame shown, mirrors included: the weapon behind the body o
   }finally{setArtIndex(parseArtIndex(undefined));}
 });
 
-test('behind the body the weapon also goes under the local hero\'s Papel/Breu contour, over its ring on the ground', ()=>{
-  // At −0.02 the knife lay between the sprite and its sticker contour (−0.25…−0.15 in the city, −0.2/−0.1 on the
-  // island): the blade crossed the outline in NE and NW.
-  assert.ok(HELD_DEPTH.behind<Math.min(...CITY_CONTOUR.map(b=>b.depth),-.2),String(HELD_DEPTH.behind));
+test('behind the body the weapon also goes under the local hero\'s contour, over its ring on the ground', ()=>{
+  // At −0.02 the knife lay between the sprite and its contour copies: the blade crossed the outline in NE and NW.
+  assert.ok(HELD_DEPTH.behind<CONTOUR_DEPTH,String(HELD_DEPTH.behind));
   assert.ok(HELD_DEPTH.behind>-RING_UNDER,'over the ring on the ground');
   assert.ok(HELD_DEPTH.front>0&&HELD_DEPTH.front<.1,'in front: just over the sprite, under the hit numbers');
   const sprites={handPose:()=>({point:{x:30,y:50,behind:true},ox:.5,oy:.75,scale:.5,flip:true,direction:'NE' as const})};

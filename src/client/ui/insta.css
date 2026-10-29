@@ -243,12 +243,12 @@
 .insta-sv:not(.letras) .insta-sv-camadas { visibility: hidden; }
 .insta-st {
   position: absolute; margin: 0; translate: -50% -50%; rotate: var(--giro, 0deg); white-space: nowrap; text-align: center;
-  font-size: clamp(10px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
+  font-size: clamp(12px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
 }
 /* Texts: the 4 letters, and the 3 ways of the "A" button (a band per line, bare with a shadow, one box). */
 .insta-st-texto[data-alinhar="esquerda"] { text-align: left; }
 .insta-st-texto[data-fonte="classica"] { font-family: var(--f-insta-classica); font-weight: 800; }
-.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(10px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
+.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(12px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
 .insta-st-texto[data-fonte="forte"] { font-family: var(--f-insta-forte); font-weight: 400; line-height: 1.02; }
 .insta-st-texto[data-fonte="maquina"] { font-family: var(--f-insta-maquina); font-weight: 700; }
 .insta-st-texto[data-jeito="faixa"] { line-height: 1.45; }
@@ -259,30 +259,30 @@
 .insta-st-texto[data-jeito="caixa"] { padding: .5em .7em; background: var(--st-fundo, var(--insta-st-branco)); }
 /* The poll (the LEGO one): the question in a dark box over a white card with the two answers, A and B. */
 .insta-st-enquete {
-  width: 15em; white-space: normal; font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica);
+  width: 15em; white-space: normal; font: 400 clamp(12px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica);
   color: var(--insta-st-preto); box-shadow: var(--insta-st-sombra-sticker); border-radius: var(--r-janela); overflow: hidden;
 }
 .insta-st-enquete p { margin: 0; padding: 1em 1.2em; background: var(--insta-st-enquete); color: var(--insta-st-branco); font-weight: 800; font-size: 1.1em; text-wrap: balance; }
 .insta-st-enquete ol { display: grid; gap: .6em; margin: 0; padding: .9em; list-style: none; background: var(--insta-st-branco); }
 .insta-st-enquete li { display: flex; align-items: center; gap: .6em; padding: .55em .7em; border: 1px solid var(--insta-st-linha); border-radius: var(--r-pilula); text-align: left; }
-.insta-st-enquete i { display: grid; place-items: center; flex: none; width: 1.7em; height: 1.7em; border: 1.5px solid var(--insta-st-preto); border-radius: var(--r-circulo); font-style: normal; font-weight: 800; font-size: .8em; }
+.insta-st-enquete i { display: grid; place-items: center; flex: none; width: 1.7em; height: 1.7em; border: 1.5px solid var(--insta-st-preto); border-radius: var(--r-circulo); font-style: normal; font-weight: 800; font-size: max(12px, .8em); }
 /* The question box (the goodlifefitness one): the hero's face on top of a white card, the question, "Digite algo...". */
 .insta-st-pergunta {
   width: 13em; padding: 1.5em 1em 1em; white-space: normal; border-radius: var(--r-janela); background: var(--insta-st-branco);
-  box-shadow: var(--insta-st-sombra-sticker); font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica); color: var(--insta-st-preto);
+  box-shadow: var(--insta-st-sombra-sticker); font: 400 clamp(12px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica); color: var(--insta-st-preto);
 }
 .insta-st-avatar { position: absolute; left: 50%; top: 0; width: 2.4em; height: 2.4em; translate: -50% -50%; border: 2px solid var(--insta-st-branco); border-radius: var(--r-circulo); object-fit: cover; }
 .insta-st-pergunta p { margin: 0 0 .7em; font-weight: 800; font-size: 1.05em; text-wrap: balance; }
-.insta-st-pergunta span { display: block; padding: .6em; border-radius: var(--r-balao); background: var(--insta-st-campo); color: var(--insta-st-cinza); font-size: .85em; }
+.insta-st-pergunta span { display: block; padding: .6em; border-radius: var(--r-balao); background: var(--insta-st-campo); color: var(--insta-st-cinza); font-size: max(12px, .85em); }
 /* The hashtag sticker (#BOZZUTORAD): white, its tag in the strong letter and a colour. */
 .insta-st-hashtag {
   padding: .12em .4em .02em; border-radius: var(--r-ficha); background: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
-  font: 400 clamp(10px, calc(var(--sv-h) * .036), 96px)/1.1 var(--f-insta-forte); color: var(--st-cor);
+  font: 400 clamp(12px, calc(var(--sv-h) * .036), 96px)/1.1 var(--f-insta-forte); color: var(--st-cor);
 }
 /* The likes bubble (the red ♥ 1 of the reference): a heart and a number on red, its tail pointing down. */
 .insta-st-curtidas {
-  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-vermelho);
-  font: 800 clamp(10px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
+  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-curtidas);
+  font: 800 clamp(12px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
 }
 .insta-st-curtidas svg { width: 1.1em; height: 1.1em; fill: currentColor; stroke: none; }
 .insta-st-curtidas::after { content: ''; position: absolute; left: 50%; bottom: -.3em; width: .7em; height: .7em; translate: -50% 0; rotate: 45deg; background: inherit; }

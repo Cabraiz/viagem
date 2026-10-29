@@ -179,6 +179,27 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
   assert.ok(fits,`outside ${log.outside} of ${lo}-${hi}, 4 past the quota`);
 }));
 
+test('a trickle under 1 a second adds up: one with the wave, then one every 1/trickle s (solo-uno-aguenta-1a-onda); NEST_PACE 1p trickles under 1, never 0 while warming',()=>{
+  const saved=structuredClone(NEST_PACE);
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,warmEase:0,mapShare:[.1,.1],trickle:[.5,.5]});
+  try{
+    const r=rig();
+    r.world.step();
+    const due=r.nests.state.nextWave!;
+    until(r,due+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1],'1 with the wave');
+    until(r,due+ticks(1)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1],'nobody a second later');
+    until(r,due+ticks(2)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1],'the next after 2 s');
+    until(r,due+ticks(8)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1,1,1,1],'all 5, one every 2 s');
+    assert.equal(r.nests.state.drip,undefined);
+  }finally{Object.assign(NEST_PACE,saved);}
+  assert.ok(pace(NEST_PACE.trickle,1)<1,'1p under 1 a second');
+  assert.ok(pace(NEST_PACE.trickle,1)*NEST_PACE.warmTrickle>0,'1p warming still trickles');
+});
+
 test('the map share trickles out (NEST_PACE.trickle a second, the first batch with the wave), and the wave bodies take the march, hp and damage of NEST_PACE once',()=>{
   const saved=structuredClone(NEST_PACE);
   Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,warmEase:0,mapShare:[.1,.1],trickle:[2,2],march:[.5,.5],hp:2,damage:.5});

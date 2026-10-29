@@ -160,7 +160,7 @@ test('skillState: ready without a number, then whole seconds counting down and t
   const answered=skillState({skillTick:0,skillReadyTick:0},100,{castTick:100,readyTick:100+12*SIM_HZ});
   assert.equal(answered.mode,'cooling','the tap answer starts the ring before the frame');assert.equal(answered.seconds,12);
   assert.equal(skillState({skillTick:100,skillReadyTick:100+6*SIM_HZ},101,{castTick:100,readyTick:100+12*SIM_HZ}).seconds,12,'the later readyTick wins');
-  assert.equal(skillLabel('motogirl'),'Habilidade: Entrega Expressa');assert.equal(skillLabel('nobody'),'Habilidade da classe');
+  assert.equal(skillLabel('motogirl'),'Habilidade: Entrega Expressa');assert.equal(skillLabel('nobody'),'Habilidade do herói');
   assert.ok(SKILL_BUBBLE_GAP_MS>=2000,'D-013: one line per caster every ~2 s');
   assert.equal(skillBubbleLine({line:'Calculei tudo de cabeça.',outcome:'miracle'}),'Calculei tudo de cabeça.\nMilagre!');
   assert.equal(skillBubbleLine({line:'Opa'}),'Opa');

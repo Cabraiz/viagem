@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {GROUND_KINDS} from '../../src/client/render/city/asset.ts';
 import {BLOCK_COLORS,CITY_PALETTE,GROUND_COLORS,groundColor,luminance,mixColor} from '../../src/client/render/city/palette.ts';
-import {ACTOR_TINT,BUILDING_TINT,GRADES,gradeGlsl,LIT_SHADOW,SHADOW_PER_HEIGHT,SUN_VIEW,gradeColor,lightEnabled,rgbOf} from '../../src/client/render/light.ts';
+import {ACTOR_TINT,BUILDING_TINT,EXPOSURE_BAND,EXPOSURE_GLSL,GRADES,exposeColor,exposureFor,exposureParam,gradeGlsl,LIT_SHADOW,SHADOW_PER_HEIGHT,SUN_VIEW,gradeColor,lightEnabled,rgbOf} from '../../src/client/render/light.ts';
 import {reliefShader} from '../../src/client/render/city/relevo/shader.ts';
 
 const lum=(c:readonly number[])=>{const f=(v:number)=>v<=.03928?v/12.92:((v+.055)/1.055)**2.4;return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);};
@@ -85,4 +85,56 @@ test('the ground shaders get the grade as a GLSL function; ?luz=0 makes it the i
   for(const v of [...g.cool,...g.warm])assert.ok(on.includes(v.toFixed(3)),`${v} in the GLSL`);
   assert.ok(on.includes(g.contrast.toFixed(3))&&on.includes(g.pivot.toFixed(3)));
   assert.match(reliefShader,/lightGrade\(color\)/,'the city relief applies it');
+});
+
+// Card jogo-mais-escuro: the world 10–25 % darker at full light; the board compares 1, 0.9, 0.83 and 0.75.
+const EXPOSURES=[1,.9,.83,.75] as const;
+const luma=(c:readonly number[])=>c[0]*.299+c[1]*.587+c[2]*.114;
+
+test('exposure: darks below the band never move, the top takes the whole factor, and it stays monotonic', () => {
+  for(const k of EXPOSURES){
+    for(const c of [[.1,.1,.12],[.3,.35,.4],[EXPOSURE_BAND[0]-.001,EXPOSURE_BAND[0]-.001,EXPOSURE_BAND[0]-.001]] as const)assert.deepEqual(exposeColor(c,k),[...c]);
+    exposeColor([1,1,1],k).forEach(v=>assert.ok(Math.abs(v-k)<1e-12));
+    for(let L=0;L<1;L+=.002)assert.ok(luma(exposeColor([L+.002,L+.002,L+.002],k))>=luma(exposeColor([L,L,L],k)),`${k} at ${L}`);
+  }
+  assert.ok(luma(exposeColor([.7,.7,.7],.75))<.7&&luma(exposeColor([.7,.7,.7],.75))>.7*.75,'between: part of the factor');
+});
+
+test('exposure: ?exposicao= picks it (0.5..1), ?luz=0 turns it off, the map gives the default', () => {
+  assert.equal(exposureParam(''),undefined);
+  assert.equal(exposureParam('?exposicao=0.83'),.83);
+  assert.equal(exposureParam('?exposicao=0.2'),.5);
+  assert.equal(exposureParam('?exposicao=x'),undefined);
+  assert.equal(exposureFor('cidade','?exposicao=0.75'),.75);
+  assert.equal(exposureFor('cidade','?exposicao=0.75&luz=0'),1);
+  for(const [world,g] of Object.entries(GRADES)){
+    assert.equal(exposureFor(world as keyof typeof GRADES,''),g.exposure);
+    assert.ok(g.exposure>=.75&&g.exposure<=1,`${world} ${g.exposure}`);
+  }
+});
+
+test('exposure keeps the contrast rule: Breu 3:1 against every face, ground tone, lit shadow and tinted building, down to 0.75', () => {
+  for(const k of EXPOSURES)for(const [world,g] of Object.entries(GRADES)){
+    const ex=(c:readonly [number,number,number])=>exposeColor(c,k);
+    for(const radius of [0,1]){
+      const breu=ex(gradeColor(rgbOf(CITY_PALETTE.breu),g,radius));
+      const check=(name:string,hex:number)=>{const c=ex(gradeColor(rgbOf(hex),g,radius));assert.ok(ratio(c,breu)>=3,`${k} ${world} r${radius} ${name} ${ratio(c,breu).toFixed(2)}:1`);};
+      for(const [kind,faces] of Object.entries(BLOCK_COLORS))for(const [face,color] of Object.entries(faces))check(`${kind}.${face}`,color);
+      for(const [kind,{base,detail}] of Object.entries(GROUND_COLORS)){check(`${kind} base`,base);check(`${kind} detail`,detail);}
+      for(const kind of Object.values(GROUND_KINDS))for(let s=-1;s<=1.0001;s+=.25)check(`${kind} shade ${s} in a lit shadow`,mixColor(groundColor(kind,s),LIT_SHADOW.color,LIT_SHADOW.alpha));
+    }
+    const breu=ex(gradeColor(rgbOf(CITY_PALETTE.breu),g,1));
+    for(const [kind,faces] of Object.entries(BLOCK_COLORS))for(const [face,color] of Object.entries(faces))for(const [corner,t] of Object.entries(BUILDING_TINT)){
+      const c=ex(gradeColor(mul(color,t),g,0));
+      assert.ok(ratio(c,breu)>=3,`${k} ${world} ${kind}.${face} ${corner} ${ratio(c,breu).toFixed(2)}:1`);
+    }
+    const snow=GROUND_COLORS[GROUND_KINDS.s].base,outline=ex(gradeColor(mul(CITY_PALETTE.breu,ACTOR_TINT.bottomRight),g,1));
+    assert.ok(ratio(outline,ex(gradeColor(rgbOf(snow),g,1)))>=3,`${k} ${world} hero outline on snow`);
+  }
+});
+
+test('the exposure GLSL is the same band as exposeColor, on the unpremultiplied colour', () => {
+  assert.ok(EXPOSURE_GLSL.includes(`smoothstep(${EXPOSURE_BAND[0].toFixed(2)},${EXPOSURE_BAND[1].toFixed(2)}`));
+  assert.match(EXPOSURE_GLSL,/uExposicao/);
+  assert.match(EXPOSURE_GLSL,/color\.rgb\/max\(color\.a/);
 });

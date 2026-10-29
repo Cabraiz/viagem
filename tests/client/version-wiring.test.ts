@@ -164,7 +164,7 @@ test('other errors keep the old messages; no watch or a dev build (inert watch) 
 });
 
 test('the notice text: pt-BR, the line the card asks for, and a short joke for out of the round',()=>{
-  assert.equal(UPDATE_TITLE,'Saiu versão nova do jogo! Toque para atualizar.');
+  assert.equal(UPDATE_TITLE,'Saiu versão nova do jogo. Toca pra atualizar.');
   assert.ok(UPDATE_LINE.length>0&&UPDATE_LINE.length<=40,UPDATE_LINE);
 });
 

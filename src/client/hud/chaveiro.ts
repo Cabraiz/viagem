@@ -60,11 +60,14 @@ export const MOTO_REASONS:Readonly<Record<MotoMode,string|undefined>>=Object.fre
 export const reasonUrgent=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
 /**
  * Card objetivo-com-verbo: the stops that need the team say what to do, with a verb, in the mission line (hud/missao.ts,
- * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size.
+ * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size. Card
+ * ordens-menos-e-claras (auditoria-primeiro-minuto item 5: "Uno" and "moto" read as one vehicle, only the Uno on
+ * screen): the line names the chaveiro, as the top's clock and the moto's arrow ("Chaveiro parado") do; the Uno is the
+ * team's car, the moto is his.
  */
 export const MOTO_ACTIONS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
-  morta:'Moto morta: vá empurrar',
-  tombo:'A moto tombou: tire os bichos',
+  morta:'Moto do chaveiro: vá empurrar',
+  tombo:'Chaveiro caiu: tire os bichos',
 });
 
 /**

@@ -104,10 +104,20 @@ const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 /**
  * Menu (BUG-20261022-ORQ-art-lite-menu): only what the page loads from /art/lite/menu gets a copy, the dance pages
  * (ui/menu-dance.ts), the heroes' backgrounds `fundo-*` (estadio.css, ui/stadium.ts) and the phone's profile screen `insta/`
- * (ui/insta.ts, scripts/insta-arte.mjs) and the row's faces `rosto/` (ui/miniatura.ts, scripts/miniatura-rosto.mjs). The button, the cut-out heroes,
- * the letreiros and the mureta are light WebPs already (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
+ * (ui/insta.ts, scripts/insta-arte.mjs), the row's faces `rosto/` (ui/miniatura.ts, scripts/miniatura-rosto.mjs) and the
+ * letreiros `letreiro/` (ui/apelidos.ts). The button, the cut-out heroes and the mureta are light WebPs already
+ * (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
  */
-const MENU_LITE=/^(danca\/|insta\/|rosto\/|fundo-[^/]+\.webp$)/;
+const MENU_LITE=/^(danca\/|insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/;
+/**
+ * The menu's 2 biggest first-visit files, scaled down to the width a screen draws them at (NEW-20261029-ORQ-primeira-visita-leve):
+ * the letreiro is at most ~810 px wide (estadio.css --lw x 1.13 on a 1440p PC; 637 px at 1080p), so 960 at q90 (its
+ * fine highlights cost ~31 dB at any lossy quality, the same at q100; prints show no change at the drawn size); the
+ * landscape backgrounds (2560x1707 bleeds) at 1920, q80 (~200 KB, ≥ 39 dB shown). Same aspect (±1 px): the page sizes
+ * them in the bleed's own px (main.ts frameStage).
+ */
+const MENU_SIZE=[[/^letreiro\//,{width:960,quality:90}],[/^fundo-[^/]+\.webp$/,{width:1920,quality:80}]];
+export const menuLiteSize=name=>MENU_SIZE.find(([re])=>re.test(name))?.[1];
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -197,7 +207,12 @@ manifest.enemyFigures=Object.fromEntries(Object.entries(figures).sort(([a],[b])=
 
 const stale=[];
 /** One lite copy of `source`, every cell from `cell` to `liteCell` (the same cell, or none: the whole sheet re-encoded). */
-async function liteCopy(source,cell,liteCell){
+async function liteCopy(source,cell,liteCell,size){
+  if(size){
+    const meta=await sharp(source).metadata(),w=Math.min(size.width,meta.width),h=Math.round(meta.height*w/meta.width);
+    const {data}=await sharp(source).ensureAlpha().resize(w,h,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer({resolveWithObject:true});
+    return {lite:await sharp(data,{raw:{width:w,height:h,channels:4}}).webp({...WEBP,quality:size.quality}).toBuffer(),full:data};
+  }
   if(String(cell)===String(liteCell))return {lite:await sharp(source).webp(WEBP).toBuffer(),full:await rgba(source)};
   const s=await shrink(await decode(source),cell,liteCell);
   return {lite:await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer(),full:s.data};
@@ -235,14 +250,14 @@ for(const kind of kinds){
     if(key.startsWith(`${kind}/`)&&!present.has(key.slice(kind.length+1))){delete manifest.files[key];console.error(key,'dropped (no source)');}
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())&&(kind!=='menu'||MENU_LITE.test(n))).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
-    const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;
-    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+    const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite,size=kind==='menu'?menuLiteSize(name):undefined;
+    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&entry.liteWidth===size?.width&&entry.liteQuality===size?.quality&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
     stale.push(key);
     if(args.has('--check'))continue;
     const meta=await sharp(source).metadata(),w=Math.round(meta.width*SHOWN_SCALE),h=Math.round(meta.height*SHOWN_SCALE);
-    const {lite,full}=await liteCopy(source,small?.cell,small?.lite);
+    const {lite,full}=await liteCopy(source,small?.cell,small?.lite,size);
     mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
-    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,...(liteCell?{liteCell}:{}),
+    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,...(liteCell?{liteCell}:{}),...(size?{liteWidth:size.width,liteQuality:size.quality}:{}),
       psnr:psnr(full,await rgba(lite)),shownPsnr:psnr(await rgba(source,w,h),await rgba(lite,w,h))};
     const e=manifest.files[key];
     console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,liteCell?`cell ${liteCell.join('×')}`:'',`psnr ${e.psnr} dB, shown ${e.shownPsnr} dB`);

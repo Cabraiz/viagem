@@ -5,6 +5,8 @@
  * has no gender), and the ficha says it right for all of them. Pure: render/layers.ts and scene.ts draw it.
  */
 import {entryLines,waveBossById} from '../../rules/index.ts';
+import {artPiece} from '../art/manifest.ts';
+import {MENDIGO,keepsOwnArt} from '../art/mendigo.ts';
 
 /** Safety cap (the longest roster name today is 36): a longer one is cut with an ellipsis. */
 export const ENEMY_NAME_MAX=36;
@@ -15,10 +17,16 @@ export const ENEMY_NAME_H_CSS=23;
 
 const clip=(name:string)=>name.length>ENEMY_NAME_MAX?`${name.slice(0,ENEMY_NAME_MAX-1).trimEnd()}…`:name;
 
-/** The name of a kind: a wave chefão's bar name, else the roster's (the nine hand-tuned kinds are in it); undefined if unknown. */
+/** One name for every plain enemy while they all wear the mendigo (art/mendigo.ts; ORQ 29/10). Not "Mendigo": a hero has it. */
+export const MENDIGO_NAME='Morador de Rua';
+
+/** The name of a kind: a wave chefão's bar name, else the roster's (the nine hand-tuned kinds are in it); undefined if
+ * unknown. A plain enemy drawn as the mendigo goes by MENDIGO_NAME, the name follows the body on screen. */
 export function enemyName(kind:string|undefined):string|undefined{
   if(!kind)return undefined;
-  const name=waveBossById(kind)?.bar??entryLines(kind)?.name;
+  const boss=waveBossById(kind)?.bar,roster=entryLines(kind)?.name;
+  if(!boss&&roster&&!keepsOwnArt(kind)&&artPiece('inimigos',MENDIGO))return MENDIGO_NAME;
+  const name=boss??roster;
   return name?clip(name):undefined;
 }
 

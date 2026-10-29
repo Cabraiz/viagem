@@ -38,7 +38,7 @@ const VIEWPORTS=[{w:1280,h:720},{w:390,h:844}];
 /** Modo foto scenes (name, extra query, caption). Extras pass through to the sandbox (foto.ts fotoSearch). */
 const FOTOS=[
   ['arsenal','','caixa abrindo (arsenal)'],
-  ['cidade-praca','&torres=1&hero=100,124','ao lado das torres (A3 atrás do prédio)'],
+  ['cidade-praca','&torres=1&hero=76,86','ao lado das torres (A3 atrás do prédio)'],
   ['sombra','','sombras do elenco'],
   ['cidade-regua','','herói ao lado da casa (silhueta)'],
   ['minimapa','&perfis=3','perfis de inimigo novo em leque'],

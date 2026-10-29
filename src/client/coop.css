@@ -291,3 +291,13 @@
 @media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}
 /* PC (data-input=mouse, auditoria-ui 28/10 item 17): the attack says its key, a cap hanging on the circle's foot. */
 [data-input=mouse] #coop-attack::after{content:'Espaço';position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);padding:3px 8px;border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:800 12px/1 var(--f-sistema);text-shadow:none;white-space:nowrap;pointer-events:none}
+/* "Jogar sozinho" (solo-sem-sala-de-espera): no room on screen. Over the loading cover, without the box: the line,
+   the faces (self first, with its download ring) and the 3-2-1. The code, the buttons and the lines stay hidden. */
+.coop-wait.is-solo{top:50%;bottom:auto;transform:translate(-50%,-50%);max-height:none;overflow:visible;padding:0;border:0;background:none;box-shadow:none;pointer-events:none}
+.coop-wait.is-solo .coop-wait-code,.coop-wait.is-solo .coop-wait-actions,.coop-wait.is-solo .coop-wait-line,.coop-wait.is-solo .coop-wait-owner{display:none}
+.coop-wait.is-solo .coop-wait-headline{margin:0 0 14px;font:400 var(--t-28)/1.1 var(--f-cartaz);color:var(--c-papel);text-shadow:0 3px 0 var(--c-breu)}
+.coop-wait.is-solo .coop-wait-members{gap:10px}
+.coop-wait.is-solo .coop-wait-members li{min-height:0;padding:0;border:0;border-radius:50%;background:none}
+.coop-wait.is-solo .coop-wait-members .coop-wait-face{width:56px;height:56px;margin:0;box-shadow:0 0 0 2px var(--c-breu)}
+.coop-wait.is-solo .coop-wait-members .coop-wait-ring{margin:0;padding:4px}
+.coop-wait.is-solo .coop-wait-count{margin-top:12px}

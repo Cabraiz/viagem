@@ -73,10 +73,10 @@ export function skillState(player:Pick<PlayerRunView,'skillTick'|'skillReadyTick
   const left=ready-tick;
   return {mode:'cooling',seconds:Math.ceil(left/SIM_HZ),progress:Math.max(0,Math.min(1,1-left/total))};
 }
-/** The button's accessible name: what the skill is called for this class. */
+/** The button's accessible name: what the skill is called for this hero. */
 export function skillLabel(classId:string){
   const name=kitFor(classId)?.skill.name;
-  return name?`Habilidade: ${name}`:'Habilidade da classe';
+  return name?`Habilidade: ${name}`:'Habilidade do herói';
 }
 /** The word under the sticker, and the two notes that briefly take its place. */
 export const SKILL_WORD='Habilidade',NOTE_COOLING='ainda não',NOTE_NO_TARGET='sem alvo';

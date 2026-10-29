@@ -44,7 +44,7 @@
  *   `1` a showcase (A3 atiradores, B3 morteiro and C2 holofote firing, C3 arame, B5 obuseiro danificada, a Vigia in
  *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the east (in a landscape print with the rest), whose shells shake the screen and leave a
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
- *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
+ *   `hero=76,86`, beside a building block), whose shots that building covers),
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
  *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
  *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
@@ -62,7 +62,8 @@
  *   `.torres()` the live effects (shots in flight with their kind and age, flashes, blasts, craters), `.shake()` the
  *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.hidden` the building the hidden A3
  *   stands behind, `.at`/`.cell` the hero's spot and
- *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
+ *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight, `.acordar()` runs it again
+ *   (a gif after the foto mode froze it).
  *   FPS lab (torres-polimento): `.towersHidden('all'|'bases'|'efeitos'|'crateras'|'')` hides what the renderer draws while it
  *   still runs (drawn vs hidden on one page, the same load), `.towersStats()` the images shown and their area per kind.
  *   The stand-in stepper records each volley's aim like the sim on the wire, so the renderer never scans the horde.
@@ -76,6 +77,9 @@
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
+import {exposureGameConfig,setExposure} from '../render/exposure-pipeline.ts';
+import {exposureFor} from '../render/light.ts';
+import {Nevoa} from '../render/nevoa.ts';
 import {ZOOM_DEFAULT,ZOOM_DESKTOP,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
@@ -291,6 +295,7 @@ class CitySandbox extends Phaser.Scene {
   private layer?:CityLayer;
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
+  private nevoa?:Nevoa;
   private ally?:Phaser.GameObjects.Sprite;
   private mate?:Phaser.GameObjects.Sprite;
   private mateAt={x:0,y:0};
@@ -416,6 +421,8 @@ class CitySandbox extends Phaser.Scene {
     this.shadow=silhouetteImage(this,'__DEFAULT',0);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    // jogo-mais-escuro: the city's fog, as the game's scene draws it (`?nevoa=0..3`).
+    this.nevoa=new Nevoa(this,{reduced:reducedMotion,hero:()=>({x:this.hero.x,y:this.hero.y-this.hero.displayHeight*.4})});this.nevoa.set('cidade',false);
     // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
     if(arsenal)this.ally=this.add.sprite(0,0,'__DEFAULT');
     if(mateClass)this.mate=this.add.sprite(0,0,'__DEFAULT');
@@ -445,6 +452,7 @@ class CitySandbox extends Phaser.Scene {
     for(let i=0;i<12;i++)this.tick(16);
   }
   update(_t:number,dt:number){
+    this.nevoa?.update(dt);
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
     let push:ReturnType<typeof pushContact>,pull:ReturnType<typeof pullDirection>;
@@ -935,10 +943,10 @@ class CitySandbox extends Phaser.Scene {
     if(!cameraFixed)cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
-    (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
+    (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),luzes:()=>this.layer?.vivo?.stats().luzes,zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),
       // torres-animacao-idle-tiro (the FPS check): bytes of every texture source in the GPU (w × h × 4) and those of the towers.
-      texBytes:()=>{let all=0,towers=0;for(const k of this.textures.getTextureKeys()){let b=0;for(const s of this.textures.get(k).source)b+=(s.width||0)*(s.height||0)*4;all+=b;if(k.startsWith('art:torres:'))towers+=b;}return {all,towers};},hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,cair:(on=true)=>{this.fallen=on;},at:this.at,
+      texBytes:()=>{let all=0,towers=0;for(const k of this.textures.getTextureKeys()){let b=0;for(const s of this.textures.get(k).source)b+=(s.width||0)*(s.height||0)*4;all+=b;if(k.startsWith('art:torres:'))towers+=b;}return {all,towers};},hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),acordar:()=>this.game.loop.wake(),golpe:()=>++this.swings,cair:(on=true)=>{this.fallen=on;},at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,mate:this.mate,
       /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
@@ -985,7 +993,9 @@ class CitySandbox extends Phaser.Scene {
 }
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
-  scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
+  scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true},...exposureGameConfig()});
+// jogo-mais-escuro: the city's exposure (`?exposicao=` to compare), as the game's Vignette.set gives it.
+setExposure(exposureFor('cidade'));
 // The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art;
 // zoom=pc also takes the computer's enemy copies (manifest.ts pcCell), as the game on a fine pointer.
 if(base||params.get('arte')!=='0')void loadArtManifest(undefined,params.get('zoom')==='pc').then(start);else start();

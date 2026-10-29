@@ -74,7 +74,7 @@ import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {OPEN_REACH} from './crates.ts';
-import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
+import {CRATE_STAND,LOOT_ANY_NEAR,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /**
@@ -297,6 +297,10 @@ export interface BrainMemory {
   skip?:Record<string,number>;
   /** The goal walked to and the best distance (and its hp) so far, since `tick`. */
   track?:{key:string;d:number;hp:number;tick:number;x:number;y:number};
+  /** The crate or weapon looted at the last decision (bot-loot.ts LOOT_KEEP_HP: kept with critters near), and the hp then. */
+  lootGoal?:string;lootHp?:number;
+  /** The tick an armed bot that left its loot for a critter may start another (bot-loot.ts LOOT_REST). */
+  lootRest?:number;
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -382,6 +386,8 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
  * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
 export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
+/** Card bots-build-parado: a bot alone in the room loots this far in the intermission (the late check still brings it home). */
+export const LOOT_RADIUS_SOLO=LOOT_RADIUS_RUN;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -832,12 +838,32 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  // Card bot-nao-trava-entre-casa-e-arma: not for a bot with no weapon at all (it cannot hit; seed 11 held at the car ~60 s
+  // by one critter the Minerva held still 10.6 u off it).
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&hasWeapon(me.weapons)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  const keep=memory.lootGoal,keptHp=memory.lootHp;delete memory.lootGoal;delete memory.lootHp;
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
-    const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
-    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
-      {skip:id=>skipped(`loot:${id}`),...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    const solo=!lootLeashed(view.players),car=input.nests&&!solo?view.objective?.car:undefined;
+    // Card bots-build-parado: a bot alone (nobody to open the rest, nobody to rescue) opens the verdes past LOOT_ANY_NEAR
+    // too, and in the intermission looks as far as a runner (1p: 22 of 45 verdes 12-20 u from the car opened, none past 30).
+    // Only to a crate with no critter awake about it: one by it ended the calm on the way, and with it the trip, a swing
+    // home and back each second (1p seed 12: bau-21, 11 u past a critter 16 u off).
+    const far=(id:string)=>{
+      const k=solo?view.pickups.find(q=>q.id===id):undefined,d=k?dist(k,at):0;
+      return !!k&&(d>LOOT_RADIUS_CALM||k.kind==='chest'&&k.value<=1&&d>LOOT_ANY_NEAR)&&!calmAround(view.enemies,k,CALMA.botR+CALM_SLACK);
+    };
+    const plan=(kept?:string)=>planLoot(view,me,at,prepare?(solo?LOOT_RADIUS_SOLO:LOOT_RADIUS_CALM):runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
+      {skip:id=>skipped(`loot:${id}`)||far(id),keep:kept,...(solo?{anyVerde:true}:{}),
+        ...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    let loot=plan(keep);
+    if(loot.goal&&loot.goal.id!==keep&&tick<(memory.lootRest??-Infinity)&&hasWeapon(me.weapons))delete loot.goal;
+    // Card bot-nao-trava-entre-casa-e-arma: a crate opens only for who is not hurt (crates.ts): hurt by it since the last
+    // decision, the bot leaves it out for LOOT_SKIP and goes to another (seed 12: 18 s by one, a critter on it biting).
+    if(loot.goal?.stand&&loot.goal.id===keep&&keptHp!==undefined&&me.hp<keptHp&&dist(at,loot.goal.at)<=OPEN_REACH){
+      (memory.skip??={})[`loot:${keep}`]=tick+LOOT_SKIP;
+      loot=plan();
+    }
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
@@ -847,13 +873,15 @@ export function decide(input:BrainInput):Decision{
     const there=!!loot.goal&&(loot.goal.stand?reached(loot.goal.at,CRATE_STAND,OPEN_REACH*.25):dist(at,loot.goal.at)<=.25);
     if(there)delete memory.track;
     if(loot.goal&&!late&&(there||!stalled(`loot:${loot.goal.id}`,loot.goal.at,0,LOOT_SKIP))){
-      decision.mode='loot';
+      decision.mode='loot';memory.lootGoal=loot.goal.id;memory.lootHp=me.hp;
       const close=there;
       if(!close)want=go(loot.goal.at);
       decision.direction=close?{x:0,y:0}:norm(want);
       return finish(decision,input);
     }
   }
+  if(keep!==undefined&&hasWeapon(me.weapons)&&(carThreat||view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<LOOT_SAFE)))
+    memory.lootRest=tick+LOOT_REST*HZ;
   // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
   if(task?.kind==='clear'&&prepare){
     decision.mode='clear';
@@ -1011,6 +1039,7 @@ export function decide(input:BrainInput):Decision{
     want=add(want,{x:-s.vy/speed*side*1.2,y:s.vx/speed*side*1.2});
   }
   const walking=escorting&&!!pace&&!task;
+  let engaged=false;
   if(walking){
     // Walk with the person at their speed (ESCORT_WALKING): the way to them out of the leash, their heading inside it.
     decision.mode='escort';
@@ -1033,8 +1062,8 @@ export function decide(input:BrainInput):Decision{
     const stand=siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6;
     if(target&&open&&(siege||roam)&&dist(target,at)>stand){
       // Item 2: one it gets no nearer to (nor hurts) is left out (the boss at the car never is).
-      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp))want=add(want,chase!);
-    }
+      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp)){want=add(want,chase!);engaged=true;}
+    }else if(target&&dist(target,at)<=stand)engaged=true;
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
@@ -1055,6 +1084,9 @@ export function decide(input:BrainInput):Decision{
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&!lure&&dist(at,home)>leash+2)decision.mode='home';
+  // Item 2 (29/10): by the car with no critter to hit or chase (none in reach, or one left out as stalled) the bot holds
+  // home; 'fight' read as standing still in a fight (6p: 36 holds of 10-108 s at 4-7 u from the car, none near).
+  else if(decision.mode==='fight'&&input.nests&&view.objective&&!prey&&!lure&&!engaged&&!decision.attack)decision.mode='home';
   // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
   // the bot where it stands, instead of a full step one way and the other each think.
   decision.direction=city&&Math.hypot(want.x,want.y)<HOLD_BELOW?{x:0,y:0}:norm(want);

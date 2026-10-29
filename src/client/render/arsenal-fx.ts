@@ -282,12 +282,24 @@ export class ArsenalFx{
     return progress;
   }
 
-  /** An item drawn this frame at screen `q`: a weapon gets the ring of its rarity, a kit de torre its tier's (a consumable none). */
+  /**
+   * An item drawn this frame at screen `q`: a weapon gets the ring of its rarity, a kit de torre its tier's (a consumable
+   * none), and under the ring's front 1–5 Papel dots ringed in Breu (legivel-raridade-uma-tabela: the rarity's sign
+   * that is not a colour, the same count as the inventory's slot, hud/inventory.ts rarityPips).
+   */
   item(resource:string|undefined,value:number,q:Pt){
     const kit=kitPiece(resource);
     if(!kit&&!isWeaponItem(resource))return;
-    const color=this.colors[kit?kitRarity(kit):rarityOf(value)],b=this.body;
-    this.ringBand(`i|${color}|${Math.round(b*100)}`,g=>{g.lineStyle(Math.max(2,2.5*b),color,.95).strokeEllipse(0,0,40*b,17*b);},q);
+    const rarity=kit?kitRarity(kit):rarityOf(value),color=this.colors[rarity],b=this.body;
+    this.ringBand(`i|${rarity}|${color}|${Math.round(b*100)}`,g=>{
+      g.lineStyle(Math.max(2,2.5*b),color,.95).strokeEllipse(0,0,40*b,17*b);
+      const r=2.2*b,step=6*b,y=8.5*b+4*b;
+      for(let i=0;i<rarity;i++){
+        const x=(i-(rarity-1)/2)*step;
+        g.fillStyle(this.breu,1).fillCircle(x,y,r+1.2*b);
+        g.fillStyle(this.papel,1).fillCircle(x,y,r);
+      }
+    },q);
   }
   /** A band of the ring look `key` (drawn by `draw` at the origin the first time) shown at `q` this frame. */
   private ringBand(key:string,draw:(g:Phaser.GameObjects.Graphics)=>void,q:Pt):TriBand{

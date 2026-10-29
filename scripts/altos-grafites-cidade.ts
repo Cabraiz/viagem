@@ -20,6 +20,8 @@ export const isAlto=(id:string)=>(ALTOS as readonly string[]).includes(id);
 export const PAREDE=/^(muro-pichado|muro-condominio|tapume)-reto-(intacto|quebrado)$/;
 /** The boulders of the border band (one cell each, on solid ground) a tall piece may also take. */
 export const PEDRA=/^pedregulho-\d$/;
+/** The wall pieces a graffito is painted on: a broken one has its hole in the middle, where the paint would float. */
+export const PAREDE_INTEIRA=/-reto-intacto$/;
 export const ALTOS_SEED=20261029;
 /** How many of each (the mouths lost 100 pieces: 40 + 72 bring at least that many back). */
 export const N_ALTOS=40,N_GRAFITES=72;
@@ -31,6 +33,8 @@ export const N_ALTOS=40,N_GRAFITES=72;
 export const ALTO_ENTRADA_RAIO=3;
 /** Spacing (cells, centre to centre): between tall pieces, two of the same tall piece, any two graffiti, two of the same graffito. */
 export const GAP={alto:8,mesmoAlto:20,grafite:2,mesmoGrafite:12} as const;
+/** No tall piece this near (cells, centre to centre) a standing piece (a cart, a lamp): it would stand over it. */
+export const ALTO_LIVRE=2;
 /** Around a removed piece (u): a wall this near the place that lost it scores first. */
 const PERTO=16,LONGE=32;
 /** How far (u) the scenery is counted to find the streets left empty. */
@@ -90,12 +94,12 @@ export function altosEGrafites(data:CityAssetData,removidos:readonly CityDecor[]
     const least=Math.min(...free.map(id=>used.get(id)??0)),pool=free.filter(id=>(used.get(id)??0)===least);
     return pool[Math.floor(rnd()*pool.length)];
   };
-  // The tall pieces first, in the place of the piece (its rect: drawn at its centre), away from the mouths and each
-  // other. A wall scores less for one: the walls are the graffiti's, the border's boulders the towers'.
+  // The tall pieces first, in the place of the piece (its rect: drawn at its centre), away from the mouths, each
+  // other and the standing pieces. A wall scores less for one: the walls are the graffiti's, the border's boulders the towers'.
   const altos:CityDecor[]=[],taken=new Set<number>();
   for(const s of [...spots].sort((p,q)=>(q.score-(q.wall?1:0))-(p.score-(p.wall?1:0))||p.i-q.i||p.face.localeCompare(q.face))){
     if(altos.length>=N_ALTOS)break;
-    if(!s.deep||taken.has(s.i)||mouthGap(s.q)<=ALTO_ENTRADA_RAIO||bocas.some(e=>estreitaBoca(a,e,s.q))||altos.some(p=>dist(p,s.q)<GAP.alto))continue;
+    if(!s.deep||taken.has(s.i)||mouthGap(s.q)<=ALTO_ENTRADA_RAIO||bocas.some(e=>estreitaBoca(a,e,s.q))||altos.some(p=>dist(p,s.q)<GAP.alto)||standing.some(p=>dist(p,s.q)<ALTO_LIVRE))continue;
     const id=pick(ALTOS,altos,s.q,GAP.mesmoAlto);
     if(!id)continue;
     taken.add(s.i);altos.push({id,c:s.q.c,r:s.q.r,w:s.q.w,h:s.q.h,rot:FACE_ROT[s.face]});
@@ -104,7 +108,7 @@ export function altosEGrafites(data:CityAssetData,removidos:readonly CityDecor[]
   const grafites:CityDecor[]=[],painted=new Set<number>();
   for(const s of spots){
     if(grafites.length>=N_GRAFITES)break;
-    if(!s.wall||taken.has(s.i)||painted.has(s.i)||grafites.some(p=>dist(p,s.q)<GAP.grafite))continue;
+    if(!s.wall||!PAREDE_INTEIRA.test(s.q.id)||taken.has(s.i)||painted.has(s.i)||grafites.some(p=>dist(p,s.q)<GAP.grafite))continue;
     const id=pick(GRAFITES,grafites,s.q,GAP.mesmoGrafite);
     if(!id)continue;
     painted.add(s.i);grafites.push({id,c:s.q.c,r:s.q.r,w:s.q.w,h:s.q.h,rot:FACE_ROT[s.face]});

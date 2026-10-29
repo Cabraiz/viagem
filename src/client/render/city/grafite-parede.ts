@@ -8,7 +8,7 @@
  * height; the projection gives the vertical shear; a face in the shade is 10–25 % darker.
  */
 import {SUN_VIEW} from '../light.ts';
-import {depth,project,rotate,type Pt} from './projection.ts';
+import {HEIGHT_PX,TILE_Y,depth,project,rotate,type Pt} from './projection.ts';
 
 /** World normal of each face rot (FACE_ROT: S 0, E 90, N 180, W 270). */
 const NORMAL:Readonly<Record<number,readonly [number,number]>>={0:[0,1],90:[1,0],180:[0,-1],270:[-1,0]};
@@ -18,6 +18,16 @@ export const GRAFITE_OFFSET=.14;
 export const GRAFITE_SPAN=[.6,.9] as const,GRAFITE_MID=.55;
 /** Never taller than this fraction of the wall (a wide graffito on a low wall shrinks). */
 const MAX_TALL=.8;
+/** How much of a wall sheet's height above its anchor holds paint (the rest is the frame's empty top: 0.87–0.89). */
+const SHEET_ART=.88;
+/**
+ * A straight wall piece's sheet stands on its anchor with its lowest pixel, the near end of its foot (the art reaches
+ * `sheetHeight` above it): its centre's foot sits half a cell's slope (TILE_Y a unit) higher on the screen, and the
+ * whole cell's slope of the art is the line going up the screen, not face. faceFoot: that lift (world units, added to
+ * the ground under the centre); faceHeight: the upright face over it.
+ */
+export const faceFoot=(cell:number)=>cell/2*TILE_Y/HEIGHT_PX;
+export const faceHeight=(sheetHeight:number,cell:number)=>Math.max(sheetHeight*.25,sheetHeight*SHEET_ART-cell*TILE_Y/HEIGHT_PX);
 /** Darkening of a face in full shade (the lit side keeps its colour). */
 export const GRAFITE_SHADE=[.1,.25] as const;
 

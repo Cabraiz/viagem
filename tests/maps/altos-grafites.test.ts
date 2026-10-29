@@ -9,7 +9,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {cityEntradas,estreitaBoca} from '../../src/maps/city/entradas.ts';
-import {ALTO_ENTRADA_RAIO,GAP,isAlto,isGrafite} from '../../scripts/altos-grafites-cidade.ts';
+import {ALTO_ENTRADA_RAIO,ALTO_LIVRE,GAP,PAREDE,PAREDE_INTEIRA,isAlto,isGrafite} from '../../scripts/altos-grafites-cidade.ts';
 
 const d=decodeCityAsset(readFileSync(fileURLToPath(new URL('../../public/maps/cidade-nevada.json',import.meta.url)),'utf8'));
 if(!d.ok)throw new Error(d.error);
@@ -41,4 +41,15 @@ test('never two alike side by side (graffiti and tall pieces)',()=>{
   const near=(xs:typeof altos,r:number)=>xs.flatMap((p,i)=>xs.slice(i+1).filter(q=>q.id===p.id&&Math.hypot(mid(p).x-mid(q).x,mid(p).y-mid(q).y)<r).map(q=>`${p.id} ${p.c},${p.r}~${q.c},${q.r}`));
   assert.deepEqual(near(grafites,GAP.mesmoGrafite),[]);
   assert.deepEqual(near(altos,GAP.mesmoAlto),[]);
+});
+
+test('no tall piece over a standing piece (a cart, a lamp)',()=>{
+  const standing=a.decor.filter(q=>!q.cover&&!isAlto(q.id)&&!isGrafite(q.id)&&!PAREDE.test(q.id)&&!/^(pedregulho|penhasco)/.test(q.id)&&!/-(reto|quina|t|ponta)-/.test(q.id));
+  const bad=altos.flatMap(p=>standing.filter(q=>Math.hypot(mid(p).x-mid(q).x,mid(p).y-mid(q).y)<ALTO_LIVRE).map(q=>`${p.id} ${p.c},${p.r} ~ ${q.id}`));
+  assert.deepEqual(bad,[]);
+});
+
+test('a graffito is painted on a whole wall piece (a broken one has its hole in the middle)',()=>{
+  const bad=grafites.filter(g=>!a.decor.some(p=>!p.cover&&PAREDE_INTEIRA.test(p.id)&&p.c===g.c&&p.r===g.r&&p.w===g.w&&p.h===g.h)).map(g=>`${g.id} ${g.c},${g.r}`);
+  assert.deepEqual(bad,[]);
 });

@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {GRAFITE_MID,GRAFITE_SHADE,grafiteQuad} from '../../src/client/render/city/grafite-parede.ts';
+import {GRAFITE_MID,GRAFITE_SHADE,faceFoot,faceHeight,grafiteQuad} from '../../src/client/render/city/grafite-parede.ts';
 import {decorRule} from '../../src/client/render/city/art-plan.ts';
 import {HEIGHT_PX,project} from '../../src/client/render/city/projection.ts';
 
@@ -48,4 +48,12 @@ test('a graffito is a face, the tall pieces stand as props',()=>{
   assert.equal(decorRule('grafite-oxe'),'face');
   assert.equal(decorRule('caixa-dagua-torre-1',{footprint:[1,1]}),'prop');
   assert.equal(decorRule('muro-pichado-reto-intacto'),'wall');
+});
+
+test('the face of a wall sheet: its foot half a cell up the screen, the line slope and the empty top not face',()=>{
+  // muro-pichado on the Cidade Nevada (cell 1.496): its sheet reaches 1.703 u, the paint 0.88 of it.
+  assert.ok(Math.abs(faceFoot(1.496)-.374)<1e-3);
+  assert.ok(Math.abs(faceHeight(1.703,1.496)-(1.703*.88-.748))<1e-3);
+  // A low sheet keeps a quarter of itself.
+  assert.equal(faceHeight(.8,1.496),.2);
 });

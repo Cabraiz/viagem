@@ -305,9 +305,9 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
   }
   const cenario=index.groups[DECOR_GROUP];
   if(cenario)for(const id of [...new Set(options.decor??[])].sort()){
-    const p=cenario.pieces[id],f=p&&viewSheet(p);
-    if(!p||!f||NEST_ID.test(id)||DECAL_ID.test(id))continue;
-    const rule=decorRule(id,p.meta),key=`city:decor:${id}`;
+    const p=cenario.pieces[id],rule=p&&decorRule(id,p.meta),f=p&&viewSheet(p,rule==='face'?1:4);
+    if(!p||!rule||!f||NEST_ID.test(id)||DECAL_ID.test(id))continue;
+    const key=`city:decor:${id}`;
     let s:DecorSheet;
     if(rule==='face'){
       // One view at the art's size: the layer stretches it over the face (grafite-parede.ts), the scale unused.

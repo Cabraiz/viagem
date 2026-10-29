@@ -2115,6 +2115,33 @@
         ]
       }
     },
+    "girar-camera": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "girar-camera.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "girar-camera.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1
+            }
+          ]
+        }
+      },
+      "meta": {
+        "replaces": [
+          "i-girar-camera"
+        ]
+      }
+    },
     "gorro-do-saci": {
       "kind": "icon",
       "files": {

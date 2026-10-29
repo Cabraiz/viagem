@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * BUG-20261022-ORQ-circulo-roxo: the Defumador's aura is painted smoke (ChatGPT via Codex, Myth look), not a purple
- * ellipse. The paintings are the ring of incense smoke seen by the game's camera (an ellipse twice as wide as tall) on
- * flat black; this script lifts each one off the black (alpha from the brightest channel, colour un-premultiplied),
- * fades whatever reaches the canvas edge, and packs them side by side as the frames of one small lossy WebP (already
- * the lite size: no copy under public/art/lite/). The client (render/aura-ring.ts) cross-fades the frames.
+ * NEW-20261029-ORQ-aura-defumador-fumaca: the Defumador's aura is a ring of incense puffs rising around the hero
+ * (render/aura-ring.ts), each puff living through the frames of ONE painting (ChatGPT via Codex, the attack effects'
+ * cartoon look): a 3×2 grid of the puff's life (birth, growing, full, swelling, breaking up, vanishing) on flat green.
+ * This script keys the green out (despilled edge), finds each puff, and packs the six side by side as square frames of
+ * one small WebP at a common scale (the puff grows from frame to frame), each centred on its puff. Already light for the
+ * phone (no copy under public/art/lite/).
  *
- *   node scripts/import-aura-defumador.mjs a.png b.png [more.png…]   → public/art/fx/aura-defumador.webp
+ *   node scripts/import-aura-defumador.mjs folha.png   → public/art/fx/aura-defumador.webp
  */
 import {createRequire} from 'node:module';
 import {join,dirname} from 'node:path';
@@ -14,41 +15,61 @@ import {fileURLToPath} from 'node:url';
 
 const sharp=createRequire(import.meta.url)('sharp');
 const ROOT=join(dirname(fileURLToPath(import.meta.url)),'..');
-/** One frame's size (2:1, the ground ellipse) and where the strip goes. */
-export const FRAME_W=512,FRAME_H=256;
+/** One frame's side (px), the frames of the sheet and where it goes. */
+export const FRAME=160,FRAMES=6;
+const COLS=3,ROWS=2,PAD=6;
 const OUT=join(ROOT,'public/art/fx/aura-defumador.webp');
-/** The channel value read as fully opaque smoke (the paintings never reach white). */
-const OPAQUE=.42;
-/** Brightness kept by the grey smoke (saturated embers keep all of theirs). */
-const SMOKE_SHADE=.6;
 
-/** Alpha from black for one RGBA buffer, in place: un-premultiplied colour, and zero at the ellipse that fits the frame. */
-export function liftFromBlack(data,w,h){
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const i=(y*w+x)*4,r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,m=Math.max(r,g,b);
-    const ex=(x+.5)/w*2-1,ey=(y+.5)/h*2-1,d=Math.hypot(ex,ey);
-    const edge=d>=1?0:d<=.86?1:(1-d)/.14;
-    // The painting is smoke × lift over black. Grey smoke is darkened (it has to read on the snow), embers keep their glow.
-    const lift=Math.min(1,m/OPAQUE),sat=m>1e-4?(m-Math.min(r,g,b))/m:0,un=lift>1e-4?(SMOKE_SHADE+(1-SMOKE_SHADE)*sat)/lift:0;
-    data[i]=Math.round(Math.min(1,r*un)*255);data[i+1]=Math.round(Math.min(1,g*un)*255);data[i+2]=Math.round(Math.min(1,b*un)*255);
-    data[i+3]=Math.round(lift*edge*edge*(3-2*edge)*255);
+/**
+ * Green key for one RGBA buffer, in place: g − max(r,b) over 90 is background, under 40 is smoke, a ramp between, and
+ * the green spill on the ramp is pulled down to max(r,b) (no green halo on the snow).
+ */
+export function keyGreen(data){
+  for(let i=0;i<data.length;i+=4){
+    const r=data[i],g=data[i+1],b=data[i+2],k=g-Math.max(r,b);
+    const a=k>=90?0:k<=40?1:(90-k)/50;
+    if(k>0)data[i+1]=Math.max(r,b);
+    data[i+3]=Math.round(a*255);
   }
   return data;
 }
 
-async function frame(file){
-  const {data,info}=await sharp(file).removeAlpha().resize(FRAME_W,FRAME_H,{fit:'fill'}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  return liftFromBlack(data,info.width,info.height);
+/** Bounding box of alpha > 24 in a w×h RGBA buffer, or undefined. */
+export function bbox(data,w,h){
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(data[(y*w+x)*4+3]>24){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  return x1<0?undefined:{x0,y0,x1,y1};
 }
 
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
-  const files=process.argv.slice(2);
-  if(!files.length){console.error('uso: node scripts/import-aura-defumador.mjs a.png b.png');process.exit(2);}
-  const strip=Buffer.alloc(FRAME_W*files.length*FRAME_H*4);
-  for(const [n,f] of files.entries()){
-    const one=await frame(f);
-    for(let y=0;y<FRAME_H;y++)one.copy(strip,((y*files.length*FRAME_W)+n*FRAME_W)*4,y*FRAME_W*4,(y+1)*FRAME_W*4);
+  const [file]=process.argv.slice(2);
+  if(!file){console.error('uso: node scripts/import-aura-defumador.mjs folha.png');process.exit(2);}
+  const {data,info}=await sharp(file).removeAlpha().ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  keyGreen(data);
+  const W=info.width,H=info.height,cw=W/COLS,ch=H/ROWS,cells=[];
+  for(let n=0;n<FRAMES;n++){
+    const left=Math.round((n%COLS)*cw),top=Math.round(Math.floor(n/COLS)*ch),w=Math.round((n%COLS+1)*cw)-left,h=Math.round((Math.floor(n/COLS)+1)*ch)-top;
+    const cell=Buffer.alloc(w*h*4);
+    for(let y=0;y<h;y++)data.copy(cell,y*w*4,((top+y)*W+left)*4,((top+y)*W+left+w)*4);
+    const box=bbox(cell,w,h);
+    if(!box)throw new Error(`quadro ${n+1}: nenhum puff na célula`);
+    cells.push({cell,w,h,box});
   }
-  await sharp(strip,{raw:{width:FRAME_W*files.length,height:FRAME_H,channels:4}}).webp({quality:72,alphaQuality:70,effort:6}).toFile(OUT);
-  console.log(`${OUT}: ${files.length} quadros de ${FRAME_W}×${FRAME_H}`);
+  // One scale for all: the biggest puff fills the frame less the padding.
+  const side=Math.max(...cells.map(({box})=>Math.max(box.x1-box.x0+1,box.y1-box.y0+1)));
+  const scale=(FRAME-2*PAD)/side,comp=[];
+  for(const [n,{cell,w,h,box}] of cells.entries()){
+    const cx=(box.x0+box.x1+1)/2,cy=(box.y0+box.y1+1)/2,half=side/2+PAD/scale;
+    // The square around the puff's centre (clamped to the cell; transparent outside).
+    const sx=Math.round(cx-half),sy=Math.round(cy-half),S=Math.round(2*half),sq=Buffer.alloc(S*S*4);
+    for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+      const ux=sx+x,uy=sy+y;if(ux<0||uy<0||ux>=w||uy>=h)continue;
+      cell.copy(sq,(y*S+x)*4,(uy*w+ux)*4,(uy*w+ux)*4+4);
+    }
+    const img=await sharp(sq,{raw:{width:S,height:S,channels:4}}).resize(FRAME,FRAME,{kernel:'lanczos3'}).png().toBuffer();
+    comp.push({input:img,left:n*FRAME,top:0});
+  }
+  await sharp({create:{width:FRAME*FRAMES,height:FRAME,channels:4,background:{r:0,g:0,b:0,alpha:0}}})
+    .composite(comp).webp({quality:80,alphaQuality:85,effort:6}).toFile(OUT);
+  console.log(`${OUT}: ${FRAMES} quadros de ${FRAME}×${FRAME}`);
 }

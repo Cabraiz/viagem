@@ -3,7 +3,7 @@
  * and when a tree canopy hides a hero. Pure module (no Phaser) so node tests pin the rules down.
  */
 import {BURPEE_TICKS,ticks,type VehicleKind} from '../../contract/index.ts';
-import {VEICULO} from '../../rules/index.ts';
+import {REVIVE_INVULNERABLE_TICKS,START_GRACE_S,VEICULO} from '../../rules/index.ts';
 
 /** The "Você" arrow shows this long at the start of each round and when the hero gets back up. */
 export const ARROW_MS=2000;
@@ -115,6 +115,37 @@ export function canopyCovers(hero:{x:number;y:number},tree:CanopyBox){
 /** Events in a view that bring the arrow back: a round starting, or the local player getting back up. */
 export function arrowTrigger(events:readonly {type:string;phase?:unknown;player?:unknown}[],selfId:string){
   return events.some(e=>(e.type==='round'&&e.phase==='wave')||(e.type==='revived'&&e.player===selfId));
+}
+
+/**
+ * comeca-armado-e-levanta-seguro (itens 2 e 3): while the server keeps a hero untouchable his sprite blinks, hard (alpha
+ * steps, no glow filter): REVIVE_INVULNERABLE_TICKS after a `revived`, and the start grace (the run's first
+ * START_GRACE_S until his first crate). The state is server-only, so the client keeps the same clock from the events.
+ */
+export const SAFE_BLINK_MS=110,SAFE_ALPHA=.4,SAFE_ALPHA_REDUCED=.7;
+export class SafeClock {
+  private readonly revived=new Map<string,number>();
+  private readonly opened=new Set<string>();
+  private last=-1;private run=false;
+  /** One run view: its tick, its events, and whether a run is on (the waiting room has no round). */
+  push(tick:number,events:readonly {type:string;player?:unknown;kind?:unknown}[],run:boolean){
+    // A rematch restarts the tick: the old run's clocks go.
+    if(tick<this.last){this.revived.clear();this.opened.clear();}
+    this.last=tick;this.run=run;
+    for(const e of events){
+      if(typeof e.player!=='string')continue;
+      if(e.type==='revived')this.revived.set(e.player,tick+REVIVE_INVULNERABLE_TICKS);
+      else if(e.type==='pickup'&&e.kind==='chest')this.opened.add(e.player);
+    }
+  }
+  on(id:string,tick:number){
+    return this.run&&(tick<(this.revived.get(id)??-1)||tick<ticks(START_GRACE_S)&&!this.opened.has(id));
+  }
+}
+/** The sprite's alpha while safe: `base` (down, offline, in the shop) wins; reduced motion keeps a steady see-through. */
+export function safeAlpha(base:number,on:boolean,now:number,reduced=false){
+  if(!on||base<1)return base;
+  return reduced?SAFE_ALPHA_REDUCED:Math.floor(now/SAFE_BLINK_MS)%2?SAFE_ALPHA:1;
 }
 
 /**

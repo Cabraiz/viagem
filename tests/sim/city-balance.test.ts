@@ -334,7 +334,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // All three again for the solid bodies (heroi-empurra-inimigos: a hero pushes the critters it walks into, in every world).
 // cidade again for vida-inimigos-estilo-clash merged with all of the above (role hp, ×0.7 bodies from round 2, ×1.4 XP).
 // The city again for sem-arma-girando-no-chao (the chinelo and the rings out of the catalog: the offers' and crates' rolls move).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6ce886ac83f93091',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+// The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
+// reached on foot, the revive's shove).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fd1459aba23a7dd1',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

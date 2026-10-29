@@ -7,7 +7,7 @@
    - .rh-forge: an intermission window like the round offer (same place, never both open): price tags. */
 
 /* ---------- Base ficha ---------- */
-.rh-camp{order:2;position:static;display:flex;flex-direction:row;align-items:center;gap:6px;min-height:40px;padding:3px 8px;
+.rh-camp{order:2;position:static;display:flex;flex-direction:row;align-items:center;gap:12px;min-height:40px;padding:3px 8px;
   border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);
   box-shadow:var(--s-2);text-shadow:var(--s-texto);color:var(--c-papel)}
 .rh-camp b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
@@ -16,7 +16,12 @@
 .rh-camp-wall{flex:0 1 auto;min-width:0}
 .rh-camp-wall>.ic,.rh-camp-num{flex:none}
 .rh-camp-barra{display:flex;align-items:center;flex:0 1 auto;min-width:16px}
-.rh-camp-num{display:flex;align-items:center}
+.rh-camp-num{display:flex;align-items:center;gap:2px}
+/* resultado-e-topo-com-rotulo: a sticker before each number (the heart, the wallet; the tower is in its ring). */
+.rh-camp .rh-camp-num-ic{width:18px;height:18px}
+.rh-camp .rh-camp-grana-ic{width:22px;height:22px;margin-right:3px}
+/* The phone's minimal top writes the life over the bar (fone.css): no room for the heart there. */
+.rh[data-hud=fone] .rh-camp .rh-camp-num-ic{display:none}
 /* Grana (D-048): "R$ 120", the number in the poster face like the other counts, never wrapping. */
 .rh-camp-grana{flex:none;display:flex;align-items:center;white-space:nowrap}
 .rh-camp .ic{width:22px;height:22px}

@@ -118,7 +118,35 @@ const list:SoundRecipe[]=[
     {wave:'sine',from:95,to:48,at:0,dur:0.18,gain:0.3,attack:0.002},
     {wave:'noise',from:900,to:500,at:0,dur:0.06,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:1400}},
   ],[15]),
+  // "Ufa" (NEW-20261029-ORQ-som-golpe-e-resgate): the rescued's breath of relief, a breathy fall under a soft sigh.
+  recipe('ufa','Ufa!',400,2,[
+    {wave:'noise',from:1400,to:500,at:0,dur:0.32,gain:0.18,attack:0.03,filter:{type:'bandpass',freq:900,q:0.9}},
+    {wave:'sine',from:440,to:300,at:0.02,dur:0.34,gain:0.2,attack:0.04,vibrato:{rate:5,depth:6}},
+  ]),
+  // "Tsc" (NEW-20261029-ORQ-som-golpe-e-resgate): the skill with no target, a low dry tut instead of a silent "sem alvo".
+  recipe('tsc','Sem alvo',300,1,[
+    {wave:'noise',from:700,to:400,at:0,dur:0.05,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:900}},
+    {wave:'triangle',from:180,to:120,at:0,dur:0.07,gain:0.3,attack:0.002},
+  ]),
 ];
+
+/**
+ * The gem's combo (card som-alarme-gema-e-chefe, auditoria som-impacto item 7): each gem (the kill's cédula) caught
+ * within GEM_COMBO_MS of the last plays a semitone above it, up to GEM_COMBO_MAX; after a pause it is back at the base.
+ */
+export const GEM_COMBO_MS=1000,GEM_COMBO_MAX=12;
+/** The gem's playback rate `step` semitones up (≤ 2, the engine's top). */
+export function gemRate(step:number){return 2**(Math.max(0,Math.min(GEM_COMBO_MAX,step))/12);}
+export class GemCombo {
+  private step=0;
+  private last=-Infinity;
+  /** The rate of a gem caught at `now` (ms). */
+  next(now:number){
+    this.step=now-this.last<=GEM_COMBO_MS?Math.min(GEM_COMBO_MAX,this.step+1):0;
+    this.last=now;
+    return gemRate(this.step);
+  }
+}
 
 export const RECIPES:Readonly<Record<ProceduralId,SoundRecipe>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>{
@@ -142,4 +170,5 @@ export const SOUND_ART:Readonly<Record<ProceduralId,SoundArt>>=Object.freeze({
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
   boing:{sticker:'galo'},risada:{icon:'risada'},
   carimbo:{word:'tum'},sos:{icon:'chamar'},
+  ufa:{word:'ufa'},tsc:{word:'tsc'},
 });

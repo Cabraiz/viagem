@@ -141,6 +141,8 @@ export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},askin
 export const MANAGE_LABEL='Arrumar a sala';
 /** The same verb where three buttons share one row (portrait): the crown says whose button it is (BUG-resultado-dono-6p-rola). */
 export const MANAGE_SHORT='Arrumar';
+/** The result's picture button: the same word on every screen, and what it does for screen readers and the tooltip. */
+export const SHARE_LABEL='Foto',SHARE_ARIA='Foto dos prêmios: compartilhar';
 /**
  * The candidates for a card's name, longest first (design review of pacote-bugs-ux: "Seu", "Tia" alone lose the person,
  * and a name is never cut inside a word without "…"): the whole name, then whole words with "…", then the first word
@@ -157,8 +159,9 @@ export function nameCandidates(name:string):string[]{
 }
 /** Writes into `el` the longest candidate of `name` that takes at most `lines` lines and has no word poking out. */
 export function fitCardName(el:HTMLElement,name:string,lines:number){
+  // offsetHeight, not the client rect: the PC card is zoomed (hud.css) and the rect would count the zoom the line height doesn't
   const line=parseFloat(getComputedStyle(el).lineHeight)||0;
-  const fits=()=>el.scrollWidth<=el.clientWidth+1&&(!line||el.getBoundingClientRect().height<=line*lines+1);
+  const fits=()=>el.scrollWidth<=el.clientWidth+1&&(!line||el.offsetHeight<=line*lines+1);
   for(const text of nameCandidates(name)){el.textContent=text;if(fits())return text;}
   return el.textContent;
 }
@@ -245,9 +248,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     asked=true;syncRematch();
     options.onRematch();
   });
-  // "Compartilhar" (camera sticker): a picture of the prizes for the group chat.
+  // "Foto" (camera sticker): a picture of the prizes for the group chat. One word on every screen (resultado-e-topo-com-rotulo:
+  // the icon alone in portrait read as nothing): beside the sticker where the row is wide, under it where four buttons share it.
   const share=el('button','rh-result-btn rh-result-share');share.type='button';
-  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-long">Compartilhar</span>`;share.setAttribute('aria-label','Compartilhar os prêmios');
+  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-label">${SHARE_LABEL}</span>`;share.setAttribute('aria-label',SHARE_ARIA);share.title=SHARE_ARIA;
   share.addEventListener('click',()=>{
     if(!shownResult||share.disabled)return;
     share.disabled=true;

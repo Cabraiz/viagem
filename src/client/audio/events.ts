@@ -9,6 +9,7 @@
 import type {SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
 import {WAVE_BOSS_IDS} from '../../rules/index.ts';
+import {GemCombo} from './recipes.ts';
 
 /**
  * Pack 12's weapons (sim/weapons/pack12.ts, which the client may not import) by type: the type's sound. The melee ones
@@ -65,7 +66,7 @@ export const CRIT_CUE={rate:.8,gain:1.25} as const;
 export const KILL_RATES:readonly number[]=[.94,1,1.07];
 /** An elite's death: the chefe's, smaller and higher (it is never throttled, so a crowd of plops never eats it). */
 export const ELITE_DEATH={rate:1.2,gain:.55} as const;
-/** The team hears a rescue this low; the rescuer full (the rescued stands up with 'levantar'). */
+/** The team hears a rescue this low; the rescuer full (the rescued sighs 'ufa', NEW-20261029-ORQ-som-golpe-e-resgate). */
 export const TEAM_RESCUE_GAIN=.4;
 /** A string's stable bucket in [0, n) (FNV-1a). */
 export function bucket(id:string,n:number):number{
@@ -94,7 +95,7 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
       if(elite?.(event.enemy))return {id:'chefe-morte',...ELITE_DEATH};
       return {id:'bicho-morte',rate:KILL_RATES[bucket(event.enemy,KILL_RATES.length)]};
     case 'revived':
-      if(mine(event.player))return {id:'levantar'};
+      if(mine(event.player))return {id:'ufa'};
       return mine(event.by)?{id:'resgate'}:{id:'resgate',gain:TEAM_RESCUE_GAIN};
     default:{const id=soundForEvent(event,localPlayer);return id?{id}:undefined;}
   }
@@ -128,23 +129,32 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'boss-phase':return 'chefe';
     // uno-atravessa-tralha: a square of the map's tralha (ids tralha*) broken, run over by the Uno: a short thwack.
     case 'structure':return event.hp===0&&event.id.startsWith('tralha')?'golpe':undefined;
+    // The intermission's end ("Fim do recreio!", sim/stonewards): the Uno honks (card som-alarme-gema-e-chefe).
+    case 'horn':return 'buzina';
     // 'prepare' also opens the run (before round 1) and shares a tick with 'end', so only 'end' gets the ta-dá.
     case 'round':return event.phase==='wave'?'round-inicio':event.phase==='end'?'round-fim':undefined;
     default:return undefined;
   }
 }
 
+/** The local player's gem combo, shared by the room's pickups (playEvents) and the cédula caught on screen (hud/rescue.ts). */
+export const GEMS=new GemCombo();
+/** The gem combo and its clock (ms); tests pass their own. */
+export interface GemClock {gems:GemCombo;now:()=>number}
+
 /**
  * Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played.
  * `heard`: an event whose sound already played on the client (a cédula caught on screen, render/cedula-catch.ts).
  * `elite`: an elite enemy by id (cueForEvent).
+ * Each of my gems climbs the combo's pitch (recipes.ts GemCombo); a heard one already did.
  */
 export function playEvents(audio:{play(id:SoundId,opts?:{gain?:number;rate?:number}):boolean},events:Iterable<SimEvent>,localPlayer?:string,
-  heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean):number{
+  heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean,clock:GemClock={gems:GEMS,now:()=>performance.now()}):number{
   let played=0;
   for(const event of events){
     const cue=cueForEvent(event,localPlayer,elite);
     if(!cue||heard?.(event))continue;
+    if(cue.id==='gema')cue.rate=clock.gems.next(clock.now());
     const {id,...opts}=cue;
     if(audio.play(id,opts))played++;
   }

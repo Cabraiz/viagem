@@ -22,7 +22,7 @@ import {SOFT_SHADOW} from '../shadow-rules.ts';
 import {fillSoftShadow} from '../silhouette.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
-import {CAR_LOW,HIT_POPS_MAX,carLife,hitFlash,hitPop,PART_FALL_MS,TIO_SPOT,tioSpot,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap,deliveryKey,deliveryPulse,fallenKey} from './rules.ts';
+import {CAR_LOW,HIT_POPS_MAX,carLife,hitFlash,hitPop,hitPopText,PART_FALL_MS,TIO_SPOT,tioSpot,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap,deliveryKey,deliveryPulse,fallenKey} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
 import {MOTO_POSE_STATE,applyMotoArt,imageBounds,motoColumn} from './moto-art.ts';
 import {TriBand} from '../city/tri-band.ts';
@@ -41,6 +41,8 @@ const FX_DEPTH=94900;
 const SMOKE_MS=380,SMOKE_LIFE_MS=1600;
 /** The covering figure's alpha while the hero is behind it. */
 const COVER_ALPHA=.45;
+/** While he opens the car the Uno blinks every OPEN_BLINK_MS into a warm Amarelo tint (card chaveiro-chegou-e-relogio). */
+const OPEN_BLINK_MS=350,OPEN_BLINK_TINT=0xffd860;
 /** Heads (units over the ground) the cast's balloons stand on (card chaveiro-falas): Cida's tray, him standing, the roof. */
 const RIDERS_TOP=1.85*M,STANDING_TOP=1.75*M;
 
@@ -268,7 +270,9 @@ export class ChaveiroRenderer {
       this.frozenCar.hide();
       const lost=bitCount(view.car.parts)/CAR_PARTS.length;
       // A hit flashes it Cone-pink for a blink (never with reduced effects).
-      const tint=wrecked?0x6c6c74:hitFlash(st.lastHitAt===undefined?undefined:time-st.lastHitAt,reduced)?0xff9a8a:mix(0xffffff,0x9a96a0,lost);
+      // Card chaveiro-chegou-e-relogio: while he opens it the Uno blinks bright (the moment to hold it; none with reduced).
+      const opening=view.moto.mode==='abrindo'&&!view.ended&&!reduced&&Math.floor(time/OPEN_BLINK_MS)%2===0;
+      const tint=wrecked?0x6c6c74:hitFlash(st.lastHitAt===undefined?undefined:time-st.lastHitAt,reduced)?0xff9a8a:opening?OPEN_BLINK_TINT:mix(0xffffff,0x9a96a0,lost);
       const frame=unoFrame(carH,proj.view),footY=carY+unoFootY(carH,proj.view);
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
@@ -561,7 +565,10 @@ export class ChaveiroRenderer {
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*left,bh);
     g.lineStyle(2*k,c.papel,1).strokeRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
   }
-  /** The hits' numbers ("-3", Cone with a Breu edge) rising off the bar over the roof, the newest on top. */
+  /**
+   * The hits' numbers ("-3", Cone with a Breu edge) rising off the bar over the roof, the newest on top; with the time
+   * they added to the clock when they did ("-1 +3 s", card missao-proteger-uno-tempo).
+   */
   private drawPops(car:ChaveiroView['car'],k:number,roof:number|undefined,time:number){
     const pops=this.state.pops;
     if(!pops.length)return;
@@ -569,7 +576,7 @@ export class ChaveiroRenderer {
     pops.forEach((p,i)=>{
       const pop=hitPop(time-p.at,this.options.reduced),text=this.popTexts[i];
       if(!pop||!text)return;
-      text.setText(`-${Math.max(1,Math.round(p.amount))}`).setPosition(top.x+(i%2?14:-14)*k,base-pop.rise*k).setScale(k).setAlpha(pop.alpha).setVisible(true);
+      text.setText(hitPopText(p.amount,p.seconds)).setPosition(top.x+(i%2?14:-14)*k,base-pop.rise*k).setScale(k).setAlpha(pop.alpha).setVisible(true);
     });
   }
   /** Opening the car: a Papel bar filling over the 15 s, over the chaveiro's head at the door. */

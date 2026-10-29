@@ -15,7 +15,7 @@ const lum=(h:string)=>{
 const contrast=(a:string,b:string)=>{const [x,y]=[lum(a),lum(b)].sort((p,q)=>q-p);return (x+.05)/(y+.05);};
 
 test('insta greys and the red likes badge reach 4.5 on their worst background',()=>{
-  for(const [fg,bg] of [['insta-cinza','insta-fundo'],['insta-cinza','insta-chip'],['insta-st-cinza','insta-st-campo'],['insta-st-branco','insta-st-vermelho']])
+  for(const [fg,bg] of [['insta-cinza','insta-fundo'],['insta-cinza','insta-chip'],['insta-st-cinza','insta-st-campo'],['insta-st-branco','insta-st-curtidas']])
     assert.ok(contrast(token(fg),token(bg))>=4.5,`${fg} on ${bg}: ${contrast(token(fg),token(bg)).toFixed(2)}`);
 });
 

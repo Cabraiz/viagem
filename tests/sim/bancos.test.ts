@@ -31,7 +31,7 @@ import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {planChaveiro} from '../../src/sim/chaveiro/system.ts';
 import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
-import {BICO,BICOS} from '../../src/rules/bicos.ts';
+import {BICO,BICOS,bicoSaldo} from '../../src/rules/bicos.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -357,6 +357,23 @@ test('closed and open again: the shift\'s R$ 40 spent (8 notes), the shop closes
   s.step(BICHO_SAQUE);
   assert.equal(ofType(s.events,'bank-empty').length,1,'the critter emptied it');
   assert.equal(cash(s.step(BICHO_SAQUE*5)).length,0);
+});
+
+test('the shift by seat (economia-caixa-e-forja): the solo keeps BICO.saldo, a team\'s shop holds less, one who joins trims it',()=>{
+  assert.deepEqual([1,2,3,4,5,6].map(n=>bicoSaldo(n)),[40,25,20,20,15,15]);
+  assert.equal(bicoSaldo(1),BICO.saldo);assert.equal(bicoSaldo(0),BICO.saldo,'nobody yet: the full shift');
+  for(let n=1;n<=12;n++)assert.equal(bicoSaldo(n)%BICO.nota,0,`whole notes at ${n}`);
+  const r=rig(),b=r.bank();
+  worker(r,'p1',at(b,1));addPlayer(r.world,'p2',at(b,60));addPlayer(r.world,'p3',at(b,-60));
+  r.step(1+NOTA*(bicoSaldo(3)/BICO.nota));
+  assert.equal(cash(r.events,'hero').length,bicoSaldo(3)/BICO.nota);assert.equal(r.purse.grana,bicoSaldo(3));
+  assert.equal(ofType(r.events,'bank-empty').length,1,'3 seats: closed after R$ 20');
+  for(const x of r.sys.state.list.slice(1))assert.equal(x.saldo,bicoSaldo(3),'the other shops too');
+  for(const id of ['p4','p5','p6'])addPlayer(r.world,id,at(b,0,80));
+  r.step(1);
+  for(const x of r.sys.state.list.slice(1))assert.equal(x.saldo,bicoSaldo(6),'three joined: trimmed to the 6p shift');
+  r.step(RECARGA-1);
+  assert.equal(row(r).opened,1);assert.equal(row(r).saldo,bicoSaldo(6),'it reopens at the 6p shift');
 });
 
 // ---------- Checkpoint ----------

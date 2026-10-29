@@ -123,8 +123,9 @@ export const RODAPE={
   scale:1.2,
   /** explore.css .explore-controls padding and --joystick / --joystick-justo; ≤ 370 px wide or landscape: the tight values. */
   pad:{x:24,y:24},tightPad:{x:18,y:16},stick:112*1.2,tightStick:96*1.2,
-  /** inventory.css: the gap over the attack (12 px, the hand slot's 1.1 lift fits), the slot's side and gap. */
-  lift:12,slot:34,tightSlot:32,gap:4,tightGap:3,perRow:3,hit:44,handScale:1.1,
+  /** inventory.css: the gap over the attack (18 px: the slots' 44 px tap areas end 12 px or more above it, the hand slot's
+   *  1.1 lift fits; celular-largar-item-seguro), the slot's side and gap. */
+  lift:18,slot:34,tightSlot:32,gap:4,tightGap:3,perRow:3,hit:44,handScale:1.1,
 } as const;
 /** --botao-habilidade on the phone (tokens.css): the desktop's 94 px × 1.2, or 14 + 80 × text scale when that is bigger. */
 export const foneSkillSide=(scale=1)=>Math.max(94*RODAPE.scale,14+80*scale);

@@ -34,9 +34,15 @@ import type {ClassBonus} from '../rules/index.ts';
 const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBonus}).classBonus;
 const ctxRunStartTick=(ctx:SimContext)=>(ctx as SimContext&{runStartTick?:number}).runStartTick;
 
-/** XP needed to go from `level` to `level + 1`: 5, then +10 per level until 20, +13 until 40, +16 after. */
+/**
+ * XP needed to go from `level` to `level + 1`: 4, 10, 20, then 5+10×(level−1) until 20, +13 until 40, +16 after.
+ * levelup-espalhado: levels 2 and 3 cheaper (were 5 and 15, 20 to level 3 in all) so they come in the trickle before
+ * the nests' first groups instead of inside their burst; everything above is the old curve, 11 XP sooner.
+ */
+const FIRST_LEVELS=[4,10,20];
 export function xpToNext(level:number){
   const l=Math.max(1,Math.floor(level));
+  if(l<=FIRST_LEVELS.length)return FIRST_LEVELS[l-1]!;
   if(l<=20)return 5+10*(l-1);
   if(l<=40)return 195+13*(l-20);
   return 455+16*(l-40);
@@ -57,12 +63,17 @@ export const PULL_RADIUS=1.2;
 /** Units per second a pulled pickup travels toward its collector. */
 export const HOMING_SPEED=12;
 /**
- * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, one more than the first level) in the endless
+ * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, more than the first level) in the endless
  * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
  * one, so the first level (and its chip) still lands in round 1. Not at the wave start: there it would open the
  * level-up pause (D-050) before anyone moved.
  */
 export const ROUND1_XP=6;
+/**
+ * levelup-espalhado: a solo run's XP ×1.5 below SOLO_EARLY_LEVEL. Alone in the city the bichos come one at a time
+ * before the nests open (2-3 kills in 200 s), so the first card only came with the first group; now it comes before.
+ */
+export const SOLO_EARLY_XP=1.5,SOLO_EARLY_LEVEL=3;
 export const ROUND_OFFER_FALLBACK_SECONDS=20;
 const DROP_LIFETIME_SECONDS=30,DROP_SPREAD=.3,MAX_LEVELS_PER_TICK=100;
 const REROLL='~';
@@ -126,6 +137,12 @@ export type ChooseFailure='no-player'|'no-offer'|'unknown-offer'|'not-oldest'|'b
 export type ChooseResult={ok:true;itemId:string;level:number}|{ok:false;reason:ChooseFailure};
 
 const canCollect=(p:SimPlayer)=>p.online&&!p.spectator&&!p.eliminated&&!p.downed;
+/** SOLO_EARLY_XP while the team is below SOLO_EARLY_LEVEL and the run has one hero (room bots count, spectators do not). */
+function soloEarly(ctx:SimContext){
+  if(ctx.team.level>=SOLO_EARLY_LEVEL)return 1;
+  let heroes=0;for(const p of ctx.players.values())if(!p.spectator&&++heroes>1)return 1;
+  return heroes===1?SOLO_EARLY_XP:1;
+}
 const receivesOffers=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 const dist2=(a:Point,b:Point)=>(a.x-b.x)**2+(a.y-b.y)**2;
 /** A round director owns ctx.round (VGM-033): offers follow the intermission clock (D-021). */
@@ -185,7 +202,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const killer=by?ctx.players.get(by):undefined;
     let growth=killer&&!killer.spectator?killer.stats.growth:0;
     if(!growth)for(const p of ctx.players.values())if(canCollect(p))growth=Math.max(growth,p.stats.growth);
-    const xp=(enemy.xp+(round1Due(ctx)&&ctx.round.index===1&&ctx.round.phase==='wave'?payRound1():0))*(growth||1);
+    const xp=(enemy.xp+(round1Due(ctx)&&ctx.round.index===1&&ctx.round.phase==='wave'?payRound1():0))*(growth||1)*soloEarly(ctx);
     ctx.team.xp+=xp;
     return xp;
   }
@@ -242,7 +259,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       return true;
     }
     ctx.pickups.delete(pickup.id);
-    if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth;
+    if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth*soloEarly(ctx);
     else if(pickup.kind==='heal')player.hp=Math.min(player.stats.maxHp,player.hp+pickup.value);
     else if(pickup.kind==='grana')addGrana(player,pickup.value);
     ctx.emit({type:'pickup',player:player.id,pickup:pickup.id,kind:pickup.kind,value:pickup.value});

@@ -561,7 +561,7 @@ test('soundForEvent maps sim events to sounds for the local player',()=>{
     [{type:'fire',player:ME,weapon:'pandeiro',x:0,y:0},'p12-orbita'],
     [{type:'fire',player:ME,weapon:'skill:clt',x:0,y:0},undefined],
     [{type:'fire',player:OTHER,weapon:'escopeta',x:0,y:0},undefined],
-    [{type:'spawn-warning',x:0,y:0,atTick:10,count:3},undefined],
+    [{type:'spawn-warning',x:0,y:0,atTick:10,count:3},'chefe-passo'],
   ];
   for(const [event,want] of cases)assert.equal(soundForEvent(event,ME),want,JSON.stringify(event));
 });

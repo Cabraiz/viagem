@@ -776,3 +776,90 @@ test('publicar deletes the integrated vgm/ branches on the remote when the new m
     assert.notEqual(git(w.repo,'ls-remote','origin','refs/heads/vgm/c'),'');
   }finally{w.cleanup();}
 });
+
+// NEW-20261029-ORQ-fila-culpado-rapido: a fake lint-design (scripts/lint-design.mjs <root>, red on border-radius:5px in
+// src/, or on src/par1.ts with src/par2.ts) and a suite that runs it as tests/tools/design-lint.test.ts beside the
+// QUEBRADO rule; every run notes its files and when its folder was made (one folder reused = one birth time).
+const LINT=`import {readdirSync,readFileSync,existsSync} from 'node:fs';import {join} from 'node:path';
+const root=process.argv[2]||'.',src=join(root,'src');
+const walk=(d)=>readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(d,e.name)):[join(d,e.name)]);
+const bad=existsSync(src)?walk(src).filter(f=>/[.](css|ts)$/.test(f)&&/border-radius:\\s*5px/.test(readFileSync(f,'utf8'))):[];
+for(const f of bad)console.log(f.slice(root.length+1).split(String.fromCharCode(92)).join('/')+':1 [raio] border-radius:5px fora da escala');
+if(existsSync(join(src,'par1.ts'))&&existsSync(join(src,'par2.ts'))){console.log('src/par2.ts:1 [par] par1 e par2 juntos');bad.push('par');}
+process.exit(bad.length?1:0);`;
+const LINT_SUITE=`import {readdirSync,readFileSync,appendFileSync,statSync} from 'node:fs';import {spawnSync} from 'node:child_process';
+appendFileSync(process.env.FILA_RUNS,(process.env.FILA_FILES||'*')+' '+Math.round(statSync('.').birthtimeMs)+'\\n');
+const failed=[];
+if(readdirSync('src').some(f=>f.endsWith('.ts')&&readFileSync('src/'+f,'utf8').includes('QUEBRADO')))failed.push('tests/a.test.ts');
+if(spawnSync(process.execPath,['scripts/lint-design.mjs','.']).status!==0)failed.push('tests/tools/design-lint.test.ts');
+if(failed.length){console.log('FILA-FAILED: '+JSON.stringify(failed));process.exit(1);}`;
+function lintWorld(){
+  const w=world();
+  mkdirSync(join(w.repo,'scripts'));writeFileSync(join(w.repo,'scripts/lint-design.mjs'),LINT);writeFileSync(join(w.repo,'lint-suite.mjs'),LINT_SUITE);
+  git(w.repo,'add','-A');git(w.repo,'commit','-qm','lint');git(w.repo,'push','-q','origin','main');
+  return {...w,opts:w.opts.map(o=>o==='node check.mjs'?'node lint-suite.mjs':o)};
+}
+const cards=(list:{card:string}[])=>list.map(e=>e.card);
+
+test('ACCEPTANCE (fila-culpado-rapido): 6 branches, the 5th breaks: found by binary search in ONE worktree (base, 3, 4, 5), not 6 rebuilt ones',()=>{
+  const w=lintWorld();
+  try{
+    for(let k=1;k<=6;k++){
+      w.branch(`vgm/b${k}`,`src/b${k}.ts`,k===5?'export const b="QUEBRADO";\n':`export const b${k}=${k};\n`);
+      main(['pronto',`NEW-b${k}`,'--branch',`vgm/b${k}`,...w.opts]);
+    }
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'publicado');assert.equal(state.suites,2,'the batch, then the batch without the culprit');
+    assert.deepEqual(cards(state.integrados),['NEW-b1','NEW-b2','NEW-b3','NEW-b4','NEW-b6']);
+    assert.equal(state.devolvidos.length,1);
+    const back=state.devolvidos[0];
+    assert.equal(back.card,'NEW-b5');assert.deepEqual(back.falhas,['tests/a.test.ts']);
+    assert.deepEqual(back.busca,{worktrees:1,passos:[0,3,4,5]},'the base, then prefixes 3 (green), 4 (green), 5 (red)');
+    const runs=w.runs().map(r=>r.split(' ')),search=runs.slice(1,5);
+    assert.deepEqual(runs.map(r=>r[0]),['*','tests/a.test.ts','tests/a.test.ts','tests/a.test.ts','tests/a.test.ts','*']);
+    assert.equal(new Set(search.map(r=>r[1])).size,1,'the four search runs share one folder (reset, not a new worktree)');
+    assert.equal(JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-b5.json'),'utf8')).busca.worktrees,1);
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no worktree left');
+  }finally{w.cleanup();}
+});
+
+test('fila-culpado-rapido: pronto refuses a branch that breaks lint-design (--sem-checagem queues it), the lote sends it back before any suite; a lint the main already fails blames nobody',()=>{
+  let w=lintWorld();
+  try{
+    w.branch('vgm/raio','src/chaveiro.css','.chave{border-radius:5px}\n');
+    w.branch('vgm/limpa','src/limpa.ts','export const limpa=1;\n');
+    assert.throws(()=>main(['pronto','NEW-raio','--branch','vgm/raio',...w.opts]),/não entra na fila: checagem estática falha — lint-design: src\/chaveiro\.css:1 \[raio\]/);
+    assert.ok(!existsSync(join(w.board,'fila/NEW-raio.json')),'not queued');
+    main(['pronto','NEW-raio','--branch','vgm/raio','--sem-checagem',...w.opts]);
+    main(['pronto','NEW-limpa','--branch','vgm/limpa',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.deepEqual(cards(state.integrados),['NEW-limpa']);assert.equal(state.suites,1);
+    assert.deepEqual(w.runs().map(r=>r.split(' ')[0]),['*'],'the static check sent it back: no culprit search');
+    const back=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-raio.json'),'utf8'));
+    assert.equal(back.status,'devolvido');assert.equal(back.motivo,'checagem estática: lint-design');
+    assert.deepEqual(back.falhas,['tests/tools/design-lint.test.ts']);assert.match(back.checagem,/chaveiro\.css:1 \[raio\]/);
+  }finally{w.cleanup();}
+  w=lintWorld();
+  try{
+    writeFileSync(join(w.repo,'src/velho.css'),'.v{border-radius:5px}\n');git(w.repo,'add','-A');git(w.repo,'commit','-qm','main vermelha no lint');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/css','src/novo.css','.n{color:red}\n');
+    main(['pronto','NEW-css','--branch','vgm/css',...w.opts]);
+    assert.ok(existsSync(join(w.board,'fila/NEW-css.json')),'the lint failure of the main is not the branch\'s');
+  }finally{w.cleanup();}
+});
+
+test('fila-culpado-rapido: a lint-design failure only two branches make together is found on the trees of the prefixes, with no worktree',()=>{
+  const w=lintWorld();
+  try{
+    w.branch('vgm/p1','src/par1.ts','export const p1=1;\n');
+    w.branch('vgm/meio','src/meio.ts','export const meio=1;\n');
+    w.branch('vgm/p2','src/par2.ts','export const p2=1;\n');
+    for(const n of ['p1','meio','p2'])main(['pronto',`NEW-${n}`,'--branch',`vgm/${n}`,...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.deepEqual(cards(state.integrados),['NEW-p1','NEW-meio']);assert.equal(state.suites,2);
+    const back=state.devolvidos[0];
+    assert.equal(back.card,'NEW-p2');assert.deepEqual(back.falhas,['tests/tools/design-lint.test.ts']);
+    assert.deepEqual(back.busca,{worktrees:0,atalho:'lint-design',passos:3});assert.match(back.checagem,/\[par\]/);
+    assert.deepEqual(w.runs().map(r=>r.split(' ')[0]),['*','*'],'no suite run to find it');
+  }finally{w.cleanup();}
+});

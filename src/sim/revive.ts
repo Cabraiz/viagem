@@ -65,6 +65,8 @@ export interface ReviveOptions {
   pauseBleedInPrepare?:boolean;
   /** A room checkpoint's revive credits (RunSystems.state().revives), so the run resumes with the rescues it had. */
   revives?:Iterable<[string,number]>;
+  /** A room checkpoint's solo second chances left (RunSystems.state().soloChances), so a resumed room gives none back. */
+  soloChances?:number;
 }
 
 export interface ReviveSystem extends SimSystem {
@@ -106,7 +108,10 @@ export function createReviveSystem(options:ReviveOptions={}):ReviveSystem{
   const revives=new Map<string,number>(options.revives??[]);
   const pauseInPrepare=options.pauseBleedInPrepare??true;
   const grace=options.reconnectGraceTicks??RECONNECT_GRACE_TICKS;
-  let defeated=false,outSince:number|undefined,soloChances=SOLO_SECOND_CHANCES;
+  let defeated=false,outSince:number|undefined;
+  // Junk from storage (not a whole number in 0..SOLO_SECOND_CHANCES) counts as a fresh run's.
+  const stored=options.soloChances;
+  let soloChances=Number.isInteger(stored)&&stored!>=0&&stored!<=SOLO_SECOND_CHANCES?stored!:SOLO_SECOND_CHANCES;
   const rise=(ctx:SimContext,p:SimPlayer)=>{
     p.downed=undefined;
     p.hp=revivedHp(p);

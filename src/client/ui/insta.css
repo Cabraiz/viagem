@@ -281,7 +281,7 @@
 }
 /* The likes bubble (the red ♥ 1 of the reference): a heart and a number on red, its tail pointing down. */
 .insta-st-curtidas {
-  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-vermelho);
+  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-curtidas);
   font: 800 clamp(12px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
 }
 .insta-st-curtidas svg { width: 1.1em; height: 1.1em; fill: currentColor; stroke: none; }

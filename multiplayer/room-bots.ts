@@ -8,8 +8,9 @@
  * Deterministic: classes (and so names) come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
-import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
+import {attackReach,botSites,botSpotOrder,decide,holdsObra,freeCity,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {CAR_RADIUS} from '../src/contract/index.ts';
+import {cidaPick,pixAmount} from './bot-economia.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {getClass,railName} from '../src/rules/index.ts';
@@ -53,7 +54,7 @@ export const KIT_RETRY_TICKS=5*HZ;
 /**
  * NEW-20261014-ORQ-carteira-e-pix: a bot that is not the forger sends what its wallet holds above its part of the
  * chaveiro's bill (bot-brain granaReserve) to the forger by PIX (Simulation.pix: validated and evented like a
- * person's), at most once every BOT_PIX_GAP ticks and only BOT_PIX_MIN R$ or more (a toast for every R$ 1 kill would
+ * person's), up to what the forger lacks for its next purchase (bot-economia.ts pixAmount; pix-sem-acumular), at most once every BOT_PIX_GAP ticks and only BOT_PIX_MIN R$ or more (a toast for every R$ 1 kill would
  * be noise). Bots never send a PIX to a person (v1); people may send to bots, who spend it by their rule.
  */
 export const BOT_PIX_GAP=5*HZ,BOT_PIX_MIN=5;
@@ -128,6 +129,8 @@ export class RoomBots {
   built=0;
   /** PIX from a bot to the forger that went through (lab, bench and tests): count and R$. */
   pixes=0;pixed=0;
+  /** Dona Cida's sweets the bots bought (bench and tests). */
+  cidas=0;
   /** Bench --no-towers (scripts/bench-city-run.ts): the builder never gets the tower view, so no bot builds. */
   towersOff=false;
   /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
@@ -164,7 +167,14 @@ export class RoomBots {
       if(!p)continue;
       // D-052 (obra-livre-ajustes): a bot on its own free obra holds still until it is done (towers/system.ts holdsObra,
       // the sim's stepCap 0); steering then only reads as stuck (and fires unstick), so it stands and waits.
-      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){this.modes.set(mind.id,'build');sim.setBotInput(mind.id,{x:0,y:0});continue;}
+      // Card bots-build-parado: in the manual combat it still swings at a critter in reach (bot-brain attackReach), like
+      // a person on their obra; it stood idle there (6p: 46 s a match of the builder's 'build parado').
+      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){
+        this.modes.set(mind.id,'build');
+        let attack:boolean|undefined;
+        if(sim.combat==='manual'){view??=sim.botView();const me=view.players.find(q=>q.id===mind.id);attack=!!me&&attackReach(me,{x:p.x,y:p.y},view.enemies);}
+        sim.setBotInput(mind.id,{x:0,y:0},undefined,attack);continue;
+      }
       view??=sim.botView();
       people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
       if(forger===undefined)forger=this.forger(view,minds,people);
@@ -232,15 +242,18 @@ export class RoomBots {
         if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);
-      // The surplus to the forger (BOT_PIX_GAP, BOT_PIX_MIN): bot to bot only.
+      // The surplus to the forger (BOT_PIX_GAP, BOT_PIX_MIN): bot to bot only, up to its next purchase (bot-economia.ts).
       if(bank===undefined)bank=this.forger(view,minds,people,Infinity,true);
       if(bank&&bank!==mind.id&&sim.bots.has(bank)&&(mind.pixTick===undefined||tick-mind.pixTick>=BOT_PIX_GAP)){
-        const amount=Math.min(PIX_MAX,sim.granaOf(mind.id)-granaReserve(view));
+        const amount=pixAmount(view,sim.granaOf(mind.id),sim.granaOf(bank));
         if(amount>=BOT_PIX_MIN){
           const result=sim.pix(mind.id,bank,amount,`bot-${mind.id}-${++mind.req}`);
           if(result.ok){mind.pixTick=tick;this.pixes++;this.pixed+=amount;}
         }
       }
+      // Dona Cida's sweets with what the bot keeps above its part (bot-economia.ts cidaPick).
+      const cida=cidaPick(view,mind.id,sim.granaOf(mind.id),bank===mind.id);
+      if(cida&&sim.buyCida(mind.id,cida,`bot-${mind.id}-${++mind.req}`).ok)this.cidas++;
     }
     if(view){this.thinkMs+=performance.now()-started;this.thinks++;}
     return sos;

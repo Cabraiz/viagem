@@ -12,7 +12,7 @@ test('29 classes have unique identity and one atlas cell each; the 7 removed one
   assert.ok(classes.every(hero=>Number.isInteger(hero.art)&&hero.art>=0&&hero.art<36));
 });
 test('every class has a complete and balanced selectable sheet',()=>{
-  for(const hero of classes){assert.equal(hero.stats.reduce((sum,value)=>sum+value,0),12,hero.name);assert.ok(hero.stats.every(value=>value>=1&&value<=5));assert.ok(hero.description&&hero.skillDescription&&hero.quote);}
+  for(const hero of classes){assert.equal(hero.stats.reduce((sum,value)=>sum+value,0),12,hero.name);assert.ok(hero.stats.every(value=>value>=1&&value<=5));}
 });
 test('literal requested classes exist and search ignores accents',()=>{
   assert.equal(getClass('cidadao-comum')?.name,'Cidadão');

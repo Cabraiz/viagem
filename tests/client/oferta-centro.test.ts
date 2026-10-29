@@ -8,10 +8,10 @@ import {OFFER_WINDOW_TITLE,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerRar
 const read=(file:string)=>readFileSync(new URL(`../../${file}`,import.meta.url),'utf8');
 
 test('the texts of the reference, in Portuguese',()=>{
-  assert.equal(OFFER_WINDOW_TITLE,'Ofertas de melhoria');
+  assert.equal(OFFER_WINDOW_TITLE,'Escolha uma melhoria');
   assert.equal(WAIT_LINE,'Esperando os outros jogadores…');
   assert.deepEqual([SKIP_LABEL,REROLL_LABEL],['Pular','Rolar de novo']);
-  assert.equal(levelLabel(9),'Niv 9');assert.equal(levelLabel(0),'Niv 1');
+  assert.equal(levelLabel(9),'Nív. 9');assert.equal(levelLabel(0),'Nív. 1');
 });
 
 test('rarity by the level the card reaches; an evolution is always lendária',()=>{

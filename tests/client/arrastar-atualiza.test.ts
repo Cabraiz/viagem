@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {UPDATE_NEWS,UPDATE_TITLE} from '../../src/client/ui/update-toast.ts';
 import {RETRY_S,UPDATE_TEXT,isNewBuild,retryLine,startUpdateRetry,type RetryState} from '../../src/client/ui/update-retry.ts';
 import {PULL_RELOAD_PX,PULL_SHOW_PX,PULL_MAX_PX,PULL_SKIP,atTop,pullOffset,pullStep} from '../../src/client/ui/pull-refresh.ts';
 import {UPDATE_NEEDED,needsUpdate} from '../../src/protocol/index.ts';
@@ -68,6 +69,12 @@ test('retry: the lines are short and no longer say "espera 1 minuto"; the room\'
   assert.equal(retryLine({kind:'reloading'}),UPDATE_TEXT.reloading);
   for(const line of [UPDATE_TEXT.title,UPDATE_TEXT.checking,UPDATE_TEXT.reloading,UPDATE_TEXT.waiting(10)])assert.doesNotMatch(line,/minuto/);
   assert.ok(needsUpdate(UPDATE_NEEDED));
+});
+
+test('one new-version line (texts audit T9): the notice and the retry window share UPDATE_NEWS, in the voice of the game',()=>{
+  assert.equal(UPDATE_NEWS,'Saiu versão nova do jogo.');
+  assert.equal(UPDATE_TEXT.title,UPDATE_NEWS);
+  assert.ok(UPDATE_TITLE.startsWith(UPDATE_NEWS)&&UPDATE_TITLE.endsWith('Toca pra atualizar.'),UPDATE_TITLE);
 });
 
 test('pull: down and vertical pulls; past PULL_RELOAD_PX it is ready; up or sideways cancels for the touch',()=>{

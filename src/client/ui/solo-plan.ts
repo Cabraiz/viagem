@@ -98,11 +98,38 @@ export function soloErrorText(error:unknown):string{
  * second try cannot change (the room's fatal word, e.g. an old version).
  */
 export const SOLO_RETRY_GAP_MS=800;
-export async function soloOneRetry<T>(attempt:()=>Promise<T>,retryable:(error:unknown)=>boolean,
+/** `attempt` gets the try's index (0, then 1): the first one runs on the short times below. */
+export async function soloOneRetry<T>(attempt:(tryIndex:number)=>Promise<T>,retryable:(error:unknown)=>boolean,
   wait:(ms:number)=>Promise<unknown>=ms=>new Promise(done=>setTimeout(done,ms))):Promise<T>{
-  try{return await attempt();}
-  catch(error){if(!retryable(error))throw error;await wait(SOLO_RETRY_GAP_MS);return attempt();}
+  try{return await attempt(0);}
+  catch(error){if(!retryable(error))throw error;await wait(SOLO_RETRY_GAP_MS);return attempt(1);}
 }
+/**
+ * solo-tenta-de-novo: the first try does not wait the usual 10 s for the room and 2 × 8 s for the socket (the audit's
+ * cold Worker took 13.8 s and never opened it; the second try came in 2.3 s). Its POST /rooms gets SOLO_FIRST_CREATE_MS
+ * and its join SOLO_FIRST_JOIN_MS, unless the room already answered and the city is coming down (the download has its
+ * own timeout). The second try has today's times.
+ */
+export const SOLO_CREATE_MS=10000,SOLO_FIRST_CREATE_MS=5000,SOLO_FIRST_JOIN_MS=6000;
+export const soloCreateMs=(tryIndex:number)=>tryIndex===0?SOLO_FIRST_CREATE_MS:SOLO_CREATE_MS;
+/**
+ * `job`, or a 'SoloSlow' error when it has not settled after `ms` and `stillWaiting()` (nothing of the room heard yet).
+ * Never shown: only the first try is cut (soloErrorText would give SOLO_FAILED anyway).
+ */
+export function soloWithin<T>(job:Promise<T>,ms:number,stillWaiting:()=>boolean,
+  after:(ms:number,run:()=>void)=>()=>void=(ms,run)=>{const t=setTimeout(run,ms);return ()=>clearTimeout(t);}):Promise<T>{
+  return new Promise<T>((resolve,reject)=>{
+    const cancel=after(ms,()=>{if(stillWaiting())reject(Object.assign(new Error('A sala demorou a responder.'),{name:'SoloSlow'}));});
+    job.then(value=>{cancel();resolve(value);},error=>{cancel();reject(error);});
+  });
+}
+/**
+ * The room Worker said no (a 4xx: CREATE_LIMIT's "Aguarde um minuto…", a bad request): a second POST cannot change it
+ * and spends one more of the 5 rooms a minute, so it is shown at once (its own text, soloErrorText).
+ */
+export const soloRefused=(message:string)=>Object.assign(new Error(message),{refused:true});
+/** Worth the second try: not the room's fatal word (`fatal`, e.g. an old version), not a refusal (soloRefused). */
+export const soloRetryable=(error:unknown,fatal:boolean)=>!fatal&&!(error instanceof Error&&(error as {refused?:unknown}).refused===true);
 /** `?ilha=1` (tests only): "Jogar sozinho" opens the old island exploration, without a room. */
 export const islandFlag=(search:string)=>new URLSearchParams(search).get('ilha')==='1';
 

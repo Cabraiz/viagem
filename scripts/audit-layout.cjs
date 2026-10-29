@@ -222,6 +222,9 @@ const SCENES=[
         await page.waitForSelector(roots,{state:'visible',timeout:30000});
         await page.evaluate(()=>document.fonts.ready);
         await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        // The result's cards slide in (rh-rcard-in, ~1 s with six) and slide again when the grid redraws ("Arrumar a sala"):
+        // measured mid-slide they read as out of view. Measure them where they land.
+        await page.evaluate(()=>Promise.race([Promise.all([...document.querySelectorAll('.rh-rcard')].flatMap(c=>c.getAnimations()).map(a=>a.finished.catch(()=>{}))),new Promise(r=>setTimeout(r,3000))]));
       };
       let problems;
       try{

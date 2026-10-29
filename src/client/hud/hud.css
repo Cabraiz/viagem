@@ -508,7 +508,7 @@
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji{height:24px}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{width:24px;height:24px}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-title{display:inline}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:inline;margin-left:.3em;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:inline;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
 /* 125% text with 3+ players: the award jokes go first (titles stay), so 6 cards still fit without scrolling. */
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:none}
 /* The cards would still scroll (result.ts fitCards): the jokes go, titles and stickers stay. */

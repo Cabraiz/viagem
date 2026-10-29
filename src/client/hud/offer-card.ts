@@ -12,7 +12,7 @@ import {BASE_STATS,type PlayerStats} from '../../contract/index.ts';
 import {AURA,cartaoCashback,passiveDef} from '../../rules/index.ts';
 import {itemDisplay} from './items.ts';
 
-export const OFFER_WINDOW_TITLE='Ofertas de melhoria';
+export const OFFER_WINDOW_TITLE='Escolha uma melhoria';
 export const WAIT_LINE='Esperando os outros jogadores…';
 export const SKIP_LABEL='Pular',REROLL_LABEL='Rolar de novo';
 
@@ -24,7 +24,7 @@ export function offerRarity(itemId:string,level:number):OfferRarity{
   const l=Math.floor(level)||1;
   return l<=1?'nova':l<=3?'comum':l<=5?'rara':l<=7?'epica':'lendaria';
 }
-export const levelLabel=(level:number)=>`Niv ${Math.max(1,Math.floor(level)||1)}`;
+export const levelLabel=(level:number)=>`Nív. ${Math.max(1,Math.floor(level)||1)}`;
 
 /** pt-BR label and format of each stat a passive moves ("x": a multiplier, "n": a plain number). */
 const STAT_TEXT:Partial<Record<keyof PlayerStats,{label:string;format:'x'|'n'}>>={

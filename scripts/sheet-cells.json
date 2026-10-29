@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4527,
+  "sheets": 4533,
   "failing": 0,
   "frames": 0
  },
@@ -5113,6 +5113,16 @@
    "ilhas": 39,
    "fails": []
   },
+  "enemies/saci/idle-sombra.webp": {
+   "sha": "e1a2c145095cd9b8661ad6e3e625b620e719afdf1763f2e96e79b088e27f4d3a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "enemies/saci/idle.webp": {
+   "sha": "93d7724f1986ba16cc22de640bf9c9a046603c0bbdbf1523b5558f8ab3a0c663",
+   "ilhas": 6,
+   "fails": []
+  },
   "enemies/sapo-cururu/death.webp": {
    "sha": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",
    "ilhas": 1,
@@ -9761,6 +9771,16 @@
   "lite/enemies-pc/rolo-lava-rapido/walk.webp": {
    "sha": "699495375654f237a1f63818890b161bbc4a2da82c6081edcb55ed12e572a51f",
    "ilhas": 39,
+   "fails": []
+  },
+  "lite/enemies-pc/saci/idle-sombra.webp": {
+   "sha": "45dd5a6dc9446c43e1c8068dd37b429505abb8ac9282252fc02f4eebe7693e08",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies-pc/saci/idle.webp": {
+   "sha": "6a478d4f27d74e59da9c27924abe607f0a3416e6a43917a5310399b58e47b80b",
+   "ilhas": 3,
    "fails": []
   },
   "lite/enemies-pc/sapo-cururu/death.webp": {
@@ -15586,6 +15606,16 @@
   "lite/enemies/rolo-lava-rapido/walk.webp": {
    "sha": "b5c186e0260eaf76a8d52e64a78c17aa10179e1c3c60faeafdde45180b7c4f49",
    "ilhas": 23,
+   "fails": []
+  },
+  "lite/enemies/saci/idle-sombra.webp": {
+   "sha": "f44eaccaa380a3c27ddaaf09870c074075cb7d71279331a948eb2ca70506c79e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies/saci/idle.webp": {
+   "sha": "e7e5678a4d3f8469c823c922d8cd356339ab538e758b552df58e9cadcd3173bb",
+   "ilhas": 0,
    "fails": []
   },
   "lite/enemies/sapo-cururu/death.webp": {

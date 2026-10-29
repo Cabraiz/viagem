@@ -56,10 +56,10 @@ test('the buttons: R$ 5 · R$ 10 · R$ 25 · tudo, off above my balance; "tudo" 
 
 test('toasts: the receiver reads who, how much and the memo; the sender reads it went; nobody else reads anything',()=>{
   const names:Record<string,string>={p1:'Mateus',p2:'Tia'};const nameOf=(id:string)=>names[id];
-  assert.deepEqual(pixToast({from:'p2',to:'p1',amount:10,memo:0},'p1',nameOf),{text:`Tia te mandou um PIX de R$ 10 — '${PIX_MEMOS[0]}'`,mine:false});
-  assert.deepEqual(pixToast({from:'p1',to:'p2',amount:25,memo:3},'p1',nameOf),{text:'PIX de R$ 25 pra Tia enviado',mine:true});
+  assert.deepEqual(pixToast({from:'p2',to:'p1',amount:10,memo:0},'p1',nameOf),{text:`Tia te mandou um Pix de R$ 10 — '${PIX_MEMOS[0]}'`,mine:false});
+  assert.deepEqual(pixToast({from:'p1',to:'p2',amount:25,memo:3},'p1',nameOf),{text:'Pix de R$ 25 pra Tia enviado',mine:true});
   assert.equal(pixToast({from:'p2',to:'p3',amount:5,memo:1},'p1',nameOf),undefined);
-  assert.equal(pixToast({from:'p2',to:'p1',amount:5,memo:99},'p1',nameOf)!.text,'Tia te mandou um PIX de R$ 5','an unknown memo is left out');
+  assert.equal(pixToast({from:'p2',to:'p1',amount:5,memo:99},'p1',nameOf)!.text,'Tia te mandou um Pix de R$ 5','an unknown memo is left out');
 });
 
 test('the balloon\'s clock: closes PIX_BALLOON_MS untouched, a touch extends it, a send waits, a refusal shows PIX_REFUSAL_MS',()=>{
@@ -211,7 +211,7 @@ test('DOM: a tap on a friend opens the balloon by them and stops the name; mine,
   assert.equal(e.stopped,true,'stopPropagation only when it opens');assert.equal(r.balloon.hidden,false);
   assert.equal(r.named,'p1','the strip never saw the tap');
   const name=r.balloon.all(x=>x.classList.has('rh-pix-nome'))[0],saldo=r.balloon.all(x=>x.classList.has('rh-pix-saldo'))[0];
-  assert.equal(name.textContent,'PIX pra Tia');assert.equal(saldo.textContent,`tem R$ ${FIXTURE_GRANA[1]}`);
+  assert.equal(name.textContent,'Pix pra Tia');assert.equal(saldo.textContent,`tem R$ ${FIXTURE_GRANA[1]}`);
   // Under the portrait, inside the phone.
   const top=Number(r.balloon.style.top.replace('px','')),left=Number(r.balloon.style.left.replace('px',''));
   assert.ok(top>=58+30,`top ${top}`);assert.ok(left>=8&&left+228<=390-8,`left ${left}`);assert.equal(r.balloon.dataset.lado,'below');
@@ -261,11 +261,11 @@ test('DOM: buttons off above my balance, "tudo" capped, one tap sends, pending "
 test('DOM: the pix event: the receiver\'s and the sender\'s toasts, nothing for others, the receiver\'s portrait flashes for PIX_FLASH_MS',()=>{
   const r=rig(),v=view4();r.update(v);
   r.update({...v,events:[{type:'pix',from:'p2',to:'p1',amount:10,memo:2,eventId:5}]});
-  assert.deepEqual(r.said,[{text:`Tia te mandou um PIX de R$ 10 — '${PIX_MEMOS[2]}'`,mine:false}]);
+  assert.deepEqual(r.said,[{text:`Tia te mandou um Pix de R$ 10 — '${PIX_MEMOS[2]}'`,mine:false}]);
   assert.equal('pix' in r.members.get('p1')!.dataset,true,'my portrait flashes');
   r.update({...v,events:[{type:'pix',from:'p2',to:'p1',amount:10,memo:2,eventId:5}]});assert.equal(r.said.length,1,'the same event once');
   r.update({...v,events:[{type:'pix',from:'p1',to:'p4',amount:25,memo:0,eventId:6}]});
-  assert.deepEqual(r.said.at(-1),{text:'PIX de R$ 25 pra Bruninha enviado',mine:true});
+  assert.deepEqual(r.said.at(-1),{text:'Pix de R$ 25 pra Bruninha enviado',mine:true});
   r.update({...v,events:[{type:'pix',from:'p2',to:'p3',amount:5,memo:0,eventId:7}]});
   assert.equal(r.said.length,2,'someone else\'s PIX: no toast');assert.equal('pix' in r.members.get('p3')!.dataset,true,'but the flash');
   r.tick(PIX_FLASH_MS);r.update(v);

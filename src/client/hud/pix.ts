@@ -10,7 +10,7 @@
  *   camera's "seguir", explore.ts), outside a run's combat or intermission, or in the level-up pause (D-050, ctx.pause):
  *   then the tap falls through to the portrait's name (team.ts NAME_TAP_MS). When it opens, the tap stops here, so the
  *   name does not show under the balloon;
- * - the 'pix' event: the receiver reads "Ana te mandou um PIX de R$ 10 — 'pro pastel'", the sender "PIX de R$ 10 pra
+ * - the 'pix' event: the receiver reads "Ana te mandou um Pix de R$ 10 — 'pro pastel'", the sender "Pix de R$ 10 pra
  *   Ana enviado" (a row of the announcement slot); others read nothing (the phone stays lean), and every screen flashes
  *   the receiver's portrait Cartolina for PIX_FLASH_MS.
  * A friend's balance shows only in this balloon (decision 2 of the proposal: the top bar shows my wallet only).
@@ -81,9 +81,9 @@ export function pixToast(event:Pick<PixEvent,'from'|'to'|'amount'|'memo'>,localI
   const amount=granaText(event.amount);
   if(event.to===localId){
     const memo=Number.isInteger(event.memo)?PIX_MEMOS[event.memo]:undefined;
-    return {text:`${nameOf(event.from)} te mandou um PIX de ${amount}${memo?` — '${memo}'`:''}`,mine:false};
+    return {text:`${nameOf(event.from)} te mandou um Pix de ${amount}${memo?` — '${memo}'`:''}`,mine:false};
   }
-  if(event.from===localId)return {text:`PIX de ${amount} pra ${nameOf(event.to)} enviado`,mine:true};
+  if(event.from===localId)return {text:`Pix de ${amount} pra ${nameOf(event.to)} enviado`,mine:true};
   return undefined;
 }
 
@@ -210,8 +210,8 @@ export function createPix(options:PixOptions):PixPart{
     if(key===lastRender&&!balloon.hidden)return;
     lastRender=key;
     const who=friend?railName(friend.name):'';
-    name.textContent=`PIX pra ${who}`;saldo.textContent=`tem ${granaText(granaOf(friend))}`;
-    balloon.setAttribute('aria-label',`PIX pra ${who}, que tem ${reaisText(granaOf(friend))}`);
+    name.textContent=`Pix pra ${who}`;saldo.textContent=`tem ${granaText(granaOf(friend))}`;
+    balloon.setAttribute('aria-label',`Pix pra ${who}, que tem ${reaisText(granaOf(friend))}`);
     list.forEach((b,i)=>{
       const n=buttons[i],waiting=state.pending?.all===b.all&&(b.all||state.pending?.amount===b.amount);
       n.button.disabled=!b.enabled||!!state.pending;

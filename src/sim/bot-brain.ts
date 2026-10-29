@@ -74,7 +74,7 @@ import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {OPEN_REACH} from './crates.ts';
-import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
+import {CRATE_STAND,LOOT_ANY_NEAR,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /**
@@ -386,6 +386,8 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
  * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
 export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
+/** Card bots-build-parado: a bot alone in the room loots this far in the intermission (the late check still brings it home). */
+export const LOOT_RADIUS_SOLO=LOOT_RADIUS_RUN;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -842,9 +844,18 @@ export function decide(input:BrainInput):Decision{
   const keep=memory.lootGoal,keptHp=memory.lootHp;delete memory.lootGoal;delete memory.lootHp;
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
-    const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
-    const plan=(kept?:string)=>planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
-      {skip:id=>skipped(`loot:${id}`),keep:kept,...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    const solo=!lootLeashed(view.players),car=input.nests&&!solo?view.objective?.car:undefined;
+    // Card bots-build-parado: a bot alone (nobody to open the rest, nobody to rescue) opens the verdes past LOOT_ANY_NEAR
+    // too, and in the intermission looks as far as a runner (1p: 22 of 45 verdes 12-20 u from the car opened, none past 30).
+    // Only to a crate with no critter awake about it: one by it ended the calm on the way, and with it the trip, a swing
+    // home and back each second (1p seed 12: bau-21, 11 u past a critter 16 u off).
+    const far=(id:string)=>{
+      const k=solo?view.pickups.find(q=>q.id===id):undefined,d=k?dist(k,at):0;
+      return !!k&&(d>LOOT_RADIUS_CALM||k.kind==='chest'&&k.value<=1&&d>LOOT_ANY_NEAR)&&!calmAround(view.enemies,k,CALMA.botR+CALM_SLACK);
+    };
+    const plan=(kept?:string)=>planLoot(view,me,at,prepare?(solo?LOOT_RADIUS_SOLO:LOOT_RADIUS_CALM):runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
+      {skip:id=>skipped(`loot:${id}`)||far(id),keep:kept,...(solo?{anyVerde:true}:{}),
+        ...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
     let loot=plan(keep);
     if(loot.goal&&loot.goal.id!==keep&&tick<(memory.lootRest??-Infinity)&&hasWeapon(me.weapons))delete loot.goal;
     // Card bot-nao-trava-entre-casa-e-arma: a crate opens only for who is not hurt (crates.ts): hurt by it since the last

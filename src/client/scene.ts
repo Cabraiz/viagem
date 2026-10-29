@@ -126,6 +126,8 @@ export interface SceneHooks {
   attacking?:()=>boolean;
   /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
   attackHeld?:()=>boolean;
+  /** The scene-clock time of hero `id`'s last "Dançar" (empty hands, own or relayed): it dances from it, like a cheer. */
+  danceAt?:(id:string)=>number|undefined;
   /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
   aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
@@ -369,6 +371,7 @@ export class IslandScene extends Phaser.Scene {
   private marks:HeroMark[]=[];
   private selfCovered=false;
   private lastPhase?:string;
+  private loadSaid=false;
   /** Wave or interval of the current round: map labels come back in the interval. */
   private roundPhase?:string;
   /** Tick of the last authoritative view (seconds left on a caído ficha). */
@@ -1251,7 +1254,7 @@ export class IslandScene extends Phaser.Scene {
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
     if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
-    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
+    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:Math.max(this.cheers.of(meId)??-Infinity,this.hooks.danceAt?.(meId)??-Infinity)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),
@@ -1526,6 +1529,9 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net!;
     const phase=net.run?.phase;
     if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
+    // exploracao-espera-carregar: the first combat frame with the island on screen (hooks.ready, past the city art's
+    // hold) tells the room this phone is in; the Minerva waits for it.
+    if(phase!=='combat')this.loadSaid=false;else if(!this.readyHeld&&!this.loadSaid){this.loadSaid=true;net.loaded();}
     this.lastPhase=phase;
     // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
     const frozen=this.paused||!!net.run?.pause;
@@ -1630,7 +1636,7 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       // An ally dances too when it has stood still for a while (danca-no-jogo): its moves and swings show it. A room bot
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
-      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
+      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:Math.max(this.cheers.of(player.id)??-Infinity,this.hooks.danceAt?.(player.id)??-Infinity)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras),down);

@@ -273,6 +273,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
+    net.onDance=id=>{if(controller&&sceneReady)dancedAt.set(id,controller.scene.time.now);};
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     // Out or watching (UX-espectador): ‹ › pick the friend, the chinelo is screen-only, "Voltar ao lobby" leaves the room.
@@ -369,6 +370,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
+  /** Scene-clock time of each hero's last "Dançar" (it dances from it until it moves: sprites/hero-dance.ts cheer). */
+  const dancedAt=new Map<string,number>();
+  const dance=()=>{pause(false);if(!net||!controller||!sceneReady)return;dancedAt.set(net.id,controller.scene.time.now);net.dance();};
   let closed=false,paused=false;
   /** When the per-frame shell attributes were last written (SHELL_DATA_MS). */
   let shellDataAt=-Infinity;
@@ -531,6 +535,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill. A kit selected: Construir.
       if(skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled)workLatch.tap(performance.now());return;}
       if(skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}
+      if(skill?.dancing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}
       if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
@@ -550,6 +555,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     };
     window.addEventListener('pointerdown',onBuild,{capture:true,signal});
     window.addEventListener('click',onBuild,{capture:true,signal});
+    // exploracao-espera-carregar-e-sem-arma: with empty hands the button dances at once (Dançar), no swing.
+    const onDance=(e:Event)=>{
+      const button=(e.target as Element|null)?.closest?.('#coop-attack') as HTMLButtonElement|null;
+      if(!skill?.dancing||skill.working||skill.towing||!button||button.disabled)return;
+      if(e.type==='pointerdown'&&(e as PointerEvent).button!==0)return;
+      if(e.type==='click'&&(e as MouseEvent).detail!==0){e.stopImmediatePropagation();return;}
+      e.stopImmediatePropagation();e.preventDefault();dance();
+    };
+    window.addEventListener('pointerdown',onDance,{capture:true,signal});
+    window.addEventListener('click',onDance,{capture:true,signal});
     document.addEventListener('keydown',e=>{
       if(closed||!kitPlace.active||settings.open)return;
       if(e.key==='Escape'){e.preventDefault();kitPlace.cancel();}
@@ -648,9 +663,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
-      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),
+      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),danceAt:id=>dancedAt.get(id),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(down&&skill?.dancing){if(!$<HTMLButtonElement>('#coop-attack').disabled)dance();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
@@ -873,7 +888,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
-      ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
+      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);

@@ -4,9 +4,11 @@
 // FOTO_PAGINAS páginas ao mesmo tempo no PC (mkdir atômico em <quadro>/locks/foto-pagina-N), no lugar de locks/browser-N.
 //
 //   node tools/foto.mjs servidor [--gpu d3d11|swiftshader|padrao]   abre o navegador (deixe rodando; Ctrl+C fecha)
-//   node tools/foto.mjs <cena[,cena…]|todas|chaveiro> [--porta 42NN] [--telas 1335x620,390x844] [--saida dir]
+//   node tools/foto.mjs <cena[,cena…]|todas|chaveiro|cidade> [--porta 42NN] [--telas 1335x620,390x844] [--saida dir]
 //        [--extra "view=1&zoom=0.79"] [--folha arquivo.png]                tira as fotos (PNG por cena × tela)
 //   node tools/foto.mjs lista                                          as cenas
+// Foto da cidade com mais da metade no fundo de fora do mapa (#2B2542) FALHA "sem mapa" (tools/foto-vazio.mjs);
+// `cidade` tira todas as cenas da cidade: o teste de que cada uma abre no mapa.
 //   node tools/foto.mjs parar                                          fecha o servidor
 // Sem servidor aberto, a foto abre um navegador só para ela (reservando locks/browser-1|2, a regra antiga).
 // Playwright: `import('playwright')`, senão PLAYWRIGHT_MODULE, senão D:/Gits/viagem-tools (o PC).
@@ -14,6 +16,7 @@ import {existsSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {claimSlot} from './vaga.mjs';
+import {EMPTY_MAX,emptyShare,sceneSandboxes} from './foto-vazio.mjs';
 
 const BOARD=process.env.VIAGEM_BOARD??'D:/Gits/viagem-board';
 const LOCKS=join(BOARD,'locks');
@@ -50,6 +53,8 @@ function scenes(){
   const src=readFileSync(new URL('../src/client/dev/foto.ts',import.meta.url),'utf8');
   return [...src.matchAll(/^\s+'([a-z0-9-]+)':\{/gm)].map(m=>m[1]);
 }
+/** The city scenes (sandbox-cidade): their prints must show the map. */
+const cityScenes=()=>new Set(sceneSandboxes(readFileSync(new URL('../src/client/dev/foto.ts',import.meta.url),'utf8')).filter(([,s])=>s==='cidade').map(([n])=>n));
 
 /** Slots held by this process: released on exit and on Ctrl+C / SIGTERM (a stuck slot would hold up every client). */
 const held=new Set();
@@ -98,7 +103,7 @@ async function fotos(list){
     release=hold(await claimSlot({locks:LOCKS,prefix:'browser',count:2,label:'tools/foto.mjs'}));
     browser=await chromium.launch({headless:true,args:GPU.d3d11});
   }
-  const files=[],t0=performance.now();
+  const files=[],t0=performance.now(),city=cityScenes();
   // One context per kind of screen (desktop / phone) for the whole run: its HTTP cache keeps the dev server's modules
   // and the city asset between photos (a fresh context parsed them all again, the CPU peak of every photo).
   const contexts=new Map();
@@ -118,8 +123,13 @@ async function fotos(list){
         const erro=await p.evaluate(()=>window.__fotoErro);
         if(erro)throw new Error(erro);
         const file=join(saida,`${cena}-${w}x${h}.png`);
-        await p.screenshot({path:file});
+        const png=await p.screenshot({path:file});
         files.push(file);
+        if(city.has(cena)){
+          const sharp=(await import('sharp')).default,{data,info}=await sharp(png).raw().toBuffer({resolveWithObject:true});
+          const share=emptyShare(data,info.channels);
+          if(share>EMPTY_MAX)throw new Error(`sem mapa: ${Math.round(share*100)} % da foto é o fundo de fora da cidade (hero= fora do mapa?) → ${file}`);
+        }
         console.log(`${cena} ${w}x${h}: ${((performance.now()-start)/1000).toFixed(1)} s${errors.length?` · pageerror: ${errors.join(' | ')}`:''} → ${file}`);
       }catch(e){console.log(`${cena} ${w}x${h}: FALHOU · ${String(e.message??e).split('\n')[0]}`);process.exitCode=1;}
       finally{await page?.close().catch(()=>{});free();}
@@ -162,7 +172,7 @@ else if(cmd==='parar'){
 else if(cmd==='lista')console.log(scenes().join('\n'));
 else{
   const all=scenes();
-  const list=cmd==='todas'?all:cmd==='chaveiro'?all.filter(s=>s.startsWith('chaveiro-')):cmd.split(',');
+  const list=cmd==='todas'?all:cmd==='chaveiro'?all.filter(s=>s.startsWith('chaveiro-')):cmd==='cidade'?all.filter(s=>cityScenes().has(s)):cmd.split(',');
   const unknown=list.filter(s=>!all.includes(s));
   if(unknown.length){console.log(`cena desconhecida: ${unknown.join(', ')}\n${all.join(' ')}`);process.exit(2);}
   await fotos(list);

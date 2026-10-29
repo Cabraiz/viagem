@@ -46,9 +46,11 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=59,74.5',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=58,76',descricao:'cidade com a régua ao lado do poste e das casas'},
-  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=43.5,57',descricao:'sombras: o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
-  'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=43.5,57',descricao:'luta: todo o elenco ferido (barras de vida), itens no chão, telegraphs'},
+  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=20,76.5',descricao:'sombras no terreiro de neve do boteco (oeste): o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
+  'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=30,56',descricao:'luta na avenida oeste: todo o elenco ferido (barras de vida), itens no chão, telegraphs'},
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=54.5,57.5',descricao:'a praça e o chafariz'},
+  // Card foto-cenas-cidade: a dead-end alley 2 cells (3 u) wide between two blocks, south of the praça, a lit post at its end.
+  'cidade-beco':{sandbox:'cidade',query:'mapa=real&hero=59,69',descricao:'beco sem saída entre dois prédios (2 células de largura), o poste aceso no fundo'},
   'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=53,56.5',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
   'veiculos':{sandbox:'cidade',query:'mapa=real&tele=1&veiculos=1&hero=43.5,57',descricao:'veículos: patinete, carrinho e crossfiteiro estacionados; o herói no carrinho (chip com 60 % da corrida)'},
   'bicos-trabalhar':{sandbox:'cidade',query:'mapa=real&bancos=1&bicos=1&turno=0&acao=1&hero=53,56.5',descricao:'bicos (etapa 4): o herói no anel da loja aberta, o botão Atacar vira Trabalhar na cor de interação'},

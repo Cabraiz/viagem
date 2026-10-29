@@ -47,7 +47,7 @@ export const CHAVEIRO_LINES={
     ['chaveiro','Pegou! Ninguém solta, ela é ciumenta.'],
     ['chaveiro','Funcionou. Não conta pra ela que eu duvidei.'],
     ['cida','Voltou! O cheiro de queimado é o normal.'],
-    ['chaveiro','Obrigado, time. A visita técnica continua cara.'],
+    ['chaveiro','Obrigado, turma. A visita técnica continua cara.'],
   ],
   'tranco-sozinha':[
     ['chaveiro','Pegou sozinha. Foi o tapa. Sempre é o tapa.'],

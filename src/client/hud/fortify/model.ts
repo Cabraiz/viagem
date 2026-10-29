@@ -79,7 +79,7 @@ export const wallCounterText=(walls:number)=>`Muros ${walls}/${WALL_LIMIT}`;
 /** Why the room said no, in a few pt-BR words (contract FreeBuildRefusal + the towers' ones the free build keeps). */
 export const FORT_REFUSALS:Readonly<Record<FreeBuildRefusal|'balance'|'grana'|'away'|'duplicate'|'phase',string>>=Object.freeze({
   tranca:'Isso tranca o chaveiro, chefe',
-  carro:'Colado no carro não dá',
+  carro:'Colado no Uno não dá',
   ninho:'Muito perto do ninho',
   ocupado:'Já tem coisa aí',
   limite:'Chegou no limite',
@@ -87,12 +87,12 @@ export const FORT_REFUSALS:Readonly<Record<FreeBuildRefusal|'balance'|'grana'|'a
   pausa:'Escolham a carta primeiro',
   balance:'Falta ficha de torre',
   grana:'Falta grana',
-  away:'Chegue mais perto',
+  away:'Chega mais perto',
   duplicate:'Esse pedido já foi',
   phase:'Agora não dá',
 });
 export const PULL_REFUSALS:Readonly<Record<PullRefusal,string>>=Object.freeze({
-  longe:'Chegue mais perto do carro',
+  longe:'Chega mais perto do Uno',
   ocupado:'Já tem gente na corda',
   pausa:'Escolham a carta primeiro',
   fase:'Agora não dá',

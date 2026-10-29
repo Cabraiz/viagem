@@ -159,7 +159,7 @@ export function baseBar(view:Pick<RunView,'structures'|'objective'>):BaseBar{
   const car=carBar(view.objective);
   if(car)return {fraction:car.fraction,value:car.left,low:car.low,label:car.label,car:true};
   const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da muralha',car:false};
+  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da barricada',car:false};
 }
 /** Whether the hero stands in the camp (the forge works there). */
 export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!hero&&!!wall&&Math.hypot(hero.x-wall.x,hero.y-wall.y)<=CAMP_RADIUS;
@@ -218,13 +218,13 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Base ficha ----------
   const readout=el('div','rh-camp');readout.hidden=true;readout.setAttribute('role','group');readout.setAttribute('aria-label','Base');
   const wallRow=el('span','rh-camp-wall',readout);
-  // The base has one symbol everywhere (design onda 6 D10): the tent with its flag, as on the map, the arrows and the minimap.
+  // The base has one symbol everywhere (design onda 6 D10): the Uno (icone-base-vira-uno; the tent left), as on the arrows and the objective.
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
   // The bar and the number each in their own box (.rh-camp-barra, .rh-camp-num): the chaveiro's car bar takes these
   // places later (Executor-4), the order unchanged. The bar is what gives way on a narrow screen.
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
-  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da barricada');
   // resultado-e-topo-com-rotulo: a sticker before each number of the band ("170" read as nothing): the heart before the
   // life, the wallet before the R$, the tower in its ring before the fichas. Decorative: the bar and the pills say it in words.
   num.insertAdjacentHTML('afterbegin',icon('coracao',{className:'rh-camp-num-ic'}));
@@ -384,7 +384,7 @@ export function createCamp(options:CampOptions):CampPart{
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
     // (Only with a wall: with the chaveiro's car in its place, D-047, there is no wall to warn about.)
     if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown&&wall)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){
-      warning={text:`Muralha em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
+      warning={text:`Barricada em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
       clearTimeout(warnTimer);warnTimer=setTimeout(render,WALL_WARNING_MS+20);
     }
     lastFraction=fraction;

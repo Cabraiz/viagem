@@ -147,7 +147,7 @@ test('the car in the base ficha: hits it still takes over the limit, Cone under 
   const v=withObjective(objective());
   assert.deepEqual(baseBar({...v,structures:[]}),{fraction:.75,value:90,low:false,label:bar!.label,car:true});
   const wall=baseBar({structures:[{id:'w',kind:'muralha',x:0,y:0,hp:150,maxHp:600}]});
-  assert.deepEqual(wall,{fraction:.25,value:150,low:true,label:'Vida da muralha',car:false});
+  assert.deepEqual(wall,{fraction:.25,value:150,low:true,label:'Vida da barricada',car:false});
 });
 
 test('Dona Cida\'s reach: the sim\'s 3 u to show, a little more to hide (the predicted spot never blinks the button)',()=>{

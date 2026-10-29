@@ -26,7 +26,7 @@
  *   The outcomes of the tick are drained by the room ({t:'coleta'} to the collector).
  * Everything here is JSON-safe in TowersState.tralha (checkpoints, stateHash).
  */
-import {type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
+import {cityEntradas,type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,CAR_RADIUS,ticks,type SimPlayer} from '../../contract/index.ts';
 import {BARRICADA_CELLS,CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,FREE_PIECE_DEFS,pieceCells,TRALHA_GROUPS,TRALHA_GROUP_CELLS,TRALHA_REACH,UNO_BUILD_CELLS} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
@@ -45,43 +45,8 @@ export const TRALHA_CAR_MARGIN=1;
 export const TRALHA_POINT_KEEP=6;
 /** No square this close (u) to an entrance (entradas). */
 export const TRALHA_ENTRADA_RAIO=6;
-/** entradas: a passage is at most this many map cells across, runs at least this deep and opens by at least this much. */
-const PASSAGE_MAX=5,PASSAGE_DEPTH=2,OPENS_BY=2,RUN_CAP=14;
-const entradasMemo=new WeakMap<object,readonly Point[]>();
-/**
- * The map's entrances: the mouth of every passage (a street, gate or gap between blocks at most PASSAGE_MAX map cells
- * across that runs PASSAGE_DEPTH cells deep, so a notch in a wall is none) where the walkable ground across it widens
- * by OPENS_BY cells or more (an avenue, a square, a crossing). The point is the middle of the passage's last cell. Pure,
- * memoised per asset.
- */
-export function entradas(city:CityTerrain):readonly Point[]{
-  const a=city.asset,had=entradasMemo.get(a);
-  if(had)return had;
-  const C=a.unitsPerCell,{w,h}=a.cells;
-  const walk=(c:number,r:number)=>c>=0&&r>=0&&c<w&&r<h&&a.walkableAt((c+.5)*C,(r+.5)*C);
-  const reach=(c:number,r:number,dx:number,dy:number)=>{let k=0;while(k<RUN_CAP&&walk(c+(k+1)*dx,r+(k+1)*dy))k++;return k;};
-  const across=(c:number,r:number,dx:number,dy:number)=>walk(c,r)?1+reach(c,r,dx,dy)+reach(c,r,-dx,-dy):0;
-  const out:Point[]=[],seen=new Set<string>();
-  for(let r=0;r<h;r++)for(let c=0;c<w;c++){
-    if(!walk(c,r))continue;
-    for(const [ax,ay] of [[1,0],[0,1]] as const){
-      const wide=across(c,r,ax,ay);
-      if(wide>PASSAGE_MAX)continue;
-      for(const s of [1,-1]){
-        const dx=ay*s,dy=ax*s;
-        if(across(c+dx,r+dy,ax,ay)<wide+OPENS_BY)continue;
-        let deep=true;
-        for(let k=1;k<=PASSAGE_DEPTH&&deep;k++){const v=across(c-k*dx,r-k*dy,ax,ay);deep=v>0&&v<=PASSAGE_MAX;}
-        if(!deep)continue;
-        const mid=(reach(c,r,ax,ay)-reach(c,r,-ax,-ay))/2,mc=c+mid*ax,mr=r+mid*ay,key=`${mc},${mr}`;
-        if(seen.has(key))continue;
-        seen.add(key);out.push({x:(mc+.5)*C,y:(mr+.5)*C});
-      }
-    }
-  }
-  entradasMemo.set(a,out);
-  return out;
-}
+/** The map's entrances (maps/city/entradas.ts), memoised per asset. */
+export const entradas=(city:CityTerrain):readonly Point[]=>cityEntradas(city.asset);
 /** How far (build cells, Chebyshev) from its point on the line car → spawn a row may start. */
 export const TRALHA_SEARCH_CELLS=10;
 export const TRALHA_PREFIX='tralha';

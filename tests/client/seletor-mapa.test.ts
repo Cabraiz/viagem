@@ -201,6 +201,7 @@ class FakeSocket{
 }
 (globalThis as any).WebSocket=FakeSocket;
 (globalThis as any).sessionStorage??={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+Object.defineProperty(globalThis,'localStorage',{value:{getItem:()=>null,setItem:()=>{},removeItem:()=>{}},configurable:true,writable:true});
 const {CoopClient}=await import('../../src/client/net/client.ts');
 type Client=InstanceType<typeof CoopClient>;
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
@@ -281,11 +282,11 @@ test('a city download that fails keeps the seat: selector text + notice, frames 
   assert.equal(client.fatal,CITY_FAILED);
 });
 
-/** sessionStorage that records what the client saves (the seat token), restored after the test. */
+/** localStorage that records what the client saves (the seat token), restored after the test. */
 function recordStorage(){
-  const before=(globalThis as any).sessionStorage,store=new Map<string,string>();
-  (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
-  return {store,restore:()=>{(globalThis as any).sessionStorage=before;}};
+  const before=(globalThis as any).localStorage,store=new Map<string,string>();
+  (globalThis as any).localStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
+  return {store,restore:()=>{(globalThis as any).localStorage=before;}};
 }
 
 // Review C2/F1: the room drops a seat silent for 12 s and the city may take 30 s.

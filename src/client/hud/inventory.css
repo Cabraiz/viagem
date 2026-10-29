@@ -34,11 +34,11 @@
 .rh-inv-tecla{display:none;position:absolute;left:1px;top:-1px;color:var(--c-papel);font:800 10px/1 var(--f-sistema);text-shadow:var(--s-texto)}
 .rh[data-hud=mesa] .rh-inv-tecla{display:block}
 .rh-inv-slot[data-empty=true] .rh-inv-tecla{opacity:.5}
-/* Holding to drop: the slot sinks and its border goes Cone while the 0.5 s run; dragging lifts it off the bar. */
-.rh-inv-slot.rh-inv-segurando{transform:scale(.9);border-color:var(--c-perigo);transition:transform .5s linear,border-color .5s step-end}
+/* Holding to drop: the slot sinks and its border goes Cone while the 0.8 s run; dragging lifts it off the bar. */
+.rh-inv-slot.rh-inv-segurando{transform:scale(.9);border-color:var(--c-perigo);transition:transform .8s linear,border-color .8s step-end}
 .rh-inv-slot.rh-inv-arrastando{transform:translateY(-10px) scale(1.08);opacity:.75}
 .rh .rh-inv-trocar{
-  display:flex;align-items:center;gap:4px;box-sizing:border-box;min-height:36px;margin:0;padding:4px 10px 4px 6px;
+  display:flex;align-items:center;gap:4px;box-sizing:border-box;min-height:44px;margin:0;padding:4px 10px 4px 6px;
   border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel),var(--s-1);
   font:800 var(--t-13)/1 var(--f-sistema);cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .rh .rh-inv-trocar[hidden]{display:none}
@@ -47,7 +47,8 @@
 .rh-inv-nota[hidden]{display:none}
 
 /* Phone (BUG-20261024-ORQ-joystick-maior-inventario-direita, after BUG-20261022-ORQ-hud-mobile-rodape): the bar is a
-   column on the right thumb, right-aligned with Atacar and 12 px above it (the hand slot's 1.1 lift fits), so the gap
+   column on the right thumb, right-aligned with Atacar and 18 px above it (the 44 px tap areas end 12 px or more
+   above it, so a thumb a bit high on Atacar misses the weapons; the hand slot's 1.1 lift fits), so the gap
    between the stick and Atacar is the map again. Only the filled slots show (no dashed empties on the snow), 3 a row,
    rows from the bottom up (the weapons, slots 1–3, next to the thumb; the kit and the consumables above them). A slot
    is 34 px (32 on small phones and lying down); its tap area stays 44 px. --inv-coluna (tokens: none) is the room the
@@ -56,17 +57,17 @@
 .rh[data-hud=fone] .rh-inv{
   --inv-lado:34px;--inv-eixo:max(var(--joystick),var(--botao-habilidade));
   left:auto;right:max(24px,env(safe-area-inset-right));
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 12px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 18px);
   width:max(var(--botao-habilidade),3 * var(--inv-lado) + 2 * var(--inv-gap));height:auto;
   justify-content:flex-end;align-items:flex-end}
 @media (max-width:370px),(max-height:500px){
   .rh[data-hud=fone] .rh-inv{
     --inv-lado:32px;--inv-gap:3px;--inv-eixo:max(var(--joystick-justo),var(--botao-habilidade));
     right:max(18px,env(safe-area-inset-right));
-    bottom:calc(max(16px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 12px)}
+    bottom:calc(max(16px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 18px)}
 }
-:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 34px + 4px + 12px)}
-@media (max-width:370px),(max-height:500px){:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 32px + 3px + 12px)}}
+:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 34px + 4px + 18px)}
+@media (max-width:370px),(max-height:500px){:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 32px + 3px + 18px)}}
 .rh[data-hud=fone] .rh-inv-slots{display:flex;flex-wrap:wrap-reverse;justify-content:flex-end;width:100%}
 .rh[data-hud=fone] .rh-inv-slot{width:var(--inv-lado);height:var(--inv-lado)}
 .rh[data-hud=fone] .rh-inv-slot[data-empty=true]{display:none}

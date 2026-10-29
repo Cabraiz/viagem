@@ -7,6 +7,7 @@ import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
+import {withDevice} from './net/room-return.ts';
 import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
@@ -233,12 +234,22 @@ export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,
   const headline=phase==='hidden'?''
     :total<=1?'Só você aqui. Chama a turma!'
     :!missing.length?'Todo mundo pronto. Milagre!'
-    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:awayText)
+    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:`${awayText} Alguém foi ao banheiro.`)
     :away.length?`${here.length===1?"Falta":"Faltam"} ${who(here)}. ${awayText}`
     :missing.length===1?(missing[0].self?'Só falta você. Sem pressão.':`Só falta ${missing[0].name}. Sem pressão.`)
-    :`Faltam ${missing.length}. Alguém foi ao banheiro.`;
+    :`${missing.length} ainda não estão prontos.`;
   return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline,canManage,seatsLeft};
 }
+
+/** "Jogar sozinho" (card solo-sem-sala-de-espera): no room on screen, only this line, the faces and the 3-2-1. */
+export const SOLO_LOADING='Chamando os bots…';
+/** The solo line: the countdown's joke, the map that did not arrive, else SOLO_LOADING. */
+export function soloHeadline(view:Pick<WaitingView,'phase'|'headline'>,failed?:string){
+  return view.phase==='countdown'?view.headline:failed||SOLO_LOADING;
+}
+/** The loading cover (explore.ts): up until the scene is drawn; in solo also through the room and its 3-2-1. */
+export const coverUp=(sceneReady:boolean,phase:string|undefined,solo:boolean)=>
+  !sceneReady||solo&&(phase===undefined||phase==='lobby'||phase==='countdown');
 
 // ---------- DOM ----------
 
@@ -286,14 +297,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const label=shareButton.querySelector<HTMLElement>('.coop-wait-share-text')!;
     const say=(text:string)=>{label.textContent=text;shareButton.classList.add('is-saying');setTimeout(()=>{label.textContent='Chamar a turma';shareButton.classList.remove('is-saying');},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? A cidade não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
       say(`Código: ${formatRoomCode(client.code)}`);
     }
   });
-  if(options.solo)shareButton.hidden=true;
+  // Solo: over the loading cover, no box (coop.css .is-solo); code, buttons and lines stay in the DOM, hidden.
+  if(options.solo){shareButton.hidden=true;panel.classList.add('is-solo');$('.coop-wait-code').hidden=true;}
   let soloMem=soloMemory();
   const readyButton=$<HTMLButtonElement>('.coop-wait-ready');
   let lastView:WaitingView|undefined;
@@ -371,10 +383,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     $('.coop-wait-news').hidden=!news;
     if(news){setText($('.coop-wait-news strong'),news.title);setText($('.coop-wait-news span'),news.body);}
     $('.coop-wait-headline').hidden=!!news&&view.phase!=='countdown';
-    setText($('.coop-wait-headline'),view.headline);
+    setText($('.coop-wait-headline'),options.solo?soloHeadline(view,load?.failed):view.headline);
     // The 4 s start when the island is on screen (the loading cover can sit over the room for a while on a slow phone).
     if(ownerNews?.until===Infinity&&!host.querySelector('.explore-loading:not([hidden])'))ownerNews.until=now()+OWNER_NEWS_MS;
-    const ownerLine=$('.coop-wait-owner'),showNews=!!ownerNews&&now()<ownerNews.until;
+    const ownerLine=$('.coop-wait-owner'),showNews=!options.solo&&!!ownerNews&&now()<ownerNews.until;
     ownerLine.hidden=!showNews;if(showNews)setText(ownerLine,ownerNews!.text);
     // A fuller window (4+): for its 4 s the news takes the headline's place, like the
     // restart notice does, and in portrait the line under the chips too, so the window never scrolls the ready button away.
@@ -384,12 +396,12 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     // The team's makeup takes the joke's place; for the owner it takes turns with the hint (WAITING_LINE_SECONDS each).
     const makeup=compositionLine(view.members),turn=Math.floor((now()-started)/1000/WAITING_LINE_SECONDS)%2===1;
     setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint&&!(makeup&&turn)?OWNER_HINT:makeup??waitingLine((now()-started)/1000));
-    $('.coop-wait-line').hidden=tightNews&&orientation==='portrait';
-    botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
+    $('.coop-wait-line').hidden=!!options.solo||tightNews&&orientation==='portrait';
+    botButton.hidden=!!options.solo||!view.canManage||view.seatsLeft<1||view.selfSpectator;
     panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
-    readyButton.hidden=view.selfSpectator;
+    readyButton.hidden=view.selfSpectator||!!options.solo;
     // The room's map still downloading here (or it did not arrive): no "pronto" (backing out stays possible).
     // Then this phone's P0 of the match (own hero, the map's ground) for at most PRELOAD_CAP_MS since it entered.
     const blocked=view.selfReady?undefined:readyBlock(load)??(preloader?preloadBlock(preload,now()-started):undefined);
@@ -428,6 +440,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         // This player's face wears the download ring (its fill: --preload, set below at every update).
         const bare=faceHtml(m.classId,{className:'coop-wait-face',tag:'i'});
         const face=m.self&&preloader?`<b class="coop-wait-ring" aria-hidden="true">${bare}</b>`:bare;
+        // Solo: the faces only (self first, with its download ring), the names read aloud.
+        if(options.solo)return `<li class="coop-wait-solo${m.self?' is-self':''}">${face}<span class="sr-only">${escapeHtml(m.name)}${said}</span></li>`;
         // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
         // The owner's grid shows the rail's short name (unique for bots, like the HUD); the whole name is read aloud.
         const shown=view.canManage?railName(m.name):m.name;
@@ -453,6 +467,25 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   return {panel,update,dispose(){clearInterval(timer);stopPreload();panel.remove();}};
 }
 
+/** Wait before the one second try of "Criar sala" (auditoria multijogador 29/10, achado 5: a 3G hiccup). */
+export const CREATE_RETRY_MS=800;
+export const CREATE_RETRY_TEXT='A rede engasgou. Criando sua sala de novo…';
+/**
+ * POST /rooms (the new room's code). A timeout or a network error gets one more try after CREATE_RETRY_MS; an answer
+ * from the Worker (a 4xx like the 429 "Aguarde um minuto", or a 5xx) is final: asking again gives the same answer.
+ */
+export async function createRoom(endpoint:string,body:object,options:{onRetry?:()=>void;fetcher?:typeof fetch;wait?:(ms:number)=>Promise<void>;timeoutMs?:number;device?:string}={}):Promise<string>{
+  const fetcher=options.fetcher??fetch,wait=options.wait??(ms=>new Promise<void>(r=>setTimeout(r,ms)));
+  const sent=JSON.stringify(withDevice(body,options.device));
+  for(let attempt=0;;attempt++){
+    let r:Response;
+    try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:sent,signal:AbortSignal.timeout(options.timeoutMs??10000)});}
+    catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
+    return data.code;
+  }
+}
 /** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */
 export interface LobbyOptions {room?:string;autoJoin?:boolean}
 export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
@@ -507,7 +540,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=readRoomCode(codeInput.value);
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
+      if(create){status.textContent='Criando sua sala…';code=await createRoom(endpoint,objectiveFromSearch(location.search),{onRetry:()=>{status.textContent=CREATE_RETRY_TEXT;}});codeInput.value=formatRoomCode(code);}
       if(closed)return;
       if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
       const nick=fitName(nickInput.value)||fitName(name);
@@ -617,7 +650,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time,
     // the first on short times (solo-tenta-de-novo), none after a refusal (4xx) or the room's fatal word.
     const joined=await soloOneRetry(async n=>{
-      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(withDevice(body)),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
       if(!r.ok){const message=data.error??'Não foi possível criar a sala.';throw r.status<500?soloRefused(message):new Error(message);}
       step('room');
       const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;
@@ -628,7 +661,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     step('join');
     const {openExploration}=await import('./explore.ts');
     options.onJoined?.();
-    const opening=openExploration(hero,nick,joined);
+    const opening=openExploration(hero,nick,joined,{solo:true});
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});
     releaseMenu();

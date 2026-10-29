@@ -4,6 +4,7 @@ import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {readFileSync} from 'node:fs';
 import {menuDancePlan,danceFrameAt,danceCell,firstDancePage,playableFrame,MenuDance} from '../../src/client/ui/menu-dance.ts';
 import {PERSONAGEM_PADRAO,PERSONAGENS_LIBERADOS} from '../../src/rules/index.ts';
+import {STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 
 const page={file:'aposentado-p1.webp',columns:5,rows:8,firstFrame:0,frameCount:40};
 const second={...page,file:'aposentado-p2.webp',firstFrame:40};
@@ -163,8 +164,11 @@ test('danca-sem-fallback: playableFrame loops over the pages that arrived; the p
   const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../../src/client/estadio.css',import.meta.url),'utf8');
   assert.match(html,new RegExp(`DEFAULT_HERO='${PERSONAGEM_PADRAO}'`),'index.html preloads the menu\'s default hero');
   assert.ok(html.includes(`OPEN=[${PERSONAGENS_LIBERADOS.map(id=>`'${id}'`).join(',')}]`),'index.html\'s preload list is the released one');
-  assert.match(html,/<link rel="preload" href="\/art\/ui-extra\/estadio-retrato-768\.webp" as="image"/,'the stadium is on screen from the first frame');
+  // primeira-visita-leve: the phone held upright opens on the profile screen (insta.css hides the stadium and the dance),
+  // so neither the upright stadium nor the 1.5 MB dance page is preloaded there.
+  assert.ok(!html.includes('estadio-retrato-768'),'no preload of the stadium the profile screen hides');
   assert.match(css,/estadio-retrato-768\.webp/);
+  assert.ok(html.includes(`matchMedia('${STADIUM_TALL_QUERY}').matches)return;`),'the dance preload skips the profile screen');
   assert.match(html,/'\/art\/lite\/menu\/danca\/'\+id\+'-p1\.webp'/);
   assert.match(main,/id="portrait" class="estadio-heroi dance-pending"/,'the first HTML already hides the still portrait');
   assert.match(css,/\.estadio-heroi\.dance-pending img \{ visibility: hidden; \}/);

@@ -259,7 +259,7 @@ test('waiting room: the owner manages, people first then bots, the crown and rob
   const owner=waitingRoomView(run,names,'me');
   assert.equal(owner.canManage,true);assert.equal(owner.seatsLeft,3);
   assert.deepEqual(owner.members.map(m=>[m.id,m.bot,m.owner]),[['me',false,true],['zé',false,false],['b1',true,false]]);
-  assert.match(owner.headline,/^Faltam/,'the bot is ready; Zé and I are not');
+  assert.equal(owner.headline,'2 ainda não estão prontos.','the bot is ready; Zé and I are not');
   const guest=waitingRoomView(run,names,'zé');
   assert.equal(guest.canManage,false);assert.ok(guest.members.find(m=>m.id==='me')!.owner);
   // Countdown: still allowed; combat and result: the waiting room is hidden (the result has its own buttons).

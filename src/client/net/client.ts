@@ -17,6 +17,7 @@ import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,RemoteClock,remoteAt,tickTime} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
+import {forgetSeat,markRoom,readSeat,saveSeat,unmarkRoom} from './room-return.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;tick:number;players:Map<string,Player>};
 /**
@@ -147,8 +148,18 @@ function settleWithin<T>(promise:Promise<T>,ms:number):Promise<T|undefined>{
 }
 /** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
 const WAKE_SILENCE_MS=3000;
-/** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
+/**
+ * Full frames (base 0) that fail to decode in a row (each one asking a resync) before the link is renewed: a fresh socket
+ * with the seat token, whose welcome starts the decoder over (nao-e-versao-nova).
+ */
 const MAX_BAD_FULL_FRAMES=3;
+/**
+ * Links renewed in a row for frames this page cannot read, with no good frame between them, before it stops with
+ * LINK_LOST ("Voltar pra sala"). Never "Saiu versão nova": the room's welcome already checked ROOM_PROTOCOL, and only its
+ * explicit refusal (VERSION_REFUSED, or a welcome of another protocol) says the page is old (auditoria 29/10, achado 3:
+ * a 3G stall in combat looped on "Saiu versão nova" with the same build for 6 min).
+ */
+export const MAX_FRAME_RENEWALS=2;
 /** At most one resync request this often (frames already in flight fail the same way). */
 const RESYNC_EVERY_MS=500;
 /** baseSeq of a protocol 4 header (magic, version, uvar seq, uvar baseSeq); -1 when it cannot be read. */
@@ -272,6 +283,18 @@ export class CoopClient {
     const ws=this.socket;
     // An attempt already on its way (connecting, or open and joining): let it finish.
     if(ws&&(ws.readyState===WebSocket.CONNECTING||ws.readyState===WebSocket.OPEN))return;
+    clearTimeout(this.retry);this.retry=undefined;this.connect();
+  }
+  /**
+   * "Reconectar" on a "versão nova" window whose site still serves this build (nao-e-versao-nova): the stop was the
+   * link's, not the version's. On again with the seat token and a fresh reconnection window; a room that really refuses
+   * this page says so again. Kicked or replaced by another tab: no (those have their own way out).
+   */
+  restart(){
+    if(!this.stopped||!this.fatal||this.kicked||this.fatal===REPLACED_MESSAGE)return;
+    const saved=readSeat(this.code);if(saved)this.token=saved;
+    this.stopped=false;this.fatal=undefined;this.attempts=0;this.frameRenewals=0;this.badFullFrames=0;this.lastSeenAt=Date.now();
+    if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
     clearTimeout(this.retry);this.retry=undefined;this.connect();
   }
   private wake?:()=>void;
@@ -463,7 +486,8 @@ export class CoopClient {
     return undefined;
   }
   async join(){
-    try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
+    // Kept by any tab of this device (room-return.ts): a reload or a new tab from the link takes the same seat back.
+    const saved=readSeat(this.code);if(saved)this.token=saved;
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
     if(typeof document!=='undefined'&&!this.wake){this.wake=()=>this.visibility();document.addEventListener('visibilitychange',this.wake);}
     // The phone's network is back (3g-socket-morto): a waiting retry goes now, a silent socket is dropped now.
@@ -620,6 +644,8 @@ export class CoopClient {
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
       this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
+      // F5 volta pra sala: the address names the room until the player leaves, so a reload rejoins (main.ts autoJoin).
+      markRoom(this.code);this.marked=true;
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
     }
@@ -669,7 +695,9 @@ export class CoopClient {
       const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;
       // The room checks join.maps before any seat or token (D-026): refused for the map, the seat token is still good.
       if(message===MAP_TEXT.update&&this.retryWithCity(ws))return;
-      this.forgetToken();this.fail(ws,message);
+      // Refused for the version, the same: checked before the seat, so "Reconectar" (reconnect) can still take it back.
+      if(message!==UPDATE_NEEDED)this.forgetToken();
+      this.fail(ws,message);
     }
   }
   /**
@@ -751,14 +779,30 @@ export class CoopClient {
     if(ws?.readyState===WebSocket.OPEN&&(this.connected||this.mapWait?.ws===ws)&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
     if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
+  /** Links renewed for unreadable frames since the last good one (MAX_FRAME_RENEWALS). */
+  private frameRenewals=0;
+  /**
+   * Frames this page cannot place even after asking a resync: drop this socket (its close is a drop, so the usual fast
+   * retry rejoins with the seat token and the welcome resets the decoder). Too many in a row: LINK_LOST.
+   */
+  private renewLink(ws:WebSocket,why:string){
+    // Frames still in flight on a socket already closing do not count again.
+    if(ws.readyState!==WebSocket.OPEN)return;
+    console.warn(`[rede] renova a conexão (${why})`);
+    if(++this.frameRenewals>MAX_FRAME_RENEWALS){this.fail(ws,LINK_LOST,why);return;}
+    this.badFullFrames=0;ws.close();
+  }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
-  private fail(ws:WebSocket,message:string){
+  private fail(ws:WebSocket,message:string,why?:string){
+    console.warn(`[rede] parou: ${why?`${why} → `:''}${message}`);
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  /** The seat token survives a reload (sessionStorage): for the grace, or for the whole run while one is on. */
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+retryWindow(this.run?.phase)}));}catch{}}
-  private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
+  /** The seat token survives a reload and a new tab (localStorage, room-return.ts): for the grace, or the whole run while one is on. */
+  private saveToken(){saveSeat(this.code,this.token,Date.now()+retryWindow(this.run?.phase));}
+  private forgetToken(){forgetSeat(this.code);}
+  /** This page put the room in the address (a welcome): leave() takes it out. */
+  private marked=false;
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.downUntil=-Infinity;this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
@@ -777,15 +821,17 @@ export class CoopClient {
     const result=this.feed.decode(data);
     if(!result.ok){
       if(result.error==='stale frame')return;
-      // Even a full frame does not decode, again and again: the page and the room speak different formats.
-      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.fail(ws,UPDATE_NEEDED);return;}
+      // Even a full frame does not decode, again and again (after a stall): a fresh link, not "versão nova".
+      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.renewLink(ws,`quadro cheio: ${result.error}`);return;}
       // A frame we cannot place (lost baseline, garbage): ask for a full one, once per RESYNC_EVERY_MS.
       const now=performance.now();
       if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;this.out(ws,{t:'resync'});}
       return;
     }
     this.badFullFrames=0;
-    if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,UPDATE_NEEDED);return;}
+    // A world this page did not build (its terrain came with the welcome): the next welcome brings the right one.
+    if(result.world&&result.world.signature!==this.terrain.signature){this.renewLink(ws,'assinatura do mundo');return;}
+    this.frameRenewals=0;
     this.ackSeq=result.seq;
     this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
@@ -972,7 +1018,11 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);
+    // Replaced (4009): the seat lives on in the newer tab, which shares this device's token.
+    if(this.fatal!==REPLACED_MESSAGE)this.forgetToken();
+    if(this.marked){this.marked=false;unmarkRoom(this.code);}
+    if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
 }
 export { STEP };
 

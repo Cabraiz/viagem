@@ -164,7 +164,7 @@ export class RescueBoard {
     const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
     // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
     // An elite's kill: its body is still in the feed on the kill's tick (the tombstone comes a few ticks later).
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite);
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite,undefined,{hero:this.net.predicted,side:p=>this.scene()?.screenSide(p)??0,boss:id=>!!this.net.feed.enemies.get(id)?.boss,telegraph:id=>view.telegraphs.find(t=>t.id===id)});
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){

@@ -4,11 +4,16 @@
  * the site still serves it: reloading then only brings the same old page back. Instead, the page asks /version.json
  * (no-store) every RETRY_S seconds, with a countdown on screen, and reloads by itself the moment the site's build is not
  * this page's. "Atualizar agora" reloads at once whatever the answer.
+ * The site answering this very build SAME_BUILD_ASKS times means it was not a new version at all (nao-e-versao-nova:
+ * a 3G stall looped here for 6 min): the window turns into "Reconectar" (the client's reconnect, seat kept) and goes on
+ * asking quietly, so a build that does come out still reloads.
  * Pure: the clock, the fetch and the reload are injected (tests/client/update-retry.test.ts).
  */
 
 /** Seconds between two asks while the site still serves this build. */
 export const RETRY_S=10;
+/** Answers of this same build in a row before the window offers "Reconectar" instead of waiting for a new one. */
+export const SAME_BUILD_ASKS=2;
 /** The window's lines (pt-BR): short, no "espera 1 minuto". */
 export const UPDATE_TEXT={
   title:'Saiu versão nova do jogo.',
@@ -16,9 +21,12 @@ export const UPDATE_TEXT={
   waiting:(s:number)=>`A versão nova ainda está saindo do forno. Tento de novo em ${s} s.`,
   reloading:'Achei! Atualizando…',
   button:'Atualizar agora',
+  stuckTitle:'A conexão com a sala caiu.',
+  stuck:(s:number)=>`O jogo já está na versão certa. Toca em Reconectar. Confiro o site de novo em ${s} s.`,
+  reconnect:'Reconectar',
 } as const;
 
-export type RetryState={kind:'checking'}|{kind:'waiting';seconds:number}|{kind:'reloading'};
+export type RetryState={kind:'checking'}|{kind:'waiting';seconds:number}|{kind:'stuck';seconds:number}|{kind:'reloading'};
 
 export interface RetryDeps {
   /** This page's build (__BUILD_ID__). */
@@ -42,11 +50,11 @@ export interface UpdateRetry {
 export const isNewBuild=(build:string|undefined,current:string)=>typeof build==='string'&&build!==''&&build!==current;
 
 export function startUpdateRetry(deps:RetryDeps):UpdateRetry{
-  let stopped=false,timer:unknown;
+  let stopped=false,timer:unknown,same=0;
   const later=(ms:number,run:()=>void)=>{timer=deps.setTimeout(()=>{timer=undefined;if(!stopped)run();},ms);};
   const count=(seconds:number)=>{
     if(seconds<=0){void ask();return;}
-    deps.show({kind:'waiting',seconds});
+    deps.show({kind:same>=SAME_BUILD_ASKS?'stuck':'waiting',seconds});
     later(1000,()=>count(seconds-1));
   };
   const ask=async()=>{
@@ -55,6 +63,8 @@ export function startUpdateRetry(deps:RetryDeps):UpdateRetry{
     try{build=await deps.fetchVersion();}catch{build=undefined;}
     if(stopped)return;
     if(isNewBuild(build,deps.current)){stopped=true;deps.show({kind:'reloading'});deps.reload();return;}
+    // A failed ask says nothing about the build; only the site naming this one counts.
+    if(build===deps.current)same++;
     count(RETRY_S);
   };
   void ask();
@@ -66,5 +76,5 @@ export function startUpdateRetry(deps:RetryDeps):UpdateRetry{
 
 /** The line under the title for a state. */
 export function retryLine(state:RetryState):string{
-  return state.kind==='waiting'?UPDATE_TEXT.waiting(state.seconds):state.kind==='reloading'?UPDATE_TEXT.reloading:UPDATE_TEXT.checking;
+  return state.kind==='waiting'?UPDATE_TEXT.waiting(state.seconds):state.kind==='stuck'?UPDATE_TEXT.stuck(state.seconds):state.kind==='reloading'?UPDATE_TEXT.reloading:UPDATE_TEXT.checking;
 }

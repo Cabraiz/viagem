@@ -33,6 +33,10 @@
 #confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
 #confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;border-radius:var(--r-janela)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
+/* O brilho do hover (style.css) é um filter: num #enter-island sem position ele vira o bloco de contenção da arte absoluta,
+   que encolhe para o botão e deixa a barra de bots sem fundo. O brilho vai para o bloco inteiro, já relative. */
+#confirmation.escolha-arte #enter-island:hover:not(:disabled){filter:none}
+#confirmation.escolha-arte .solo-row:has(#enter-island:hover:not(:disabled)){filter:brightness(1.035)}
 /* Amigos como na ref. 7: a arte vai de borda a borda; os corpos terminam um pouco acima do rótulo, dissolvendo no
    amarelo, e o texto fica numa faixa amarela limpa embaixo. */
 #confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}

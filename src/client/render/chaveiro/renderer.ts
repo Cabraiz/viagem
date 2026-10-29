@@ -31,6 +31,7 @@ import {UsableGlow} from '../usable-glow.ts';
 import {inFrontOfCar,towardViewer,type CarSort} from './car-sort.ts';
 import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_SMOKE_H,UNO_SMOKE_KEY,UNO_SMOKE_SCALE,UNO_SMOKE_TINT,UNO_SMOKE_LOW_TINT,UNO_SMOKE_SRC,UNO_SMOKE_URL,UNO_SMOKE_W,UNO_URL,unoBox,unoFootY,unoFrame,unoSmoke} from './uno-art.ts';
 import {HEIGHT_PX} from '../city/projection.ts';
+import {UnoFarois} from '../luzes/farois.ts';
 import type {Speaker} from './lines.ts';
 
 const LIGHT=lightEnabled();
@@ -145,6 +146,8 @@ export class ChaveiroRenderer {
   private unoSmokeImg?:Phaser.GameObjects.Image;
   /** contorno-usavel-wc3: the car is pulled on its rope: the Warcraft 3 gold outline around the imported Uno. */
   private glow?:UsableGlow;
+  /** Muitas luzes: the Uno's headlights (luzes/farois.ts). */
+  private farois?:UnoFarois;
   /** Card sombras-e-fala-do-uno (auditoria-arte-mundo item 3): the car's and the moto's soft shadows on the ground. */
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
@@ -226,7 +229,7 @@ export class ChaveiroRenderer {
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
     for(const t of this.popTexts)t.setVisible(false);
-    if(!view){this.sort=undefined;this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.unoSmokeImg?.setVisible(false);this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
+    if(!view){this.sort=undefined;this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.unoSmokeImg?.setVisible(false);this.farois?.hide();this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -270,6 +273,14 @@ export class ChaveiroRenderer {
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
       uno.setAlpha(this.coversBox(unoTop,carDepth,this.sort)?COVER_ALPHA:1);
+      // Card muitas-luzes: its headlights in the fog, off once wrecked.
+      const farois=this.farois??=new UnoFarois(this.scene);
+      if(wrecked)farois.hide();
+      else{
+        const c=view.car,l=CAR_HALF.l,w=CAR_HALF.w*.7,lamp=.55*M,sh=(p:Pt):Pt=>({x:p.x+shake.x,y:p.y+shake.y});
+        farois.show({left:sh(this.at(c.x,c.y,l,w,lamp)),right:sh(this.at(c.x,c.y,l,-w,lamp)),nose:sh(this.at(c.x,c.y,l,0,lamp)),
+          ahead:this.at(c.x,c.y,l+3*M,0,0),tail:this.at(c.x,c.y,-l,0,lamp)},carDepth,uno.alpha);
+      }
       // Card uno-capo-fumaca: the engine smokes out of the raised hood (behind the car where the hood hides the engine);
       // tinted mid grey (white smoke vanished on the light paving), under CAR_LOW of its life (card inimigos-querem-o-uno)
       // the same smoke turns dark. It never fades with the car (COVER_ALPHA): it is see-through already.
@@ -392,7 +403,7 @@ export class ChaveiroRenderer {
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
     this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
     this.motoImg.destroy();this.standImg.destroy();
-    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;this.unoSmokeImg?.destroy();this.unoSmokeImg=undefined;this.glow?.destroy();this.glow=undefined;
+    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;this.unoSmokeImg?.destroy();this.unoSmokeImg=undefined;this.farois?.destroy();this.farois=undefined;this.glow?.destroy();this.glow=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 

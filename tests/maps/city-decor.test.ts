@@ -14,7 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodeCityAsset,encodeCityAsset,cityAssetToData,type CityAsset,type CityDecor} from '../../src/maps/city-asset.ts';
-import {BIG_ROCKS,DECOR_REFUSED,LINK,wallLines,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
+import {BIG_ROCKS,DECOR_REFUSED,LINK,relayWallLines,wallLines,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
 import {KEEP,undecorate} from '../../scripts/cenario-cidade.ts';
 import {pieceRect,wallPieces,wallRuns,type WallRun} from '../../src/maps/wall-lines.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint} from '../../src/maps/build-sites.ts';
@@ -244,4 +244,17 @@ test('cercas-nordeste-ligadas: wallLines split by `keep` draws the one same line
   const both=new Set([...a,...b].map(key));
   assert.ok(whole.filter(k=>!both.has(k)).length<=1,'only the piece over the split is left out');
   for(const k of both)assert.ok(whole.includes(k),`${k} not on the single line`);
+});
+
+test('cercas-nordeste-ligadas: relaying the wall lines again and again keeps every piece, broken ones too (the break does not spread)',()=>{
+  const rows=['############....','############....','..........##....','..........##....','..####..........'];
+  const W0=rows[0].length,H0=rows.length,isWall=(i:number)=>rows[Math.floor(i/W0)][i%W0]==='#';
+  const broken=new Uint8Array(W0*H0);for(let i=0;i<W0*H0;i+=5)broken[i]=1;
+  const key=(d:CityDecor)=>`${d.id}@${d.c},${d.r},${d.w}x${d.h},${d.rot}${d.cover?'c':''}`;
+  const first=wallLines(W0,H0,isWall,()=>'cerca-madeira',broken);
+  assert.ok(first.some(d=>d.id.endsWith('-quebrado')),'the fixture has broken pieces');
+  let decor=first;
+  // scripts/becos-cidade.ts relays after every openCells: 21 % broken became 47 % when each relay marked every cell a broken piece covers.
+  for(let k=0;k<6;k++)decor=relayWallLines(W0,H0,isWall,decor);
+  assert.deepEqual(decor.map(key).sort(),first.map(key).sort());
 });

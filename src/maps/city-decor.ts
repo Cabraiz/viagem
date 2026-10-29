@@ -352,8 +352,10 @@ export function relayWallLines(W:number,H:number,isWall:(i:number)=>boolean,deco
   for(const d of before){
     const f=familyOf(d);
     if(!f)continue;
-    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H){
-      family[r*W+c]=f;if(!d.cover&&d.id.endsWith('-quebrado'))broken[r*W+c]=1;}
+    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)family[r*W+c]=f;
+    // Only the cell wallLines reads a piece's draw from (its rect's first): marking every cell a broken piece covers
+    // spread the break one cell per relay (openCells runs it again and again: 21 % broken → 47 %).
+    if(!d.cover&&d.id.endsWith('-quebrado')&&d.c>=0&&d.r>=0&&d.c<W&&d.r<H)broken[d.r*W+d.c]=1;
   }
   return [...wallLines(W,H,isWall,i=>family[i]??WALL_FAMILIES[0],broken,i=>family[i]!==undefined),...decor.filter(d=>!familyOf(d))];
 }

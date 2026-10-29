@@ -16,7 +16,7 @@ import {cityRunStart} from '../../src/sim/city/tutorial.ts';
 import {UNO_START_CLEAR,cityUnoStart,startSlots} from '../../src/sim/city/uno-start.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {MINERVA_S,NEST_PACE,pace} from '../../src/sim/ninhos/ninhos.ts';
-import {CAR_REPAIR_SHARE} from '../../src/sim/chaveiro/system.ts';
+import {CAR_REPAIR_SHARE,CHAVEIRO_CLOCK} from '../../src/sim/chaveiro/system.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -71,7 +71,10 @@ test('the minuto de Minerva is 120 s and the first wave leaves 150–180 s after
   }
 });
 
-test('the first wave ends by waveCap at the latest even with its map share still dripping; each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit (inimigos-querem-o-uno)',()=>{
+test('the first wave ends by waveCap at the latest even with its map share still dripping; each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit (inimigos-querem-o-uno)',t=>{
+  // missao-proteger-uno-tempo: the 5:00 clock opens the car before wave 1's cap (the minuto de Minerva and the wave run
+  // past it); a longer clock here.
+  const start=CHAVEIRO_CLOCK.start;CHAVEIRO_CLOCK.start=900;t.after(()=>{CHAVEIRO_CLOCK.start=start;});
   const sim=new Simulation(7,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
   sim.add('p0','P0','cidadao-comum');sim.resetRun();
   let now=1000;sim.step(now+=50);

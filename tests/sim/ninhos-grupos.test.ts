@@ -364,6 +364,8 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   const spot=a.sys.nests!.bossSpot()!;
   assert.ok(spot);
   const m=a.sys.chaveiro!.state.moto;m.stop=a.sys.chaveiro!.stops.length;m.task='anda';m.s=a.sys.chaveiro!.route.length-.01;
+  // missao-proteger-uno-tempo: the clock ran out too (mode 'ninhos' waits on it before the last stretch).
+  a.sys.chaveiro!.state.wait=0;
   stepRun(a,3);
   const boss=[...a.world.enemies.values()].find(e=>e.boss);
   assert.ok(boss,'called');

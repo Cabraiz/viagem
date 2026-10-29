@@ -14,7 +14,7 @@ import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
-import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {SOLO_SECOND_CHANCES,createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
@@ -142,6 +142,8 @@ export interface RunSystemsState {
   director:DirectorState;progression:ProgressionState;boss:BossState;enemyAi:EnemyAiState;
   /** Completed revives per rescuer (ReviveSystem.revives), as entries. */
   revives:[string,number][];
+  /** Solo second chances left (ReviveSystem.soloChances), only once one was spent (absent otherwise, so no hash moves). */
+  soloChances?:number;
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
@@ -544,7 +546,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // Veículos: in both city modes too (a ride ends on moving the car).
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
-  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives,soloChances:cp.soloChances}:{})});
   // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
   const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
     base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
@@ -632,7 +634,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       place:(id,slot,order,requestId)=>{const p=world.players.get(id);return p?placeKit(world,p,slot,order,inventoryHooks,requestId):{ok:false,reason:'player'};},
       placeNear:(id,slot)=>{const p=world.players.get(id);return p?placeKitNear(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
-    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
+    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],...(revive.soloChances!==SOLO_SECOND_CHANCES?{soloChances:revive.soloChances}:{}),stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(chefao?{chefao:chefao.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };

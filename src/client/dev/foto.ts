@@ -62,7 +62,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   // Card objetivo-com-verbo: the mission line, one verb at a time, and its edge arrow.
   'objetivo-caixas':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&explora=80&caixas=2',descricao:'objetivo-com-verbo: "Junte caixas em dupla (2)" na exploração'},
   'objetivo-ninhos':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Derrube os ninhos (6)" e a seta para o ninho mais perto'},
-  'objetivo-moto':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=tombo&state=wave&frozen=1',descricao:'objetivo-com-verbo: "A moto tombou: tire os bichos" e a seta da moto'},
+  'objetivo-moto':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&moto=tombo&state=wave&frozen=1',descricao:'objetivo-com-verbo: "Chaveiro caiu: tire os bichos" e a seta da moto'},
   'objetivo-escuro':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=wave&frozen=1&escuro=.7',descricao:'objetivo-com-verbo: o escuro aperta, "Volte ao Uno!" e a seta do Uno'},
   'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},

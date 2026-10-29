@@ -725,7 +725,9 @@ export class RunHud {
   /** One frame of the fear (the scene's hooks.fear); `far` the allies out of reach while alone. */
   setFear(frame:FearFrame,far:readonly string[]){
     if(this.el.hidden||this.el.classList.contains('rh-ended')){this.fear.clear();return;}
-    this.fear.frame(frame,far);
+    // "Não se afaste do bando" is an order too: inside the gap of the mission line's (ordens-menos-e-claras), it waits out.
+    const gap=frame.notice&&this.last&&this.missionTracker.orderRecent(this.last.tick);
+    this.fear.frame(gap?{...frame,notice:undefined}:frame,far);
   }
   destroy(){
     clearTimeout(this.burstHold);

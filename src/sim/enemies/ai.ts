@@ -372,7 +372,7 @@ export class EnemyAi implements SimSystem {
       const huntPlayers=!(foco===FOCO_UNO&&openStructure),huntStructures=!(foco===FOCO_CACADOR&&targets.length>0);
       let goal=taunter?undefined:this.options.goal?.(ctx,e);
       // The viaduct: a hero on the other floor is as far as the walk through the ramp (crossing); bait and structures
-      // are on the ground.
+      // are on the ground (a deck body walks down to a structure, never to a bait).
       const floor=floorOf(e),decks=decksOf(ctx.terrain);
       const reach=(p:SimPlayer)=>decks&&floorOf(p)!==floor?crossing(decks,e,p,floorOf(p)).length:Math.hypot(p.x-e.x,p.y-e.y);
       if(taunter){player=taunter;best=reach(taunter);}
@@ -381,12 +381,22 @@ export class EnemyAi implements SimSystem {
         // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
         bait=floor===0?baitOf(memory,ctx.tick):undefined;
         if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
-        else if(memory[SIEGE]===1&&huntStructures&&floor===0)for(const s of structures){if(s.blocking)continue;const d=structureGap(s,e);if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        // A siege body on a deck (ritmo-morto-e-viaduto: it slept there, a recruit woke it) weighs a structure by the
+        // walk down the ramp to it (its reach too), like a hero on the other floor.
+        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){
+          if(s.blocking)continue;
+          const d=floor===0||!decks?structureGap(s,e):crossing(decks,e,s,0).length;
+          if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}
+        }
       }
-      // Its hero is on the other floor: it walks to the ramp (a goal, hitting nobody on the way) and hunts from there.
+      // Its hero (or its structure, on the ground) is on the other floor: it walks to the ramp (a goal, hitting nobody
+      // on the way) and hunts from there.
       if(player&&decks&&floorOf(player)!==floor){
         const q=crossing(decks,e,player,floorOf(player));
         goal={x:q.x,y:q.y,pace:1};player=undefined;best=Infinity;
+      }else if(structure&&decks&&floor!==0){
+        const q=crossing(decks,e,structure,0);
+        goal={x:q.x,y:q.y,pace:1};structure=undefined;best=Infinity;
       }
       const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone

@@ -17,6 +17,7 @@ import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,RemoteClock,remoteAt,tickTime} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
+import {forgetSeat,markRoom,readSeat,saveSeat,unmarkRoom} from './room-return.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;tick:number;players:Map<string,Player>};
 /**
@@ -463,7 +464,8 @@ export class CoopClient {
     return undefined;
   }
   async join(){
-    try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
+    // Kept by any tab of this device (room-return.ts): a reload or a new tab from the link takes the same seat back.
+    const saved=readSeat(this.code);if(saved)this.token=saved;
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
     if(typeof document!=='undefined'&&!this.wake){this.wake=()=>this.visibility();document.addEventListener('visibilitychange',this.wake);}
     // The phone's network is back (3g-socket-morto): a waiting retry goes now, a silent socket is dropped now.
@@ -620,6 +622,8 @@ export class CoopClient {
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
       this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
+      // F5 volta pra sala: the address names the room until the player leaves, so a reload rejoins (main.ts autoJoin).
+      markRoom(this.code);this.marked=true;
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
     }
@@ -756,9 +760,11 @@ export class CoopClient {
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  /** The seat token survives a reload (sessionStorage): for the grace, or for the whole run while one is on. */
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+retryWindow(this.run?.phase)}));}catch{}}
-  private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
+  /** The seat token survives a reload and a new tab (localStorage, room-return.ts): for the grace, or the whole run while one is on. */
+  private saveToken(){saveSeat(this.code,this.token,Date.now()+retryWindow(this.run?.phase));}
+  private forgetToken(){forgetSeat(this.code);}
+  /** This page put the room in the address (a welcome): leave() takes it out. */
+  private marked=false;
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.downUntil=-Infinity;this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
@@ -972,7 +978,11 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);
+    // Replaced (4009): the seat lives on in the newer tab, which shares this device's token.
+    if(this.fatal!==REPLACED_MESSAGE)this.forgetToken();
+    if(this.marked){this.marked=false;unmarkRoom(this.code);}
+    if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
 }
 export { STEP };
 

@@ -5,11 +5,12 @@
 
 /**
  * The procedural sounds (recipes.ts): each also has a file (sfx.ts) and falls back to its recipe when the file fails;
- * `sos` (the caído's ping, NEW-20261028-ORQ-sons-da-partida-ligados) is only its recipe.
+ * `sos` (the caído's ping, NEW-20261028-ORQ-sons-da-partida-ligados), `ufa` and `tsc` (NEW-20261029-ORQ-som-golpe-e-resgate)
+ * are only their recipe.
  */
 export const SOUND_IDS=[
   'golpe','gema','nivel','upgrade','queda','resgate','chefe','round-inicio','round-fim',
-  'buzina','boing','risada','carimbo','sos',
+  'buzina','boing','risada','carimbo','sos','ufa','tsc',
 ] as const;
 /**
  * Sounds that exist only as files (NEW-20261022-ORQ-sons-ia-ace-step: made by TangoFlux, public/audio/sfx/): UI, the

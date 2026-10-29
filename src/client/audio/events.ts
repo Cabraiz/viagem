@@ -65,7 +65,7 @@ export const CRIT_CUE={rate:.8,gain:1.25} as const;
 export const KILL_RATES:readonly number[]=[.94,1,1.07];
 /** An elite's death: the chefe's, smaller and higher (it is never throttled, so a crowd of plops never eats it). */
 export const ELITE_DEATH={rate:1.2,gain:.55} as const;
-/** The team hears a rescue this low; the rescuer full (the rescued stands up with 'levantar'). */
+/** The team hears a rescue this low; the rescuer full (the rescued sighs 'ufa', NEW-20261029-ORQ-som-golpe-e-resgate). */
 export const TEAM_RESCUE_GAIN=.4;
 /** A string's stable bucket in [0, n) (FNV-1a). */
 export function bucket(id:string,n:number):number{
@@ -94,7 +94,7 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
       if(elite?.(event.enemy))return {id:'chefe-morte',...ELITE_DEATH};
       return {id:'bicho-morte',rate:KILL_RATES[bucket(event.enemy,KILL_RATES.length)]};
     case 'revived':
-      if(mine(event.player))return {id:'levantar'};
+      if(mine(event.player))return {id:'ufa'};
       return mine(event.by)?{id:'resgate'}:{id:'resgate',gain:TEAM_RESCUE_GAIN};
     default:{const id=soundForEvent(event,localPlayer);return id?{id}:undefined;}
   }

@@ -38,6 +38,7 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   golpe:own('golpe',.4),gema:own('gema',.45),nivel:own('nivel',.7),upgrade:own('upgrade',.6),queda:own('queda',.75),
   resgate:own('resgate',.7),chefe:own('chefe',.85),'round-inicio':own('round-inicio',.7),'round-fim':own('round-fim',.7),
   buzina:own('buzina',.6),boing:own('boing',.6),risada:own('risada',.6),carimbo:own('carimbo',.6),sos:own('sos',1,0),
+  ufa:own('ufa',1,0),tsc:own('tsc',1,0),
   'ui-botao':UI,'ui-abrir':UI,'ui-fechar':UI,'ui-carta':UI,'ui-erro':UI,
   // Six takes of the step (footsteps.ts draws one per contact of the foot, never the same twice in a row), each from
   // its crunch, at one level.

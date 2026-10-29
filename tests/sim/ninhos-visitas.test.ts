@@ -33,12 +33,28 @@ function addPlayer(world:SimWorld,id:string,x:number,y:number,unarmed=false){
     stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x,y,ack:0,score:0} as SimPlayer;
   world.players.set(id,p);return p;
 }
-/** A clear spot with no sleeper within 4 u (the hero wakes nobody by standing there) and a few between VISIT_NEAR and VISIT_FAR u. */
-function spot(sono:NonNullable<ReturnType<RunSystems['sono']>>){
+/** Whether a body of radius r walks the straight segment a→b with no wall on it (sampled every quarter unit). */
+function straight(a:{x:number;y:number},b:{x:number;y:number},r=.5){
+  const n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/.25);
+  for(let i=0;i<=n;i++)if(!city.clearDisc(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,r))return false;
+  return true;
+}
+/**
+ * A clear spot with no sleeper within 4 u (the hero wakes nobody by standing there) and a few between VISIT_NEAR and
+ * VISIT_FAR u; the VISIT_COUNT the visit picks (the weakest, then the nearest, then plan order: sono.ts visit) have a
+ * straight open way to it. A pick behind a block wall made the walk-up a matter of the map: since the Uno's map v7 the
+ * first spot's two came round a block, longer than VISIT_EVERY. Off the plaza's barricades too (the mask has none):
+ * a hero inside one has his visitors bash it.
+ */
+function spot(sono:NonNullable<ReturnType<RunSystems['sono']>>,sys:RunSystems,world:SimWorld){
+  const hp=(id:string)=>world.enemies.get(id)?.maxHp??sono.sleepers.get(id)?.maxHp??Infinity;
+  const barricades=sys.stonewards.state.barricades??[];
   for(const b of sono.bodies)for(let k=0;k<8;k++){
     const x=b.home.x+Math.cos(k*Math.PI/4)*VISIT_NEAR,y=b.home.y+Math.sin(k*Math.PI/4)*VISIT_NEAR;
     const d=sono.bodies.map(o=>Math.hypot(o.home.x-x,o.home.y-y));
-    if(d.every(v=>v>4)&&d.filter(v=>v>=VISIT_NEAR&&v<=VISIT_FAR).length>=VISIT_COUNT+2&&city.clearDisc(x,y,.5))return {x,y};
+    const ring=sono.bodies.map((o,i)=>({o,d:d[i]!,i})).filter(r=>r.d>=VISIT_NEAR&&r.d<=VISIT_FAR);
+    const pick=[...ring].sort((a,b)=>hp(a.o.id)-hp(b.o.id)||a.d-b.d||a.i-b.i).slice(0,VISIT_COUNT);
+    if(d.every(v=>v>4)&&ring.length>=VISIT_COUNT+2&&city.clearDisc(x,y,.5)&&barricades.every(c=>Math.hypot(c.x-x,c.y-y)>c.r+2)&&pick.every(r=>straight(r.o.home,{x,y})))return {x,y};
   }
   throw new Error('no spot');
 }
@@ -48,7 +64,7 @@ test('the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an 
   const {world,sys}=run();
   const sono=sys.sono()!,until=sys.nests!.state.minervaUntil!;
   assert.ok(until-world.tick>ticks(VISIT_FROM+VISIT_EVERY),'the minute lasts past two visits');
-  const at=spot(sono);
+  const at=spot(sono,sys,world);
   const p=addPlayer(world,'p1',at.x,at.y);
   const start=world.tick;
   while(world.tick<start+ticks(VISIT_FROM)-2)world.step();
@@ -74,7 +90,7 @@ test('the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an 
 
 test('an unarmed hero (manual combat, no weapon yet) gets no visitor',()=>{
   const {world,sys}=run();
-  const at=spot(sys.sono()!);
+  const at=spot(sys.sono()!,sys,world);
   addPlayer(world,'p1',at.x,at.y,true);
   while(world.tick<ticks(VISIT_FROM+VISIT_EVERY+2))world.step();
   assert.equal(visitors(world).length,0);
@@ -83,7 +99,7 @@ test('an unarmed hero (manual combat, no weapon yet) gets no visitor',()=>{
 
 test('a team that just killed something gets no visitor until VISIT_QUIET s after the kill',()=>{
   const {world,sys}=run();
-  const at=spot(sys.sono()!);
+  const at=spot(sys.sono()!,sys,world);
   addPlayer(world,'p1',at.x,at.y);
   const start=world.tick,kill=start+ticks(VISIT_FROM)-ticks(1);
   while(world.tick<kill)world.step();

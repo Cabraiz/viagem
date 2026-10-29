@@ -15,6 +15,11 @@ export interface ArtFile {
   pages?:ArtPage[];
   cell:[number,number];
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
+  /**
+   * Frames per direction row when they differ (scripts/import-saci.mjs: E1's saci turns with 7 to 15 frames per row);
+   * `frames` is the widest row. A row past its own count is empty: it loops on its own frames, never stretched.
+   */
+  dirFrames?:number[];
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
   /** Menu dances (menu-dance.ts): false plays once; absent loops. */
   loop?:boolean;
@@ -80,6 +85,9 @@ function parseFile(value:unknown):ArtFile|undefined{
       ![p.columns,p.rows,p.firstFrame,p.frameCount].every(n=>Number.isInteger(n)&&(n as number)>=0))return undefined;
   }
   if(file.file===undefined&&file.pages===undefined)return undefined;
+  // One count per direction row, each 1..frames; a malformed list is dropped (every row then plays `frames`).
+  if(file.dirFrames!==undefined&&!(Array.isArray(file.dirFrames)&&file.dirFrames.length===(file.directions??1)&&
+    file.dirFrames.every(n=>Number.isInteger(n)&&n>=1&&n<=(file.frames??1)))){const {dirFrames:_,...rest}=file;return parseFile(rest);}
   // A lite copy's cell (scripts/art-lite.mjs) is never larger than the file's; a malformed one is dropped.
   if(file.liteCell!==undefined&&!(isCell(file.liteCell)&&file.liteCell[0]<=file.cell[0]&&file.liteCell[1]<=file.cell[1])){const {liteCell:_,pcCell:__,...rest}=file;return rest;}
   // The computer's copy sits between the two (cell ≥ pcCell ≥ liteCell); without a lite copy, or malformed, it is dropped.

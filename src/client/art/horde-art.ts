@@ -9,6 +9,7 @@
  */
 import type Phaser from 'phaser';
 import {HD_ENEMIES,artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
+import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
@@ -529,10 +530,12 @@ export const HERO_FIGURE_PX=96;
 export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,voador:.6,brutamontes:1.3,'mini-chefe':2,chefe:3};
 export const DEFAULT_HEIGHT=.9;
 /**
- * One art's own height × the hero's, over its role's: the aberração-saci 1.4 (card saci-elite-no-jogo, the user: "E as
- * proporções"); a mini-chefe's 2 would make the one-legged saci a giant.
+ * One art's own height × the hero's, over its role's: the aberração-saci 1.4× the hero as drawn on screen (card
+ * saci-elite-no-jogo, the user: "E as proporções"), so its 1.4 folds out the enemies' ENEMY_DRAW_SCALE over the heroes'
+ * HERO_DRAW_SCALE (else it stands 2× the hero); a mini-chefe's 2 would make the one-legged saci a giant.
  */
-export const ART_HEIGHT:Readonly<Record<string,number>>={'aberracao-saci':1.4};
+export const SACI_ON_SCREEN=1.4;
+export const ART_HEIGHT:Readonly<Record<string,number>>={'aberracao-saci':SACI_ON_SCREEN*HERO_DRAW_SCALE/ENEMY_DRAW_SCALE};
 /** The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it). */
 let waveBossDraw:number=WAVE_BOSS.drawScale;
 /** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */

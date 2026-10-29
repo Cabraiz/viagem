@@ -2,6 +2,7 @@ import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {setArtIndex,parseArtIndex,artPiece} from '../../src/client/art/manifest.ts';
+import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 import {ART_HEIGHT,HERO_FIGURE_PX,SHADOW,artTargetHeight,chooseAnim,drawnScale,enemyFrame,enemyFrameAt,enemyPieceLoads,fileInfo,loopAnim,
   ownElite,rowFrames} from '../../src/client/art/horde-art.ts';
 
@@ -64,10 +65,12 @@ test('the saci is its own elite: no elite layer needed, the idle walks, the shad
   assert.equal(ownElite({kind:'animations',files:{}}),false);
 });
 
-test('the saci stands 1.4× the hero, not a mini-chefe\'s 2×, and no elite scale on top',()=>{
-  assert.equal(ART_HEIGHT['aberracao-saci'],1.4);
-  assert.equal(artTargetHeight('aberracao-saci'),HERO_FIGURE_PX*1.4);
-  assert.equal(drawnScale('aberracao-saci',140,false),HERO_FIGURE_PX*1.4/140);
+test('the saci stands 1.4× the hero on screen, not a mini-chefe\'s 2×, and no elite scale on top',()=>{
+  // On screen: the enemy's ENEMY_DRAW_SCALE over the hero's HERO_DRAW_SCALE (else 1.4 × 1.15 / 0.8 ≈ 2×).
+  const onScreen=(art:number)=>art*ENEMY_DRAW_SCALE/(HERO_FIGURE_PX*HERO_DRAW_SCALE);
+  assert.ok(Math.abs(onScreen(artTargetHeight('aberracao-saci'))-1.4)<1e-9);
+  assert.equal(artTargetHeight('aberracao-saci'),HERO_FIGURE_PX*ART_HEIGHT['aberracao-saci']);
+  assert.equal(drawnScale('aberracao-saci',140,false),artTargetHeight('aberracao-saci')/140);
 });
 
 test('the saci\'s copies: sized for his own height (no elite × 1.35), the shadow in half the cell',()=>{

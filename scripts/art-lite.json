@@ -8,7 +8,7 @@
  "summary": {
   "files": 3290,
   "bytes": 2262309792,
-  "liteBytes": 788258210,
+  "liteBytes": 787698052,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -11871,27 +11871,27 @@
   },
   "enemies-pc/saci/idle-sombra.webp": {
    "source": "e1a2c145095cd9b8661ad6e3e625b620e719afdf1763f2e96e79b088e27f4d3a",
-   "lite": "45dd5a6dc9446c43e1c8068dd37b429505abb8ac9282252fc02f4eebe7693e08",
+   "lite": "bb8b367c5bf999fc88aa7a8052aa7948d39d4a7b092865ecc5120b2c2e0f3272",
    "bytes": 85072,
-   "liteBytes": 110272,
+   "liteBytes": 68632,
    "liteCell": [
-    123,
-    123
+    86,
+    86
    ],
-   "psnr": 64.8,
-   "shownPsnr": 58.5
+   "psnr": 63.3,
+   "shownPsnr": 44.4
   },
   "enemies-pc/saci/idle.webp": {
    "source": "93d7724f1986ba16cc22de640bf9c9a046603c0bbdbf1523b5558f8ab3a0c663",
-   "lite": "6a478d4f27d74e59da9c27924abe607f0a3416e6a43917a5310399b58e47b80b",
+   "lite": "1d907c3aadc376bead3d809d1e56dfb8d793d992eed7ebb7d09c93c4437a8255",
    "bytes": 2252604,
-   "liteBytes": 898824,
+   "liteBytes": 536024,
    "liteCell": [
-    246,
-    246
+    172,
+    172
    ],
-   "psnr": 43.3,
-   "shownPsnr": 45.7
+   "psnr": 42.4,
+   "shownPsnr": 43.2
   },
   "enemies-pc/sapo-cururu/death.webp": {
    "source": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",
@@ -24791,27 +24791,27 @@
   },
   "enemies/saci/idle-sombra.webp": {
    "source": "e1a2c145095cd9b8661ad6e3e625b620e719afdf1763f2e96e79b088e27f4d3a",
-   "lite": "f44eaccaa380a3c27ddaaf09870c074075cb7d71279331a948eb2ca70506c79e",
+   "lite": "71491e88eb3a62f3ab387e63841517c7de1e540adc234bf6e41381380a3c27a4",
    "bytes": 85072,
-   "liteBytes": 54632,
+   "liteBytes": 37580,
    "liteCell": [
-    66,
-    66
+    46,
+    46
    ],
-   "psnr": 61.6,
-   "shownPsnr": 44.2
+   "psnr": 59.3,
+   "shownPsnr": 43.2
   },
   "enemies/saci/idle.webp": {
    "source": "93d7724f1986ba16cc22de640bf9c9a046603c0bbdbf1523b5558f8ab3a0c663",
-   "lite": "e7e5678a4d3f8469c823c922d8cd356339ab538e758b552df58e9cadcd3173bb",
+   "lite": "58ec434ef72157945f43b401662a5d23112eb197f2e157ddaf91ab083e0832f7",
    "bytes": 2252604,
-   "liteBytes": 361154,
+   "liteBytes": 222488,
    "liteCell": [
-    131,
-    131
+    92,
+    92
    ],
-   "psnr": 41.9,
-   "shownPsnr": 40.1
+   "psnr": 41.1,
+   "shownPsnr": 36.6
   },
   "enemies/sapo-cururu/death.webp": {
    "source": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",

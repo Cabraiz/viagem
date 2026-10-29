@@ -1,15 +1,17 @@
 /**
  * NEW-20261024-ORQ-vida-inimigos-estilo-clash (etapa 3, option B): the enemies' hp is their role's (rules ROLE_HITS).
  *  - STARTER_HIT is the faca verde's damage (the arsenal's row, ARSENAL_DAMAGE included)
- *  - every body of a role (the nine and the pack entries) has the role's hp; only the boss keeps its own
- *  - at the ninhos run's start row, solo, a role takes exactly ROLE_HITS faca verde hits
+ *  - every body of a role (the nine and the pack entries) has the role's hp; only the boss keeps its own. A clone with a
+ *    feel (rules/enemy-feel.ts, inimigos-variedade 29/10 H) has the role's hp × its feel's hp
+ *  - at the ninhos run's start row, solo, a role takes exactly ROLE_HITS faca verde hits; a clone with a feel, within a
+ *    third of them (the feel's hp is 0.8–1.25)
  *  - no common enemy dies to one hit of the faca verde or the pistola verde, 1–6 players, every phase of the ninhos run
  *    (the warm start's row, the sleepers' row, rows 2..9), at NEST_PACE.hp, rounded like createEnemy
  *  - the horde trade-off: CLASH_BODIES < 1 and CLASH_XP > 1
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CLASH_BODIES,CLASH_XP,ENEMY_ROLES,ROLE_HITS,ROSTER,ROUNDS,STARTER_HIT,playerScale} from '../../src/rules/index.ts';
+import {CLASH_BODIES,CLASH_XP,ENEMY_ROLES,ROLE_HITS,ROSTER,ROUNDS,STARTER_HIT,enemyFeel,playerScale} from '../../src/rules/index.ts';
 import {ENEMIES,enemyDef} from '../../src/sim/enemies/catalog.ts';
 import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 import {SLEEPER_ROUND} from '../../src/sim/assemble.ts';
@@ -26,8 +28,11 @@ test('STARTER_HIT is the faca verde', ()=>{
 test('every body of a role has the role hp; the boss keeps its own', ()=>{
   for(const role of ENEMY_ROLES){
     if(role==='chefe')continue;
-    const hps=new Set(ROSTER.filter(e=>e.role===role).map(e=>enemyDef(e.id).hp));
+    const bodies=ROSTER.filter(e=>e.role===role),plain=bodies.filter(e=>!enemyFeel(e.id));
+    const hps=new Set(plain.map(e=>enemyDef(e.id).hp));
     assert.ok(hps.size<=1,`${role}: ${[...hps].join(', ')}`);
+    const [hp]=hps;
+    for(const e of bodies){const f=enemyFeel(e.id);if(f&&hp!==undefined)assert.equal(enemyDef(e.id).hp,Math.round(hp*f.hp),`${e.id} feel`);}
   }
   assert.equal(ENEMIES.chefe.hp,4000);
 });
@@ -36,7 +41,9 @@ test('start of a ninhos run, solo: each role takes its ROLE_HITS of the faca ver
   const s=nestRow(NEST_PACE.warmRow)*playerScale(1).hp*NEST_PACE.hp;
   for(const e of commons){
     const hp=Math.max(1,Math.round(enemyDef(e.id).hp*s));
-    assert.equal(Math.ceil(hp/STARTER_HIT),ROLE_HITS[e.role as keyof typeof ROLE_HITS],`${e.id} (${e.role}) ${hp} hp`);
+    const want=ROLE_HITS[e.role as keyof typeof ROLE_HITS],hits=Math.ceil(hp/STARTER_HIT);
+    if(enemyFeel(e.id))assert.ok(Math.abs(hits-want)<=Math.ceil(want/3),`${e.id} (${e.role}, feel) ${hp} hp: ${hits} hits`);
+    else assert.equal(hits,want,`${e.id} (${e.role}) ${hp} hp`);
   }
 });
 

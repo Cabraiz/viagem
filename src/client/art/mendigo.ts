@@ -22,7 +22,8 @@ const page=(d:string,i:number,name:string)=>({file:`mendigo/${name}-${d}.webp`,c
 /** Uma folha com uma linha por direção (`frames` colunas × 8 linhas). */
 const rows=(name:string,frames:number,fps:number):ArtFile=>({file:`mendigo/${name}.webp`,cell:CEL,frames,directions:8,anchor:PE,fps,
   pages:[{file:`mendigo/${name}.webp`,columns:frames,rows:8,firstFrame:0,frameCount:frames*8}]});
-const FILES:Readonly<Record<string,ArtFile>>={
+/** As animações da peça na célula aprovada (192); scripts/art-lite.mjs as reduz como as das outras peças. */
+export const MENDIGO_FILES:Readonly<Record<string,ArtFile>>={
   idle:{file:'mendigo/idle-S.webp',cell:CEL,frames:16,directions:8,anchor:PE,fps:8,pages:DIRS.map((d,i)=>page(d,i,'idle'))},
   // 16 quadros em 600 ms; no jogo o passo segue o chão (ENEMY_WALK.byGround), o fps só vale fora dele
   walk:{file:'mendigo/walk-S.webp',cell:CEL,frames:16,directions:8,anchor:PE,fps:27,pages:DIRS.map((d,i)=>page(d,i,'walk'))},
@@ -30,6 +31,12 @@ const FILES:Readonly<Record<string,ArtFile>>={
   hit:rows('hit',6,10),
   death:rows('death',8,10),
 };
+/**
+ * A célula das cópias que o jogo carrega (scripts/art-lite.mjs, a mesma regra das outras peças: a figura do parado na
+ * altura que o celular mostra, com folga da elite): a do celular (public/art/lite/enemies/) e a do computador
+ * (public/art/lite/enemies-pc/). O art-lite falha quando a conta dele não bate com estas.
+ */
+export const MENDIGO_LITE_CELL:[number,number]=[75,75],MENDIGO_PC_CELL:[number,number]=[105,105];
 /** A coroa da elite: um quadro só, carregado como arquivo da peça (não é animação, não ganha chave elite/). */
 const COROA:ArtFile={file:'mendigo/coroa.webp',cell:[40,31],frames:1,directions:1,anchor:[.5,.674]};
 /** O que o mendigo ainda não tem (nada: a peça está completa). */
@@ -51,10 +58,13 @@ export const keepsOwnArt=(id:string)=>{
  * sempre que o manifest do jogo carregou; um índice montado à mão sem ela fica com as artes próprias). */
 export const gameEnemyArt=(id:string)=>keepsOwnArt(id)||!artPiece('inimigos',MENDIGO)?id:MENDIGO;
 
-/** O índice com a peça do mendigo no grupo `inimigos` (sem o grupo, nada muda). */
-export function withMendigo(index:ArtIndex):ArtIndex{
+/** Uma animação como a tela desenha: na célula da cópia do celular, ou na do computador (`pc`), como manifest.ts liteFile. */
+const liteFile=(f:ArtFile,pc:boolean):ArtFile=>pc?{...f,cell:MENDIGO_PC_CELL,liteCell:MENDIGO_LITE_CELL,pcCell:MENDIGO_PC_CELL}:{...f,cell:MENDIGO_LITE_CELL,liteCell:MENDIGO_LITE_CELL};
+/** O índice com a peça do mendigo no grupo `inimigos` (sem o grupo, nada muda); `pc`: como parseArtIndex. */
+export function withMendigo(index:ArtIndex,pc=false):ArtIndex{
   const g=index.groups.inimigos;
   if(!g)return index;
-  const piece:ArtPiece={kind:'animations',files:{...Object.fromEntries(Object.entries(FILES).flatMap(([a,f])=>[[a,f],[`elite/${a}`,f]])),[MENDIGO_CROWN.name]:COROA}};
+  const files=Object.entries(MENDIGO_FILES).map(([a,f])=>[a,liteFile(f,pc)] as const);
+  const piece:ArtPiece={kind:'animations',files:{...Object.fromEntries(files.flatMap(([a,f])=>[[a,f],[`elite/${a}`,f]])),[MENDIGO_CROWN.name]:COROA}};
   return {...index,groups:{...index.groups,inimigos:{...g,pieces:{...g.pieces,[MENDIGO]:piece}}}};
 }

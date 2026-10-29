@@ -12,11 +12,14 @@ import {WAVE_BOSS,WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {critterSheetFrame} from '../../src/client/art/hud-art.ts';
 import {bootArt} from '../../src/client/ui/art-boot.ts';
 import {ELITE_SCALE} from '../../src/client/render/keys.ts';
+import {MENDIGO,MENDIGO_FILES,MENDIGO_LITE_CELL,MENDIGO_PC_CELL} from '../../src/client/art/mendigo.ts';
 import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../../src/contract/offscreen.ts';
 
 const lite=JSON.parse(readFileSync('scripts/art-lite.json','utf8'));
 const enemies=JSON.parse(readFileSync('public/art/enemies/manifest.json','utf8'));
 const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));
+// The mendigo is not in the enemies' manifest (mendigo.ts adds him at runtime): his files at the cells art-lite gives him.
+const pieceOf=(id:string):any=>id===MENDIGO?{files:Object.fromEntries(Object.entries(MENDIGO_FILES).filter(([n])=>n!=='elite/coroa').map(([n,f])=>[n,{...f,liteCell:MENDIGO_LITE_CELL,pcCell:MENDIGO_PC_CELL}]))}:enemies.pieces[id];
 const filesOf=(f:any):string[]=>f.pages?.length?f.pages.map((p:any)=>p.file):[f.file];
 
 test('an enemy file with liteCell is drawn with that cell; a malformed or bigger one keeps the approved cell; other groups ignore it',()=>{
@@ -46,7 +49,7 @@ test('every smaller copy is its source cell by cell (the sheet is columns × lit
 
 test('a smaller copy keeps LITE_TEXELS (0.9) texels per CSS px of its figure as an elite at the closest zoom, 1.2 as a plain enemy',()=>{
   for(const [id,fig] of Object.entries<any>(lite.enemyFigures)){
-    const piece=enemies.pieces[id],f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]);
+    const piece=pieceOf(id),f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]);
     if(!f?.liteCell)continue;
     // The 1st wave's chefão (boss-fim-onda-1) draws × WAVE_BOSS.drawScale past his sheet (its own 384 px cell is under
     // that): softer by choice, the lite copy keeps his download; the check stays on his role's height.
@@ -98,7 +101,7 @@ test('a computer copy keeps LITE_TEXELS (0.9) texels per CSS px of a plain enemy
   assert.ok(Math.abs(heroPc-105.2)<.1);
   let checked=0;
   for(const [id,fig] of Object.entries<any>(lite.enemyFigures)){
-    const piece=enemies.pieces[id],f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]&&x.pcCell);
+    const piece=pieceOf(id),f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]&&x.pcCell);
     if(!f)continue;
     const need=artTargetHeight(id)*heroPc/HERO_FIGURE_PX*.9,got=fig.drawn*f.pcCell[1]/fig.cell[1];
     assert.ok(got>=need-1e-9||f.pcCell[1]===f.cell[1],`${id}: ${got.toFixed(1)} < ${need.toFixed(1)}`);

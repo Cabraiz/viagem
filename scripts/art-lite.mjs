@@ -50,6 +50,7 @@ import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
 import {HD_ENEMIES} from '../src/client/art/manifest.ts';
+import {MENDIGO,MENDIGO_FILES,MENDIGO_LITE_CELL,MENDIGO_PC_CELL} from '../src/client/art/mendigo.ts';
 import {WAVE_BOSS} from '../src/rules/index.ts';
 import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../src/contract/offscreen.ts';
 import {cityLiteFiles} from '../src/client/render/city/art-plan.ts';
@@ -175,7 +176,10 @@ const liteCells=new Map();
 /** `enemies/<file>` → its cell and the cell of its computer copy (enemies-pc), for the files that have one. */
 const pcCells=new Map();
 const figures={};
-for(const [id,piece] of Object.entries(enemies.pieces)){
+// The mendigo (src/client/art/mendigo.ts) is not in the enemies' manifest: the client adds his piece, with the cells of
+// MENDIGO_LITE_CELL / MENDIGO_PC_CELL, which must be what this rule gives (checked below). His crown keeps its cell.
+const HAS_MENDIGO=existsSync(join(ROOT,'public/art/enemies',MENDIGO_FILES.idle.file));
+for(const [id,piece] of [...Object.entries(enemies.pieces),...HAS_MENDIGO?[[MENDIGO,{kind:'animations',files:MENDIGO_FILES}]]:[]]){
   const anim=chooseAnim(piece,false,false),file=anim&&piece.files[anim];if(!file)continue;
   const pages=file.pages?.length?file.pages.map(p=>p.file):[file.file];
   const source=sha(Buffer.concat(pages.map(p=>readFileSync(join(ROOT,'public/art/enemies',p)))));
@@ -203,6 +207,10 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
     }
   }
 }
+if(HAS_MENDIGO){
+  const want=[MENDIGO_LITE_CELL,MENDIGO_PC_CELL],got=['lite','pc'].map(k=>(k==='lite'?liteCells:pcCells).get(`enemies/${MENDIGO_FILES.idle.file}`)?.lite??MENDIGO_FILES.idle.cell);
+  if(String(want)!==String(got))throw new Error(`art-lite: src/client/art/mendigo.ts MENDIGO_LITE_CELL/MENDIGO_PC_CELL têm que ser ${JSON.stringify(got[0])} / ${JSON.stringify(got[1])} (hoje ${JSON.stringify(want[0])} / ${JSON.stringify(want[1])}).`);
+}
 manifest.enemyFigures=Object.fromEntries(Object.entries(figures).sort(([a],[b])=>a.localeCompare(b)));
 
 const stale=[];
@@ -213,9 +221,16 @@ async function liteCopy(source,cell,liteCell,size){
     const {data}=await sharp(source).ensureAlpha().resize(w,h,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer({resolveWithObject:true});
     return {lite:await sharp(data,{raw:{width:w,height:h,channels:4}}).webp({...WEBP,quality:size.quality}).toBuffer(),full:data};
   }
-  if(String(cell)===String(liteCell))return {lite:await sharp(source).webp(WEBP).toBuffer(),full:await rgba(source)};
-  const s=await shrink(await decode(source),cell,liteCell);
-  return {lite:await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer(),full:s.data};
+  // A busy painted sheet (the mendigo's, 192 → 75: 32.9 dB shown at quality 90) takes the next setting up to
+  // CITY_MIN_PSNR at the size a phone draws it, lossless last, like the city's copies.
+  const meta=await sharp(source).metadata(),w=Math.round(meta.width*SHOWN_SCALE),h=Math.round(meta.height*SHOWN_SCALE),shown=await rgba(source,w,h);
+  const s=String(cell)===String(liteCell)?null:await shrink(await decode(source),cell,liteCell);
+  let lite;
+  for(const webp of [WEBP,{...WEBP,quality:95},{lossless:true,effort:WEBP.effort}]){
+    lite=s?await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(webp).toBuffer():await sharp(source).webp(webp).toBuffer();
+    if(psnr(shown,await rgba(lite,w,h))>=CITY_MIN_PSNR)break;
+  }
+  return {lite,full:s?s.data:await rgba(source)};
 }
 // ---------- enemies-pc: the computer's copy of every file a match downloads, at pcCell ----------
 if(kinds.includes('enemies-pc')){

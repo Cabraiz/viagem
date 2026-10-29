@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {artPiece,loadArtManifest,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {MENDIGO,MENDIGO_FALTA,eliteCrownOf,gameEnemyArt,keepsOwnArt,withMendigo} from '../../src/client/art/mendigo.ts';
+import {MENDIGO,MENDIGO_FALTA,MENDIGO_LITE_CELL,MENDIGO_PC_CELL,eliteCrownOf,gameEnemyArt,keepsOwnArt,withMendigo} from '../../src/client/art/mendigo.ts';
 import {enemyArtId,enemyPieceLoads} from '../../src/client/art/horde-art.ts';
 import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {MENDIGO_NAME,enemyName,enemyNameTag,fallenByText} from '../../src/client/render/enemy-name-rules.ts';
@@ -37,7 +37,7 @@ test('mendigo completo: parado e andar em 8 direções, golpe, dano e morte; as 
   }
   for(const [a,n] of [['attack',6],['hit',6],['death',8]] as const){
     const f=p.files[a];
-    assert.deepEqual([f.cell,f.frames,f.directions,f.anchor],[[192,192],n,8,[.5,.9]],a);
+    assert.deepEqual([f.cell,f.frames,f.directions,f.anchor],[MENDIGO_LITE_CELL,n,8,[.5,.9]],a);
     assert.deepEqual(f.pages?.map(pg=>[pg.file,pg.columns,pg.rows,pg.frameCount]),[[`mendigo/${a}.webp`,n,8,n*8]],a);
   }
   // As outras peças e grupos ficam como estavam.
@@ -67,6 +67,12 @@ test('só o mendigo: o carregamento do manifest põe a peça, e a horda pede só
     const urls=[...new Set(enemyPieceLoads(MENDIGO).map(l=>l.url))].sort();
     assert.equal(urls.length,20);
     assert.ok(urls.every(u=>u.startsWith('/art/lite/enemies/mendigo/')),urls.join());
+    // celular na célula da cópia lite (75); o computador na sua (105, public/art/lite/enemies-pc/), menos a coroa
+    assert.deepEqual(enemyPieceLoads(MENDIGO).find(l=>l.url.endsWith('/idle-S.webp'))?.cell,MENDIGO_LITE_CELL);
+    await loadArtManifest(async()=>({ok:true,json:async()=>raw}),true);
+    const pc=enemyPieceLoads(MENDIGO);
+    assert.deepEqual(pc.find(l=>l.url.endsWith('/idle-S.webp'))?.cell,MENDIGO_PC_CELL);
+    assert.deepEqual(pc.filter(l=>!l.url.startsWith('/art/lite/enemies-pc/mendigo/')).map(l=>l.url),['/art/lite/enemies/mendigo/coroa.webp']);
   }finally{setArtIndex(parseArtIndex({}));}
 });
 test('só o mendigo: um nome só na tela, "Morador de Rua" (Mendigo é herói); chefões e saci com o nome próprio',()=>{

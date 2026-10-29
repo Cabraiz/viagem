@@ -159,7 +159,7 @@ export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
 /** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. `pc`: see parseArtIndex. */
 export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'}),pc=false){
-  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?withMendigo(parseArtIndex(await r.json(),pc)):EMPTY);}
+  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?withMendigo(parseArtIndex(await r.json(),pc),pc):EMPTY);}
   catch{setArtIndex(EMPTY);}
   return index;
 }

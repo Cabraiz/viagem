@@ -28,7 +28,7 @@ import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
-import {carBar} from './chaveiro.ts';
+import {ClockTag,carBar,liveObjective} from './chaveiro.ts';
 import {effectivePhase,nestsRun} from '../calm-phase.ts';
 import {HUD_SWITCH} from './arrows.ts';
 import {getAudio} from '../audio/engine.ts';
@@ -234,12 +234,19 @@ export function createCamp(options:CampOptions):CampPart{
   // where the round chip says it; on the phone the words go to the screen reader (.rh-sr, as topbar.ts does).
   const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
+  // missao-proteger-uno-tempo: the round chip's "+N s" (a hit on the Uno, a stop of the moto) after the clock, on the phone too.
+  const clockMore=el('b','rh-camp-relogio-mais',clock);clockMore.setAttribute('aria-hidden','true');clockMore.hidden=true;
+  const clockTag=new ClockTag();
   let lastClock:string|undefined;
   const paintClock=(view:RunView,w:ExploraWindows)=>{
-    const bar=barClock(view,w),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
+    const objective=liveObjective(view),bar=barClock(view,w);
+    const more=clockTag.step(objective&&!roundInfo(view)?.chaveiro?.held?objective:undefined,view.tick);
+    const key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}|${more?`${more.urgent}${more.text}`:''}`:'';
     if(key===lastClock)return;
     lastClock=key;putHidden(clock,!bar);readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+    const tag=bar&&more;putHidden(clockMore,!tag);putText(clockMore,tag?`+${tag.added} s`:'');
+    if(tag)clockMore.dataset.motivo=tag.urgent?'urgente':'parada';else delete clockMore.dataset.motivo;
+    if(bar){putTextData(clockWords,tag?`${bar.aria}. ${tag.text}`:bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
       if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
     else{putTextData(clockWords,'');putText(clockPicture,'');delete clock.dataset.urgente;delete clock.dataset.parado;}
   };

@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SIM_HZ} from '../../src/contract/types.ts';
-import {ARRIVAL_SECONDS,CLOCK_ADDED_HOLD_S,CLOCK_ADDED_MIN_S,CLOCK_HIT_LABEL,ClockHitTracker,ClockStopTracker,arrivalBand} from '../../src/client/hud/chaveiro.ts';
+import {ARRIVAL_SECONDS,CLOCK_ADDED_HOLD_S,CLOCK_ADDED_MIN_S,CLOCK_HIT_LABEL,ClockHitTracker,ClockStopTracker,ClockTag,arrivalBand} from '../../src/client/hud/chaveiro.ts';
 import {ABRINDO_SECONDS} from '../../src/sim/chaveiro/system.ts';
 
 test('a tombo freezes the clock: the time it adds shows, grows, and stays a moment after he rides again',()=>{
@@ -61,4 +61,15 @@ test('card missao-proteger-uno-tempo: a hit on the Uno says what it added; a bur
   // While he opens the car a hit adds a second.
   const v=new ClockHitTracker();
   v.step('abrindo',10,0,0);assert.equal(v.step('abrindo',10,SIM_HZ,1)?.text,'Batida no Uno: +1 s');
+});
+
+test('ClockTag (the round chip and the phone bar clock): a stop first, else a hit; none held, and it starts over',()=>{
+  const o=(mode:'anda'|'tombo',etaS:number,hits:number)=>({moto:{x:0,y:0,mode},etaS,car:{x:0,y:0,hits,limit:120,parts:0}});
+  const t=new ClockTag();
+  assert.equal(t.step(o('anda',300,0),0),undefined);
+  assert.equal(t.step(o('anda',301,1),SIM_HZ)?.text,'Batida no Uno: +2 s','a hit on the phone too, not only on the desktop chip');
+  assert.equal(t.step(undefined,SIM_HZ+1),undefined,'held by the chefão (or no objective): nothing');
+  assert.equal(t.step(o('anda',301,2),SIM_HZ+2),undefined,'and it starts over: the first view after is no news');
+  t.step(o('tombo',300,2),2*SIM_HZ);
+  assert.equal(t.step(o('tombo',302,2),3*SIM_HZ)?.text,'Moto tombou: +3 s','a stop of the moto is said first');
 });

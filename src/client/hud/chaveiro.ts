@@ -152,6 +152,19 @@ export class ClockHitTracker {
   }
   reset(){this.last=this.base=this.shown=undefined;this.until=-1;}
 }
+/**
+ * What the clock says next to it, from both trackers: a stop's "+N s" first, else a hit's on the Uno. Fed every view
+ * with the live objective (undefined: none, ended, or held by the chefão: nothing, and both start over).
+ * The round chip (topbar.ts) and the phone's bar clock (camp.ts) each keep one.
+ */
+export class ClockTag {
+  private stops=new ClockStopTracker();private hits=new ClockHitTracker();
+  step(objective:Pick<ObjectiveView,'moto'|'etaS'|'car'>|undefined,tick:number):ClockStop|undefined{
+    if(!objective){this.stops.reset();this.hits.reset();return undefined;}
+    const stopped=this.stops.step(objective.moto.mode,objective.etaS,tick),hit=this.hits.step(objective.moto.mode,objective.etaS,tick,objective.car.hits);
+    return stopped||hit||undefined;
+  }
+}
 
 /**
  * Card chaveiro-chegou-e-relogio (item 4): "chegou" is a moment. While he opens the car ('abrindo', ABRINDO_SECONDS in

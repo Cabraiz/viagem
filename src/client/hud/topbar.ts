@@ -5,7 +5,7 @@
 import {putData,putHidden,putIconNumber,putTextData} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
 import {bossInfo,exploraLeft,nestCount,nestsMode,roundInfo,xpFraction,type HudContext,type HudPart} from './model.ts';
-import {ClockHitTracker,ClockStopTracker,arrivalBand,liveObjective,type ChaveiroClock} from './chaveiro.ts';
+import {ClockTag,arrivalBand,liveObjective,type ChaveiroClock} from './chaveiro.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
@@ -30,7 +30,7 @@ export function createTopBar():HudPart{
   // Right after the clock, in the chip: "+N s", with what stopped the moto before it where the row has room (chaveiro-relogio.css).
   const stopTag=el('span','rh-relogio-motivo');eta.after(stopTag);stopTag.hidden=true;
   const stopName=el('span','rh-relogio-motivo-nome',stopTag),stopAdded=el('span','rh-relogio-motivo-mais',stopTag);
-  const stops=new ClockStopTracker(),hits=new ClockHitTracker();
+  const tag=new ClockTag();
   // "Chegou" is a moment: the band under the chip while he opens the car, the seconds left and a bar filling up.
   const arrival=el('div','rh-chaveiro-chegou',root);arrival.setAttribute('role','status');arrival.hidden=true;
   const arrivalTitle=el('strong','rh-chegou-titulo',arrival),arrivalHold=el('span','rh-chegou-segurem',arrival);
@@ -86,10 +86,7 @@ export function createTopBar():HudPart{
       });
       const objective=liveObjective(view);
       // A stop's "+N s" first; else a hit's on the Uno (card missao-proteger-uno-tempo): both read the ETA, held = nothing.
-      const live=objective&&!round.chaveiro?.held?objective:undefined;
-      const stopped=live&&stops.step(live.moto.mode,live.etaS,view.tick),hit=live&&hits.step(live.moto.mode,live.etaS,view.tick,live.car.hits);
-      if(!live){stops.reset();hits.reset();}
-      const stop=stopped||hit||undefined;
+      const stop=tag.step(objective&&!round.chaveiro?.held?objective:undefined,view.tick);
       put('stop',stop?`${stop.mode}|${stop.text}`:'',()=>{
         putHidden(stopTag,!stop);
         if(stop){eta.dataset.motivo=stop.urgent?'urgente':'parada';stopTag.dataset.motivo=eta.dataset.motivo;

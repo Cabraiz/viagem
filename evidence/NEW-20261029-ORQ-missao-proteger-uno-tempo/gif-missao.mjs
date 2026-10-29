@@ -31,28 +31,34 @@ try{
   const hud=()=>page.evaluate(()=>{
     const q=s=>document.querySelector(s),vis=e=>!!e&&!e.hidden&&e.getClientRects().length>0;
     const s=window.__island.scene,car=s.chaveiro?.carPose?.(),net=s.hooks.net;
-    return {eta:q('.rh-round-eta')?.textContent??'',tag:vis(q('.rh-relogio-motivo'))?q('.rh-relogio-motivo').textContent:'',
+    return {eta:q('.rh-round-eta')?.textContent??'',tag:vis(q('.rh-camp-relogio-mais'))?q('.rh-camp-relogio-mais').textContent:vis(q('.rh-relogio-motivo'))?q('.rh-relogio-motivo').textContent:'',
       chegou:vis(q('.rh-chaveiro-chegou'))?q('.rh-chaveiro-chegou').textContent:'',car:car?{x:car.x,y:car.y}:undefined,hero:{...net.predicted}};
   });
   const shot=async label=>frames.push({buf:await page.screenshot(),label});
   const lab=m=>page.evaluate(m=>window.__island.scene.hooks.net.socket.send(JSON.stringify({t:'lab',...m})),m);
   let h=await hud();if(!h.car)throw new Error('sem carro na partida');
   const car=h.car;
-  // The hero a step off the car, so the critters go for the Uno and the car stays on screen.
-  await lab({to:{x:car.x+3.2,y:car.y+1.2}});await sleep(1500);
-  h=await hud();console.log('relógio',h.eta,'carro',car,'herói',h.hero);
+  // The hero a step off the car, in its light: the wave's FOCO_UNO bodies go for the Uno (lab-spawned bodies have no foco
+  // and only hunt the hero, so the wave is the real one) and the car stays on screen.
+  const posto={x:car.x+3,y:car.y+1.5};
+  await lab({to:posto});await sleep(1500);
+  // Minerva's minute first (the critters go home then): the chaveiro's clock starts when it ends.
+  for(let t0=Date.now();Date.now()-t0<60000&&!/Chaveiro chega/.test((h=await hud()).eta);)await sleep(500);
+  console.log('relógio',h.eta,'carro',car,'herói',h.hero);
 
   // 1. The clock runs.
-  for(let t0=Date.now();Date.now()-t0<3000;)await shot('relógio do chaveiro: 5:00 de defesa');
+  for(let t0=Date.now();Date.now()-t0<2500;)await shot('relógio do chaveiro: 5:00 de defesa');
   await page.screenshot({path:`${OUT}-relogio-cel.png`});
-  // 2. Critters on the Uno: each hit adds time, the chip says how much.
-  for(let i=0;i<8;i++){const a=i/8*Math.PI*2;await lab({spawn:{x:car.x+Math.cos(a)*1.8,y:car.y+Math.sin(a)*1.8},kind:'bebado'});}
+  // 2. The first wave (5 to 15 s after Minerva) goes for the Uno: each hit adds time, the chip says how much.
   let seenTag=0,best='';
-  for(let t0=Date.now();Date.now()-t0<30000;){
+  for(let t0=Date.now(),n=0;Date.now()-t0<60000;n++){
     h=await hud();
     if(h.tag){if(!seenTag){seenTag=Date.now();await page.screenshot({path:`${OUT}-batida-cel.png`});}best=h.tag;}
-    await shot(h.tag?`bicho bate no Uno: ${h.tag.replace(/^.*: /,'')} no relógio`:'bichos indo para o Uno');
+    // Before the first hit 1 frame in 2 (the walk to the car), then every frame.
+    if(h.tag||n%2===0)await shot(h.tag?`bicho bate no Uno: ${h.tag.replace(/^.*: /,'')} no relógio`:'bichos indo para o Uno');else await sleep(200);
     if(seenTag&&Date.now()-seenTag>5000)break;
+    // Keep the hero on his post (the hunters push him around), so the camera keeps the car.
+    if(n%10===9)await lab({to:posto});
   }
   console.log('tag',best||'(não apareceu)','relógio',h.eta);
   await lab({wipe:true});await sleep(800);
@@ -60,9 +66,11 @@ try{
   await lab({clock:2});
   let arrived=0;
   for(let t0=Date.now(),n=0;Date.now()-t0<60000;n++){
+    // The wave keeps coming: clear it every ~2 s, or its hits push the 2 s back again and it fells the idle hero.
+    if(n%8===7)await lab({wipe:true});
     h=await hud();
     if(h.chegou){if(!arrived){arrived=Date.now();await page.screenshot({path:`${OUT}-chegou-cel.png`});}}
-    if(h.chegou||n%3===0)await shot(h.chegou?'o chaveiro chegou e abre o Uno':'chaveiro chegando (acelerado)');
+    if(h.chegou?n%2===0:n%4===0)await shot(h.chegou?'o chaveiro chegou e abre o Uno':'chaveiro chegando (acelerado)');
     else await sleep(250);
     if(arrived&&Date.now()-arrived>6000)break;
   }
@@ -74,5 +82,6 @@ for(const [i,f] of frames.entries()){
   await sharp(f.buf).composite([{input:lab,left:0,top:H-28}]).png().toFile(`${dir}/${String(i).padStart(4,'0')}.png`);
 }
 const {execFileSync}=await import('node:child_process');
-execFileSync('ffmpeg',['-y','-loglevel','error','-framerate','6','-i',`${dir}/%04d.png`,'-vf','split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse','-loop','0',`${OUT}.gif`]);
+// 1 frame in 4 at 2.5 fps and 40 colours: the snow moves in every frame, so a full GIF weighs ~19 MB; this one ~4 MB.
+execFileSync('ffmpeg',['-y','-loglevel','error','-framerate','6','-i',`${dir}/%04d.png`,'-vf',"select='not(mod(n\\,4))',setpts=N/2.5/TB,split[a][b];[a]palettegen=max_colors=40:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle",'-r','2.5','-loop','0',`${OUT}.gif`]);
 console.log(`${OUT}.gif`,frames.length,'quadros');

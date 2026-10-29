@@ -84,10 +84,11 @@ export const LOOT_ANY_NEAR=12,CRATE_CLAIM=OPEN_REACH*1.5;
 /**
  * `opts.skip`: pickups this bot gave up on (bot-brain: no nearer in a while); `opts.leash`: only goals within `r` of
  * `at` (bot-brain, mode 'ninhos': the car, LOOT_CAR_LEASH); `opts.keep`: the pickup it was looting at the last decision
- * (LOOT_KEEP_HP: out of a lull it goes on to that one only).
+ * (LOOT_KEEP_HP: out of a lull it goes on to that one only); `opts.anyVerde`: a verde within the radius too, however
+ * far past LOOT_ANY_NEAR (bot-brain: a bot alone, with nobody else to open it).
  */
 export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS,
-  opts:{skip?:(id:string)=>boolean;leash?:{at:Point;r:number};keep?:string}={}):LootPlan{
+  opts:{skip?:(id:string)=>boolean;leash?:{at:Point;r:number};keep?:string;anyVerde?:boolean}={}):LootPlan{
   const plan:LootPlan={};
   const inv=me.weapons,hand=me.hand??0;
   // 1. Eat when hurt.
@@ -115,7 +116,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
     const d=dist(k,at);
     if(d>=goalDist||keep!==undefined&&k.id!==keep)continue;
     if(opts.skip?.(k.id)||opts.leash&&dist(k,opts.leash.at)>opts.leash.r)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1&&d>LOOT_ANY_NEAR||!(k.id===opts.keep&&d<=CRATE_CLAIM)&&claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&!opts.anyVerde&&k.value<=1&&d>LOOT_ANY_NEAR||!(k.id===opts.keep&&d<=CRATE_CLAIM)&&claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

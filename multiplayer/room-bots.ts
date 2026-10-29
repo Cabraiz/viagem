@@ -8,7 +8,7 @@
  * Deterministic: classes (and so names) come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {attackReach,botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
 import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
@@ -164,7 +164,14 @@ export class RoomBots {
       if(!p)continue;
       // D-052 (obra-livre-ajustes): a bot on its own free obra holds still until it is done (towers/system.ts holdsObra,
       // the sim's stepCap 0); steering then only reads as stuck (and fires unstick), so it stands and waits.
-      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){this.modes.set(mind.id,'build');sim.setBotInput(mind.id,{x:0,y:0});continue;}
+      // Card bots-build-parado: in the manual combat it still swings at a critter in reach (bot-brain attackReach), like
+      // a person on their obra; it stood idle there (6p: 46 s a match of the builder's 'build parado').
+      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){
+        this.modes.set(mind.id,'build');
+        let attack:boolean|undefined;
+        if(sim.combat==='manual'){view??=sim.botView();const me=view.players.find(q=>q.id===mind.id);attack=!!me&&attackReach(me,{x:p.x,y:p.y},view.enemies);}
+        sim.setBotInput(mind.id,{x:0,y:0},undefined,attack);continue;
+      }
       view??=sim.botView();
       people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
       if(forger===undefined)forger=this.forger(view,minds,people);

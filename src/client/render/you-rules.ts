@@ -24,7 +24,7 @@ export const RING_CSS={width:52,height:26,breu:2,voce:4,papel:2,beak:8} as const
  * Band widths, the beak and the Breu edge keep their CSS px, so it reads the same on every ground.
  */
 export const RING_SCALE=.7;
-/** The ring sits this far under the sprite on top (its sticker contour is at −0.2/−0.1, its shadow at −1). */
+/** The ring sits this far under the sprite on top (its contour copies at CONTOUR_DEPTH, its shadow at −1). */
 export const RING_UNDER=.3;
 /**
  * Ellipse (world px) of the ring for a drawn figure `figWidth` wide at `s` world px per CSS px. `k`: the hero's draw

@@ -1028,6 +1028,7 @@ export function decide(input:BrainInput):Decision{
     want=add(want,{x:-s.vy/speed*side*1.2,y:s.vx/speed*side*1.2});
   }
   const walking=escorting&&!!pace&&!task;
+  let engaged=false;
   if(walking){
     // Walk with the person at their speed (ESCORT_WALKING): the way to them out of the leash, their heading inside it.
     decision.mode='escort';
@@ -1050,8 +1051,8 @@ export function decide(input:BrainInput):Decision{
     const stand=siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6;
     if(target&&open&&(siege||roam)&&dist(target,at)>stand){
       // Item 2: one it gets no nearer to (nor hurts) is left out (the boss at the car never is).
-      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp))want=add(want,chase!);
-    }
+      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp)){want=add(want,chase!);engaged=true;}
+    }else if(target&&dist(target,at)<=stand)engaged=true;
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
@@ -1072,6 +1073,9 @@ export function decide(input:BrainInput):Decision{
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&!lure&&dist(at,home)>leash+2)decision.mode='home';
+  // Item 2 (29/10): by the car with no critter to hit or chase (none in reach, or one left out as stalled) the bot holds
+  // home; 'fight' read as standing still in a fight (6p: 36 holds of 10-108 s at 4-7 u from the car, none near).
+  else if(decision.mode==='fight'&&input.nests&&view.objective&&!prey&&!lure&&!engaged&&!decision.attack)decision.mode='home';
   // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
   // the bot where it stands, instead of a full step one way and the other each think.
   decision.direction=city&&Math.hypot(want.x,want.y)<HOLD_BELOW?{x:0,y:0}:norm(want);

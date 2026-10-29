@@ -16,7 +16,7 @@ export interface ArtFile {
   cell:[number,number];
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
-  /** Menu dances (menu-dance.ts): false plays once; absent loops. */
+  /** Dance sheets of the importer (art-v2 group menu, now in legado/): false plays once; absent loops. */
   loop?:boolean;
   /** R06 movement sheets: the cycle length of the clip (walk 600 ms, attack 1000 ms). */
   durationMs?:number;revision?:number;movementHands?:string;

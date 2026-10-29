@@ -35,6 +35,8 @@ async function solo(options:object){
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);
   say(room,a,{t:'ready',round:room.run.snapshot().round,ready:true},t+=OWNER_GAP_MS);
   for(let i=0;i<2000&&room.run.snapshot().phase!=='combat';i++)room.advance(t+=50);
+  // exploracao-espera-carregar: the phone drew the run at once (else the room holds the minute for it, load-wait.ts).
+  say(room,a,{t:'carregou',round:room.run.snapshot().round},t);
   room.advance(t+=50);
   return {room,a,t};
 }

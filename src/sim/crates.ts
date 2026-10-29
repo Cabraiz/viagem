@@ -57,11 +57,20 @@
  *    respawns nor counts to the cap), while the map holds fewer than FLOOR_LIVE_MAX crates;
  *  - the trail also runs in every exploration interval (round phase 'prepare', after the first minute): one crate passed
  *    every EXPLORE_PACE_S of the interval, counted afresh in each one.
+ *  - comeca-armado-e-levanta-seguro (auditoria-jogabilidade-28-10 item 2; the heroes still start empty-handed, the user
+ *    25/10): at the first step each hero gets one verde start crate NEAR_START_REACH u from where he spawned (open
+ *    ground he reaches, NEAR_START_SPACING from the other near crates), and is untouchable (invulnerableUntil) until he
+ *    opens his first crate or START_GRACE_S pass, whichever comes first (state.grace);
+ *  - item 5: every crate (placed, start, near, trail, floor, respawn) sits where a hero walking from the spawn can stand
+ *    within OPEN_REACH of it (heroReach: a flood fill of the hero's walkable cells from where the heroes stood at the
+ *    first step; outside the city every point counts).
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
-import {Rng,ticks} from '../contract/index.ts';
-import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
+import {Rng,carGap,ticks} from '../contract/index.ts';
+import {RADIUS,walkable,type CarPlace,type TerrainField} from '../maps/index.ts';
+import {cityTerrainOf} from './city/grid.ts';
+import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
@@ -112,6 +121,11 @@ export const FIRST_MINUTE_S=120,FIRST_MINUTE_CRATES=8;
 export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS=30,TRAIL_MAX=16;
 /** A hero's heading follows his walk with this weight a tick (about a second's memory at 20 Hz). */
 const HEADING_KEEP=.9;
+/** Item 2: the near start crate sits at most NEAR_START_REACH u from its hero (tried at NEAR_START_RADII, NEAR_START_ANGLES around). */
+export const NEAR_START_REACH=3,NEAR_START_RADII:readonly number[]=[2.5,2.25,2.75,2,3],NEAR_START_ANGLES=32;
+/** Item 2: near crates keep this far apart (their bodies, CRATE_BODY_RADIUS 1.5, may touch; a hero still tells them apart). */
+export const NEAR_START_SPACING=2;
+export {START_GRACE_S};
 /** A prize equal to the opener's last one is drawn again (same stream) up to this many times. */
 export const PRIZE_REDRAWS=6;
 /** The match is split in this many stages by round (10 rounds: 1-3, 4-5, 6-8, 9-10); stage s shifts a placed crate by s-1. */
@@ -200,6 +214,8 @@ export interface CratesState {
   trail?:Record<string,{passed:string[];waiting?:string;placed:number;hx:number;hy:number}>;
   /** Per player: the colours (HIDE_AFTER_TAKEN) of weapon crates he opened, as shown; absent in an older checkpoint. */
   took?:Record<string,Rarity[]>;
+  /** Per player: the tick his start grace (START_GRACE_S) ends, while it runs; absent in an older checkpoint. */
+  grace?:Record<string,number>;
 }
 export const createCratesState=(seed:number):CratesState=>({placed:false,crates:{},respawns:[],opening:{},seen:{},rng:new Rng(seed).fork('caixas').state});
 
@@ -221,6 +237,8 @@ export interface CratesOptions {
    * that the heroes reach, outside the base); undefined: none there. Absent: no trail crates.
    */
   trailSpot?(at:Point,heading:Point,ahead:number,rng:Rng):Point|undefined;
+  /** The chaveiro's car (uno-bloqueio-corpo): a near start crate never sits on its body. Absent: no car. */
+  car?():CarPlace|undefined;
   /** A checkpoint to resume from. */
   state?:CratesState;
   /** The gamble's knobs (tests): GOLD_HIDDEN_CHANCE and HIDE_AFTER_TAKEN by default. */
@@ -376,6 +394,58 @@ const weaponCrate=(record:CrateRecord)=>record.item!==undefined&&!kitPiece(recor
 /** Whether the player `took` (CratesState.took) no longer sees this crate. */
 export const hiddenFor=(took:readonly Rarity[]|undefined,record:CrateRecord)=>!!took?.includes(record.rarity)&&weaponCrate(record);
 
+/**
+ * Item 5: whether a hero walking from `from` can stand within OPEN_REACH of a point. The city: a flood fill of the hero's
+ * walkable cells (asset cells, the hero rule walkable() at each centre, 8 neighbours, a diagonal only past two open
+ * sides) from the cells under `from`; a point counts when a reached cell centre lies within OPEN_REACH - RADIUS of it.
+ * Undefined outside the city or with no seed cell open (no filter: every point counts).
+ */
+export function heroReach(terrain:TerrainField|undefined,from:readonly Point[]):((p:Point)=>boolean)|undefined{
+  const city=cityTerrainOf(terrain);
+  if(!city)return undefined;
+  const w=city.asset.cells.w,h=city.asset.cells.h,cs=city.asset.unitsPerCell,probe={x:0,y:0};
+  // 0 unknown, 1 blocked, 2 open, 3 reached.
+  const cell=new Uint8Array(w*h),queue:number[]=[];
+  const open=(cx:number,cy:number)=>{
+    if(cx<0||cy<0||cx>=w||cy>=h)return false;
+    const i=cx+cy*w;
+    if(!cell[i]){probe.x=(cx+.5)*cs;probe.y=(cy+.5)*cs;cell[i]=walkable(probe,city)?2:1;}
+    return cell[i]>=2;
+  };
+  for(const p of from){
+    const cx=Math.floor(p.x/cs),cy=Math.floor(p.y/cs);
+    // The hero's own cell, else the nearest open one around it (a hero standing on a cell edge).
+    let best:number|undefined,bestD=Infinity;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(open(cx+dx,cy+dy)){
+      const d=Math.hypot((cx+dx+.5)*cs-p.x,(cy+dy+.5)*cs-p.y);
+      if(d<bestD){bestD=d;best=cx+dx+(cy+dy)*w;}
+    }
+    if(best!==undefined&&cell[best]!==3){cell[best]=3;queue.push(best);}
+  }
+  if(!queue.length)return undefined;
+  for(let q=0;q<queue.length;q++){
+    const i=queue[q],cx=i%w,cy=(i-cx)/w;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      if(!dx&&!dy||!open(cx+dx,cy+dy))continue;
+      if(dx&&dy&&!(open(cx+dx,cy)&&open(cx,cy+dy)))continue;
+      const j=cx+dx+(cy+dy)*w;
+      if(cell[j]===3)continue;
+      cell[j]=3;queue.push(j);
+    }
+  }
+  const reach=OPEN_REACH-RADIUS,span=Math.ceil(reach/cs);
+  return (p:Point)=>{
+    if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return false;
+    const cx=Math.floor(p.x/cs),cy=Math.floor(p.y/cs);
+    for(let dy=-span;dy<=span;dy++)for(let dx=-span;dx<=span;dx++){
+      const x=cx+dx,y=cy+dy;
+      if(x<0||y<0||x>=w||y>=h||cell[x+y*w]!==3)continue;
+      if(Math.hypot((x+.5)*cs-p.x,(y+.5)*cs-p.y)<=reach)return true;
+    }
+    return false;
+  };
+}
+
 export function createCrates(options:CratesOptions):Crates{
   const {seed,points,startPoints=[],hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN}=options;
   const state=options.state??createCratesState(seed);
@@ -383,6 +453,17 @@ export function createCrates(options:CratesOptions):Crates{
   const tierOf:number[]=new Array(points.length).fill(0);
   points.map((p,i)=>({s:p.seconds,i})).sort((a,b)=>a.s-b.s||a.i-b.i).forEach(({i},rank)=>{tierOf[i]=Math.min(2,Math.floor(rank*3/points.length));});
   const scratch:string[]=[];
+  /**
+   * Item 5 (heroReach), built once from where the heroes stand at the first step that needs it (the ground floor; after
+   * a checkpoint, where they stand then), and each map point's answer.
+   */
+  let reach:((p:Point)=>boolean)|undefined,reachBuilt=false;
+  const pointOk:(boolean|undefined)[]=[];
+  function reachable(ctx:SimContext,p:Point){
+    if(!reachBuilt){reachBuilt=true;reach=heroReach(ctx.terrain,[...ctx.players.values()].filter(q=>onMap(q)&&q.andar!==1));}
+    return !reach||reach(p);
+  }
+  const pointReachable=(ctx:SimContext,i:number)=>pointOk[i]??=reachable(ctx,points[i]);
 
   /** The items (itemKey) somebody on the map holds: no crate shows one (caixa-sem-item-repetido). */
   function heldKeys(ctx:SimContext){
@@ -435,24 +516,76 @@ export function createCrates(options:CratesOptions):Crates{
     state.placed=true;state.startTick=ctx.tick;
     let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
     const cap=state.cap=crateCap(players);
-    const free=points.map((_,i)=>i),live:Point[]=[];
+    const free=points.map((_,i)=>i).filter(i=>pointReachable(ctx,i)),live:Point[]=[];
     for(let n=0;n<cap&&free.length;n++){
       const point=spreadPick(rng,points,free,live);
       free.splice(free.indexOf(point),1);live.push(points[point]);
       place(ctx,rng,point);
     }
+    // With start crates only (startPoints: the city's run, never a bare test or the old island).
+    const near=startPoints.length?placeNear(ctx,rng):0;
     // Start crates: the k-th of each player's set in the k-th walk band (startBands), the first one random, each next
     // the candidate of its band farthest from those taken (ties: list order; an empty band takes from every point).
-    const want=Math.min(startPoints.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players)));
-    const bands=startBands(startPoints),taken:StartPoint[]=[];
+    // (the near crates count to each player's set).
+    const starts=startPoints.filter(p=>reachable(ctx,p));
+    const want=Math.min(starts.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players))-near);
+    const bands=startBands(starts),taken:StartPoint[]=[];
     while(taken.length<want){
-      const band=bands[taken.length%bands.length].filter(c=>!taken.includes(c)),from=band.length?band:startPoints.filter(c=>!taken.includes(c));
+      const band=bands[taken.length%bands.length].filter(c=>!taken.includes(c)),from=band.length?band:starts.filter(c=>!taken.includes(c));
       if(!taken.length){taken.push(rng.pick(from));continue;}
       let best=from[0],bestD=-1;
       for(const c of from){let d=Infinity;for(const t of taken)d=Math.min(d,Math.hypot(t.x-c.x,t.y-c.y));if(d>bestD){best=c;bestD=d;}}
       taken.push(best);
     }
-    taken.forEach((at,i)=>{addCrate(ctx,{x:at.x,y:at.y},{rarity:i%2?2:1,origin:'dropped',start:true});});
+    // Verde and azul alternate; next to the near (verde) crates they are all azul (each player: one of each).
+    taken.forEach((at,i)=>{addCrate(ctx,{x:at.x,y:at.y},{rarity:near||i%2?2:1,origin:'dropped',start:true});});
+  }
+
+  /**
+   * Item 2: a verde start crate NEAR_START_REACH u from each hero (START_PLAYERS_MAX at most): open ground for its body
+   * (else for a hero, the second pass), reached on foot, NEAR_START_SPACING from the other near crates and never on a
+   * hero nor on the Uno's body (the heroes spawn beside it, six of them in a tight block); and every hero's start grace.
+   * Heroes in list order, else in another (a rotation, either way) when that leaves one without: the block's last ones
+   * get boxed in by the others' crates. Returns how many crates it placed. Outside the city any spot counts.
+   */
+  function placeNear(ctx:SimContext,rng:Rng){
+    const heroes=[...ctx.players.values()].filter(onMap),city=cityTerrainOf(ctx.terrain),car=options.car?.();
+    const end=ctx.tick+ticks(START_GRACE_S),grace=state.grace??={};
+    for(const p of heroes){grace[p.id]=end;p.invulnerableUntil=Math.max(p.invulnerableUntil??0,end);}
+    // Outside the city (no mask) any spot counts, like heroReach.
+    const fits=(at:Point,body:boolean,near:readonly Point[])=>(!city||city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS))
+      &&(!car||carGap(car,at)>=(body?CRATE_BODY_RADIUS:RADIUS))
+      &&reachable(ctx,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
+      &&heroes.every(o=>Math.hypot(o.x-at.x,o.y-at.y)>=CRATE_BODY_RADIUS+RADIUS);
+    const owners=heroes.slice(0,START_PLAYERS_MAX),a0=owners.map(()=>rng.next()*2*Math.PI);
+    const plan=(order:readonly number[])=>{
+      const near:Point[]=[];
+      for(const i of order){
+        const p=owners[i];
+        search:for(const body of [true,false])for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
+          const a=a0[i]+k*2*Math.PI/NEAR_START_ANGLES;
+          const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
+          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,near)){near.push(c);break search;}
+        }
+      }
+      return near;
+    };
+    // The list order, then each rotation of it both ways, until every owner has his (else the plan that placed most).
+    const n=owners.length;
+    let near:Point[]=[];
+    for(let k=0;k<2*n&&near.length<n;k++){
+      const order=owners.map((_,i)=>k<n?(i+k)%n:(2*n-1-k+n-i)%n);
+      const next=plan(order);
+      if(next.length>near.length)near=next;
+    }
+    for(const at of near)addCrate(ctx,at,{rarity:1,origin:'dropped',start:true});
+    return near.length;
+  }
+  /** Item 2: the start grace ends for good when it runs out or its hero leaves. */
+  function graceStep(ctx:SimContext){
+    if(!state.grace)return;
+    for(const id in state.grace)if(ctx.tick>=state.grace[id]||!ctx.players.has(id))delete state.grace[id];
+    if(!Object.keys(state.grace).length)delete state.grace;
   }
 
   /** The first minute: who passed which crate, and a trail crate ahead of a hero behind the pace. */
@@ -481,7 +614,7 @@ export function createCrates(options:CratesOptions):Crates{
       if(t.waiting||!options.trailSpot||t.placed>=TRAIL_MAX||t.passed.length>=due||speed<1e-3||!canOpen(p))continue;
       const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
       const at=options.trailSpot(p,heading,ahead,rng);
-      if(!at||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
+      if(!at||!reachable(ctx,at)||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
       let rarity:Rarity=t.placed++%2?2:1;
       while(rarity<GOLD_RARITY&&state.took?.[p.id]?.includes(rarity))rarity=rarity+1 as Rarity;
       t.waiting=addCrate(ctx,at,{rarity,origin:'dropped',start:true},state.last?.[p.id]).id;
@@ -500,7 +633,7 @@ export function createCrates(options:CratesOptions):Crates{
       if(live>=FLOOR_LIVE_MAX)return;
       if(seen>=floor)break;
       const used=usedPoints();
-      const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&players.every(o=>Math.hypot(o.x-points[i].x,o.y-points[i].y)>=RESPAWN_MIN_DIST));
+      const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(o=>Math.hypot(o.x-points[i].x,o.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;
       const point=spreadPick(rng,points,free,livePlaced(ctx));
       let rarity=shifted(roll(rng,TIER_ODDS[tierOf[point]]),stageShift(ctx.round));
@@ -526,7 +659,7 @@ export function createCrates(options:CratesOptions):Crates{
     while(state.respawns.length&&state.respawns[0]<=ctx.tick){
       if(placedCount()>=(state.cap??MAX_CRATES)){state.respawns.shift();continue;}
       const used=usedPoints(),players=[...ctx.players.values()].filter(onMap);
-      const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));
+      const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;
       state.respawns.shift();
       place(ctx,rng,spreadPick(rng,points,free,livePlaced(ctx)));
@@ -593,6 +726,9 @@ export function createCrates(options:CratesOptions):Crates{
   function open(ctx:SimContext,p:SimPlayer,crate:PickupState){
     const record=state.crates[crate.id],rarity=rarityAtOpen(crate.id,record);
     remember(p,record);
+    // Item 2: the first crate he opens ends his start grace (unless something else made him untouchable longer).
+    const graceEnd=state.grace?.[p.id];
+    if(graceEnd!==undefined){delete state.grace![p.id];if(p.invulnerableUntil===graceEnd)p.invulnerableUntil=ctx.tick;}
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
@@ -657,6 +793,7 @@ export function createCrates(options:CratesOptions):Crates{
       restage(ctx);
       trailStep(ctx,rng);
       openStep(ctx);
+      graceStep(ctx);
       restock(ctx);
       // After the opens and the restock: both hide crates at once (a colour taken; kit crates turned weapon when a bot
       // took the kit), and the floor counts what the player sees at the end of this tick, not a second late.

@@ -191,7 +191,8 @@ test('boss kill sends one result message to every player and stays stable',()=>{
 });
 test('victory or defeat on the last tick beats the timeout; otherwise the timeout is announced once',()=>{
   const duration=8;
-  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer();join(race,a);startRun(race,[a]);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4, levanta-seguro.test.ts).
+  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer(),a2=peer();join(race,a);join(race,a2,'A2');startRun(race,[a,a2]);
   for(let i=0;i<duration-1;i++)race.advance(4200+i*50);
   assert.equal(race.run.snapshot().phase,'combat');assert.equal(race.run.snapshot().remaining,1);
   downAll(race);race.advance(5000);
@@ -254,10 +255,11 @@ test('choose drops malformed ids, bad indexes and stale rounds before the simula
   assert.equal(calls(),0);assert.equal(room.sim.offers(id).length,2);
 });
 test('choose outside combat is refused (lobby and result)',()=>{
-  const room=new Room(1000),a=peer();join(room,a);const id=idOf(a);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4).
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');const id=idOf(a);
   let calls=0;const choose=room.sim.choose.bind(room.sim);room.sim.choose=(pid,offer,index)=>{calls++;return choose(pid,offer,index);};
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0});assert.equal(calls,0);
-  startRun(room,[a]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
+  startRun(room,[a,b]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
   downAll(room);room.advance(4200);assert.equal(room.run.snapshot().phase,'result');
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);assert.equal(calls,0);
 });

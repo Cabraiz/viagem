@@ -2,6 +2,7 @@ import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,t
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {LevelupPause} from './levelup-pause.ts';
 import {BossScene} from './boss-scene.ts';
+import {LoadWait} from './load-wait.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
 import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
@@ -206,6 +207,8 @@ const BOT_CLASSES=[...BOT_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
+/** Two {t:'dancou'} of one player at least this far apart (the dance runs seconds; a burst of taps is one). */
+export const DANCE_RELAY_MS=1000;
 export const OWNER_GAP_MS=300;
 /**
  * A roster change that is only about bots or the map (the owner adding/removing bots, picking maps) is written at most
@@ -341,6 +344,8 @@ export class Room {
   private readonly sosAt=new Map<string,number>();
   /** When each player's last relayed emote went out (emote-relay-sala anti-spam). */
   private readonly emoteAt=new Map<string,number>();
+  /** exploracao-espera-carregar-e-sem-arma: the last {t:'dancar'} relayed per player (DANCE_RELAY_MS apart). */
+  private readonly dancedAt=new Map<string,number>();
   /** Last minimap ping per player (mark): its own anti-spam, apart from the emotes'. */
   private readonly markAt=new Map<string,number>();
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
@@ -380,6 +385,8 @@ export class Room {
   readonly levelup=new LevelupPause();
   /** Card boss-fim-onda-1: the chefão's arrival scene (multiplayer/boss-scene.ts), which holds the sim like the pause. */
   readonly cena=new BossScene();
+  /** Card exploracao-espera-carregar: the run's start waits for the phones to draw it (multiplayer/load-wait.ts). */
+  readonly loading=new LoadWait();
   /** The sim stands still for the players: the level-up pause or the chefão's scene (their commands are refused). */
   private get held(){return this.levelup.paused||this.cena.playing;}
   private lastNow=Date.now();
@@ -703,8 +710,11 @@ export class Room {
       this.pushRun();
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
+    // exploracao-espera-carregar: the phone drew its first frame of the run (scene.ts); an older one never says it.
+    else if(m.t==='carregou')this.loading.loaded(c.playerId);
     else if(m.t==='sos')this.sos(c,m,now);
     else if(m.t==='emote')this.emote(c,m,now);
+    else if(m.t==='dancar')this.dance(c,m,now);
     // Consent for the result's "momento mais vergonhoso" (VGM-053B): {t:'pref',shame:false} leaves this player out.
     else if(m.t==='pref'&&typeof m.shame==='boolean')this.sim.setShamePref(c.playerId,m.shame);
     // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
@@ -974,6 +984,21 @@ export class Room {
     if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS-SOS_SLACK_MS)return;
     this.sosAt.set(p.id,now);
     this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
+  }
+  /**
+   * "Dançar" (exploracao-espera-carregar-e-sem-arma): a hero with empty hands dances at once on its own phone; the room
+   * relays {t:'dancar',round} as {t:'dancou',player} so the others see it now too, not after the 5 s standing still
+   * (an older phone ignores it). In combat, not spectators, at most once per DANCE_RELAY_MS per player.
+   */
+  private dance(c:Connection,m:any,now:number){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    const p=this.sim.players.get(c.playerId!);
+    if(!p||p.spectator)return;
+    const last=this.dancedAt.get(p.id);
+    if(last!==undefined&&now>=last&&now-last<DANCE_RELAY_MS)return;
+    this.dancedAt.set(p.id,now);
+    this.send({t:'dancou',player:p.id});
   }
   /**
    * Quick emote (emote-relay-sala): {t:'emote',round,id} in a match (wave or intermission), relayed once to everyone as
@@ -1259,7 +1284,7 @@ export class Room {
   }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
-    this.checkpointRef=undefined;this.levelup.reset();this.cena.reset();
+    this.checkpointRef=undefined;this.levelup.reset();this.cena.reset();this.loading.reset();
     this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
@@ -1296,6 +1321,8 @@ export class Room {
       // People away: their hero follows the team on its own until they are back (no help calls: nobody is holding the phone).
       this.autopilots.think(this.sim);
       const events=this.sim.step(now);
+      // exploracao-espera-carregar: until every phone drew the run (or LOAD_WAIT_MS), the Minerva's clock stays full.
+      if(this.loading.holding(now,id=>!!this.sim.players.get(id)?.online))this.sim.run.nests?.holdMinerva(this.sim.tick);
       this.cena.noteStep(this.sim,now);
       this.pushElenco();
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
@@ -1310,7 +1337,10 @@ export class Room {
     }
     // Paused: the run's combat clock (elapsed, the timeout) stands still with the sim.
     const transition=paused?{started:false,finished:false}:this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
-    if(transition.started){this.resetRun();this.syncSpectators();}
+    if(transition.started){
+      this.resetRun();this.syncSpectators();
+      this.loading.arm(this.run.snapshot().members.filter(m=>m.online&&!m.bot&&!m.spectator).map(m=>m.id),now);
+    }
     // The majority's rematch after REMATCH_MAJORITY_TICKS: a new run, the ones who did not vote watch it.
     if(transition.rematch){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();

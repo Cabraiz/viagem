@@ -286,8 +286,8 @@ export class AudioEngine {
     voice.connect(out);
     const start=ctx.currentTime+.005,sources:AudioScheduledSourceNode[]=[];
     let length:number;
+    const rate=Math.max(.5,Math.min(2,Number.isFinite(opts.rate)?opts.rate!:1));
     if(take){
-      const rate=Math.max(.5,Math.min(2,Number.isFinite(opts.rate)?opts.rate!:1));
       const src=ctx.createBufferSource(),align=this.aligned.get(take.buffer),offset=align?.offset??0;
       src.buffer=take.buffer;
       if(src.playbackRate)src.playbackRate.value=rate;
@@ -301,7 +301,8 @@ export class AudioEngine {
       this.lastTake.set(id,take.index);
     }else{
       voice.gain.value=level;
-      for(const tone of recipe!.tones)sources.push(...this.schedule(ctx,voice,tone,start));
+      // The recipe follows the pitch too (the gem's combo while its file loads): its tones scaled, its timing kept.
+      for(const tone of recipe!.tones)sources.push(...this.schedule(ctx,voice,tone,start,rate));
       length=recipeLength(recipe!);
     }
     releaseOnEnd(voice,sources);
@@ -409,9 +410,9 @@ export class AudioEngine {
     return this.noise=buffer;
   }
 
-  private schedule(ctx:AudioContext,out:GainNode,tone:Tone,start:number):AudioScheduledSourceNode[]{
+  private schedule(ctx:AudioContext,out:GainNode,tone:Tone,start:number,rate=1):AudioScheduledSourceNode[]{
     const t0=start+Math.max(0,tone.at),dur=Math.max(.01,tone.dur),attack=Math.min(dur*.9,Math.max(.001,tone.attack??.005));
-    const peak=Math.max(SILENT,Math.min(1,tone.gain)),from=Math.max(1,tone.from),to=Math.max(1,tone.to);
+    const peak=Math.max(SILENT,Math.min(1,tone.gain)),from=Math.max(1,tone.from*rate),to=Math.max(1,tone.to*rate);
     const env=ctx.createGain();
     env.gain.setValueAtTime(SILENT,t0);
     env.gain.linearRampToValueAtTime(peak,t0+attack);

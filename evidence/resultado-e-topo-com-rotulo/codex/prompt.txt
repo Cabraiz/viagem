@@ -1,0 +1,6 @@
+Generate ONE image with the image generation tool: a single square game UI icon meaning "rotate camera".
+Content: a small, simple, chunky photo camera (front view, big round teal lens) in the center, and ONE thick curved arrow orbiting around it clockwise — an arc of about 270 degrees around the camera, with a big clear arrowhead at the end. The arrow must not touch the camera; leave a gap. Readable at 32 px: few details, bold shapes.
+Style: read the attached reference only for style (do not copy, edit or reuse any part of it): cartoon sticker icons, peach/orange gradient body with teal accents, dark brown outline, soft highlight. The arrow in the same orange-to-teal style as the left icon of the reference.
+Background: flat pure green #00FF00 everywhere, no shadow on the background, no text, no border, nothing else. Icon centered, filling about 85% of the canvas. 1024x1024.
+Save it as /mnt/c/Users/Cabraiz/AppData/Local/Temp/claude/D--Gits-viagem/2b22e05b-d27d-4d77-9ac6-d19a165558d7/scratchpad/codex/out.png. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+Do not inspect, do not run code, do not check with PIL. Just generate and save.

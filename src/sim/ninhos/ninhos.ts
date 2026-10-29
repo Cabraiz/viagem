@@ -155,8 +155,9 @@ export interface NestsState {
   log?:WaveLog[];
   /** The end tick of the minuto de Minerva (start + NEST_PACE.minerva); absent in a checkpoint from before it. */
   minervaUntil?:number;
-  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick. */
-  drip?:{door:number;left:number;tick:number};
+  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick,
+   * the batch's fraction carried to the next second (a trickle under 1). */
+  drip?:{door:number;left:number;tick:number;carry?:number};
   /** Tick the last wave left while it is not over yet (absent between waves: the time to explore runs). */
   waveOpen?:number;
   /** The last time to explore (NEST_PACE.explore): its first tick and its end (the next wave's tick). */
@@ -339,7 +340,12 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const d=state.drip,door=d?options.entrances?.[d.door]:undefined;
     if(!d||!door||!options.recruit){if(d){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}return;}
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size);
-    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1))),room),tune);
+    // solo-uno-aguenta-1a-onda: a batch under 1 a second adds up (1p warm: 1 × .34 → one every ~3 s), where it used to round
+    // up to 1 and warmTrickle did nothing for a solo; the first batch leaves with the wave.
+    const carry=(d.carry??1)+pace(NEST_PACE.trickle,state.players)*(warming(ctx.tick)?NEST_PACE.warmTrickle:1),batch=Math.floor(carry);
+    if(batch<1){d.carry=carry;return;}
+    d.carry=carry-batch;
+    const got=options.recruit(ctx,door.route,Math.min(d.left,batch,room),tune);
     d.left-=Math.max(got,0);
     const entry=state.log?.find(l=>l.tick===d.tick);
     if(entry){entry.map+=got;entry.total+=got;}

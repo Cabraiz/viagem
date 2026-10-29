@@ -9,8 +9,6 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 
 const ROOTS=['src','multiplayer','index.html'];
-/** Still in branches of the fila (part 2 of the card): this list only shrinks. */
-const PENDING=['multiplayer/room.ts','src/client/explore.ts','src/client/net/client.ts'];
 const QUOTES=['\'','"','`'];
 
 const files=(path:string):string[]=>/\.(ts|html)$/.test(path)?[path]:
@@ -43,6 +41,5 @@ test('the scan finds the word in strings, html text and templates, not in commen
 test('no "classe" the player can read',()=>{
   const found=ROOTS.flatMap(files).map(f=>f.replaceAll('\\','/'))
     .filter(f=>visibleTexts(readFileSync(f,'utf8'),f.endsWith('.html')).some(t=>CLASSE.test(t)));
-  assert.deepEqual(found.filter(f=>!PENDING.includes(f)),[],'say "herói"/"heróis"');
-  for(const f of PENDING)assert.ok(found.includes(f),f+' is clean now: take it off PENDING');
+  assert.deepEqual(found,[],'say "herói"/"heróis"');
 });

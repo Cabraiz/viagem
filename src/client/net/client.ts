@@ -543,7 +543,7 @@ export class CoopClient {
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
         if(this.initialized)this.fatal=LINK_LOST;
-        this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
+        this.onStatus(this.fatal??'Conexão indisponível. Volte aos heróis e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
       const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;

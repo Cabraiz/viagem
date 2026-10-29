@@ -23,7 +23,7 @@ import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {besideFrom,freeAround} from './framing.ts';
-import {besideSelector,mapInfoText} from './lobby.ts';
+import {besideSelector,coverUp,mapInfoText} from './lobby.ts';
 import {formatRoomCode,shareLink} from './ui/invite.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
@@ -86,7 +86,8 @@ const matchesFlag=(flag:string|null):{profileRng?:()=>number;profileDemo?:readon
   flag==='sempre'?{profileRng:()=>0}:flag==='demo'?{profileRng:()=>0,profileDemo:[{kind:'bebado',distance:12,tilt:-3},{kind:'pombos',distance:7,tilt:2.5},{kind:'tio-pave',distance:31,tilt:-1.5}]}:{};
 
 let active=false;
-export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
+/** `solo` ("Jogar sozinho", lobby.ts openSolo): the loading cover stays until the match, the room's 3-2-1 plays on it. */
+export async function openExploration(hero:HeroClass,name:string,net?:CoopClient,options:{solo?:boolean}={}){
   if(active)return;
   active=true;
   const returnFocus=document.getElementById('confirm');
@@ -100,7 +101,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
       <div class="explore-map" aria-hidden="true"><svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="39" ry="39" fill="#c8d795"/><path d="M50 68 35 47 69 47 50 24 35 47" fill="none" stroke="#f7e5b2" stroke-width="5"/><g fill="#a184b4"><circle cx="35" cy="47" r="3"/><circle cx="69" cy="47" r="3"/><circle cx="50" cy="24" r="3"/></g><circle id="explore-dot" cx="50" cy="68" r="4" fill="#fff7d3" stroke="#7e638f" stroke-width="2"/></svg></div>
       <div class="explore-notice" role="status">${INPUT_TEXTS.touch.soloNotice}</div>
-      <div class="explore-loading" role="status">Arrumando a ilha pra visita…</div>
+      <div class="explore-loading" role="status">${net?'Arrumando a cidade…':'Arrumando a ilha pra visita…'}</div>
     </section>
     <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span></p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
@@ -209,7 +210,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
     // D-050: the level-up pause reaches the HUD with each run state (no frame brings it: the tick stands still).
-    net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);};
+    net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);syncCover();};
     net.onForged=answer=>hud?.forged(answer);
     net.onBought=answer=>hud?.bought(answer);
     net.onInventory=result=>hud?.inventoryAnswer(result);
@@ -423,6 +424,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
   // Locked is not disabled: the button still answers a tap with the lock's stamp beat and "Gira fora da briga" (UX onda 4 D3).
   let sceneReady=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
+  if(options.solo)shell.dataset.solo='';
+  const syncCover=()=>{const cover=$('.explore-loading'),up=coverUp(sceneReady,net?.run?.phase,!!options.solo);if(cover.hidden===up)cover.hidden=!up;};
   const cameraGroup=$('.explore-camera'),lock=$('.explore-lock'),hint=$('.explore-camera-hint');
   // "Versão nova do jogo" during a round (NEW-20261012-E5-chunk-velho-deploy): a row of the HUD's announcement slot,
   // only while the round is on screen; before that (loading, countdown) it floats at the top (update-toast.ts).
@@ -888,7 +891,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
-      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
+      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();
+        // Solo: the cover's line gives way to the room's ("Chamando os bots…", then the 3-2-1) until the match.
+        if(options.solo)$('.explore-loading').textContent='';
+        syncCover();$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);

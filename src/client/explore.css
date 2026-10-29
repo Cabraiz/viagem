@@ -145,3 +145,5 @@ html:has(.explore-shell[open]) main.estadio{content-visibility:hidden}
   .explore-settings-content{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-items:start}
   .explore-settings-content>.explore-sound{grid-column:2;grid-row:1/span 3}
 }
+/* Solo (solo-sem-sala-de-espera): the room's line sits in the middle of the cover; the cover's own line goes low. */
+.explore-shell[data-solo] .explore-loading{place-items:end center;padding-bottom:max(48px,calc(env(safe-area-inset-bottom) + 32px))}

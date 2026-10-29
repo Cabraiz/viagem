@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DICAS_KEY,GAP_MS,START_MS,TIPS,TIP_MS,TIP_ORDER,TipCoach,loadLearned,resetTipMemory,type Tip,type TipInput} from '../../src/client/hud/coach/dicas.ts';
-import {AIM_DEAD_ZONE_PX,BLOCKERS,DRAG_PX,FILLED_SLOT,HOLD_DROP_MS,WALK_LIGHT,dicaFor} from '../../src/client/hud/coach/dicas-dom.ts';
+import {AIM_DEAD_ZONE_PX,BLOCKERS,FILLED_SLOT,WALK_LIGHT,dicaFor} from '../../src/client/hud/coach/dicas-dom.ts';
 import {applyControls,controlsFor} from '../../src/client/controls-phase.ts';
 
 function memStore(init?:string){
@@ -112,9 +112,7 @@ test('design: the tips ride above the stick, tokens only; the css is loaded by t
   assert.match(readFileSync('src/client/hud/hud.ts','utf8'),/import '\.\/coach\/dicas\.css';/);
   assert.doesNotMatch(readFileSync('src/client/hud/coach/dicas-dom.ts','utf8'),/\.css'/);
 });
-test('the gesture thresholds match the controls they watch',()=>{
+test('the aim threshold matches the Atacar button it watches (the slot ones are imported from inventory.ts)',()=>{
   const num=(file:string,name:string)=>Number(readFileSync(file,'utf8').match(new RegExp(`export const ${name}=([0-9]+)`))?.[1]);
   assert.equal(num('src/client/hud/attack-button.ts','AIM_DEAD_ZONE_PX'),AIM_DEAD_ZONE_PX);
-  assert.equal(num('src/client/hud/inventory.ts','HOLD_DROP_MS'),HOLD_DROP_MS);
-  assert.equal(num('src/client/hud/inventory.ts','DRAG_PX'),DRAG_PX);
 });

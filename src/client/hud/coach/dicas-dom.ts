@@ -8,10 +8,11 @@
 import type {Controls} from '../../controls-phase.ts';
 import type {InputKind} from '../../desktop-input.ts';
 import {TIPS,TipCoach,type Tip} from './dicas.ts';
+import {DRAG_PX,HOLD_DROP_MS} from '../inventory.ts';
 
-/** The gestures' own thresholds, copied (attack-button.ts and inventory.ts do not load in node; a test keeps them equal):
- * Atacar aims past its dead zone, a slot drops after its hold unless the finger moved like a drag. */
-export const AIM_DEAD_ZONE_PX=12,HOLD_DROP_MS=500,DRAG_PX=24;
+/** Atacar aims past its dead zone, copied (attack-button.ts does not load in node; a test keeps it equal). A slot drops
+ * after its hold unless the finger moved like a drag: inventory.ts's own HOLD_DROP_MS and DRAG_PX. */
+export const AIM_DEAD_ZONE_PX=12;
 /** The shell is read at most this often (ms): applyControls runs every view, the selectors need not. */
 export const SENSE_MS=200;
 /** What hides the tip and stops its clock: the paused controls, the team's level-up pause, the offer, the result, the boss scene. */

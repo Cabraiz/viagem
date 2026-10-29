@@ -242,6 +242,9 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue;
+    // An elite layer that is its base's own file (mendigo.ts: the elite keeps the loop) loads nothing: drawing the same
+    // sheet over itself shows nothing new, and a second texture would double its video memory.
+    if(name.startsWith('elite/')&&piece.files[name.slice(6)]===file)continue;
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;

@@ -41,6 +41,8 @@ test('só o mendigo: o carregamento do manifest põe a peça, e a horda pede só
   try{
     await loadArtManifest(async()=>({ok:true,json:async()=>raw}));
     assert.equal(artPiece('inimigos',MENDIGO)?.files.idle?.file,'mendigo/idle.webp');
+    // a camada de elite é a mesma folha: não carrega de novo (uma textura por folha)
+    assert.equal(enemyPieceLoads(MENDIGO).length,9);
     const urls=[...new Set(enemyPieceLoads(MENDIGO).map(l=>l.url))].sort();
     assert.equal(urls.length,9);
     assert.ok(urls.every(u=>u.startsWith('/art/lite/enemies/mendigo/')),urls.join());

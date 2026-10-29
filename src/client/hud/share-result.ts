@@ -23,6 +23,12 @@ export function shareCard(headline:{title:string;subtitle:string},players:readon
   return {title:headline.title,subtitle:headline.subtitle,rows,text};
 }
 
+/** A player's other prizes as a sentence ("+ A", "+ A e B", "+ A, B e C"), not "A · B" (DSG-voz). */
+export const extraPrizes=(rest:readonly string[])=>
+  rest.length?`+ ${rest.length===1?rest[0]:`${rest.slice(0,-1).join(', ')} e ${rest[rest.length-1]}`}`:'';
+/** The picture's last line, a sentence like the text that goes with it. */
+export const SHARE_FOOTER='Bora de revanche no viagem?';
+
 /** The picture's size: a phone story's width, as tall as its rows need (6 players fit in 1080×1350). */
 export const SHARE_W=1080;
 const PAD=60,HEAD=270,ROW=150,FOOT=90;
@@ -48,10 +54,10 @@ export function drawShareCard(doc:Document,card:ShareCard,victory:boolean):HTMLC
     g.fillStyle=INK.lilas;g.font='900 50px "Londrina Solid",sans-serif';
     const [top,...rest]=row.prizes;
     g.fillText(fit(g,top,SHARE_W-2*PAD-60),PAD+30,y+106);
-    if(rest.length){g.font='700 30px system-ui,sans-serif';g.textAlign='right';g.fillText(fit(g,`+ ${rest.join(' · ')}`,(SHARE_W-2*PAD)/2),SHARE_W-PAD-30,y+52);}
+    if(rest.length){g.font='700 30px system-ui,sans-serif';g.textAlign='right';g.fillText(fit(g,extraPrizes(rest),(SHARE_W-2*PAD)/2),SHARE_W-PAD-30,y+52);}
     g.textAlign='center';y+=ROW;
   }
-  g.font='700 34px system-ui,sans-serif';g.fillStyle=INK.papel;g.fillText('viagem · bora de revanche?',SHARE_W/2,canvas.height-PAD+10);
+  g.font='700 34px system-ui,sans-serif';g.fillStyle=INK.papel;g.fillText(SHARE_FOOTER,SHARE_W/2,canvas.height-PAD+10);
   return canvas;
 }
 

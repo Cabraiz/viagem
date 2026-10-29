@@ -35,7 +35,7 @@ export function branchForWire(label:string):string|undefined{
 
 /** Why the room said no to a build, upgrade or repair (src/sim/towers/system.ts TowerRefusal), in a few pt-BR words. */
 export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
-  'wall-down':'Muralha caída',
+  'wall-down':'Barricada caída',
   phase:'Só fora da briga',
   player:'Caído não constrói',
   site:'Esse ponto não existe',
@@ -44,10 +44,10 @@ export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   // D-048: 'balance' is fichas de torre short (a Vigia, the Gustavão); 'grana' is R$ short (an evolution, a repair).
   balance:'Falta ficha de torre',
   grana:'Falta grana',
-  limit:`Limite de ${DEFENSE_LIMIT} defesas`,
+  limit:`Limite de ${DEFENSE_LIMIT} torres`,
   rail:'Precisa do trilho',
   unique:`Só ${GUSTAVAO_LIMIT} Gustavão`,
-  defense:'Essa defesa sumiu',
+  defense:'Essa torre sumiu',
   building:'Ainda em obra',
   ruined:'Virou ruína',
   max:'Já tá no máximo',

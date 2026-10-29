@@ -115,8 +115,8 @@ test('one screen, no scroll: the bands add up to the reference card (734x1415) a
     u('.estadio .estadio-escolha > .estadio-confirmar','margin',0)+u('.estadio .estadio-escolha > .estadio-confirmar','--bh')+
     u('.estadio .estadio-escolha > .estadio-confirmar','margin',1);                                  // ..1415
   assert.equal(total,1415);
-  assert.match(css,/font: 400 max\(10px, calc\(var\(--u\) \* 28\)\)\/1 var\(--f-botao\)/,'the story name is 28 tall');
-  assert.match(css,/font: 400 max\(10px, calc\(var\(--u\) \* 25\)\)\/1 var\(--f-sistema\)/,'"Toque para trocar" is 25 tall');
+  assert.match(css,/font: 400 max\(12px, calc\(var\(--u\) \* 28\)\)\/1 var\(--f-botao\)/,'the story name is 28 tall');
+  assert.match(css,/font: 400 max\(12px, calc\(var\(--u\) \* 25\)\)\/1 var\(--f-sistema\)/,'"Toque para trocar" is 25 tall');
   for(const [w,h] of [[390,844],[360,780],[375,667],[412,915]]){
     const k=Math.min(w,h*734/1415)/734;
     assert.ok(1415*k<=h+1e-9&&734*k<=w+1e-9,`${w}x${h}`);

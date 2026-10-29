@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArtIndex} from '../../src/client/art/manifest.ts';
+import {artPiece,loadArtManifest,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {testeInimigo,trocarInimigos} from '../../src/client/art/teste-inimigo.ts';
 
 const raw={version:2,groups:{
@@ -25,4 +25,13 @@ test('teste ?inimigo=mendigo: troca todos os inimigos pelo parado do mendigo, co
 test('teste ?inimigo=mendigo: sem a chave nada muda',()=>{
   const idx=parseArtIndex(raw);
   assert.equal(trocarInimigos(idx,undefined),idx);
+});
+
+test('teste ?inimigo=mendigo: o carregamento do manifest aplica a troca',async()=>{
+  const g=globalThis as {location?:unknown};const antes=g.location;
+  g.location={search:'?inimigo=mendigo'};
+  try{
+    await loadArtManifest(async()=>({ok:true,json:async()=>raw}));
+    assert.equal(artPiece('inimigos','a')?.files.idle?.file,'teste-mendigo/idle.webp');
+  }finally{g.location=antes;setArtIndex(parseArtIndex({}));}
 });

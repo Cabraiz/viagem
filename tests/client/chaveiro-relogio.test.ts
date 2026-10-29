@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SIM_HZ} from '../../src/contract/types.ts';
-import {ARRIVAL_SECONDS,CLOCK_ADDED_HOLD_S,CLOCK_ADDED_MIN_S,ClockStopTracker,arrivalBand} from '../../src/client/hud/chaveiro.ts';
+import {ARRIVAL_SECONDS,CLOCK_ADDED_HOLD_S,CLOCK_ADDED_MIN_S,CLOCK_HIT_LABEL,ClockHitTracker,ClockStopTracker,arrivalBand} from '../../src/client/hud/chaveiro.ts';
 import {ABRINDO_SECONDS} from '../../src/sim/chaveiro/system.ts';
 
 test('a tombo freezes the clock: the time it adds shows, grows, and stays a moment after he rides again',()=>{
@@ -42,4 +42,23 @@ test('arrival and the end clear it at once; the abrindo band counts down and fil
   const mid=arrivalBand({etaS:5.2,moto:{x:0,y:0,mode:'abrindo'}})!;
   assert.equal(mid.hold,'Segurem 6 s');assert.ok(Math.abs(mid.fraction-(1-5.2/15))<1e-9);
   assert.equal(arrivalBand({etaS:0,moto:{x:0,y:0,mode:'abrindo'}})!.fraction,1);
+});
+
+test('card missao-proteger-uno-tempo: a hit on the Uno says what it added; a burst adds up; then it goes',()=>{
+  const t=new ClockHitTracker();
+  assert.equal(t.step('anda',300,0,0),undefined);
+  assert.equal(t.step('anda',299,SIM_HZ,0),undefined,'the clock falling is no news');
+  // A hit: one second on, the clock reads 301 where it should read 298.
+  assert.deepEqual(t.step('anda',301,2*SIM_HZ,1),{mode:'anda',label:CLOCK_HIT_LABEL,text:'Batida no Uno: +3 s',added:3,urgent:true});
+  // Two more hits within the hold: one number, from the clock before the first.
+  assert.equal(t.step('anda',303,2*SIM_HZ+1,2)?.text,'Batida no Uno: +5 s');
+  assert.equal(t.step('anda',302,3*SIM_HZ,2)?.added,5,'it stays while held');
+  assert.equal(t.step('anda',290,2*SIM_HZ+1+CLOCK_ADDED_HOLD_S*SIM_HZ+1,2),undefined,'then goes');
+  // A hit that added nothing (the last stretch) says nothing; a stop mode is the stop tracker's.
+  const u=new ClockHitTracker();
+  u.step('anda',20,0,4);assert.equal(u.step('anda',19,SIM_HZ,5),undefined);
+  assert.equal(u.step('tombo',19,2*SIM_HZ,6),undefined);
+  // While he opens the car a hit adds a second.
+  const v=new ClockHitTracker();
+  v.step('abrindo',10,0,0);assert.equal(v.step('abrindo',10,SIM_HZ,1)?.text,'Batida no Uno: +1 s');
 });

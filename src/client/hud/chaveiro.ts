@@ -126,6 +126,33 @@ export class ClockStopTracker {
   reset(){this.start=this.shown=undefined;this.until=-1;}
 }
 
+/** Card missao-proteger-uno-tempo: the clock's say when an enemy's hit on the Uno pushed the unlocking back. */
+export const CLOCK_HIT_LABEL='Batida no Uno';
+/**
+ * Each hit on the Uno adds time to the run's clock (the sim's CHAVEIRO_CLOCK): the clock says how much ("Batida no
+ * Uno: +3 s"). A burst of hits within CLOCK_ADDED_HOLD_S adds into one number, from the clock before its first hit.
+ * Fed every view with the mode, the ETA, the tick and the car's hits; a stop mode is ClockStopTracker's, not this.
+ */
+export class ClockHitTracker {
+  private last?:{etaS:number;tick:number;hits:number};
+  private base?:{etaS:number;tick:number};
+  private shown?:ClockStop;private until=-1;
+  step(mode:MotoMode|undefined,etaS:number,tick:number,hits:number):ClockStop|undefined{
+    const last=this.last;this.last={etaS,tick,hits};
+    if(!last||tick<last.tick||!mode||CLOCK_STOPS[mode]){this.base=this.shown=undefined;return undefined;}
+    if(hits>last.hits){
+      if(!this.base||tick>this.until)this.base={etaS:last.etaS,tick:last.tick};
+      const added=Math.round(etaS-(this.base.etaS-(tick-this.base.tick)/SIM_HZ));
+      if(added>=1){
+        this.shown={mode,label:CLOCK_HIT_LABEL,text:`${CLOCK_HIT_LABEL}: +${added} s`,added,urgent:true};
+        this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
+      }
+    }
+    return this.shown&&tick<=this.until?this.shown:(this.shown=this.base=undefined);
+  }
+  reset(){this.last=this.base=this.shown=undefined;this.until=-1;}
+}
+
 /**
  * Card chaveiro-chegou-e-relogio (item 4): "chegou" is a moment. While he opens the car ('abrindo', ABRINDO_SECONDS in
  * the sim) a big band says so with the seconds left and a bar filling up; victory comes when it is full.

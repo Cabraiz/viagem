@@ -38,8 +38,8 @@
 .rh-inv-slot[data-recarga] .rh-inv-pente{color:var(--c-amarelo)}
 .rh-inv-slot[data-recarga]::after{content:'';position:absolute;inset:-6px;border-radius:50%;pointer-events:none;
   background:conic-gradient(var(--c-amarelo) calc(var(--recarga,0) * 1turn),color-mix(in srgb,var(--c-breu) 45%,transparent) 0);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px))}
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),var(--c-breu) calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),var(--c-breu) calc(100% - 3px))}
 .rh-inv-tecla{display:none;position:absolute;left:1px;top:-1px;color:var(--c-papel);font:800 10px/1 var(--f-sistema);text-shadow:var(--s-texto)}
 .rh[data-hud=mesa] .rh-inv-tecla{display:block}
 .rh-inv-slot[data-empty=true] .rh-inv-tecla{opacity:.5}

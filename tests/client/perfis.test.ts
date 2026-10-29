@@ -4,10 +4,10 @@
 // photo per profile.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync} from 'node:fs';
+import {existsSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles} from '../../src/client/hud/perfis.ts';
-import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
+import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,MOLDURA_CONTO,MatchBook,SMALL_SCALE,TILT_DEG,contoCard,distanciaTexto,perfilOf,placeProfiles} from '../../src/client/hud/perfis.ts';
+import {CONTOS,CONTO_MAX,PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
 
@@ -109,4 +109,41 @@ test('the card never covers the hero, the Uno, the allies or the mission band: a
   assert.equal(small?.scale,SMALL_SCALE);
   for(const g of wall)assert.ok(!cross(boxOf(home,small!),g,GUARD_MARGIN_PX));
   assert.equal(placeProfiles(home,useful,[{x:0,y:0,width:390,height:844}]),undefined,'no room anywhere: no card');
+});
+
+test('livro de contos: every profile has a tale that fits the plaque (three lines at 12 px), and the frame is light',()=>{
+  for(const kind of Object.keys(PERFIS_TEXTO)){
+    const tale=CONTOS[kind];
+    assert.ok(tale,`${kind} has no tale`);
+    assert.ok(tale.length<=CONTO_MAX,`${kind}: ${tale.length} > ${CONTO_MAX} chars`);
+    assert.doesNotMatch(tale,/match|tinder|curtir|crush/i,`${kind}: the tale is a fairy tale, not the dating app`);
+  }
+  assert.deepEqual(Object.keys(CONTOS).filter(kind=>!PERFIS_TEXTO[kind]),[],'no tale without a profile');
+  const frame=fileURLToPath(new URL(`../../public${MOLDURA_CONTO}`,import.meta.url));
+  assert.ok(existsSync(frame),'the ChatGPT frame ships');
+  assert.ok(statSync(frame).size<=100_000,'the frame is ≤ 100 KB (phone)');
+});
+
+/** Just enough DOM for one card: elements with class, children, text, attributes and dataset. */
+function fakeDoc(){
+  type Node={tagName:string;className:string;children:Node[];textContent:string;dataset:Record<string,string>;attrs:Record<string,string>;
+    style:{setProperty():void};src?:string;complete?:boolean;naturalWidth?:number;append(...n:Node[]):void;setAttribute(k:string,v:string):void};
+  const make=(tag:string):Node=>{const n:Node={tagName:tag.toUpperCase(),className:'',children:[],textContent:'',dataset:{},attrs:{},style:{setProperty(){}},
+    append(...c){n.children.push(...c);},setAttribute(k,v){n.attrs[k]=v;}};return n;};
+  return {createElement:make} as unknown as Document;
+}
+const walk=(n:any):any[]=>[n,...n.children.flatMap(walk)];
+
+test('the phone storybook card: photo in the frame, the name and the tale; nothing of the dating app',()=>{
+  const card:any=contoCard(fakeDoc(),{kind:'bebado',distance:12,tilt:0});
+  const all=walk(card);
+  const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+  assert.ok(cls('rh-conto').length&&cls('rh-perfil-compacto').length,'the compact card, storybook flavour');
+  assert.equal(cls('rh-perfil-img')[0].src,perfilOf('bebado')!.foto,'the enemy current photo');
+  assert.equal(cls('rh-conto-moldura')[0].src,MOLDURA_CONTO);
+  assert.equal(cls('rh-conto-nome')[0].textContent,perfilOf('bebado')!.name);
+  assert.equal(cls('rh-conto-texto')[0].textContent,CONTOS.bebado);
+  assert.equal(all.filter(n=>n.tagName==='BUTTON').length,0,'no ✕/♥');
+  assert.ok(!all.some(n=>/MATCH/i.test(n.textContent)),'no DEU MATCH');
+  assert.ok(!cls('rh-perfil-balao').length&&!cls('rh-perfil-dist').length,'no balloon nor distance');
 });

@@ -11,7 +11,7 @@
 import type {SimEvent} from '../../contract/index.ts';
 import {ROSTER} from '../../rules/index.ts';
 import type {HudContext,HudPart} from './model.ts';
-import {PERFIS_TEXTO,type PerfilTexto} from './perfis-texto.ts';
+import {CONTOS,PERFIS_TEXTO,type PerfilTexto} from './perfis-texto.ts';
 
 /** An eligible kill (the local hero's, a kind with a profile not matched yet, under the cap) becomes a match this often. */
 export const MATCH_CHANCE=1/6;
@@ -27,6 +27,8 @@ export const TILT_DEG=4;
 export interface Perfil extends PerfilTexto {kind:string;name:string;foto:string;accent:number}
 const NAMES=new Map(ROSTER.map(entry=>[entry.id,entry] as const));
 export const perfilFoto=(kind:string)=>`/art/perfis/${kind}.webp`;
+/** The phone's storybook card frame (card perfil-vira-livro-de-contos, ChatGPT 11B): transparent arch over the photo. */
+export const MOLDURA_CONTO='/art/perfis/moldura-conto.webp';
 export const BOTAO_FOTO={curtir:'/art/perfis/botao-curtir.webp',passar:'/art/perfis/botao-passar.webp'} as const;
 /** The profile of a kind, or undefined when it has no photo/text yet (later batches). */
 export function perfilOf(kind:string):Perfil|undefined{
@@ -130,6 +132,23 @@ function profileCard(doc:Document,m:Match,className:string,onButton:(how:'passar
   return node;
 }
 
+/**
+ * The phone's storybook card (perfil-vira-livro-de-contos): the enemy's photo in the frame's arch, its name on the
+ * scroll and its tale (CONTOS) on the plaque. Nothing of the dating app: no balloon, distance, buttons nor stamp.
+ */
+export function contoCard(doc:Document,m:Match){
+  const p=perfilOf(m.kind) as Perfil;
+  const node=el(doc,'article','rh-perfil rh-perfil-compacto rh-conto');node.dataset.kind=p.kind;
+  node.setAttribute('aria-label',`${p.name}: ${CONTOS[p.kind]??p.bio}`);
+  const foto=el(doc,'div','rh-conto-foto',node);
+  const img=el(doc,'img','rh-perfil-img',foto);img.alt='';img.draggable=false;img.decoding='async';
+  img.onload=()=>{node.dataset.foto='ok';};img.src=p.foto;if(img.complete&&img.naturalWidth>0)node.dataset.foto='ok';
+  const frame=el(doc,'img','rh-conto-moldura',node);frame.alt='';frame.draggable=false;frame.decoding='async';frame.src=MOLDURA_CONTO;
+  el(doc,'h3','rh-conto-nome',node).textContent=p.name;
+  el(doc,'p','rh-conto-texto',node).textContent=CONTOS[p.kind]??p.bio;
+  return node;
+}
+
 export interface ProfilesOptions {
   /** Where the local hero stands (RunHud.setHero), for the distance at the kill. */
   hero():{x:number;y:number}|undefined;
@@ -148,6 +167,11 @@ export interface ProfilesOptions {
    */
   guards?():readonly Box[]|undefined;
   useful?():Box|undefined;
+  /**
+   * The compact card is the storybook card (contoCard) instead of the profile; by default on the phone (the HUD's
+   * data-hud=fone), the desktop keeps the profile until its pop-up is decided.
+   */
+  conto?():boolean;
 }
 export interface ProfilesPart extends HudPart {
   readonly book:MatchBook;
@@ -189,7 +213,9 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
   const open=()=>{
     const last=book.matches.at(-1);if(!last)return;
     close();
-    card=profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
+    const conto=options.conto?.()??slot.closest('[data-hud]')?.getAttribute('data-hud')==='fone';
+    slot.classList.toggle('rh-perfil-slot-conto',conto);
+    card=conto?contoCard(doc,last):profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
       if(how==='curtir'){node.dataset.sai='curtir';closeTimer=setTimeout(close,700);}else close();
     });
     card.addEventListener('click',close);

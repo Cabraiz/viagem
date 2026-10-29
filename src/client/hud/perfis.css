@@ -95,3 +95,18 @@
 
 
 @media (prefers-reduced-motion:reduce){.rh-perfil-slot,.rh-perfil,.rh-perfil-match,.rh-matches{transition:none}.rh-matches.rh-matches-pulo{animation:none}}
+
+/* The phone's storybook card (perfil-vira-livro-de-contos): the ChatGPT frame 11B (1024x1536 drawn, 420 px webp) over
+   the enemy's photo; the boxes are the frame's measured arch (x 21-79 %, y 7.7-55 %), scroll (56-66 %) and plaque
+   (x 5-95 %, y 73-96 %). A bit wider than the profile so the name keeps two lines on the scroll at the 12 px floor. */
+.rh[data-hud=fone] .rh-perfil-slot.rh-perfil-slot-conto{--perfil-w:min(46vw,180px)}
+.rh-perfil.rh-conto{aspect-ratio:2/3;padding:0;border-radius:3cqw;background:none;color:#3a2a17;
+  box-shadow:0 6px 18px rgb(0 0 0/.45);overflow:hidden;cursor:pointer}
+.rh-conto-foto{position:absolute;left:20%;top:6.5%;width:60%;height:50%;background:#2b2418}
+.rh-conto-foto img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.rh-conto-moldura{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rh-conto-nome{position:absolute;left:16%;width:68%;top:61.6%;transform:translateY(-50%);margin:0;text-align:center;
+  font:400 max(12px,6.4cqw)/.96 var(--f-botao);letter-spacing:-.02em;text-wrap:balance;text-shadow:0 0 2px #f6ead0,0 0 2px #f6ead0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.rh-conto-texto{position:absolute;left:9%;width:82%;top:74.5%;height:20%;margin:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;font:italic 500 max(12px,6.6cqw)/1.18 Georgia,'Times New Roman',serif;text-wrap:balance}

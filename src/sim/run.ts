@@ -16,8 +16,13 @@ export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
  * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,
  * but the others do not wait two minutes for a phone that went quiet. A drop still cancels a countdown at once; the
  * one who missed the start watches that run and plays the rematch.
+ * 45 s since sala-rede-ruim-e-convite (auditoria multijogador 7; 10 s before): the owner taps "Convidar" and goes to the
+ * WhatsApp. Only a lost socket makes anyone offline (Room.disconnect), so a hidden tab whose socket lives is present
+ * all along; but a phone freezes a page in the background, the room closes the silent socket after SILENT_MS (12 s)
+ * and only then this count starts. 45 s covers ~1 min out of the app, with no new protocol; the others wait that much
+ * for a phone that really dropped (a "ready" from them still starts nothing until it comes back or the count ends).
  */
-export const LOBBY_AWAY_TICKS=10*RUN_HZ;
+export const LOBBY_AWAY_TICKS=45*RUN_HZ;
 /**
  * The collective rematch (UX-resultado-revanche): it starts when every person online said "topa", or this long after the
  * first "topa" with a majority; who did not vote watches that run and plays the next.

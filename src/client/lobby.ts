@@ -15,6 +15,7 @@ import {selectorReducer,mapChangedNews,downloadText,DEFAULT_MAP,NEWS_MS,
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
 import {holdMenuDownload} from './audio/menu-music.ts';
+import {deviceId} from './net/room-device.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
 import {objectiveFromSearch,soloMemory,soloNext,soloCreateMs,soloOneRetry,soloPlan,soloRefused,soloRetryable,soloWithin,SOLO_FIRST_JOIN_MS,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
 
@@ -507,7 +508,12 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=readRoomCode(codeInput.value);
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
+      // sala-rede-ruim-e-convite: a timeout or a dropped network (3G) gets one more POST, SOLO_RETRY_GAP_MS later; a
+      // refusal (4xx: the minute's limit, a bad body) is shown at once. The device id keys the Worker's CREATE_LIMIT.
+      if(create){status.textContent='Criando sua sala…';const asked={...objectiveFromSearch(location.search),device:deviceId()};
+        code=await soloOneRetry(async()=>{const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();
+          if(!r.ok){const message=data.error??'Não foi possível criar a sala.';throw r.status<500?soloRefused(message):new Error(message);}return data.code as string;},error=>soloRetryable(error,false));
+        codeInput.value=formatRoomCode(code);}
       if(closed)return;
       if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
       const nick=fitName(nickInput.value)||fitName(name);
@@ -617,7 +623,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time,
     // the first on short times (solo-tenta-de-novo), none after a refusal (4xx) or the room's fatal word.
     const joined=await soloOneRetry(async n=>{
-      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify({...body,device:deviceId()}),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
       if(!r.ok){const message=data.error??'Não foi possível criar a sala.';throw r.status<500?soloRefused(message):new Error(message);}
       step('room');
       const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;

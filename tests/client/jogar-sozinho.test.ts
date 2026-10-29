@@ -133,7 +133,7 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
 test('sala-solo-privada: openSolo asks the room for the solo map and a private room, in a plain-text body (no CORS preflight)',()=>{
   const lobby=read('src/client/lobby.ts'),solo=lobby.slice(lobby.indexOf('export async function openSolo'));
   assert.ok(solo.includes('const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};'),'map, solo and the asked objective');
-  assert.ok(solo.includes("fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),"),'the body, no Content-Type header');
+  assert.ok(solo.includes("fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify({...body,device:deviceId()}),"),'the body (and the device id), no Content-Type header');
   assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('new CoopClient'))),'no JSON content type: a simple request');
 });
 

@@ -2,8 +2,25 @@ import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOptions, type RoomRoster } from './room.ts';
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
-/** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78. */
+/**
+ * The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78,
+ * 128 with the device id (readDevice).
+ */
 const CREATE_BODY_MAX=256;
+/**
+ * sala-rede-ruim-e-convite (auditoria multijogador 5): the browser's id from the create body (src/client/net/room-device.ts),
+ * or '' (none, junk, an old cached site). Not trusted for anything but splitting CREATE_LIMIT's count: a forged one
+ * only moves its sender to another bucket, and CREATE_IP_LIMIT still caps the IP.
+ */
+export function readDevice(v:unknown):string{
+  const d=(v as {device?:unknown}|null)?.device;
+  return typeof d==='string'&&/^[A-Za-z0-9-]{8,40}$/.test(d)?d:'';
+}
+/**
+ * The create limits' keys: CREATE_LIMIT (5 a minute) counts IP + device, so phones behind one IP (a carrier's CGNAT, a
+ * school's Wi-Fi) no longer block each other; CREATE_IP_LIMIT (30 a minute) caps the IP alone.
+ */
+export const createLimitKeys=(ip:string,device:string)=>({device:device?`${ip}|${device}`:ip,ip});
 /**
  * A stored row's options as they were created (sala-solo-privada; anything else is dropped). Only for a room restored
  * after a deploy: one created before rodada-legado keeps its waves, wall or automatic weapons to its end.
@@ -43,7 +60,7 @@ export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
  * BUILD_SHA: the commit this Worker was published from (scripts/deploy-rooms.mjs passes it with `--var`); /health answers
  * it, so a deploy from a stale checkout shows at once (after 4e771dc went up from the lote's worktree without it).
  */
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; LAB_SEED?:string; LAB_ASLEEP?:string; LAB_DOURADA?:string; }
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; CREATE_IP_LIMIT?:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; LAB_SEED?:string; LAB_ASLEEP?:string; LAB_DOURADA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -83,16 +100,17 @@ export default {
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/rooms'&&request.method==='POST'){
-      const limit=await env.CREATE_LIMIT.limit({key:request.headers.get('CF-Connecting-IP')??'unknown'});
-      if(!limit.success)return Response.json({error:'Aguarde um minuto antes de criar outra sala.'},{status:429,headers});
+      // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada) and the
+      // device id (readDevice). None or junk (an old cached site): createOptions' own default, the nests with the manual
+      // combat, and the IP alone as the limit's key. Read only a small declared body (review: a huge one is never buffered).
+      let asked:RoomCreateOptions=createOptions(null),device='';
+      const length=Number(request.headers.get('content-length')??'0');
+      if(length>0&&length<=CREATE_BODY_MAX)try{const body:unknown=JSON.parse(await request.text());asked=createOptions(body);device=readDevice(body);}catch{/* junk: a plain room */}
+      const keys=createLimitKeys(request.headers.get('CF-Connecting-IP')??'unknown',device);
+      const limited=!(await env.CREATE_LIMIT.limit({key:keys.device})).success||(env.CREATE_IP_LIMIT&&!(await env.CREATE_IP_LIMIT.limit({key:keys.ip})).success);
+      if(limited)return Response.json({error:'Aguarde um minuto antes de criar outra sala.'},{status:429,headers});
       const code=crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
-      // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada).
-      // None or junk (an old cached site): createOptions' own default, the nests with the manual combat.
-      let asked:RoomCreateOptions=createOptions(null);
-      // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
-      const length=Number(request.headers.get('content-length')??'0');
-      if(length>0&&length<=CREATE_BODY_MAX)try{asked=createOptions(JSON.parse(await request.text()));}catch{/* junk: a plain room */}
       await stub.init(code,asked);return Response.json({code},{status:201,headers});
     }
     // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.

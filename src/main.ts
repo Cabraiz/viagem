@@ -318,7 +318,9 @@ function renderSelected(announce=false) {
   const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
   const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
-  if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
+  // The phone held upright never shows the letreiro (insta.css): no download there (primeira-visita-leve); turning it
+  // sideways runs syncInsta → here again, and the picture comes then.
+  if(picture){if(!instaScreen.matches&&sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
   sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
   // A letreiro taller than its sign (the gato's collar): laid out by the sign's own shape, the rest over the top.
   const tall=picture?letreiroAltoOf(selected.id):undefined;sign.classList.toggle('letreiro-alto',!!tall);

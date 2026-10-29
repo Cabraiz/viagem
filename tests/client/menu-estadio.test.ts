@@ -27,7 +27,9 @@ test('the CSS shows the stadium files that exist, the tall crop on a phone held 
   assert.ok(css.includes(`@media ${STADIUM_TALL_QUERY} {`),'the CSS and main.ts agree on when the tall crop shows');
   for(const [file,art] of [['estadio-1920',STADIUM.wide],['estadio-1280',undefined],['estadio-retrato-768',STADIUM.tall]] as const){
     assert.ok(css.includes(`/art/ui-extra/${file}.webp`),file);
-    assert.match(html,new RegExp(`<link rel="preload" href="/art/ui-extra/${file}\\.webp" as="image"`),file);
+    // primeira-visita-leve: the phone held upright opens on the profile screen (insta.css hides the stadium): no preload of its crop.
+    if(file==='estadio-retrato-768')assert.ok(!html.includes(file),file);
+    else assert.match(html,new RegExp(`<link rel="preload" href="/art/ui-extra/${file}\\.webp" as="image"`),file);
     const meta=await sharp(new URL(`../../public/art/ui-extra/${file}.webp`,import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1')).metadata();
     if(art)assert.deepEqual([meta.width,meta.height],[art.w,art.h],`${file} matches STADIUM`);
   }
@@ -130,15 +132,17 @@ test('nome-depois-de-selecionar: Enter in the field enters, Escape goes back, th
 });
 
 const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1');
+/** The approved file behind a lite copy the page loads (primeira-visita-leve: the letreiros are 960 px copies). */
+const approvedFile=(url:string)=>publicFile(url.replace(/^\/art\/lite\//,'/art/'));
 
 test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
   // The files exist, light, the sizes the code says.
-  const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
+  const sign=await sharp(approvedFile(letreiroOf('viciado-em-bet')!)).metadata();
   // letreiro-na-cena: cut out of the stadium Codex redrew with the sign inside, 2x the most the PC shows (56.4vh of 2160
   // = 1218 px), so a 200 % zoom on a 4K screen still has a pixel per pixel.
   assert.deepEqual([sign.width,sign.height],[2436,1698]);assert.ok(sign.hasAlpha);assert.ok(2*Math.floor(.564*2160)<=2436&&2*.332*3840<=2436*1.05);
   // letreiro-clt-na-cena: the CLT's office plaque, cut out of his sunset the same way, as wide (flatter, so shorter).
-  const clt=await sharp(publicFile(letreiroOf('clt-cansado')!)).metadata();
+  const clt=await sharp(approvedFile(letreiroOf('clt-cansado')!)).metadata();
   assert.deepEqual([clt.width,clt.height],[2436,1368]);assert.ok(clt.hasAlpha);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[953,19,793,1058],'the box scripts/menu-arte.mjs checks against the art');
@@ -183,11 +187,11 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
     const meta=await sharp(publicFile(file)).metadata();
     assert.equal(meta.width,w,file);assert.ok(Math.abs(meta.height!-cut.h*w/cut.w)<1,file);assert.ok(meta.hasAlpha,file);
   }
-  // His background has the stadium bleed's geometry, so frameArt/placeCutout(STADIUM.bleed) fit it as they are.
-  for(const file of [cut.fundo!,cut.fundo!.replace('/lite/','/')]){
-    const meta=await sharp(publicFile(file)).metadata();
-    assert.deepEqual([meta.width,meta.height],[STADIUM.bleed.w,STADIUM.bleed.h],file);
-  }
+  // His background has the stadium bleed's geometry, so frameArt/placeCutout(STADIUM.bleed) fit it as they are; the page
+  // draws its 1920 px lite copy (primeira-visita-leve) at the bleed's px size, so the copy keeps the shape.
+  const approved=await sharp(publicFile(cut.fundo!.replace('/lite/','/'))).metadata(),lite=await sharp(publicFile(cut.fundo!)).metadata();
+  assert.deepEqual([approved.width,approved.height],[STADIUM.bleed.w,STADIUM.bleed.h],cut.fundo);
+  assert.ok(Math.abs(lite.height!/lite.width!-STADIUM.bleed.h/STADIUM.bleed.w)<.001,`${cut.fundo}: ${lite.width}x${lite.height}`);
   assert.equal(cutoutOf('viciado-em-bet')!.fundo,undefined,'the viciado keeps the stadium');
   // Every window keeps him whole (contain) with his feet on the plateau (clt-mesmo-lugar: in the viciado's place).
   for(const [w,h] of [[1920,1080],[1920,950],[1590,903],[1366,768],[1280,720],[1024,768],[2560,1080]]){
@@ -284,8 +288,11 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
 
 test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved picture is whole and no edge shows',async()=>{
   const art=STADIUM.bleed,f=art.focal!;
-  const meta=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).metadata();
+  const meta=await sharp(publicFile('/art/menu/fundo-estadio-viciado.webp')).metadata();
   assert.deepEqual([meta.width,meta.height],[art.w,art.h],'the file is the size STADIUM.bleed says');
+  // The page draws the 1920 px lite copy (primeira-visita-leve) at the bleed's px size (frameStage): same shape.
+  const lite=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).metadata();
+  assert.ok(Math.abs(lite.height!/lite.width!-art.h/art.w)<.001,`${lite.width}x${lite.height}`);
   for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[1024,768],[2560,1080],[3440,1440],[1600,521]]){
     const box={w,h},{s,ox,oy}=frameArt(box,art),e=1e-9;
     assert.ok(ox<=e&&oy<=e&&ox+art.w*s>=w-e&&oy+art.h*s>=h-e,`${w}x${h}: the file covers the box`);
@@ -327,7 +334,7 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\)" \/>/);
   // No landscape screen preloads the plain stadium (the bleed shows there) nor the dance (his picture shows there).
   for(const m of html.matchAll(/<link rel="preload" href="\/art\/ui-extra\/estadio-(?:1920|1280)\.webp"[^>]*media="([^"]*)"/g))assert.ok(!m[1].includes('landscape')&&!m[1].includes('max-height'),m[1]);
-  assert.ok(html.includes("matchMedia('(orientation: landscape)').matches)return;"),'the dance preload skips landscape');
+  assert.ok(html.includes("matchMedia('(orientation: landscape)').matches||"),'the dance preload skips landscape');
 });
 
 test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 9% under the top (menu-folga-topo), his feet on the bar',()=>{
@@ -451,11 +458,11 @@ test('mureta-camada-frente: the stadium bar cut out of the background, drawn ove
   assert.ok(front.x<=cut.x&&front.x+front.w>=cut.x+cut.w&&front.y+front.h>=cut.y+cut.desce!+cut.h,'the layer covers his box');
   const edges=Array.from({length:front.w},(_,i)=>muretaTopo(front.x+i));
   assert.ok(front.y<=Math.min(...edges)-4&&front.y+front.h>=Math.max(...edges)+4,'the whole edge inside the layer');
-  // The file: the background's own px (the lite one the page draws), transparent above the edge, opaque under it.
+  // The file: the background's own px (the approved one; the page draws its 1920 px copy at this size), transparent above the edge, opaque under it.
   const meta=await sharp(publicFile(front.file)).metadata();
   assert.deepEqual([meta.width,meta.height],[front.w,front.h]);assert.ok(meta.hasAlpha);
   const layer=await sharp(publicFile(front.file)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  const bg=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).extract({left:STADIUM.bleed.focal!.x+front.x,top:STADIUM.bleed.focal!.y+front.y,width:front.w,height:front.h}).removeAlpha().raw().toBuffer();
+  const bg=await sharp(publicFile('/art/menu/fundo-estadio-viciado.webp')).extract({left:STADIUM.bleed.focal!.x+front.x,top:STADIUM.bleed.focal!.y+front.y,width:front.w,height:front.h}).removeAlpha().raw().toBuffer();
   let diff=0,n=0;
   for(let x=10;x<front.w;x+=40){
     const edge=muretaTopo(front.x+x+.5)-front.y,above=Math.floor(edge)-3,below=Math.ceil(edge)+3;
@@ -564,7 +571,7 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
   // A small, even gap (2–3% of the height) title → row and row → button; the sign 5–6% off the top ("não curto ele
   // ficar colado na parte de cima").
   assert.ok(gapVh>=.02&&gapVh<=.03&&signTop>=.05&&signTop<=.06,`gap ${gapVh}, sign top ${signTop}`);
-  const signs=await Promise.all(['viciado-em-bet','clt-cansado'].map(async id=>{const m=await sharp(publicFile(letreiroOf(id)!)).metadata();return [id,m.height!/m.width!] as const;}));
+  const signs=await Promise.all(['viciado-em-bet','clt-cansado'].map(async id=>{const m=await sharp(approvedFile(letreiroOf(id)!)).metadata();return [id,m.height!/m.width!] as const;}));
   for(const [w,h] of [[1920,1080],[1920,1000],[1366,768],[2560,1440],[1280,720],[1280,800],[1600,521]] as const){
     const left=Math.max(.03*w,16)+.02*w,width=Math.min(colW*h,.6*w),g=Math.min(Math.max(8,.018*h),18);
     const row=tile*h/.82+14,button=Math.max(52,bh*h),gap=gapVh*h;
@@ -604,7 +611,7 @@ test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as bi
   const wide=Number(box![1]),tall=Number(box![2])/Number(box![3]);
   // A letreiro taller than its sign (the gato's collar) counts by its sign: the collar leaves the box over the top.
   const sizes=Object.fromEntries(await Promise.all(Object.entries(LETREIROS).map(async([id,url])=>{
-    const m=await sharp(publicFile(url)).metadata(),tall=LETREIRO_ALTO[id];
+    const m=await sharp(approvedFile(url)).metadata(),tall=LETREIRO_ALTO[id];
     return [id,tall?{width:m.width,height:tall.sinal}:m] as const;
   })));
   // The box is the viciado sign's height (the tallest picture) and every picture fits it without distortion.
@@ -627,11 +634,11 @@ test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as bi
 test('letreiro-alto (gato-no-menu): the collar tag is the sign, the collar runs off the top of the screen',async()=>{
   for(const [id,tall] of Object.entries(LETREIRO_ALTO)){
     assert.ok(id in LETREIROS,id);
-    const m=await sharp(publicFile(LETREIROS[id])).metadata();
+    const m=await sharp(approvedFile(LETREIROS[id])).metadata();
     assert.deepEqual([m.width,m.height],[tall.w,tall.h],`${id}: the file is the size apelidos.ts says`);assert.ok(m.hasAlpha);
     assert.ok(tall.sinal<tall.h*.5,`${id}: more collar than sign (the user: "bem muito para cima")`);
     // The top row of the picture still has the collar in it (it leaves through the top edge, nothing floats).
-    const {data,info}=await sharp(publicFile(LETREIROS[id])).extract({left:0,top:0,width:tall.w,height:1}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const {data,info}=await sharp(approvedFile(LETREIROS[id])).extract({left:0,top:0,width:tall.w,height:1}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
     let solid=0;for(let x=0;x<info.width;x++)if(data[x*4+3]>200)solid++;
     assert.ok(solid>.05*tall.w,`${id}: the collar reaches the top edge (${solid} px)`);
   }

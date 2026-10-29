@@ -132,7 +132,7 @@ async function measureBar(file,focal){
 }
 if(part('mureta')){
   const {STADIUM,MURETA_TOPO,muretaTopo,RECORTES}=await import(pathToFileURL(path.join(root,'src/client/ui/stadium.ts')).href);
-  const focal=STADIUM.bleed.focal,source=path.join(root,'public/art/lite/menu/fundo-estadio-viciado.webp');
+  const focal=STADIUM.bleed.focal,source=path.join(root,'public/art/menu/fundo-estadio-viciado.webp');
   if(process.argv.includes('--mede')){
     const got=await measureBar(source,focal);
     console.log(`mureta: coef ${JSON.stringify(got.coef)} (${got.kept} colunas, ${got.rms.toFixed(2)} px rms); stadium.ts tem ${JSON.stringify(MURETA_TOPO.coef)}`);

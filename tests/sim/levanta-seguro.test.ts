@@ -10,6 +10,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,ticks} from '../../src/contract/types.ts';
+import {carGap} from '../../src/contract/objective.ts';
 import type {EnemyState,SimEvent,SimPlayer,RoundPhase} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
@@ -113,12 +114,12 @@ const standsBy=(f:FlowField,p:Point)=>{
   return false;
 };
 
-test('item 2: a verde crate at most 3 u from each hero\'s spawn, his own, on open ground he reaches (1, 3 and 6 heroes, seeds 1-8)',t=>{
+test('item 2: a verde crate at most 3 u from each hero\'s spawn, his own, on open ground he reaches, off the Uno (1, 3 and 6 heroes, seeds 1-8)',t=>{
   for(const players of [1,3,6])for(const seed of [1,2,3,4,5,6,7,8]){
     const m=match(seed,players);
     const spawn=m.heroes().map(p=>({x:p.x,y:p.y}));
     m.step();
-    const f=fieldFrom(spawn[0]),chests=m.chests();
+    const f=fieldFrom(spawn[0]),chests=m.chests(),car=m.s.run.chaveiro!.state.car;
     // Each hero his own: a matching of heroes to verde crates within NEAR_START_REACH of their spawn (augmenting paths).
     const options=spawn.map(at=>chests.filter(c=>c.value===1&&Math.hypot(c.x-at.x,c.y-at.y)<=NEAR_START_REACH+1e-9));
     const owner=new Map<string,number>();
@@ -133,6 +134,8 @@ test('item 2: a verde crate at most 3 u from each hero\'s spawn, his own, on ope
     for(const c of chests.filter(c=>owner.has(c.id))){
       assert.ok(standsBy(f,c),`seed ${seed}: ${c.id} reached on foot`);
       assert.ok(walkable(c,city),'on open ground');
+      // The heroes spawn beside the Uno: a crate on its body is out of every hero's reach (escuridao-justa, seed 1: bau-17).
+      assert.ok(carGap(car,c)>=RADIUS,`seed ${seed}: ${c.id} off the Uno's body (${carGap(car,c).toFixed(2)} u)`);
     }
     if(seed===1)t.diagnostic(`${players} heroes: ${chests.length} crates, ${owner.size} near ones`);
   }

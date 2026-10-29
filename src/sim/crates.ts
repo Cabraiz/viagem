@@ -67,8 +67,8 @@
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
-import {Rng,ticks} from '../contract/index.ts';
-import {RADIUS,walkable,type TerrainField} from '../maps/index.ts';
+import {Rng,carGap,ticks} from '../contract/index.ts';
+import {RADIUS,walkable,type CarPlace,type TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
@@ -237,6 +237,8 @@ export interface CratesOptions {
    * that the heroes reach, outside the base); undefined: none there. Absent: no trail crates.
    */
   trailSpot?(at:Point,heading:Point,ahead:number,rng:Rng):Point|undefined;
+  /** The chaveiro's car (uno-bloqueio-corpo): a near start crate never sits on its body. Absent: no car. */
+  car?():CarPlace|undefined;
   /** A checkpoint to resume from. */
   state?:CratesState;
   /** The gamble's knobs (tests): GOLD_HIDDEN_CHANCE and HIDE_AFTER_TAKEN by default. */
@@ -542,28 +544,41 @@ export function createCrates(options:CratesOptions):Crates{
   /**
    * Item 2: a verde start crate NEAR_START_REACH u from each hero (START_PLAYERS_MAX at most): open ground for its body
    * (else for a hero, the second pass), reached on foot, NEAR_START_SPACING from the other near crates and never on a
-   * hero; and every hero's start grace. Returns how many crates it placed. Outside the city any spot counts.
+   * hero nor on the Uno's body (the heroes spawn beside it, six of them in a tight block); and every hero's start grace.
+   * Heroes in list order, else in another (a rotation, either way) when that leaves one without: the block's last ones
+   * get boxed in by the others' crates. Returns how many crates it placed. Outside the city any spot counts.
    */
   function placeNear(ctx:SimContext,rng:Rng){
-    const heroes=[...ctx.players.values()].filter(onMap),city=cityTerrainOf(ctx.terrain),near:Point[]=[];
+    const heroes=[...ctx.players.values()].filter(onMap),city=cityTerrainOf(ctx.terrain),car=options.car?.();
     const end=ctx.tick+ticks(START_GRACE_S),grace=state.grace??={};
     for(const p of heroes){grace[p.id]=end;p.invulnerableUntil=Math.max(p.invulnerableUntil??0,end);}
     // Outside the city (no mask) any spot counts, like heroReach.
-    const fits=(at:Point,body:boolean)=>(!city||city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS))
+    const fits=(at:Point,body:boolean,near:readonly Point[])=>(!city||city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS))
+      &&(!car||carGap(car,at)>=(body?CRATE_BODY_RADIUS:RADIUS))
       &&reachable(ctx,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
       &&heroes.every(o=>Math.hypot(o.x-at.x,o.y-at.y)>=CRATE_BODY_RADIUS+RADIUS);
-    for(const p of heroes.slice(0,START_PLAYERS_MAX)){
-      const a0=rng.next()*2*Math.PI;
-      let at:Point|undefined;
-      search:for(const body of [true,false])for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
-        const a=a0+k*2*Math.PI/NEAR_START_ANGLES;
-        const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
-        if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body)){at=c;break search;}
+    const owners=heroes.slice(0,START_PLAYERS_MAX),a0=owners.map(()=>rng.next()*2*Math.PI);
+    const plan=(order:readonly number[])=>{
+      const near:Point[]=[];
+      for(const i of order){
+        const p=owners[i];
+        search:for(const body of [true,false])for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
+          const a=a0[i]+k*2*Math.PI/NEAR_START_ANGLES;
+          const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
+          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,near)){near.push(c);break search;}
+        }
       }
-      if(!at)continue;
-      near.push(at);
-      addCrate(ctx,at,{rarity:1,origin:'dropped',start:true});
+      return near;
+    };
+    // The list order, then each rotation of it both ways, until every owner has his (else the plan that placed most).
+    const n=owners.length;
+    let near:Point[]=[];
+    for(let k=0;k<2*n&&near.length<n;k++){
+      const order=owners.map((_,i)=>k<n?(i+k)%n:(2*n-1-k+n-i)%n);
+      const next=plan(order);
+      if(next.length>near.length)near=next;
     }
+    for(const at of near)addCrate(ctx,at,{rarity:1,origin:'dropped',start:true});
     return near.length;
   }
   /** Item 2: the start grace ends for good when it runs out or its hero leaves. */

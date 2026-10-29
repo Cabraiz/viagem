@@ -54,8 +54,11 @@ test('ads.txt: the publisher line at the root of the site (public/ → dist/), m
   assert.equal(`ca-${txt.split(', ')[1]}`,ADS_CONFIG.client);
 });
 
-test('privacy policy: /privacidade/ in PT-BR covers Google ads cookies, LGPD and a contact; the menu links it', () => {
+test('privacy policy: /privacidade/ in PT-BR with an English section covers Google ads cookies, LGPD, GDPR and a contact; the menu links it', () => {
   const html=fs.readFileSync(new URL('../../public/privacidade/index.html',import.meta.url),'utf8');
+  // politica-privacidade: the URL given to AdSense's consent message is /privacidade.html; GitHub Pages has no redirects.
+  assert.equal(fs.readFileSync(new URL('../../public/privacidade.html',import.meta.url),'utf8'),html,'/privacidade.html is the same page');
+  for(const must of ['GDPR','id="english" lang="en"','sessionStorage'])assert.ok(html.includes(must),must);
   assert.match(html,/<html lang="pt-BR">/);
   assert.match(html,/<title>viagem · Política de Privacidade<\/title>/);
   assert.doesNotMatch(html,/noindex/,'AdSense and search engines must read it');

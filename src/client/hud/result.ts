@@ -144,6 +144,16 @@ export const MANAGE_SHORT='Arrumar';
 /** The result's picture button: the same word on every screen, and what it does for screen readers and the tooltip. */
 export const SHARE_LABEL='Foto',SHARE_ARIA='Foto dos prêmios: compartilhar';
 /**
+ * What "Foto" says for a moment after a try (compartilhar-avisa-falha): a failure and a download speak, on the button
+ * (short, it is narrow) and to the screen reader (whole); a share or a cancel the player saw happen stay quiet.
+ */
+export function shareOutcome(how:'shared'|'downloaded'|'cancelled'|'failed'):{label:string;say:string}|undefined{
+  if(how==='failed')return {label:'Não deu',say:'Não deu pra compartilhar. Tente de novo.'};
+  if(how==='downloaded')return {label:'Salva',say:'Imagem salva'};
+  return undefined;
+}
+export const SHARE_OUTCOME_MS=2500;
+/**
  * The candidates for a card's name, longest first (design review of pacote-bugs-ux: "Seu", "Tia" alone lose the person,
  * and a name is never cut inside a word without "…"): the whole name, then whole words with "…", then the first word
  * cut with "…". The card writes the first that fits its lines (fitCardName). A last word of one digit stays, as on the
@@ -252,13 +262,23 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   // the icon alone in portrait read as nothing): beside the sticker where the row is wide, under it where four buttons share it.
   const share=el('button','rh-result-btn rh-result-share');share.type='button';
   share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-label">${SHARE_LABEL}</span>`;share.setAttribute('aria-label',SHARE_ARIA);share.title=SHARE_ARIA;
+  const shareLabel=share.querySelector<HTMLElement>('.rh-share-label')!;
+  const shareSaid=el('span','rh-sr');shareSaid.setAttribute('role','status');
+  let shareTimer:ReturnType<typeof setTimeout>|undefined;
+  const shareSay=(how:Parameters<typeof shareOutcome>[0])=>{
+    clearTimeout(shareTimer);
+    const out=shareOutcome(how);
+    shareLabel.textContent=out?.label??SHARE_LABEL;shareSaid.textContent=out?.say??'';
+    if(out)shareTimer=setTimeout(()=>{shareLabel.textContent=SHARE_LABEL;shareSaid.textContent='';},SHARE_OUTCOME_MS);
+  };
   share.addEventListener('click',()=>{
     if(!shownResult||share.disabled)return;
     share.disabled=true;
     const {result,ctx,awards}=shownResult,players=teamOrder(result.players,ctx.localId);
-    void shareResultImage(document,shareCard(resultHeadline(result),players,awards,ctx.localId),result.victory).finally(()=>{share.disabled=false;});
+    void shareResultImage(document,shareCard(resultHeadline(result),players,awards,ctx.localId),result.victory)
+      .then(shareSay,()=>shareSay('failed')).finally(()=>{share.disabled=false;});
   });
-  actions.insertBefore(share,exit);
+  actions.insertBefore(share,exit);actions.insertBefore(shareSaid,exit);
   let exited=false;
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 

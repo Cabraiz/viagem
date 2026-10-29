@@ -2,6 +2,7 @@
 export * from './budget.ts';
 export * from './classes.ts';
 export * from './personagens-liberados.ts';
+export * from './inimigos-liberados.ts';
 export * from './kits.ts';
 export * from './names.ts';
 export * from './offers.ts';

@@ -509,6 +509,8 @@
 ,
   "extra": {
     "aberracao-saci": {"name": "Saci Aberração", "role": "mini-chefe", "cell": 256, "accent": "0xc8322c",
-      "gag": "Some num redemoinho e só sobra o cachimbo quicando"}
+      "gag": "Some num redemoinho e só sobra o cachimbo quicando"},
+    "mendigo": {"name": "Mendigo", "role": "corredor", "cell": 128, "accent": "0x8a6a3c",
+      "gag": "Pede um trocado e cobra juros no abraço"}
   }
 }

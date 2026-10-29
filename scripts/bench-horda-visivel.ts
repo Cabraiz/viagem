@@ -28,13 +28,14 @@ import {FrameDecoder,FrameEncoder,WireIds} from '../src/protocol/protocol4.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {RoomBots} from '../multiplayer/room-bots.ts';
 import type {EnemyState} from '../src/sim/types.ts';
+import {herois} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
 const POP=Number(arg('pop','20')),BOTS=Number(arg('bots','4')),SEED=Number(arg('seed','4242'));
 const CAPS=arg('caps','48,150,300,600,0').split(',').map(Number),TICKS=Number(arg('ticks','1200')),GRID=Number(arg('grid','6'));
 const SKIP_COST=process.argv.includes('--skip-cost'),STILL=process.argv.includes('--still'),OUT=arg('out','');
-const CLASSES=['cidadao-comum','clt-cansado','feirante'];
+const CLASSES=herois(6);
 const r1=(v:number)=>+v.toFixed(1),r3=(v:number)=>+v.toFixed(3);
 const pct=(list:number[],q:number)=>{const s=[...list].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(q*s.length))]??0;};
 const mean=(list:number[])=>list.reduce((x,y)=>x+y,0)/Math.max(1,list.length);

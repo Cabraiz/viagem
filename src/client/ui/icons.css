@@ -9,6 +9,10 @@
 /* Arte v2 (importar-arte-b-ligacao): com a peça ui/<id> importada o ícone é <img class="ic"> do WebP 128×128, na mesma
    caixa do <svg>: inteiro dentro dela, reduzido com suavização (a arte nova não é pixel art de 24 px). */
 img.ic{object-fit:contain;image-rendering:auto;max-width:none;max-height:none;border:0;padding:0}
+/* uno-icone-halo: the base's Uno (ui/base, blue-grey) sits on the dark fichas (objective row, edge arrow, wall row); its
+   cream rim is ~2 px at 128 and gone at 18–24 px. A 1 px branco-papel halo all round (four 1 px drop-shadows, chained:
+   a 3×3 dilation), the box unchanged. */
+img.ic[data-icon=base]{filter:drop-shadow(1px 0 0 var(--c-papel-claro)) drop-shadow(-1px 0 0 var(--c-papel-claro)) drop-shadow(0 1px 0 var(--c-papel-claro)) drop-shadow(0 -1px 0 var(--c-papel-claro))}
 .ik-sombra{fill:var(--c-breu);stroke:var(--c-breu);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round;transform:translateY(3px)}
 .ik-papel{fill:var(--c-papel-claro);stroke:var(--c-papel-claro);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round}
 .ik-arte{fill:none;stroke:var(--c-breu);stroke-width:3px;stroke-linejoin:round;stroke-linecap:round}

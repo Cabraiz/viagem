@@ -87,10 +87,17 @@ export function soloNext(plan:SoloPlan,room:SoloRoom,mem:SoloMemory,now:number):
   return {action:'ready',mem:{...mem,last:now,readyAt:now}};
 }
 
+/** The rooms' address did not load (offline when the page opened; auditoria-erros-cliente E4): lobby and solo say this. */
+export const ROOMS_UNREACHABLE='Não deu pra achar o servidor das salas. Confere a internet e tenta de novo.';
 /** The pt-BR line under the buttons when the solo start fails: our own messages pass, platform ones do not. */
 export const SOLO_FAILED='Deu ruim ao começar a partida. Tenta de novo.';
+/**
+ * A text meant for the player (ours, the Worker's data.error, the room's fatal word): soloErrorText shows only these.
+ * Any other error, a plain Error included (a library's English one), becomes SOLO_FAILED.
+ */
+export const soloSays=(message:string)=>Object.assign(new Error(message),{says:true});
 export function soloErrorText(error:unknown):string{
-  return error instanceof Error&&error.name==='Error'&&error.message?error.message:SOLO_FAILED;
+  return error instanceof Error&&(error as {says?:unknown}).says===true&&error.message?error.message:SOLO_FAILED;
 }
 /**
  * auditoria de jogabilidade 14: a cold room Worker can miss the first "Jogar sozinho" (the room or the join fails) and the
@@ -127,7 +134,7 @@ export function soloWithin<T>(job:Promise<T>,ms:number,stillWaiting:()=>boolean,
  * The room Worker said no (a 4xx: CREATE_LIMIT's "Aguarde um minuto…", a bad request): a second POST cannot change it
  * and spends one more of the 5 rooms a minute, so it is shown at once (its own text, soloErrorText).
  */
-export const soloRefused=(message:string)=>Object.assign(new Error(message),{refused:true});
+export const soloRefused=(message:string)=>Object.assign(soloSays(message),{refused:true});
 /** Worth the second try: not the room's fatal word (`fatal`, e.g. an old version), not a refusal (soloRefused). */
 export const soloRetryable=(error:unknown,fatal:boolean)=>!fatal&&!(error instanceof Error&&(error as {refused?:unknown}).refused===true);
 /** `?ilha=1` (tests only): "Jogar sozinho" opens the old island exploration, without a room. */

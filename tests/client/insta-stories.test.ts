@@ -110,7 +110,7 @@ test('a layer\'s HTML: its place and colours in custom properties, the poll\'s A
     '<p class="insta-st insta-st-texto" data-fonte="classica" data-jeito="faixa" style="left:50%;top:80%;--giro:-3deg;--st-cor:var(--insta-st-branco);--st-fundo:var(--insta-st-azul)"><span>O jantar<br>&lt;passou&gt;</span></p>');
   assert.match(camadaHtml({tipo:'enquete',pergunta:'POTE VAZIO?',a:'Sim',b:'Não',x:50,y:70},p),/<p>POTE VAZIO\?<\/p><ol><li><i>A<\/i>Sim<\/li><li><i>B<\/i>Não<\/li><\/ol>/);
   const pergunta=camadaHtml({tipo:'pergunta',pergunta:'Quem tem sachê?',x:50,y:79},p);
-  assert.ok(pergunta.includes(`src="${perfilUrl(p.id)}"`)&&pergunta.includes('Digite algo...'));
+  assert.ok(pergunta.includes(`src="${perfilUrl(p.id)}"`)&&pergunta.includes('Digite algo…'));
   assert.match(camadaHtml({tipo:'hashtag',tag:'#MARMITAFIT',cor:'rosa',x:60,y:80},p),/--st-cor:var\(--insta-st-rosa\)">#MARMITAFIT</);
   assert.match(camadaHtml({tipo:'curtidas',n:21,x:70,y:80},p),/insta-st-curtidas[^>]*><svg[^]*<b>21<\/b>/);
 });

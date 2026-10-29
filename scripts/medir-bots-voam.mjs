@@ -53,7 +53,7 @@ try{
   await p.goto(`${WEB}/`,{waitUntil:'load',timeout:120000});
   p.on('console',m=>{if(m.type()==='error')console.error('console:',m.text().slice(0,200));});const STALL=join(OUT??tmpdir(),'stall.png');
   await p.waitForSelector('.class-card',{state:'attached',timeout:90000});
-  await p.evaluate(cls=>{const n=document.getElementById('nickname');n.value='Medida';n.dispatchEvent(new Event('input',{bubbles:true}));(cls?document.querySelector(`.class-card[data-hero="${cls}"]`):document.querySelector('.class-card')).click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();},CLASS);
+  await p.evaluate(cls=>{const n=document.getElementById('nickname');n.value='Medida';n.dispatchEvent(new Event('input',{bubbles:true}));(cls?document.querySelector(`.class-card[data-hero="${cls}"]`):document.querySelector('.class-card[data-hero]:not([data-bloqueado])')).click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();},CLASS);
   console.error('menu ok');
   await p.waitForSelector('#enter-island',{state:'visible',timeout:30000});
   await p.evaluate(()=>document.getElementById('enter-island').click());

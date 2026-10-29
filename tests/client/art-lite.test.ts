@@ -149,8 +149,8 @@ test('the base wall and barricades (art/base-art.ts) load their city lite copies
 
 test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from /art/lite/menu has its copy, made from the approved file as it is now; the rest of public/art/menu (button, cut-out heroes, mureta) is loaded as it is and has no copy (art-lite --check stays green)',()=>{
   const menu=readdirSync('public/art/menu',{recursive:true}).map(n=>String(n).replaceAll('\\','/')).filter(n=>n.endsWith('.webp'));
-  const lite=menu.filter(n=>/^(danca\/|insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/.test(n)); // insta/: the phone's profile screen (selecao-mobile-instagram); rosto/: the row's faces (selecao-miniatura-rosto); letreiro/: primeira-visita-leve
-  assert.ok(lite.length>=142,`${lite.length} menu files with a copy`);
+  const lite=menu.filter(n=>/^(insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/.test(n)); // menu-sem-danca: danca/ is in legado/. insta/: the phone's profile screen (selecao-mobile-instagram); rosto/: the row's faces (selecao-miniatura-rosto); letreiro/: primeira-visita-leve
+  assert.ok(lite.length>=90,`${lite.length} menu files with a copy`);
   for(const name of lite){
     const key=`menu/${name}`,entry=manifest.files[key];
     assert.ok(entry,`${key}: no copy in scripts/art-lite.json (node scripts/art-lite.mjs --kinds menu)`);
@@ -158,7 +158,7 @@ test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from 
     assert.equal(entry.lite,sha(`public/art/lite/${key}`),`public/art/lite/${key} is not the copy the manifest measured`);
   }
   for(const name of menu.filter(n=>!lite.includes(n)))assert.equal(manifest.files[`menu/${name}`],undefined,`menu/${name}: loaded as it is, no copy`);
-  // Every /art/lite/menu url the page names (the dance pages come from menu-dance.ts's replace) is one of those copies.
+  // Every /art/lite/menu url the page names is one of those copies.
   const sources=['index.html',...readdirSync('src/client',{recursive:true}).map(n=>`src/client/${String(n).replaceAll('\\','/')}`).filter(n=>/\.(ts|css)$/.test(n))];
   const urls=new Set(sources.flatMap(f=>readFileSync(f,'utf8').match(/\/art\/lite\/menu\/[\w\-/]+\.webp/g)??[]));
   assert.ok(urls.size>=2,[...urls].join(', '));

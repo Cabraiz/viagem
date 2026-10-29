@@ -101,6 +101,12 @@ const seen=new Set(LEGACY.map(l=>l[0]));
 for(const r of rows){if(seen.has(r.id))problems.push(`duplicate id ${r.id}`);seen.add(r.id);}
 for(const id of Object.keys(copy.entries))if(!rows.some(r=>r.id===id))problems.push(`copy for unknown id ${id}`);
 for(const id of Object.keys(copy.names??{}))if(!rows.some(r=>r.id===id))problems.push(`name override for unknown id ${id}`);
+const extras=Object.entries(copy.extra??{}).map(([id,x])=>{
+  if(!ROLES.includes(x.role))problems.push(`${id}: unknown role ${x.role}`);
+  if(seen.has(id))problems.push(`duplicate id ${id}`);seen.add(id);
+  if(!x.gag||x.barks||x.death||x.pop)problems.push(`${id}: an extra entry has a gag and no own lines`);
+  return {id,name:x.name,role:x.role,cell:x.cell,priority:'P1',pack:5,accent:Number(x.accent),gag:x.gag};
+});
 for(const id of [...Object.keys(FLYING),...Object.keys(GROUNDED)])if(!rows.some(r=>r.id===id))problems.push(`flying rule for unknown id ${id}`);
 const entries=[
   ...LEGACY.map(([id,name,role,cell,accent])=>{
@@ -118,6 +124,7 @@ const entries=[
     }else if(t.barks||t.death||t.pop)problems.push(`${r.id}: ${r.priority} carries P0 lines`);
     return e;
   }),
+  ...extras,
 ];
 const held=HELD.map(([id,name,role,cell,accent])=>{
   if(seen.has(id))problems.push(`held id ${id} is already in the roster`);
@@ -144,9 +151,10 @@ const out=`/**
  * scripts/roster-text.json. Do not edit by hand: change the copy file (or the packs) and run the script.
  *
  * The cast of D-040: the nine hand-tuned kinds (pack 0, \`legacy\`: their stats and lines live in sim/enemies/catalog.ts
- * and the client) and the ${rows.length} pack entries (${rows.filter(r=>r.priority==='P0').length} P0). Every entry has its role (enemy-roles.ts) and the pt-BR death gag
- * (≤ 60 chars); P0 entries also their own lines: 4 barks and 3 death lines (≤ 30 chars) and the death pop (ALL CAPS,
- * ≤ 21 chars). P1/P2 entries use their role's generic lines. \`accent\` is the pack's accent color (fallback tint).
+ * and the client), the ${rows.length} pack entries (${rows.filter(r=>r.priority==='P0').length} P0) and the ${extras.length} extra (pack 5, from no pack). Every entry
+ * has its role (enemy-roles.ts) and the pt-BR death gag (≤ 60 chars); P0 entries also their own lines: 4 barks and 3
+ * death lines (≤ 30 chars) and the death pop (ALL CAPS, ≤ 21 chars). P1/P2 entries use their role's generic lines.
+ * \`accent\` is the pack's accent color (fallback tint).
  */
 import type {EnemyRole} from './enemy-roles.ts';
 
@@ -156,7 +164,7 @@ export interface RosterEntry {
   /** Sprite cell (px) of the art; the role's default unless the pack overrides it. */
   cell:number;
   priority:RosterPriority;
-  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07. */
+  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07; 5: extra entries from no pack (the aberrações). */
   pack:number;
   /** 0xRRGGBB of the pack's accent. */
   accent:number;
@@ -195,5 +203,5 @@ if(check){
   console.log(`enemy-roster.ts is current (${entries.length} entries)`);
 }else{
   writeFileSync(OUT,text);
-  console.log(`wrote ${OUT}: ${entries.length} entries (${rows.length} from ${files.length} packs, ${rows.filter(r=>r.priority==='P0').length} P0)`);
+  console.log(`wrote ${OUT}: ${entries.length} entries (${rows.length} from ${files.length} packs, ${rows.filter(r=>r.priority==='P0').length} P0, ${extras.length} extra)`);
 }

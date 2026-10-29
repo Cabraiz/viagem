@@ -1,6 +1,6 @@
 /**
  * The round-1 objective row of the city (card cidade-08, route.ts): a row of the announcement slot with the base's
- * tent, "Vai pra praça!", a short second line, the walking distance left ("72 m", tnum) and the arrow along the route
+ * Uno (icon 'base', icone-base-vira-uno), "Vai pra praça!", a short second line, the walking distance left ("72 m", tnum) and the arrow along the route
  * (the "voltar" sticker turned to the route's screen bearing, as the horn's arrow is turned to the base).
  *
  * Why the slot's quiet-row class and not the horn notice (camp.ts): the horn is an `.rh-alert`, the slot's danger class.

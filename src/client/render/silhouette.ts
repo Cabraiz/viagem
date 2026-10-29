@@ -40,6 +40,18 @@ export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y
     .setAlpha(alpha*body.alpha);
   if(depth!==undefined)sil.setDepth(depth);
 }
+/**
+ * A real cast shadow drawn by the artist (card saci-elite-no-jogo: "Sombra não é elipse, mas sim sombra real"): `sil`
+ * shows frame `frame` of the shadow sheet, laid like the body's frame on the same grid (origin, scale, flip), so its feet
+ * meet the body's; the sheet's own alpha is its darkness, in the silhouette's flat tint, fading with the body. `frame.k`
+ * is the body's cell over the shadow sheet's (a blurred shadow keeps a smaller copy).
+ */
+export function castSheetShadow(sil:Phaser.GameObjects.Image,body:Body,frame:{key:string;frame:number;k:number},x:number,y:number,on:boolean){
+  if(!on||!body.visible){if(sil.visible)sil.setVisible(false).setActive(false);return;}
+  if(sil.texture.key!==frame.key)sil.setTexture(frame.key,frame.frame);else if(sil.frame.name!==frame.frame as unknown)sil.setFrame(frame.frame);
+  sil.setVisible(true).setActive(true).setOrigin(body.originX,body.originY).setFlipX(body.flipX).setScale(body.scaleX*frame.k,body.scaleY*frame.k)
+    .setRotation(0).setPosition(x,y).setAlpha(body.alpha);
+}
 
 /**
  * A vehicle's soft shadow (shadow-rules.ts SOFT_SHADOW) filled into `g`: the ellipse with centre (x, y) through the

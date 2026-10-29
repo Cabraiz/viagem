@@ -17,23 +17,16 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-palco { background-image: url('/art/ui-extra/estadio-1920.webp'); }
 }
 
-/* The hero. --dh is the dance canvas's height: its soles are at .754 of it (the median), the highest head of any frame at
-   .039, so the figure is .715 x --dh tall; it reaches from the bar up to a small margin under the top. The canvas is
-   lifted to .78 so the boots stand on the bar's top, not in front of its face. */
+/* The hero, standing still (menu-sem-danca: the dance is only in the match). --dh is the old dance canvas's height, kept
+   as the measure: the figure is .715 x --dh tall, from the bar up to a small margin under the top. */
 .estadio-heroi { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .estadio-heroi > * { --bar: var(--bar-y, 88%); --dh: calc((var(--bar) - 4vh) / .715); }
-.estadio-heroi .menu-dance {
-  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .78);
-  width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%);
-}
-/* The portrait only when the dance fails for good (danca-sem-fallback): feet at ~97% of the square art. */
+/* The portrait: feet at ~97% of the square art. */
 .estadio-heroi img {
   position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .715 / .97);
   width: calc(var(--dh) * .715 / .97); height: calc(var(--dh) * .715 / .97); transform: translateX(-50%); object-fit: contain;
 }
-.estadio-heroi.dancing img { visibility: hidden; }
-.estadio-heroi.dance-pending img { visibility: hidden; }
-/* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the dance hides. */
+/* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the portrait hides. */
 .estadio-recorte { position: absolute; z-index: 1; pointer-events: none; }
 .estadio-recorte[hidden] { display: none; }
 /* mureta-camada-frente: the stadium's bar drawn over the hero (the back sneaker behind it), framed like the background. */
@@ -58,14 +51,17 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio .menu-tela-cheia[hidden] { display: none; }
 .estadio .menu-tela-cheia:active { transform: translateY(2px); }
 
-/* The privacy policy (anuncios-h5-games, AdSense): a quiet link in the bottom-left corner, under
-   the choice column (centred) and away from the hero's feet. */
-.estadio .menu-privacidade {
+/* The privacy policy (anuncios-h5-games, AdSense) and the about page (site-textos-404-sobre): quiet links in the
+   bottom-left corner, under the choice column (centred) and away from the hero's feet. */
+.estadio .menu-rodape {
   position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; gap: 12px;
+}
+.estadio .menu-rodape a {
   padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
   text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);
 }
-.estadio .menu-privacidade:hover, .estadio .menu-privacidade:focus-visible { opacity: 1; text-decoration: underline; }
+.estadio .menu-rodape a:hover, .estadio .menu-rodape a:focus-visible { opacity: 1; text-decoration: underline; }
 
 /* The choice: title, class, row, name, button. Left column on a wide screen. */
 .estadio-escolha {
@@ -281,7 +277,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   padding-top: 0; padding-bottom: 8px;
 }
 .estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
-.estadio:has(.estadio-escolha[data-teclado]) .menu-privacidade { display: none; }
+.estadio:has(.estadio-escolha[data-teclado]) .menu-rodape { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }
 #explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

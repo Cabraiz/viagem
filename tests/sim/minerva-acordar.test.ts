@@ -76,6 +76,8 @@ test('a goal field that takes a new goal is the same field as a new one toward i
 
 test('twenty bodies walking to twenty homes: at most one whole-grid field a tick (was one per body a tick), and they get home',()=>{
   const {world,sys}=run(0);
+  // No wave in the window (missao-proteger-uno-tempo: the first leaves 5–15 s after the minute): the walk home only.
+  sys.nests!.state.nextWave=world.tick+ticks(60);
   const sono=sys.sono()!;
   // Twenty plan bodies, homes at least 3 cells apart (twenty goal fields, over the cache's 8), all lost 25 u away.
   const picked:typeof sono.bodies[number][]=[];

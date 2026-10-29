@@ -96,7 +96,16 @@
 /* The icon fills what the words leave; it rises a little into the frame's top, as in the reference. */
 .rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:1 1 0;display:grid;place-items:center;align-self:stretch;
   width:auto;height:auto;min-width:0;min-height:0;margin:calc(var(--w) * -.1) 0 0;border:0;border-radius:0;background:none}
-.rh .rh-ofc .rh-card-icon>.ic{position:absolute;inset:0;width:100%;height:100%;margin:auto;max-width:calc(var(--w) * .6);object-fit:contain;image-rendering:pixelated}
+.rh .rh-ofc .rh-card-icon>.ic{position:absolute;inset:0;width:100%;height:100%;margin:auto;max-width:var(--s-max);object-fit:contain;image-rendering:pixelated}
+/* oferta-icone-do-poder: a weapon's main effect as a round seal on the icon's lower right corner. --s is the drawn icon
+   (the box height or the icon's max width, whichever is less). No container query here: --w is written in cqh and
+   would then read the icon box instead of the cards row. The seal's own size (46% of --s) comes from its height, so
+   the sideways offset is a translate of its own width: --s/2 - .7 × seal = 108.7% - 70% of it. */
+.rh .rh-ofc .rh-card-icon{--s-max:calc(var(--w) * .6)}
+.rh .rh-ofc .rh-card-selo{--s:min(100%,var(--s-max));position:absolute;z-index:1;left:50%;top:calc(50% + var(--s) / 2);
+  width:auto;height:calc(var(--s) * .46);aspect-ratio:1/1;transform:translate(38.7%,-78%);
+  box-sizing:border-box;padding:2px;border:3px solid var(--px39-ouro);border-radius:50%;
+  background:var(--px39-tinta-funda);image-rendering:pixelated;object-fit:contain}
 .rh .rh-ofc .rh-card-default .rh-card-icon::before{content:'';position:absolute;inset:-6% 2%;z-index:-1;
   background:url('/art/ui-extra/px39/raios.webp') center/contain no-repeat}
 /* "Niv N" on the dark plate with the arrow tips, across the card under the icon. */
@@ -105,16 +114,15 @@
   font:700 1em/1 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line)}
 .rh .rh-ofc .rh-card-body{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
   gap:.35em;min-width:0;text-align:center}
-.rh .rh-ofc .rh-card-name{flex:0 0 auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;
-  font:700 1.12em/1.12 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:normal;overflow-wrap:break-word;hyphens:manual;padding-bottom:2px}
 /* The gain box: the number big in green, the words under it (12 px at least). */
 .rh .rh-ofc :is(.rh-card-gain,.rh-card-value){box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;
   width:100%;padding:.35em .3em .4em;border:0 solid transparent;
   border-image:url('/art/ui-extra/px39/faixa-bonus-lateral.webp') 14 fill/4px/0 stretch;
   font:700 1em/1.05 var(--f-pixel);color:var(--px39-texto);text-shadow:var(--px-line);white-space:normal;overflow:hidden}
 .rh .rh-ofc .rh-card-default :is(.rh-card-gain,.rh-card-value){border-image-source:url('/art/ui-extra/px39/faixa-bonus-meio.webp')}
-.rh .rh-ofc .rh-card-gain-big{font-size:1.45em;line-height:1;color:var(--px39-verde)}
-.rh .rh-ofc .rh-card-gain-small{font-size:1em;line-height:1.05}
+/* The gain grows into the room the item's name left (oferta-icone-do-poder). */
+.rh .rh-ofc .rh-card-gain-big{font-size:1.75em;line-height:1;color:var(--px39-verde)}
+.rh .rh-ofc .rh-card-gain-small{font-size:1.12em;line-height:1.08}
 .rh .rh-ofc .rh-card-gain~.rh-card-value{display:none}
 .rh .rh-ofc .rh-card-value-new{color:var(--px39-verde)}
 /* The old tag's pieces stay in the DOM (labels, tests) but the card says it all. */
@@ -153,7 +161,8 @@
   .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(16px,calc(var(--bh) * .42))}
   .rh .rh-offer.rh-ofc{justify-content:space-between}
   .rh .rh-ofc .rh-offer-cards{flex:1 1 0;height:auto}
-  .rh .rh-ofc .rh-card-icon>.ic{max-width:calc(var(--w) * .8)}
+  .rh .rh-ofc .rh-card-icon{--s-max:calc(var(--w) * .8)}
+  .rh .rh-ofc .rh-card-icon>.ic{max-width:var(--s-max)}
   /* "Levar os indicados", Pular and Rolar de novo on one row (item 3: Rolar went to a 3rd line cut at the edge). */
   .rh .rh-ofc .rh-ofc-actions{flex-wrap:nowrap;gap:2vw}
   .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){flex:0 1 var(--bw);min-width:0;font-size:max(14px,calc(var(--bh) * .36))}

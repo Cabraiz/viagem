@@ -2,7 +2,7 @@
  * The "Minuto de Minerva" clock (card NEW-20261022-ORQ-relogio-minerva, src/client/hud/minerva.ts): it shows while the
  * sim tick is before RunState.minervaAteTick, its hand follows the sim time (not the local clock), the last
  * MINERVA_URGENT_SECONDS are urgent, the wake flash shows right after and then the clock goes away.
- * Card inicio-no-uno-caixas-120: 120 s, ONLY the clock (no title, no seconds written), the hand walking BACK to 12 (the
+ * Card inicio-no-uno-caixas-120: ONLY the clock (30 s since missao-proteger-uno-tempo) (no title, no seconds written), the hand walking BACK to 12 (the
  * sector of the time left shrinks), the last 10 s pulsing; the same clock for the time to explore after a wave.
  */
 import test from 'node:test';
@@ -29,20 +29,20 @@ test('the explore window field: [from, until] when both are ticks and until is a
   assert.equal(exploraOf({exploraDesdeTick:'1',exploraAteTick:2500}),undefined);
 });
 
-test('field in the future: 120 s, the hand on a full turn (the whole sector lit)',()=>{
-  assert.equal(MINERVA_SECONDS,120);assert.equal(MINERVA_URGENT_SECONDS,10);
+test('field in the future: 30 s, the hand on a full turn (the whole sector lit)',()=>{
+  assert.equal(MINERVA_SECONDS,30);assert.equal(MINERVA_URGENT_SECONDS,10);
   const v=minervaView(START,END);
-  assert.deepEqual(v,{phase:'clock',seconds:120,angle:360,urgent:false});
+  assert.deepEqual(v,{phase:'clock',seconds:30,angle:360,urgent:false});
 });
 
-test('the hand walks BACK by the sim tick: 3/4 of the turn left at 30 s, half at 60 s, seconds rounded up',()=>{
-  assert.equal(minervaView(START+30*SIM_HZ,END)?.angle,270);
-  assert.equal(minervaView(START+60*SIM_HZ,END)?.angle,180);
-  assert.equal(minervaView(START+90*SIM_HZ,END)?.seconds,30);
-  assert.equal(minervaView(START+90*SIM_HZ+1,END)?.seconds,30);
+test('the hand walks BACK by the sim tick: 3/4 of the turn left at 7.5 s, half at 15 s, seconds rounded up',()=>{
+  assert.equal(minervaView(START+7.5*SIM_HZ,END)?.angle,270);
+  assert.equal(minervaView(START+15*SIM_HZ,END)?.angle,180);
+  assert.equal(minervaView(START+20*SIM_HZ,END)?.seconds,10);
+  assert.equal(minervaView(START+20*SIM_HZ+1,END)?.seconds,10);
   assert.equal(minervaView(END-1,END)?.seconds,1);
   // A player who joins late sees the same hand as everyone (same ticks, same angle).
-  assert.equal(minervaView(START+45*SIM_HZ,END)?.angle,minervaView(START+45*SIM_HZ,END,false)?.angle);
+  assert.equal(minervaView(START+12*SIM_HZ,END)?.angle,minervaView(START+12*SIM_HZ,END,false)?.angle);
 });
 
 test('the last 10 s are urgent (they pulse), the 11th is not',()=>{
@@ -64,8 +64,8 @@ test('who never saw the clock (joined after the minute) gets no notice; no field
   assert.equal(minervaView(START,undefined),undefined);
 });
 
-test('more than the full turn left (a longer room minute) keeps the hand on the full turn and the count at 120',()=>{
-  assert.deepEqual(minervaView(START,END+20*SIM_HZ),{phase:'clock',seconds:120,angle:360,urgent:false});
+test('more than the full turn left (a longer room minute) keeps the hand on the full turn and the count at 30',()=>{
+  assert.deepEqual(minervaView(START,END+20*SIM_HZ),{phase:'clock',seconds:30,angle:360,urgent:false});
 });
 
 test('the time to explore: the same clock, its full turn the window (90 s: half the turn left at 45 s)',()=>{

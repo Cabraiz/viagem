@@ -23,6 +23,7 @@ import type {SimContext} from '../src/sim/context.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {FAR_EVERY} from '../multiplayer/room.ts';
 import {FrameDecoder,FrameEncoder,SEND_EVERY,WireIds} from '../src/protocol/protocol4.ts';
+import {ROTA_INIMIGOS,herois} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
@@ -30,8 +31,8 @@ const NESTS=arg('mode','ninhos')==='ninhos',SEED=Number(arg('seed','4242')),ENEM
 const SECONDS=Number(arg('seconds','30')),OUT=arg('out','');
 /** The team arrives at the nest this far into the measure (s); the first 2 s after it are "the arrival". */
 const ARRIVE_S=SECONDS/2,ARRIVAL_S=2;
-const CLASSES=['cidadao-comum','clt-cansado','feirante','cidadao-comum','clt-cansado','feirante'];
-const KINDS:EnemyKind[]=['bebado','bebado','pombos','tio-pave','agiota','bebado'];
+const CLASSES=herois(6);
+const KINDS:EnemyKind[]=[...ROTA_INIMIGOS];
 const RING_MIN=12,RING_MAX=40,LATTICE=1.5,HZ=20;
 
 const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');

@@ -19,7 +19,7 @@
 .rh-chaveiro-chegou[hidden]{display:none}
 .rh-chegou-titulo{font:400 var(--t-21)/1.1 var(--f-cartaz);white-space:nowrap}
 .rh-chegou-segurem{font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap}
-.rh-chegou-track{grid-column:1/-1;height:10px;border-radius:5px;background:var(--c-breu);overflow:hidden}
+.rh-chegou-track{grid-column:1/-1;height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
 .rh-chegou-fill{display:block;height:100%;background:var(--c-cartolina);transform-origin:left;transform:scaleX(0);transition:transform .25s linear}
 @keyframes rh-chegou-in{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.rh-chaveiro-chegou{animation:none}.rh-chegou-fill{transition:none}}

@@ -234,12 +234,22 @@ export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,
   const headline=phase==='hidden'?''
     :total<=1?'Só você aqui. Chama a turma!'
     :!missing.length?'Todo mundo pronto. Milagre!'
-    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:awayText)
+    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:`${awayText} Alguém foi ao banheiro.`)
     :away.length?`${here.length===1?"Falta":"Faltam"} ${who(here)}. ${awayText}`
     :missing.length===1?(missing[0].self?'Só falta você. Sem pressão.':`Só falta ${missing[0].name}. Sem pressão.`)
-    :`Faltam ${missing.length}. Alguém foi ao banheiro.`;
+    :`${missing.length} ainda não estão prontos.`;
   return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline,canManage,seatsLeft};
 }
+
+/** "Jogar sozinho" (card solo-sem-sala-de-espera): no room on screen, only this line, the faces and the 3-2-1. */
+export const SOLO_LOADING='Chamando os bots…';
+/** The solo line: the countdown's joke, the map that did not arrive, else SOLO_LOADING. */
+export function soloHeadline(view:Pick<WaitingView,'phase'|'headline'>,failed?:string){
+  return view.phase==='countdown'?view.headline:failed||SOLO_LOADING;
+}
+/** The loading cover (explore.ts): up until the scene is drawn; in solo also through the room and its 3-2-1. */
+export const coverUp=(sceneReady:boolean,phase:string|undefined,solo:boolean)=>
+  !sceneReady||solo&&(phase===undefined||phase==='lobby'||phase==='countdown');
 
 // ---------- DOM ----------
 
@@ -287,14 +297,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const label=shareButton.querySelector<HTMLElement>('.coop-wait-share-text')!;
     const say=(text:string)=>{label.textContent=text;shareButton.classList.add('is-saying');setTimeout(()=>{label.textContent='Chamar a turma';shareButton.classList.remove('is-saying');},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? A cidade não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
       say(`Código: ${formatRoomCode(client.code)}`);
     }
   });
-  if(options.solo)shareButton.hidden=true;
+  // Solo: over the loading cover, no box (coop.css .is-solo); code, buttons and lines stay in the DOM, hidden.
+  if(options.solo){shareButton.hidden=true;panel.classList.add('is-solo');$('.coop-wait-code').hidden=true;}
   let soloMem=soloMemory();
   const readyButton=$<HTMLButtonElement>('.coop-wait-ready');
   let lastView:WaitingView|undefined;
@@ -372,10 +383,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     $('.coop-wait-news').hidden=!news;
     if(news){setText($('.coop-wait-news strong'),news.title);setText($('.coop-wait-news span'),news.body);}
     $('.coop-wait-headline').hidden=!!news&&view.phase!=='countdown';
-    setText($('.coop-wait-headline'),view.headline);
+    setText($('.coop-wait-headline'),options.solo?soloHeadline(view,load?.failed):view.headline);
     // The 4 s start when the island is on screen (the loading cover can sit over the room for a while on a slow phone).
     if(ownerNews?.until===Infinity&&!host.querySelector('.explore-loading:not([hidden])'))ownerNews.until=now()+OWNER_NEWS_MS;
-    const ownerLine=$('.coop-wait-owner'),showNews=!!ownerNews&&now()<ownerNews.until;
+    const ownerLine=$('.coop-wait-owner'),showNews=!options.solo&&!!ownerNews&&now()<ownerNews.until;
     ownerLine.hidden=!showNews;if(showNews)setText(ownerLine,ownerNews!.text);
     // A fuller window (4+): for its 4 s the news takes the headline's place, like the
     // restart notice does, and in portrait the line under the chips too, so the window never scrolls the ready button away.
@@ -385,12 +396,12 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     // The team's makeup takes the joke's place; for the owner it takes turns with the hint (WAITING_LINE_SECONDS each).
     const makeup=compositionLine(view.members),turn=Math.floor((now()-started)/1000/WAITING_LINE_SECONDS)%2===1;
     setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint&&!(makeup&&turn)?OWNER_HINT:makeup??waitingLine((now()-started)/1000));
-    $('.coop-wait-line').hidden=tightNews&&orientation==='portrait';
-    botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
+    $('.coop-wait-line').hidden=!!options.solo||tightNews&&orientation==='portrait';
+    botButton.hidden=!!options.solo||!view.canManage||view.seatsLeft<1||view.selfSpectator;
     panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
-    readyButton.hidden=view.selfSpectator;
+    readyButton.hidden=view.selfSpectator||!!options.solo;
     // The room's map still downloading here (or it did not arrive): no "pronto" (backing out stays possible).
     // Then this phone's P0 of the match (own hero, the map's ground) for at most PRELOAD_CAP_MS since it entered.
     const blocked=view.selfReady?undefined:readyBlock(load)??(preloader?preloadBlock(preload,now()-started):undefined);
@@ -429,6 +440,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         // This player's face wears the download ring (its fill: --preload, set below at every update).
         const bare=faceHtml(m.classId,{className:'coop-wait-face',tag:'i'});
         const face=m.self&&preloader?`<b class="coop-wait-ring" aria-hidden="true">${bare}</b>`:bare;
+        // Solo: the faces only (self first, with its download ring), the names read aloud.
+        if(options.solo)return `<li class="coop-wait-solo${m.self?' is-self':''}">${face}<span class="sr-only">${escapeHtml(m.name)}${said}</span></li>`;
         // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
         // The owner's grid shows the rail's short name (unique for bots, like the HUD); the whole name is read aloud.
         const shown=view.canManage?railName(m.name):m.name;
@@ -648,7 +661,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     step('join');
     const {openExploration}=await import('./explore.ts');
     options.onJoined?.();
-    const opening=openExploration(hero,nick,joined);
+    const opening=openExploration(hero,nick,joined,{solo:true});
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});
     releaseMenu();

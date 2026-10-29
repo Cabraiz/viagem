@@ -12,6 +12,7 @@ import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEve
 import type {SimContext,SimSystem,Sleepers} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
 import {provoke} from './enemies/foco.ts';
+import {xpToNext} from './progression.ts';
 
 export type {StampedEvent};
 /**
@@ -44,7 +45,7 @@ export class NaiveIndex<T extends Point&{id:string}> implements SpatialIndex<T> 
 const RETAIN_EVERY=20;
 const tickRng=(seed:number,tick:number)=>new Rng(seed).fork(`tick:${tick}`);
 
-export const initialTeam=():TeamProgress=>({xp:0,level:1,nextXp:5});
+export const initialTeam=():TeamProgress=>({xp:0,level:1,nextXp:xpToNext(1)});
 /**
  * What a room checkpoint keeps of the world (E5-checkpoint-por-round): the clock, ids, team, round and offers, plus the
  * pickups on the ground (the round's chest). Live enemies, projectiles and telegraphs are dropped: a checkpoint is taken

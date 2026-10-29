@@ -28,7 +28,7 @@ import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src
 import {MAX_PROJECTILES,PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
 import {CLASH_XP} from '../../src/rules/enemy-roles.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {xpToNext} from '../../src/sim/progression.ts';
+import {SOLO_EARLY_LEVEL,SOLO_EARLY_XP,xpToNext} from '../../src/sim/progression.ts';
 import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
@@ -304,14 +304,14 @@ test('motoboy: in a full run his crash drops his XP once (kill hook, no credit)'
   p.invulnerableUntil=1e9;p.build.weapons=[];
   // D-054: the XP goes straight to the team (levels included), no gem on the ground.
   const earned=()=>{let n=w.team.xp;for(let l=1;l<w.team.level;l++)n+=xpToNext(l);return n;};
-  const xpBefore=earned();
+  const xpBefore=earned(),solo=w.team.level<SOLO_EARLY_LEVEL?SOLO_EARLY_XP:1;   // levelup-espalhado: one hero below level 3
   const events:SimEvent[]=[];
   for(let i=0;i<MOTOBOY.aim+MOTOBOY.charge+10&&w.enemies.has(moto.id);i++){events.push(...sim.step());p.x=moto.x-5;p.y=moto.y+3;}
   assert.ok(!w.enemies.has(moto.id),'crashed');
   const kills=events.filter(e=>e.type==='kill'&&e.enemy===moto.id);
   assert.equal(kills.length,1);
   assert.ok(![...w.pickups.values()].some(k=>k.kind==='xp'),'no gem');
-  assert.ok(Math.abs(earned()-xpBefore-ENEMIES.motoboy.xp*CLASH_XP)<1e-9,'his XP counted once');
+  assert.ok(Math.abs(earned()-xpBefore-ENEMIES.motoboy.xp*CLASH_XP*solo)<1e-9,'his XP counted once');
 });
 
 // ---------- Influencer ----------

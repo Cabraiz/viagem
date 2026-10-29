@@ -18,23 +18,26 @@ const patch=(frag:string)=>{
   if(out===frag||!out.includes('uExposicao;')||!out.includes(EXPOSURE_GLSL))throw new Error('exposure: Phaser fragment shader changed');
   return out;
 };
-const Shaders=(Phaser.Renderer.WebGL as unknown as {Shaders:{MultiFrag:string;MobileFrag:string}}).Shaders;
 const Pipelines=Phaser.Renderer.WebGL.Pipelines;
 
+/** Phaser's own fragment source of a default pipeline (built before the config ones; the Shaders are not exported). */
+const fragOf=(game:Phaser.Game,name:string)=>((game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).pipelines.get(name) as unknown as {shaders:{fragSrc:string}[]}).shaders[0]!.fragSrc;
+
 class ExposureMulti extends Pipelines.MultiPipeline {
-  constructor(game:Phaser.Game){super({game,name:EXPOSURE_PIPELINE,fragShader:patch(Shaders.MultiFrag)} as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);}
+  constructor(game:Phaser.Game){super({game,name:EXPOSURE_PIPELINE,fragShader:patch(fragOf(game,'MultiPipeline'))} as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);}
   override onPreRender(){this.set1f('uExposicao',exposure);}
 }
 class ExposureMobile extends Pipelines.MobilePipeline {
-  constructor(game:Phaser.Game){super({game,name:EXPOSURE_PIPELINE,fragShader:patch(Shaders.MobileFrag)} as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);}
+  constructor(game:Phaser.Game){super({game,name:EXPOSURE_PIPELINE,fragShader:patch(fragOf(game,'MobilePipeline'))} as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);}
   override onPreRender(){this.set1f('uExposicao',exposure);}
 }
 
 /**
  * Game config keys: the exposure pipeline as the default Game Object pipeline, Multi or Mobile as Phaser itself would
- * choose (autoMobilePipeline off, since it would replace the default with the plain Mobile one on phones).
+ * choose (autoMobilePipeline off, since it would replace the default with the plain Mobile one on phones). Phaser runs
+ * `new Class(game)` at boot; the constructor returns the right one (the Device module is not on the Phaser namespace).
  */
+function ExposurePipeline(game:Phaser.Game){return game.device.os.desktop?new ExposureMulti(game):new ExposureMobile(game);}
 export function exposureGameConfig():Pick<Phaser.Types.Core.GameConfig,'pipeline'|'defaultPipeline'|'autoMobilePipeline'>{
-  const desktop=(Phaser as unknown as {Device:{os:{desktop:boolean}}}).Device.os.desktop;
-  return {pipeline:{[EXPOSURE_PIPELINE]:desktop?ExposureMulti:ExposureMobile} as unknown as Phaser.Types.Core.PipelineConfig,defaultPipeline:EXPOSURE_PIPELINE,autoMobilePipeline:false};
+  return {pipeline:{[EXPOSURE_PIPELINE]:ExposurePipeline} as unknown as Phaser.Types.Core.PipelineConfig,defaultPipeline:EXPOSURE_PIPELINE,autoMobilePipeline:false};
 }

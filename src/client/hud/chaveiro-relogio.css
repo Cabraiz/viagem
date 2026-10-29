@@ -1,0 +1,29 @@
+/* Card chaveiro-chegou-e-relogio (hud/chaveiro.ts ClockStopTracker, arrivalBand; hud/topbar.ts).
+   The clock while the moto is stopped: the number grey like the chefão's stopped clock (Cone when the team can act: morta,
+   tombo) and, right after it in the chip, what the stop added ("+4 s"); the stop's name ("Moto tombou: ") only where the
+   top row has room (a hanging tag hid under the base ficha and the objective row). "Chegou": the band under the top row
+   while he opens the car, the seconds left and a bar filling up. */
+.rh-round-eta[data-motivo=parada] b{color:var(--c-pedra)}
+.rh-round-eta[data-motivo=urgente] b{color:var(--c-cone)}
+.rh-relogio-motivo{padding:0 6px;white-space:nowrap;border-radius:var(--r-ficha);background:var(--c-breu);border:2px solid var(--c-pedra);
+  color:var(--c-papel);font:400 var(--t-13)/1.2 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-relogio-motivo[data-motivo=urgente]{background:var(--c-cone);border-color:var(--c-breu);color:var(--c-breu);text-shadow:none}
+.rh-relogio-motivo[hidden]{display:none}
+.rh-relogio-motivo-nome{display:none}
+@media (min-width:700px){.rh-relogio-motivo-nome{display:inline}}
+
+.rh-chaveiro-chegou{order:9;flex:0 0 100%;box-sizing:border-box;display:grid;grid-template-columns:auto auto;justify-content:center;align-items:baseline;
+  column-gap:10px;row-gap:4px;max-width:min(100%,420px);margin:6px auto 0;padding:8px 14px 10px;border-radius:var(--r-ficha);
+  background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
+  text-shadow:var(--s-texto);pointer-events:none;animation:rh-chegou-in .35s ease-out}
+.rh-chaveiro-chegou[hidden]{display:none}
+.rh-chegou-titulo{font:400 var(--t-21)/1.1 var(--f-cartaz);white-space:nowrap}
+.rh-chegou-segurem{font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rh-chegou-track{grid-column:1/-1;height:10px;border-radius:5px;background:var(--c-breu);overflow:hidden}
+.rh-chegou-fill{display:block;height:100%;background:var(--c-cartolina);transform-origin:left;transform:scaleX(0);transition:transform .25s linear}
+@keyframes rh-chegou-in{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.rh-chaveiro-chegou{animation:none}.rh-chegou-fill{transition:none}}
+/* The band takes a row of its own: the top row wraps while it shows (hud.css keeps it on one line from 600 px), and the
+   phone's team column steps down under it as it does under the boss bar. */
+.rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden])){flex-wrap:wrap}
+@media (min-height:501px){.rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 180px)}}

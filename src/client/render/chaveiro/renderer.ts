@@ -40,6 +40,8 @@ const FX_DEPTH=94900;
 const SMOKE_MS=380,SMOKE_LIFE_MS=1600;
 /** The covering figure's alpha while the hero is behind it. */
 const COVER_ALPHA=.45;
+/** While he opens the car the Uno blinks every OPEN_BLINK_MS into a warm Amarelo tint (card chaveiro-chegou-e-relogio). */
+const OPEN_BLINK_MS=350,OPEN_BLINK_TINT=0xffd860;
 /** Heads (units over the ground) the cast's balloons stand on (card chaveiro-falas): Cida's tray, him standing, the roof. */
 const RIDERS_TOP=1.85*M,STANDING_TOP=1.75*M;
 
@@ -265,7 +267,9 @@ export class ChaveiroRenderer {
       this.frozenCar.hide();
       const lost=bitCount(view.car.parts)/CAR_PARTS.length;
       // A hit flashes it Cone-pink for a blink (never with reduced effects).
-      const tint=wrecked?0x6c6c74:hitFlash(st.lastHitAt===undefined?undefined:time-st.lastHitAt,reduced)?0xff9a8a:mix(0xffffff,0x9a96a0,lost);
+      // Card chaveiro-chegou-e-relogio: while he opens it the Uno blinks bright (the moment to hold it; none with reduced).
+      const opening=view.moto.mode==='abrindo'&&!view.ended&&!reduced&&Math.floor(time/OPEN_BLINK_MS)%2===0;
+      const tint=wrecked?0x6c6c74:hitFlash(st.lastHitAt===undefined?undefined:time-st.lastHitAt,reduced)?0xff9a8a:opening?OPEN_BLINK_TINT:mix(0xffffff,0x9a96a0,lost);
       const frame=unoFrame(carH,proj.view),footY=carY+unoFootY(carH,proj.view);
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);

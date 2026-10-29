@@ -14,7 +14,10 @@ import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
 test('lotes 1–4: every kind with art has a profile with its photo; the texts fit the card',()=>{
   const ids=Object.keys(PERFIS_TEXTO);
   assert.equal(ids.length,159);
-  const due=ROSTER.filter(e=>ENEMY_ART_IDS.includes(e.id)).map(e=>e.id);
+  // The saci (card saci-elite-no-jogo) is in the game before his ChatGPT portrait: no card until then
+  // (card NEW-20261029-E4-perfil-saci).
+  const pending=['aberracao-saci'];
+  const due=ROSTER.filter(e=>ENEMY_ART_IDS.includes(e.id)&&!pending.includes(e.id)).map(e=>e.id);
   assert.deepEqual(due.filter(id=>!ids.includes(id)),[],'a kind with art and no profile');
   for(const id of ids){
     const p=perfilOf(id);

@@ -42,8 +42,8 @@ export const PAUSE_PLACE_MS=1000;
 /** Gap (CSS px) between the title box and the offer's cards, and the screen's edges. */
 export const PAUSE_GAP=8;
 
-/** Who the pause can wait for: the run's players (names from the view, states for "você já escolheu"). */
-export interface PauseMember {id:string;name:string;spectator?:boolean;eliminated?:boolean;online?:boolean}
+/** Who the pause can wait for: the run's players (names from the view, states for "você já escolheu"; bots never pick). */
+export interface PauseMember {id:string;name:string;spectator?:boolean;eliminated?:boolean;online?:boolean;bot?:boolean}
 
 export interface PauseView {
   /** Interpolated ms left (clamped to 0..totalMs). */
@@ -69,6 +69,11 @@ export interface PauseView {
   level:number;
   /** Cards this phone still has to pick in this pause (its pending offers; 0 once it picked them all). */
   cards:number;
+  /**
+   * One human in the run (bots aside; levelup-sem-arma-e-solo): the words are singular ("Escolha! 9 s") and the line,
+   * which could only say "Falta você!" or "Todo mundo escolheu!", is empty.
+   */
+  solo:boolean;
 }
 
 /** The leftMs counted down from the message's arrival (`receivedAtMs`) to `nowMs`, clamped to 0..totalMs. */
@@ -106,15 +111,17 @@ export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[]
   const localWaiting=ids.has(localId),others=waiting.filter(id=>id!==localId);
   const names=others.map(id=>railName(byId.get(id)!.name));
   const onlyLocal=localWaiting&&!others.length;
+  const solo=roster.filter(m=>!m.bot).length<=1;
   let line:string;
-  if(!waiting.length)line='Todo mundo escolheu!';
+  if(solo&&!others.length)line='';
+  else if(!waiting.length)line='Todo mundo escolheu!';
   else if(onlyLocal)line='Falta você!';
   else if(localWaiting)line=`Esperando: ${namesList(['você',...names])}`;
   else if(picks(byId.get(localId)))line=`Você já escolheu. Esperando: ${namesList(names)}`;
   else line=`Esperando: ${namesList(names)}`;
   const mine=localWaiting?Math.max(1,Math.floor(cards)||1):0;
-  const title=!waiting.length?`Voltando em ${seconds} s`:mine>1?`+${mine} escolhas! ${seconds} s`:`Escolham! ${seconds} s`;
-  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title,line,localWaiting,onlyLocal,waiting,level:pause.level,cards:mine};
+  const title=!waiting.length?`Voltando em ${seconds} s`:mine>1?`+${mine} escolhas! ${seconds} s`:`${solo?'Escolha':'Escolham'}! ${seconds} s`;
+  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title,line,localWaiting,onlyLocal,waiting,level:pause.level,cards:mine,solo};
 }
 
 /** A teammate's mark on the strip while a pause lasts. */
@@ -142,8 +149,8 @@ export function pickMarks(pause:RunPause|undefined,roster:readonly PauseMember[]
  */
 export function pauseAnnouncement(before:PauseView|undefined,now:PauseView|undefined):string|undefined{
   if(!now)return undefined;
-  if(!before)return `Subiu pro nível ${now.level}! Escolham ${now.cards>1?`${now.cards} cartas`:'a carta'}: ${now.seconds} segundos.`;
-  if(now.onlyLocal&&!before.onlyLocal)return 'Falta você!';
+  if(!before)return `Subiu pro nível ${now.level}! ${now.solo?'Escolha':'Escolham'} ${now.cards>1?`${now.cards} cartas`:'a carta'}: ${now.seconds} segundos.`;
+  if(now.onlyLocal&&!before.onlyLocal&&!now.solo)return 'Falta você!';
   return undefined;
 }
 
@@ -219,7 +226,7 @@ export interface PausePartHost {root:HTMLElement;offer:HTMLElement;top:HTMLEleme
 
 /** The roster of the pause from the view's players, in the strip's order (teamOrder: this phone first, then by id). */
 export const pauseRoster=(players:readonly PlayerRunView[],localId:string):PauseMember[]=>
-  teamOrder(players,localId).map(p=>({id:p.id,name:p.name,spectator:p.spectator,eliminated:p.eliminated,online:p.online}));
+  teamOrder(players,localId).map(p=>({id:p.id,name:p.name,spectator:p.spectator,eliminated:p.eliminated,online:p.online,bot:p.bot}));
 
 /**
  * The pause's HUD part (D-050): the veil (`dim`, RunHud puts it under every part), the title box (`el`) and the polite

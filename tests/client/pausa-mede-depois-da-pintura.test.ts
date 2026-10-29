@@ -77,9 +77,9 @@ test('the seconds change the title\'s text node in place',()=>{
   try{
     part.update(view,ctx);
     const title=(part.el as unknown as El).kids[0]!,node=title.firstChild;
-    assert.equal(title.textContent,'Escolham! 9 s');
+    assert.equal(title.textContent,'Escolha! 9 s');
     at(1000);part.update(view,ctx);at(2000);part.update(view,ctx);
-    assert.equal(title.textContent,'Escolham! 7 s');
+    assert.equal(title.textContent,'Escolha! 7 s');
     assert.equal(title.firstChild,node,'same text node');
   }finally{part.destroy?.();}
 });

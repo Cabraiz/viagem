@@ -204,3 +204,16 @@ test('the pause\'s photo-mode scenes and the overlay\'s CSS: tokens, no taps, re
   assert.match(css,/\.rh-pausa\{[^}]*pointer-events:none/);
   assert.match(css,/prefers-reduced-motion:reduce/);
 });
+
+test('solo (levelup-sem-arma-e-solo): one human, bots aside: "Escolha!", no line, never "Falta você!"',()=>{
+  const solo:PauseMember[]=[{id:'p1',name:'Mateus',online:true},{id:'b1',name:'Bot',online:true,bot:true}];
+  const v=pauseView(pause(12000,['p1']),solo,'p1',0)!;
+  assert.equal(v.solo,true);assert.equal(v.title,'Escolha! 12 s');assert.equal(v.line,'');
+  assert.equal(pauseView(pause(2900,['p1']),solo.slice(0,1),'p1',0)!.title,'Escolha! 3 s','alone, no bot');
+  assert.equal(pauseView(pause(5000,[]),solo,'p1',0)!.line,'','picked: still no line');
+  assert.equal(pauseAnnouncement(undefined,v),'Subiu pro nível 6! Escolha a carta: 12 segundos.');
+  assert.equal(pauseAnnouncement(pauseView(pause(12000,['p1']),solo,'p1',0),pauseView(pause(2000,['p1']),solo,'p1',0)),undefined);
+  // Two humans: the plural and the line as before.
+  const two=pauseView(pause(12000,['p1']),ROSTER.slice(0,2),'p1',0)!;
+  assert.equal(two.solo,false);assert.equal(two.title,'Escolham! 12 s');assert.equal(two.line,'Falta você!');
+});

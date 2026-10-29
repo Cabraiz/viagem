@@ -29,7 +29,7 @@ import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
-import {showFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
+import {showFatal,hideFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
 import './hud/menu.css';
 import {BACK_ONLINE_ROW_MS,BackOnlineWatch,SOLO_LINE,createGameMenu,menuBack,menuFocus,quietStatus,roomLine,type GameMenu} from './hud/menu.ts';
 import type {RunState,RunView} from '../contract/index.ts';
@@ -684,9 +684,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           putData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{reconnect:()=>net.restart()});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
+          // "Reconectar" (nao-e-versao-nova): the client is on again, the window and the hidden HUD come back down.
+          else if(!net.fatal&&fatalShown){fatalShown=undefined;hideFatal(find('.explore-layout'));delete shell.dataset.fatal;if(hud)hud.el.hidden=false;}
           // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
           const manual=net.combat==='manual';
           if(shell.dataset.combat!==net.combat){

@@ -93,8 +93,10 @@ test('texts: the manual combat speaks of the attack button and of Space, never o
 test('rodada-legado: the page always asks for the nests and the manual combat; ?combate=auto and ?modo=ondas|muralha are gone',()=>{
   for(const s of ['?combate=manual','?combate=auto','?modo=ondas','?modo=muralha','?modo=ondas&combate=auto','?modo=muralha&combate=auto','?modo=chaveiro','','?x',undefined])
     assert.deepEqual(objectiveFromSearch(s),{mode:'ninhos',combat:'manual'},String(s));
-  // The class room's create always sends that body.
-  assert.match(read('src/client/lobby.ts'),/method:'POST',body:JSON\.stringify\(asked\),/);
+  // The class room's create always sends that body (createRoom, with its one retry: F5 volta pra sala, achado 5).
+  const lobby=read('src/client/lobby.ts');
+  assert.match(lobby,/createRoom\(endpoint,objectiveFromSearch\(location\.search\),/);
+  assert.match(lobby,/method:'POST',body:JSON\.stringify\(body\),/);
 });
 
 function peer(){

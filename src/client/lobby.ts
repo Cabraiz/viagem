@@ -453,6 +453,24 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   return {panel,update,dispose(){clearInterval(timer);stopPreload();panel.remove();}};
 }
 
+/** Wait before the one second try of "Criar sala" (auditoria multijogador 29/10, achado 5: a 3G hiccup). */
+export const CREATE_RETRY_MS=800;
+export const CREATE_RETRY_TEXT='A rede engasgou. Criando sua sala de novo…';
+/**
+ * POST /rooms (the new room's code). A timeout or a network error gets one more try after CREATE_RETRY_MS; an answer
+ * from the Worker (a 4xx like the 429 "Aguarde um minuto", or a 5xx) is final: asking again gives the same answer.
+ */
+export async function createRoom(endpoint:string,body:unknown,options:{onRetry?:()=>void;fetcher?:typeof fetch;wait?:(ms:number)=>Promise<void>;timeoutMs?:number}={}):Promise<string>{
+  const fetcher=options.fetcher??fetch,wait=options.wait??(ms=>new Promise<void>(r=>setTimeout(r,ms)));
+  for(let attempt=0;;attempt++){
+    let r:Response;
+    try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(options.timeoutMs??10000)});}
+    catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
+    return data.code;
+  }
+}
 /** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */
 export interface LobbyOptions {room?:string;autoJoin?:boolean}
 export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
@@ -507,7 +525,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=readRoomCode(codeInput.value);
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
+      if(create){status.textContent='Criando sua sala…';code=await createRoom(endpoint,objectiveFromSearch(location.search),{onRetry:()=>{status.textContent=CREATE_RETRY_TEXT;}});codeInput.value=formatRoomCode(code);}
       if(closed)return;
       if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
       const nick=fitName(nickInput.value)||fitName(name);

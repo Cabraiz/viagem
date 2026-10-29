@@ -5,7 +5,9 @@ import {Room,CHECKPOINT_FROM_ROUND,type Peer,type RoomCheckpoint,type RoomRoster
 import {REPLACED_MESSAGE} from '../../src/protocol/room.ts';
 
 const store=new Map<string,string>();
+// The seat token lives in localStorage (all tabs of the device: F5 volta pra sala); sessionStorage is the legacy read.
 (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
+Object.defineProperty(globalThis,'localStorage',{value:(globalThis as any).sessionStorage,configurable:true});
 /** The network: which room answers, and whether new connections fail (phone without signal). */
 const net={room:undefined as Room|undefined,down:false,opened:0,sent:[] as {at:number;t:string}[]};
 class FakeSocket{
@@ -79,7 +81,7 @@ test('client: a second tab with the same token takes over, the first stops with 
   store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
   try{
     const one=client();await one.join();
-    // A duplicated tab copies sessionStorage: same token.
+    // A second tab on the same device reads the seat from localStorage: same token.
     const two=client();await two.join();
     assert.equal(two.id,one.id);
     const opened=net.opened;await sleep(2500);
@@ -306,7 +308,7 @@ test('reconecta-round2: terminal ends (replaced by another tab, gave up) show th
 test('3g-rede-sem-teleporte: a 3-minute drop mid-match (past the grace) with a friend still in: the client keeps knocking and takes the same seat back; the hero played on its own meanwhile',async()=>{
   store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
   try{
-    // Two phones: each its own sessionStorage (the shared fake one is cleared so Bia does not take Ana's token).
+    // Two phones: each its own localStorage (the shared fake one is cleared so Bia does not take Ana's token).
     // Ana plays on her own for 3 minutes: a frontline class (maromba) outlasts it, as the old default did.
     const ana=client('Ana','maromba'),bia=client('Bia');await ana.join();store.clear();await bia.join();
     ana.ready(true);bia.ready(true);
@@ -386,4 +388,83 @@ test('emote-relay-sala: an emote from one phone reaches the other (and comes bac
     for(let i=0;i<40&&!seenByBia.length;i++)await sleep(20);
     assert.deepEqual(seenByBia,[{player:ana.id,id:'kkkk'}]);assert.deepEqual(seenByAna,[{player:ana.id,id:'kkkk'}]);
   }finally{stop();cleanup();}
+});
+
+// F5 volta pra sala (auditoria multijogador 29/10, achados 1 e 2). The page goes away without a word (F5, the phone's
+// browser throwing the tab away): no leave message, the socket just closes, the page's timers are gone with it.
+const pageGone=(c:InstanceType<typeof CoopClient>)=>{(c as any).stopped=true;clearInterval((c as any).heartbeat);clearTimeout((c as any).retry);sockets(c).close(1001);};
+/** Ana and Bia in the room, Ana's token the one this device keeps (Bia joined from another phone). */
+async function twoInRoom(){
+  // Her phone keeps its own storage: the fake one is shared, so her saves (each heartbeat) stay out of it.
+  const bia=client('Bia');await bia.join();(bia as any).saveToken=()=>{};store.clear();
+  const ana=client('Ana','maromba');await ana.join();
+  return {ana,bia};
+}
+async function untilPhase(c:InstanceType<typeof CoopClient>,phase:string){for(let i=0;i<200&&c.run?.phase!==phase;i++)await sleep(50);assert.equal(c.run?.phase,phase);}
+
+test('f5-volta-pra-sala: F5 in the waiting room: the reloaded page joins with the device\'s token and gets the same seat',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const {ana}=await twoInRoom();const id=ana.id;
+    pageGone(ana);await sleep(300);
+    const again=client('Ana','maromba');await again.join();
+    assert.equal(again.id,id,'the same seat');assert.equal(net.room.sim.players.size,2,'no third player');
+    assert.equal(net.room.sim.players.get(id)!.online,true);
+  }finally{stop();cleanup();}
+});
+
+test('f5-volta-pra-sala: F5 in the countdown and in combat: back to the same seat, the run goes on',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const {ana,bia}=await twoInRoom();const id=ana.id;
+    ana.ready(true);bia.ready(true);await untilPhase(ana,'countdown');
+    pageGone(ana);await sleep(200);
+    const second=client('Ana','maromba');await second.join();
+    // The drop cancelled the start (run.ts, LOBBY_AWAY_TICKS): back in the seat, ready again, and the run starts.
+    assert.equal(second.id,id,'countdown: the same seat');assert.equal(net.room.sim.players.size,2,'no third player');
+    second.ready(true);await untilPhase(second,'combat');
+    pageGone(second);await sleep(1500);
+    const room=net.room;assert.equal(room.sim.players.get(id)!.online,false,'the room saw the page go');
+    const third=client('Ana','maromba');await third.join();
+    assert.equal(third.id,id,'combat: the same seat');assert.equal(third.run?.phase,'combat','playing, not spectating');
+    assert.equal(room.sim.players.get(id)!.online,true);assert.equal(room.sim.autopilot.has(id),false,'her own thumb again');
+  }finally{stop();cleanup();}
+});
+
+test('f5-volta-pra-sala: tab closed in combat, the link opened again a minute later: the same seat',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const {ana,bia}=await twoInRoom();const id=ana.id;
+    ana.ready(true);bia.ready(true);await untilPhase(ana,'combat');
+    pageGone(ana);await sleep(60_000);
+    const back=client('Ana','maromba');await back.join();
+    assert.equal(back.id,id);assert.equal(back.run?.phase,'combat');
+  }finally{stop();cleanup();}
+});
+
+test('f5-volta-pra-sala: the replaced tab leaving keeps the seat token (the newer tab plays on it); the newer one leaving forgets it',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const one=client();await one.join();
+    const two=client();await two.join();await sleep(2500);
+    assert.equal(one.fatal,REPLACED_MESSAGE);
+    one.leave();
+    assert.ok(store.get('viagem:room:ABCDEF1234'),'"Voltar" on the old tab does not cost the new one its reload');
+    two.leave();
+    assert.equal(store.get('viagem:room:ABCDEF1234'),undefined,'left on purpose: a reload opens the menu, not the room');
+  }finally{stop();cleanup();}
+});
+
+test('f5-volta-pra-sala: the address carries the room from the welcome until the player leaves',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  const page={href:'http://jogo/?ux=1',search:'?ux=1'};const calls:string[]=[];
+  const g=globalThis as any;
+  g.location=page;g.history={state:null,replaceState:(_d:unknown,_u:string,url:string)=>{calls.push(url);page.href=url;page.search=new URL(url).search;}};
+  try{
+    const ana=client();await ana.join();
+    assert.equal(page.href,'http://jogo/?ux=1&sala=ABCDEF1234','welcome: ?sala= in the address, no new history entry');
+    ana.leave();
+    assert.equal(page.href,'http://jogo/?ux=1','left: the room is gone from the address');
+    assert.equal(calls.length,2);
+  }finally{delete g.location;delete g.history;stop();cleanup();}
 });

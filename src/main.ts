@@ -562,7 +562,8 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
 });
 syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
-// with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
+// with a room, joins it by itself (the room's token in localStorage keeps the same seat, net/room-return.ts).
+// F5 in a room lands on the invite path: the welcome put ?sala= in the address (F5 volta pra sala).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
 else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();

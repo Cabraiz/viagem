@@ -9,7 +9,7 @@
  * memória a mais), para a elite ter laço. Uma peça só: a horda inteira carrega UMA arte (a textura GPU cai).
  */
 import {WAVE_BOSS_IDS,roleOf} from '../../rules/index.ts';
-import type {ArtFile,ArtIndex,ArtPiece} from './manifest.ts';
+import {artPiece,type ArtFile,type ArtIndex,type ArtPiece} from './manifest.ts';
 
 /** Id da peça no grupo `inimigos` (public/art/enemies/mendigo). */
 export const MENDIGO='mendigo';
@@ -30,8 +30,9 @@ export const keepsOwnArt=(id:string)=>{
   const role=roleOf(id);
   return role==='chefe'||role==='mini-chefe'||WAVE_BOSS_IDS.includes(id)||id.includes('saci');
 };
-/** A arte que o jogo desenha para o inimigo de arte `id`: a própria, ou o mendigo. */
-export const gameEnemyArt=(id:string)=>keepsOwnArt(id)?id:MENDIGO;
+/** A arte que o jogo desenha para o inimigo de arte `id`: a própria, ou o mendigo (quando o índice tem a peça, isto é,
+ * sempre que o manifest do jogo carregou; um índice montado à mão sem ela fica com as artes próprias). */
+export const gameEnemyArt=(id:string)=>keepsOwnArt(id)||!artPiece('inimigos',MENDIGO)?id:MENDIGO;
 
 /** O índice com a peça do mendigo no grupo `inimigos` (sem o grupo, nada muda). */
 export function withMendigo(index:ArtIndex):ArtIndex{

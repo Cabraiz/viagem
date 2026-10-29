@@ -11,11 +11,17 @@ const raw={version:2,groups:{
 }};
 
 test('só o mendigo: todo inimigo comum desenha o mendigo; chefões e a aberração-saci ficam com a arte própria',()=>{
+  // sem a peça no índice, nada troca
+  setArtIndex(parseArtIndex(raw));
+  assert.equal(gameEnemyArt('bebado'),'bebado');
+  setArtIndex(withMendigo(parseArtIndex(raw)));
+  try{
   for(const id of ['bebado','pombos','tio-pave','agiota','coach','rato-de-boteco'])assert.equal(gameEnemyArt(id),MENDIGO,id);
   for(const id of ['chefe','rainha-das-baratas','rei-do-boteco',...WAVE_BOSS_IDS,'aberracao-saci'])assert.ok(keepsOwnArt(id),id);
   assert.equal(enemyArtId('bebado','bebado'),MENDIGO);
   assert.equal(enemyArtId('rato-de-boteco','pombos'),MENDIGO);
   assert.equal(enemyArtId('chefe','chefe'),'chefe');
+  }finally{setArtIndex(parseArtIndex({}));}
 });
 test('só o mendigo: a peça entra no grupo inimigos com parado, andar em 8 direções e a mesma folha como camada de elite',()=>{
   const idx=withMendigo(parseArtIndex(raw)),p=idx.groups.inimigos.pieces[MENDIGO];

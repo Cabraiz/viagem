@@ -23,11 +23,17 @@
 /* The phone: a smaller clock so the band and the hero keep their room. */
 .rh[data-hud=fone] .rh-minerva{padding:3px}
 .rh[data-hud=fone] .rh-minerva-face{width:48px;height:48px}
-/* The phone lying down (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem): the slot under the one-row band ends right over
-   the hero at 390 px of height, so the clock leaves the slot for the left column, under the minimap (fone.css: top-left,
-   --rh-mm wide), centred on it: clear of the hero, the joystick (bottom-left) and the buttons (right). Fixed is the
-   screen here: .rh is fixed at inset 0 with no transform. PC and portrait keep the slot. */
+/* The phone lying down (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem, card hud-deitado-sem-tapar-heroi): the clock
+   and the mission line share ONE row at the top of the announcement slot, the clock beside the line, so the slot ends
+   well above the hero at the centre (one under the other they sat on it at 1335×620; fixed under the minimap at 296 px
+   tall the clock sat on the joystick). The slot's other rows span it under that row. Standing and PC keep the column.
+   Hidden rows are display:none, so the line or the clock alone stays centred (its neighbour's column is 0 wide). */
+@media (orientation:landscape){
+  .rh[data-hud=fone] .rh-stack{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,auto) minmax(0,1fr);justify-items:center;align-items:center;row-gap:6px}
+  .rh[data-hud=fone] .rh-stack>*{grid-column:1/-1}
+  .rh[data-hud=fone] .rh-stack>.rh-minerva{grid-column:2;margin-right:8px}
+  .rh[data-hud=fone] .rh-stack>:is(.rh-missao,.rh-missao-grande){grid-column:3}
+}
 @media (max-height:500px){
-  .rh[data-hud=fone] .rh-minerva{position:fixed;top:calc(var(--rh-t) + var(--rh-mm) + 8px);left:calc(var(--rh-l) + var(--rh-mm) / 2 - 22px)}
   .rh[data-hud=fone] .rh-minerva-face{width:38px;height:38px}
 }

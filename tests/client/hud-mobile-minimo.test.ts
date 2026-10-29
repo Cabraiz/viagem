@@ -118,6 +118,23 @@ for(const viewport of VIEWPORTS)for(const boss of [false,true])test(`${viewport.
   }
 });
 
+test('lying down over 500 px tall (1335×620): the slot starts beside the minimap, under the band, and ends above the hero (card hud-deitado-sem-tapar-heroi)',()=>{
+  for(const viewport of [{width:1335,height:620},{width:1024,height:768}]){
+    const l=foneLayout({viewport,players:4,...thumbs(viewport)}),z=l.zones,name=`${viewport.width}×${viewport.height}`;
+    assert.ok(z.announce.y<bottom(l.minimap),`${name}: the slot is beside the minimap, not under it (${z.announce.y})`);
+    assert.ok(z.announce.y>=bottom(l.band),`${name}: the slot starts under the band`);
+    // The clock (60 px on the phone) and the mission line share one row (minerva.css): it ends above the hero.
+    assert.ok(z.announce.y+60+HERO_MARGIN<=l.hero.y,`${name}: the clock's row ends above the hero (${z.announce.y} + 60, hero at ${l.hero.y})`);
+  }
+  // Standing, the minimap is still a row of the band: the slot starts under it.
+  for(const viewport of [{width:390,height:844},{width:768,height:1024}]){
+    const l=foneLayout({viewport,players:4,...thumbs(viewport)});
+    assert.ok(l.zones.announce.y>=bottom(l.minimap),`${viewport.width}×${viewport.height}: the slot under the minimap`);
+  }
+  // fone.css keeps the slot out of the minimap's column there.
+  assert.equal(value(FONE_CSS,'@media (min-height:501px) and (orientation:landscape) .rh.rh[data-hud=fone] .rh-stack','left'),'calc(var(--rh-l) + var(--rh-mm) + 8px)');
+});
+
 test('gear: explore.css .explore-config numbers (18 px corner; 12/14 on a narrow or landscape phone)',()=>{
   assert.deepEqual(gearRect({width:390,height:844}),{x:324,y:18,width:48,height:48});
   assert.deepEqual(gearRect({width:360,height:800}),{x:298,y:12,width:48,height:48});

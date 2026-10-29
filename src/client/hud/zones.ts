@@ -41,6 +41,12 @@ export const ANNOUNCE_HEIGHT={portrait:88,landscape:72} as const;
 export const MARQUEE_MS=1800;
 /** Landscape is any viewport up to 500 px tall (same breakpoint as the HUD CSS). */
 export const orientationOf=(viewport:{width:number;height:number}):Orientation=>viewport.height<=500?'landscape':'portrait';
+/**
+ * The phone's minimap is a row of the top band (the announcement slot starts under it) only on a screen taller than
+ * wide: a phone lying down over 500 px tall (1335×620, card hud-deitado-sem-tapar-heroi) has the room beside it, and
+ * under its 186 px the slot fell right on the hero at the centre.
+ */
+export const minimapInBand=(viewport:{width:number;height:number})=>orientationOf(viewport)==='portrait'&&viewport.height>=viewport.width;
 
 export const right=(r:Rect)=>r.x+r.width;
 export const bottom=(r:Rect)=>r.y+r.height;
@@ -270,8 +276,8 @@ export function measureZoneInput(doc:Document=document,windows:readonly string[]
   let offer:Rect|undefined;
   for(const selector of windows){offer=rectOf(q(selector));if(offer)break;}
   const viewport={width:innerWidth,height:innerHeight},minimap=rectOf(q('.rh-minimap'));
-  // The phone (hud-mobile-minimo): in portrait the minimap is the band's top-left corner, so the band ends under it.
-  const phonePortrait=(hud as HTMLElement|null)?.dataset.hud==='fone'&&orientationOf(viewport)==='portrait';
+  // The phone (hud-mobile-minimo): standing, the minimap is the band's top-left corner, so the band ends under it.
+  const phonePortrait=(hud as HTMLElement|null)?.dataset.hud==='fone'&&minimapInBand(viewport);
   return {
     viewport,
     // The matches' flame (hud/perfis.ts) sits under the gear on the phone: the announcement slot starts below it.

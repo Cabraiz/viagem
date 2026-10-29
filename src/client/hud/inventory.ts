@@ -21,8 +21,16 @@ import {kitPiece,kitRarity} from '../../rules/index.ts';
 export const INVENTORY_SLOTS=6;
 /** How far "Trocar" reaches an item on the ground (sim/inventory.ts TAKE_REACH; a test keeps them equal). */
 export const SWAP_REACH=1.2;
-/** Holding a slot this long drops its item. */
-export const HOLD_DROP_MS=500;
+/** Holding a slot this long drops its item (0.8 s: a thumb resting a bit high on Atacar keeps its weapon;
+ *  celular-largar-item-seguro). */
+export const HOLD_DROP_MS=800;
+/** The slot's tap area (inventory.css .rh-inv-slot::before on the phone, fone-layout.ts RODAPE.hit). */
+export const SLOT_HIT=44;
+/** Is (x, y) still on the slot's tap area (the slot grown to SLOT_HIT, centred)? A hold only drops if it never left it. */
+export function onTapArea(r:{left:number;top:number;width:number;height:number},x:number,y:number,hit=SLOT_HIT):boolean{
+  const gx=Math.max(0,(hit-r.width)/2),gy=Math.max(0,(hit-r.height)/2);
+  return x>=r.left-gx&&x<=r.left+r.width+gx&&y>=r.top-gy&&y<=r.top+r.height+gy;
+}
 /** A finger that moves this far (px) is dragging the item: let go off the bar and it is dropped. */
 export const DRAG_PX=24;
 /** How long a refusal line stays over the bar. */
@@ -182,7 +190,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
     paintSwap();
   };
   // Tap / hold / drag on a slot (pointer events: finger and mouse alike).
-  let press:{slot:number;x:number;y:number;timer:ReturnType<typeof setTimeout>;dropped:boolean;dragging:boolean;id:number}|undefined;
+  let press:{slot:number;x:number;y:number;timer:ReturnType<typeof setTimeout>;dropped:boolean;dragging:boolean;left:boolean;id:number;area:DOMRect}|undefined;
   const endPress=()=>{if(!press)return;clearTimeout(press.timer);buttons[press.slot].classList.remove('rh-inv-segurando','rh-inv-arrastando');press=undefined;};
   for(const b of buttons){
     const slot=Number(b.dataset.slot);
@@ -191,11 +199,13 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       e.preventDefault();endPress();
       b.setPointerCapture?.(e.pointerId);
       const timer=setTimeout(()=>{if(!press||press.slot!==slot)return;press.dropped=true;b.classList.remove('rh-inv-segurando');send({t:'drop',slot});},HOLD_DROP_MS);
-      press={slot,x:e.clientX,y:e.clientY,timer,dropped:false,dragging:false,id:e.pointerId};
+      press={slot,x:e.clientX,y:e.clientY,timer,dropped:false,dragging:false,left:false,id:e.pointerId,area:b.getBoundingClientRect()};
       b.classList.add('rh-inv-segurando');
     });
     b.addEventListener('pointermove',e=>{
       if(!press||press.slot!==slot||press.dropped||press.dragging)return;
+      // Off the slot's tap area: neither a hold nor a tap any more (a drag still drops off the bar).
+      if(!press.left&&!onTapArea(press.area,e.clientX,e.clientY)){press.left=true;clearTimeout(press.timer);b.classList.remove('rh-inv-segurando');}
       if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>=DRAG_PX){press.dragging=true;clearTimeout(press.timer);b.classList.remove('rh-inv-segurando');b.classList.add('rh-inv-arrastando');}
     });
     b.addEventListener('pointerup',e=>{
@@ -207,6 +217,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
         if(!inside)send({t:'drop',slot});
         return;
       }
+      if(p.left)return;
       const s=slots?.[slot];const command=s&&tapCommand(s);if(command)send(command);
     });
     b.addEventListener('pointercancel',endPress);

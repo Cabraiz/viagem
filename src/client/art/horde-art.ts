@@ -21,7 +21,7 @@ import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
-import {gameEnemyArt} from './mendigo.ts';
+import {eliteCrownOf,gameEnemyArt,type EliteCrown} from './mendigo.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -666,6 +666,8 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
+  /** The elite as a layer (applyEliteLayer): the gold rim behind the base, shown while rimOn (the crown is `overlay`). */
+  rim?:Phaser.GameObjects.Image;rimOn?:boolean;
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
   cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
@@ -828,7 +830,9 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const art=ENEMY_ART[actor.kind];
   s.ratio=drawn/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
   s.head=figurePx(textures,id,piece,actor.kind,file,actor.elite);
+  s.rimOn=false;
   if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
+  else if(actor.elite)s.eliteOn=applyEliteLayer(image,s,id,piece,anim,frame,drawn);
   if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;
 }
@@ -838,6 +842,45 @@ function follow(image:Phaser.GameObjects.Image,o:Phaser.GameObjects.Image,key:st
   o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(image.scaleX,image.scaleY).setDepth(image.depth+depth).setAlpha(image.alpha);
   o.tintFill=image.tintFill;o.tintTopLeft=image.tintTopLeft;o.tintTopRight=image.tintTopRight;
   o.tintBottomLeft=image.tintBottomLeft;o.tintBottomRight=image.tintBottomRight;
+}
+/**
+ * The elite as a LAYER over the common frames (card mendigo-completo, ORQ: +0 MB instead of a whole elite sheet), for a
+ * piece with an elite crown (mendigo.ts eliteCrownOf): the crown on the hood of this very frame (its point table) and a
+ * gold rim, the base frame again filled gold, a bit bigger about the figure's middle and just behind the base. False
+ * (nothing shown) without a crown, a point for the frame, or the crown's texture.
+ */
+function applyEliteLayer(image:Phaser.GameObjects.Image,s:ArtState,id:string,piece:ArtPiece,anim:string,frame:FrameRef,drawn:number):boolean{
+  const crown=eliteCrownOf(id),textures=image.scene.textures;
+  const o=crown&&crownOn(overlayOf(image,s,'overlay'),image,crown,id,piece,anim,frame,drawn,textures);
+  if(!o)return false;
+  const r=overlayOf(image,s,'rim'),k=ELITE_RIM_SCALE;
+  if(r.texture!==image.texture)r.setTexture(image.texture.key,image.frame.name);else r.setFrame(image.frame.name);
+  // the copy grows about the crown's x and the figure's middle (half way from the feet to the hood), not the feet
+  r.setOrigin(image.originX,image.originY).setScale(image.scaleX*k,image.scaleY*k).setDepth(image.depth-ELITE_LAYER_DEPTH/2)
+    .setPosition(image.x-(o.x-image.x)*(k-1),image.y-(o.y-image.y)/2*(k-1)).setAlpha(image.alpha*ELITE_RIM_ALPHA).setTintFill(ELITE_RIM_COLOR);
+  s.rimOn=true;
+  return true;
+}
+/** Gold rim of a layered elite (applyEliteLayer): the base filled this color, this much bigger, at this alpha. */
+export const ELITE_RIM_COLOR=0xecbc48,ELITE_RIM_SCALE=1.06,ELITE_RIM_ALPHA=.6;
+/**
+ * Puts crown image `o` on `image`'s hood for its frame `frame` of `anim` (drawn at `drawn` per texture px): the crown's
+ * world point is returned in `o` (x, y = the hood top), undefined when the frame has no point or the crown is not loaded.
+ */
+function crownOn(o:Phaser.GameObjects.Image,image:Phaser.GameObjects.Image,crown:EliteCrown,id:string,piece:ArtPiece,anim:string,frame:FrameRef,drawn:number,textures:Phaser.Textures.TextureManager){
+  const pts=crown.points[anim],file=piece.files[anim],key=enemyArtKey(id,crown.name,0,1);
+  if(!pts||!file||!textures.exists(key))return undefined;
+  const info=fileInfo(id,anim,file),i=info.keys.indexOf(frame.key),page=info.pages[i];
+  const g=page?(page.firstFrame+frame.frame)*2:-1;if(g<0||g+1>=pts.length)return undefined;
+  // the base frame's cell in world px (lite or full, whatever loaded): the table is in fractions of that cell
+  const f=textures.getFrame(frame.key,frame.frame),cw=f.width*drawn,ch=f.height*drawn,c=crown.cell;
+  const ax=file.anchor?.[0]??.5,ay=file.anchor?.[1]??.88,dirs=Math.max(1,file.directions??1),frames=Math.max(1,file.frames??1);
+  const dir=Math.min(dirs-1,Math.floor((page.firstFrame+frame.frame)/frames)),w=crown.widths[dirs===8?dir:0]/c*cw;
+  const cf=textures.getFrame(key);
+  if(o.texture.key!==key)o.setTexture(key);
+  o.setPosition(image.x+(pts[g]/c-ax)*cw,image.y+(pts[g+1]/c-ay)*ch).setOrigin(.5,crown.originY).setScale(w/(cf.width*crown.fill))
+    .setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(image.alpha).setVisible(true);
+  return o;
 }
 /** Depth of the elite layer over its base image: far below the gap between two enemies' depths. */
 export const ELITE_LAYER_DEPTH=.001;
@@ -855,10 +898,10 @@ function off(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;
  * It is a scene display-list child like the base, so the killcam camera (render/zueira-fx.ts), which ignores every
  * scene child but its own copy, ignores it too.
  */
-function overlayOf(image:Phaser.GameObjects.Image,s:ArtState,which:'overlay'|'costume'){
+function overlayOf(image:Phaser.GameObjects.Image,s:ArtState,which:'overlay'|'costume'|'rim'){
   const had=s[which];if(had)return had;
   const scene=image.scene,o=scene.add.image(0,0,'__DEFAULT').setVisible(false);
-  const sync=()=>{o.setVisible(image.visible&&(which==='overlay'?s.eliteOn:s.costumeOn));};
+  const sync=()=>{o.setVisible(image.visible&&(which==='overlay'?s.eliteOn:which==='rim'?s.eliteOn&&!!s.rimOn:s.costumeOn));};
   scene.events.on('postupdate',sync);
   image.once('destroy',()=>{scene.events.off('postupdate',sync);o.destroy();s[which]=undefined;});
   s[which]=o;return o;
@@ -901,7 +944,9 @@ export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameO
   if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
   const scale=pieceScale(textures,id,piece,kind,file,elite)*body;
   image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0).setAlpha(alpha).setVisible(true);
-  deathLayer(image,overlay,elite?enemyFrame(id,piece,eliteFile(anim),row,elapsedMs,top,true):undefined,textures,ELITE_LAYER_DEPTH);
+  const crown=elite?eliteCrownOf(id):undefined;
+  if(crown){if(!crownOn(overlay,image,crown,id,piece,anim,frame,scale,textures))overlay.setVisible(false);}
+  else deathLayer(image,overlay,elite?enemyFrame(id,piece,eliteFile(anim),row,elapsedMs,top,true):undefined,textures,ELITE_LAYER_DEPTH);
   if(costume){const v=costume.variant;deathLayer(image,costume.image,v?enemyFrame(id,piece,costumeFile(v,anim),row,elapsedMs,mid,true):undefined,textures,COSTUME_LAYER_DEPTH);}
   return true;
 }

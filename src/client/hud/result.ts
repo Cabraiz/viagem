@@ -68,7 +68,7 @@ export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
 
 /**
  * The defeat's second line (UX-resultado-revanche): "O que derrubou a turma: Tio do Pavê (4 quedas)" and, with rounds,
- * "Faltou 3 rounds pro síndico". Undefined on a win or with nothing to say.
+ * "Faltou 3 rodadas pro síndico". Undefined on a win or with nothing to say.
  */
 export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'|'objective'>,causes:CauseLog){
   if(result.victory)return undefined;
@@ -188,7 +188,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const titles=el('div','rh-result-titles',head);
   const title=el('h2','rh-result-title',titles);title.id='rh-result-title';
   const subtitle=el('p','rh-result-sub',titles);
-  // The defeat's "O que derrubou a turma … Faltou N rounds pro síndico" (UX-resultado-revanche).
+  // The defeat's "O que derrubou a turma … Faltou N rodadas pro síndico" (UX-resultado-revanche).
   const lost=el('p','rh-result-lost',titles);lost.hidden=true;
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);

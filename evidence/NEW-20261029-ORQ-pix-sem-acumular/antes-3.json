@@ -1,0 +1,2500 @@
+{
+ "card": "NEW-20261012-ORQ-cidade-11-balanco-run",
+ "version": 1,
+ "startedAt": "2026-10-29T13:10:46.472Z",
+ "updatedAt": "2026-10-29T13:11:11.233Z",
+ "config": {
+  "objective": "chaveiro",
+  "combat": null,
+  "mode": "ninhos",
+  "nestPace": {
+   "period": [
+    90,
+    60
+   ],
+   "minerva": 120,
+   "first": [
+    30,
+    60
+   ],
+   "firstLate": [
+    60,
+    0
+   ],
+   "alive": [
+    8,
+    60
+   ],
+   "warm": 180,
+   "warmScale": 0.4,
+   "warmRow": 1,
+   "warmEase": 120,
+   "warmTrickle": 0.34,
+   "ramp": 540,
+   "size": [
+    1,
+    1.295
+   ],
+   "mapShare": [
+    0.1,
+    0.06999999999999999
+   ],
+   "trickle": [
+    0.4,
+    3
+   ],
+   "march": [
+    0.7,
+    1
+   ],
+   "hp": 1,
+   "damage": 1,
+   "perNest": [
+    1,
+    3
+   ],
+   "floor": 0.5,
+   "explore": 120,
+   "waveMin": 20,
+   "waveCap": 150,
+   "crowd": {
+    "march": [
+     1,
+     1,
+     1.08,
+     1.17,
+     1.26,
+     1.35
+    ],
+    "hp": [
+     1,
+     1,
+     1.5,
+     2,
+     2.5,
+     3
+    ],
+    "damage": [
+     1,
+     1,
+     1.15,
+     1.3,
+     1.45,
+     1.6
+    ]
+   }
+  },
+  "chaveiroPace": {
+   "ride": [
+    150,
+    420,
+    420,
+    580,
+    740,
+    900
+   ]
+  },
+  "spread": {
+   "k": 73,
+   "gap": 0,
+   "sub": 2,
+   "nearCar": 1.6,
+   "ramp": 51,
+   "route": 1.6,
+   "routeNear": 7,
+   "yard": 6,
+   "tile": 14
+  },
+  "alarm": {
+   "r": 20,
+   "p": 0.1,
+   "every": 1
+  },
+  "nestCalm": {
+   "radius": 40,
+   "seconds": 30
+  },
+  "seeds": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "players": [
+   6
+  ],
+  "capMin": 30,
+  "knobs": null,
+  "knobsFile": null,
+  "knobRoute": "none",
+  "classes": [
+   "cidadao-comum",
+   "motogirl",
+   "maromba",
+   "coach",
+   "pagodeiro",
+   "porteiro"
+  ],
+  "nav": {
+   "READ_SECONDS": 4,
+   "HOME_MARGIN": 4,
+   "CRATE_NEAR": 2.5,
+   "FAR": 12,
+   "STUCK_TICKS": 30,
+   "STUCK_MOVE": 0.3,
+   "UNSTICK_TICKS": 16
+  }
+ },
+ "runs": [
+  {
+   "key": "1:6",
+   "seed": 1,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 10581,
+   "simMinutes": 8.82,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "crate": 2848,
+     "build:bank": 4268,
+     "unstick": 272,
+     "crate-near": 325,
+     "brain": 43566,
+     "plaza": 2385,
+     "down": 7792,
+     "build:clear": 364,
+     "build:veiculo": 92,
+     "build:build": 195,
+     "home-wall": 579,
+     "build:push": 800
+    },
+    "stuck": 17,
+    "crateTrips": 25
+   },
+   "perf": {
+    "wallSeconds": 11.08,
+    "msPerTick": 1.047,
+    "thinkMsPerTick": 0.334,
+    "navMsPerTick": 0.045
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 1,
+    "repairs": 0,
+    "units": 22,
+    "refused": {
+     "ocupado": 5
+    },
+    "final": {},
+    "ruined": 1,
+    "gustavao": false,
+    "rail": false,
+    "roots": 1,
+    "tokens": 1
+   },
+   "pause": {
+    "count": 6,
+    "botSeconds": 6,
+    "waveSeconds": 529,
+    "humanShare": 0.12
+   },
+   "grana": {
+    "earned": 255,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 8,
+     "amount": 48
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "car",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 767,
+    "seconds": 413.4,
+    "hits": 224,
+    "limit": 224,
+    "budget": 865,
+    "grana": 255,
+    "paid": 255,
+    "debt": 610,
+    "parts": 15,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 73,
+      "paid": 73
+     },
+     {
+      "id": "bot2",
+      "had": 51,
+      "paid": 51
+     },
+     {
+      "id": "bot3",
+      "had": 16,
+      "paid": 16
+     },
+     {
+      "id": "bot4",
+      "had": 36,
+      "paid": 36
+     },
+     {
+      "id": "bot5",
+      "had": 49,
+      "paid": 49
+     },
+     {
+      "id": "bot6",
+      "had": 30,
+      "paid": 30
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "lombada": 1,
+     "tombo": 12,
+     "volta": 3,
+     "entrega": 1,
+     "morta": 1,
+     "tranco": 1
+    },
+    "deliveries": {
+     "clean": 0,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-10",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-09",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 10,
+    "sleepers": {
+     "total": 1435,
+     "asleep": 1283,
+     "awake": 54,
+     "dead": 98
+    },
+    "neverWoke": 4,
+    "maxEnemies": 146,
+    "stuck": 3,
+    "stuckAt": [
+     {
+      "id": "z-180",
+      "kind": "estagiario-imortal",
+      "x": 85.81,
+      "y": 99.2
+     },
+     {
+      "id": "z-181",
+      "kind": "ressaca-ambulante",
+      "x": 88.85,
+      "y": 97.47
+     },
+     {
+      "id": "z-296",
+      "kind": "boleto-vivo",
+      "x": 74.98,
+      "y": 25
+     }
+    ],
+    "waves": {
+     "n": 2,
+     "map": 4,
+     "nests": 15,
+     "outside": 40,
+     "kills": 76
+    },
+    "bots": {
+     "maxU": [
+      14,
+      18,
+      24,
+      14,
+      18,
+      13
+     ],
+     "farS": 47,
+     "farModes": {
+      "bank": 18,
+      "dodge": 1,
+      "home": 1,
+      "down": 27
+     },
+     "pulled": 26
+    }
+   },
+   "enemies": {
+    "max": 146,
+    "seen": 275,
+    "alivePerMinute": [
+     0,
+     5,
+     6,
+     43,
+     38,
+     13,
+     9,
+     13,
+     110
+    ],
+    "newPerMinute": [
+     8,
+     8,
+     75,
+     23,
+     6,
+     9,
+     5,
+     94,
+     47
+    ]
+   },
+   "banks": {
+    "grana": 85,
+    "withdraws": 17,
+    "share": 0.333,
+    "enemyWithdraws": 3,
+    "enemyGrana": 5,
+    "primes": 0,
+    "empties": 6
+   },
+   "vehicles": {
+    "rides": 2,
+    "byKind": {
+     "crossfiteiro": 2
+    },
+    "acabou": 1,
+    "largou": 1,
+    "riders": 2
+   },
+   "levels": [
+    123.4,
+    138.8,
+    167,
+    221.45,
+    290.35,
+    346.95,
+    346.95,
+    508.3
+   ],
+   "econ": {
+    "buys": [
+     {
+      "t": 409.2,
+      "round": 1,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 68
+     }
+    ],
+    "byKind": {
+     "build:vigia-do-predio": {
+      "count": 1,
+      "grana": 0,
+      "units": 22
+     }
+    },
+    "refused": {
+     "build:ocupado": 5
+    },
+    "firstAffordable": {
+     "vigia-do-predio": 397,
+     "vigias-armados": 56.35,
+     "atiradores-do-telhado": 66.6,
+     "ninho-de-metralhadora": 71.6,
+     "guarnicao-do-predio": 133.2,
+     "ninho-do-sniper": 71.6,
+     "equipe-antimaterial": 133.2,
+     "rojao-de-festa": 56.35,
+     "morteiro": 66.6,
+     "lanca-foguetes": 71.6,
+     "obuseiro": 133.2,
+     "gustavao": null,
+     "holofote": 56.35,
+     "arame-e-sirene": 66.6,
+     "antiaerea-quadrupla": 71.6,
+     "posto-de-radar": 133.2,
+     "muro": 53.85,
+     "barricada": 53.85,
+     "reparo": 56.35,
+     "gambiarra": 176.5,
+     "torre-chinelo": 190.9
+    },
+    "idleMean": 122.62,
+    "waves": [
+     {
+      "t": 173.4,
+      "round": 1,
+      "grana": 65,
+      "units": 0,
+      "maxWallet": 40,
+      "idleMean": 153.28
+     },
+     {
+      "t": 472,
+      "round": 1,
+      "grana": 230,
+      "units": 38,
+      "maxWallet": 68,
+      "idleMean": 237.92
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 0,
+      "units": 0,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 18,
+      "units": 0,
+      "wallets": [
+       6,
+       12,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 47,
+      "units": 0,
+      "wallets": [
+       28,
+       8,
+       10,
+       0,
+       0,
+       1
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 49,
+      "units": 0,
+      "wallets": [
+       33,
+       9,
+       6,
+       0,
+       0,
+       1
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 57,
+      "units": 0,
+      "wallets": [
+       40,
+       6,
+       7,
+       2,
+       1,
+       1
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 71,
+      "units": 0,
+      "wallets": [
+       46,
+       6,
+       8,
+       9,
+       1,
+       1
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 87,
+      "units": 0,
+      "wallets": [
+       52,
+       12,
+       8,
+       7,
+       1,
+       7
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 102,
+      "units": 0,
+      "wallets": [
+       53,
+       14,
+       8,
+       16,
+       1,
+       10
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 115,
+      "units": 0,
+      "wallets": [
+       54,
+       19,
+       8,
+       18,
+       3,
+       13
+      ]
+     },
+     {
+      "t": 300,
+      "grana": 121,
+      "units": 0,
+      "wallets": [
+       56,
+       19,
+       8,
+       21,
+       4,
+       13
+      ]
+     },
+     {
+      "t": 330,
+      "grana": 126,
+      "units": 0,
+      "wallets": [
+       58,
+       20,
+       8,
+       21,
+       5,
+       14
+      ]
+     },
+     {
+      "t": 360,
+      "grana": 183,
+      "units": 6,
+      "wallets": [
+       67,
+       30,
+       16,
+       29,
+       19,
+       22
+      ]
+     },
+     {
+      "t": 390,
+      "grana": 226,
+      "units": 18,
+      "wallets": [
+       68,
+       46,
+       16,
+       29,
+       44,
+       23
+      ]
+     },
+     {
+      "t": 420,
+      "grana": 227,
+      "units": 8,
+      "wallets": [
+       68,
+       46,
+       16,
+       30,
+       44,
+       23
+      ]
+     },
+     {
+      "t": 450,
+      "grana": 229,
+      "units": 38,
+      "wallets": [
+       68,
+       47,
+       16,
+       30,
+       44,
+       24
+      ]
+     },
+     {
+      "t": 480,
+      "grana": 231,
+      "units": 38,
+      "wallets": [
+       68,
+       47,
+       16,
+       31,
+       45,
+       24
+      ]
+     },
+     {
+      "t": 510,
+      "grana": 239,
+      "units": 47,
+      "wallets": [
+       70,
+       47,
+       16,
+       33,
+       47,
+       26
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 0,
+     "bot2": 0,
+     "bot3": 0,
+     "bot4": 0,
+     "bot5": 0,
+     "bot6": 0
+    }
+   },
+   "digest": "3611b8ee1592"
+  },
+  {
+   "key": "2:6",
+   "seed": 2,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5600,
+   "simMinutes": 4.67,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "crate": 2147,
+     "build:bank": 3408,
+     "unstick": 341,
+     "crate-near": 101,
+     "brain": 24735,
+     "plaza": 1082,
+     "build:clear": 296,
+     "build:veiculo": 48,
+     "down": 1442
+    },
+    "stuck": 22,
+    "crateTrips": 16
+   },
+   "perf": {
+    "wallSeconds": 5.14,
+    "msPerTick": 0.917,
+    "thinkMsPerTick": 0.303,
+    "navMsPerTick": 0.034
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 3,
+    "botSeconds": 3,
+    "waveSeconds": 279.95,
+    "humanShare": 0.11
+   },
+   "grana": {
+    "earned": 110,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 9,
+     "amount": 62
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "car",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 860,
+    "seconds": 263.55,
+    "hits": 224,
+    "limit": 224,
+    "budget": 697,
+    "grana": 110,
+    "paid": 110,
+    "debt": 587,
+    "parts": 15,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 67,
+      "paid": 67
+     },
+     {
+      "id": "bot2",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot3",
+      "had": 8,
+      "paid": 8
+     },
+     {
+      "id": "bot4",
+      "had": 10,
+      "paid": 10
+     },
+     {
+      "id": "bot5",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot6",
+      "had": 7,
+      "paid": 7
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "tombo": 6,
+     "entrega": 1,
+     "volta": 2
+    },
+    "deliveries": {
+     "clean": 0,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-09",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-10",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 5,
+    "sleepers": {
+     "total": 1435,
+     "asleep": 1303,
+     "awake": 102,
+     "dead": 30
+    },
+    "neverWoke": 5,
+    "maxEnemies": 121,
+    "stuck": 0,
+    "stuckAt": [],
+    "waves": {
+     "n": 1,
+     "map": 1,
+     "nests": 11,
+     "outside": 13,
+     "kills": 14
+    },
+    "bots": {
+     "maxU": [
+      16,
+      22,
+      16,
+      16,
+      19,
+      18
+     ],
+     "farS": 11,
+     "farModes": {
+      "bank": 8,
+      "clear": 2,
+      "home": 1
+     },
+     "pulled": 1
+    }
+   },
+   "enemies": {
+    "max": 121,
+    "seen": 164,
+    "alivePerMinute": [
+     0,
+     2,
+     1,
+     30,
+     97
+    ],
+    "newPerMinute": [
+     5,
+     3,
+     47,
+     75,
+     34
+    ]
+   },
+   "banks": {
+    "grana": 75,
+    "withdraws": 15,
+    "share": 0.682,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 5
+   },
+   "vehicles": {
+    "rides": 2,
+    "byKind": {
+     "patinete": 1,
+     "crossfiteiro": 1
+    },
+    "acabou": 2,
+    "largou": 0,
+    "riders": 2
+   },
+   "levels": [
+    140.15,
+    211.1,
+    258.9
+   ],
+   "econ": {
+    "buys": [],
+    "byKind": {},
+    "refused": {},
+    "firstAffordable": {
+     "vigia-do-predio": null,
+     "vigias-armados": 10.95,
+     "atiradores-do-telhado": 30.05,
+     "ninho-de-metralhadora": 144.6,
+     "guarnicao-do-predio": 173.15,
+     "ninho-do-sniper": 144.6,
+     "equipe-antimaterial": 173.15,
+     "rojao-de-festa": 10.95,
+     "morteiro": 30.05,
+     "lanca-foguetes": 144.6,
+     "obuseiro": 173.15,
+     "gustavao": null,
+     "holofote": 10.95,
+     "arame-e-sirene": 30.05,
+     "antiaerea-quadrupla": 144.6,
+     "posto-de-radar": 173.15,
+     "muro": 7.45,
+     "barricada": 7.45,
+     "reparo": 10.95,
+     "gambiarra": 174.7,
+     "torre-chinelo": 177.65
+    },
+    "idleMean": 64.11,
+    "waves": [
+     {
+      "t": 179.65,
+      "round": 1,
+      "grana": 89,
+      "units": 12,
+      "maxWallet": 62,
+      "idleMean": 96.2
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 40,
+      "units": 0,
+      "wallets": [
+       9,
+       11,
+       5,
+       10,
+       5,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 46,
+      "units": 3,
+      "wallets": [
+       19,
+       7,
+       5,
+       10,
+       5,
+       0
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 48,
+      "units": 3,
+      "wallets": [
+       19,
+       8,
+       5,
+       10,
+       6,
+       0
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 50,
+      "units": 3,
+      "wallets": [
+       19,
+       9,
+       5,
+       10,
+       6,
+       1
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 55,
+      "units": 9,
+      "wallets": [
+       29,
+       6,
+       7,
+       6,
+       6,
+       1
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 89,
+      "units": 12,
+      "wallets": [
+       62,
+       6,
+       6,
+       6,
+       6,
+       3
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 91,
+      "units": 12,
+      "wallets": [
+       62,
+       6,
+       6,
+       8,
+       6,
+       3
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 96,
+      "units": 12,
+      "wallets": [
+       63,
+       8,
+       6,
+       8,
+       6,
+       5
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 108,
+      "units": 12,
+      "wallets": [
+       67,
+       9,
+       8,
+       10,
+       7,
+       7
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 0,
+     "bot2": 0,
+     "bot3": 0,
+     "bot4": 0,
+     "bot5": 0,
+     "bot6": 0
+    }
+   },
+   "digest": "765ce419ef7f"
+  },
+  {
+   "key": "3:6",
+   "seed": 3,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 4595,
+   "simMinutes": 3.83,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "crate": 1267,
+     "build:bank": 2244,
+     "unstick": 395,
+     "brain": 21654,
+     "plaza": 1178,
+     "crate-near": 15,
+     "down": 817
+    },
+    "stuck": 25,
+    "crateTrips": 12
+   },
+   "perf": {
+    "wallSeconds": 3.75,
+    "msPerTick": 0.816,
+    "thinkMsPerTick": 0.258,
+    "navMsPerTick": 0.026
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 3,
+    "botSeconds": 3,
+    "waveSeconds": 229.7,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 70,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 6,
+     "amount": 42
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 1069,
+    "seconds": 229.7,
+    "hits": 107,
+    "limit": 224,
+    "budget": 346,
+    "grana": 70,
+    "paid": 70,
+    "debt": 276,
+    "parts": 1,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 44,
+      "paid": 44
+     },
+     {
+      "id": "bot2",
+      "had": 8,
+      "paid": 8
+     },
+     {
+      "id": "bot3",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot4",
+      "had": 5,
+      "paid": 5
+     },
+     {
+      "id": "bot5",
+      "had": 3,
+      "paid": 3
+     },
+     {
+      "id": "bot6",
+      "had": 1,
+      "paid": 1
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "entrega": 1,
+     "tombo": 6,
+     "volta": 1
+    },
+    "deliveries": {
+     "clean": 1,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-04",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-10",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 5,
+    "sleepers": {
+     "total": 1435,
+     "asleep": 1314,
+     "awake": 95,
+     "dead": 26
+    },
+    "neverWoke": 5,
+    "maxEnemies": 117,
+    "stuck": 0,
+    "stuckAt": [],
+    "waves": {
+     "n": 1,
+     "map": 1,
+     "nests": 8,
+     "outside": 15,
+     "kills": 16
+    },
+    "bots": {
+     "maxU": [
+      14,
+      18,
+      19,
+      18,
+      12,
+      10
+     ],
+     "farS": 0,
+     "farModes": {},
+     "pulled": 0
+    }
+   },
+   "enemies": {
+    "max": 117,
+    "seen": 158,
+    "alivePerMinute": [
+     0,
+     3,
+     1,
+     67
+    ],
+    "newPerMinute": [
+     8,
+     5,
+     78,
+     67
+    ]
+   },
+   "banks": {
+    "grana": 45,
+    "withdraws": 9,
+    "share": 0.643,
+    "enemyWithdraws": 4,
+    "enemyGrana": 8,
+    "primes": 0,
+    "empties": 3
+   },
+   "vehicles": {
+    "rides": 0,
+    "byKind": {},
+    "acabou": 0,
+    "largou": 0,
+    "riders": 0
+   },
+   "levels": [
+    99.25,
+    163.9,
+    223.5
+   ],
+   "econ": {
+    "buys": [],
+    "byKind": {},
+    "refused": {},
+    "firstAffordable": {
+     "vigia-do-predio": null,
+     "vigias-armados": 10.3,
+     "atiradores-do-telhado": 25,
+     "ninho-de-metralhadora": 54.8,
+     "guarnicao-do-predio": 59.8,
+     "ninho-do-sniper": 54.8,
+     "equipe-antimaterial": 59.8,
+     "rojao-de-festa": 10.3,
+     "morteiro": 25,
+     "lanca-foguetes": 54.8,
+     "obuseiro": 59.8,
+     "gustavao": null,
+     "holofote": 10.3,
+     "arame-e-sirene": 25,
+     "antiaerea-quadrupla": 54.8,
+     "posto-de-radar": 59.8,
+     "muro": 7.8,
+     "barricada": 7.8,
+     "reparo": 10.3,
+     "gambiarra": null,
+     "torre-chinelo": null
+    },
+    "idleMean": 49.59,
+    "waves": [
+     {
+      "t": 165,
+      "round": 1,
+      "grana": 60,
+      "units": 0,
+      "maxWallet": 38,
+      "idleMean": 64.14
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 31,
+      "units": 0,
+      "wallets": [
+       24,
+       1,
+       6,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 49,
+      "units": 0,
+      "wallets": [
+       37,
+       6,
+       6,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 52,
+      "units": 0,
+      "wallets": [
+       37,
+       8,
+       6,
+       0,
+       1,
+       0
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 55,
+      "units": 0,
+      "wallets": [
+       37,
+       9,
+       6,
+       2,
+       1,
+       0
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 60,
+      "units": 0,
+      "wallets": [
+       38,
+       10,
+       6,
+       4,
+       2,
+       0
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 61,
+      "units": 0,
+      "wallets": [
+       43,
+       6,
+       6,
+       4,
+       2,
+       0
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 68,
+      "units": 0,
+      "wallets": [
+       44,
+       7,
+       8,
+       5,
+       3,
+       1
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 0,
+     "bot2": 0,
+     "bot3": 0,
+     "bot4": 0,
+     "bot5": 0,
+     "bot6": 0
+    }
+   },
+   "digest": "a665a62fd2b5"
+  },
+  {
+   "key": "4:6",
+   "seed": 4,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 4850,
+   "simMinutes": 4.04,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "crate": 366,
+     "build:bank": 4247,
+     "unstick": 134,
+     "crate-near": 55,
+     "plaza": 373,
+     "brain": 21940,
+     "down": 1985
+    },
+    "stuck": 9,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 4.42,
+    "msPerTick": 0.911,
+    "thinkMsPerTick": 0.28,
+    "navMsPerTick": 0.025
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 3,
+    "botSeconds": 3,
+    "waveSeconds": 242.45,
+    "humanShare": 0.13
+   },
+   "grana": {
+    "earned": 51,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 4,
+     "amount": 21
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 1120,
+    "seconds": 240.1,
+    "hits": 184,
+    "limit": 224,
+    "budget": 577,
+    "grana": 51,
+    "paid": 51,
+    "debt": 526,
+    "parts": 7,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 26,
+      "paid": 26
+     },
+     {
+      "id": "bot2",
+      "had": 4,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 1,
+      "paid": 1
+     },
+     {
+      "id": "bot4",
+      "had": 12,
+      "paid": 12
+     },
+     {
+      "id": "bot5",
+      "had": 3,
+      "paid": 3
+     },
+     {
+      "id": "bot6",
+      "had": 5,
+      "paid": 5
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "tombo": 2,
+     "entrega": 2,
+     "volta": 2
+    },
+    "deliveries": {
+     "clean": 1,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-10",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 5,
+    "sleepers": {
+     "total": 1435,
+     "asleep": 1313,
+     "awake": 90,
+     "dead": 32
+    },
+    "neverWoke": 5,
+    "maxEnemies": 108,
+    "stuck": 6,
+    "stuckAt": [
+     {
+      "id": "z-198",
+      "kind": "ressaca-ambulante",
+      "x": 63.93,
+      "y": 88.75
+     },
+     {
+      "id": "z-201",
+      "kind": "estagiario-imortal",
+      "x": 62.2,
+      "y": 85.87
+     },
+     {
+      "id": "z-197",
+      "kind": "estagiario-imortal",
+      "x": 63.08,
+      "y": 87.41
+     },
+     {
+      "id": "z-192",
+      "kind": "boleto-vivo",
+      "x": 98.7,
+      "y": 85.37
+     },
+     {
+      "id": "z-193",
+      "kind": "boleto-vivo",
+      "x": 96.49,
+      "y": 84.29
+     },
+     {
+      "id": "z-196",
+      "kind": "ressaca-ambulante",
+      "x": 97.51,
+      "y": 87.03
+     }
+    ],
+    "waves": {
+     "n": 1,
+     "map": 1,
+     "nests": 13,
+     "outside": 9,
+     "kills": 14
+    },
+    "bots": {
+     "maxU": [
+      15,
+      26,
+      13,
+      21,
+      15,
+      15
+     ],
+     "farS": 45,
+     "farModes": {
+      "bank": 43,
+      "dodge": 2
+     },
+     "pulled": 19
+    }
+   },
+   "enemies": {
+    "max": 108,
+    "seen": 161,
+    "alivePerMinute": [
+     0,
+     6,
+     7,
+     61,
+     106
+    ],
+    "newPerMinute": [
+     6,
+     8,
+     80,
+     65,
+     2
+    ]
+   },
+   "banks": {
+    "grana": 15,
+    "withdraws": 3,
+    "share": 0.294,
+    "enemyWithdraws": 2,
+    "enemyGrana": 4,
+    "primes": 0,
+    "empties": 1
+   },
+   "vehicles": {
+    "rides": 1,
+    "byKind": {
+     "crossfiteiro": 1
+    },
+    "acabou": 1,
+    "largou": 0,
+    "riders": 1
+   },
+   "levels": [
+    137.25,
+    173.05,
+    223.2
+   ],
+   "econ": {
+    "buys": [],
+    "byKind": {},
+    "refused": {},
+    "firstAffordable": {
+     "vigia-do-predio": null,
+     "vigias-armados": 113.85,
+     "atiradores-do-telhado": 139.9,
+     "ninho-de-metralhadora": 220.75,
+     "guarnicao-do-predio": null,
+     "ninho-do-sniper": 220.75,
+     "equipe-antimaterial": null,
+     "rojao-de-festa": 113.85,
+     "morteiro": 139.9,
+     "lanca-foguetes": 220.75,
+     "obuseiro": null,
+     "gustavao": null,
+     "holofote": 113.85,
+     "arame-e-sirene": 139.9,
+     "antiaerea-quadrupla": 220.75,
+     "posto-de-radar": null,
+     "muro": 111.35,
+     "barricada": 111.35,
+     "reparo": 113.85,
+     "gambiarra": null,
+     "torre-chinelo": null
+    },
+    "idleMean": 18.04,
+    "waves": [
+     {
+      "t": 156.2,
+      "round": 1,
+      "grana": 28,
+      "units": 6,
+      "maxWallet": 18,
+      "idleMean": 37.72
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 0,
+      "units": 6,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 0,
+      "units": 6,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 2,
+      "units": 6,
+      "wallets": [
+       2,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 21,
+      "units": 6,
+      "wallets": [
+       13,
+       2,
+       0,
+       6,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 28,
+      "units": 6,
+      "wallets": [
+       18,
+       2,
+       0,
+       8,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 32,
+      "units": 6,
+      "wallets": [
+       23,
+       2,
+       0,
+       6,
+       1,
+       0
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 39,
+      "units": 6,
+      "wallets": [
+       24,
+       4,
+       1,
+       6,
+       1,
+       3
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 49,
+      "units": 6,
+      "wallets": [
+       26,
+       4,
+       1,
+       10,
+       3,
+       5
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 0,
+     "bot2": 0,
+     "bot3": 0,
+     "bot4": 0,
+     "bot5": 0,
+     "bot6": 0
+    }
+   },
+   "digest": "a275cd46e7d5"
+  }
+ ],
+ "summary": {
+  "runs": 4,
+  "byPlayers": {
+   "6": {
+    "players": 6,
+    "runs": 4,
+    "wins": 0,
+    "winRate": 0,
+    "causes": {
+     "boss": 0,
+     "team": 2,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 0,
+     "car": 2
+    },
+    "deathRounds": {
+     "1": 4
+    },
+    "roundReached": {
+     "n": 4,
+     "mean": 1,
+     "min": 1,
+     "median": 1,
+     "max": 1
+    },
+    "firstArrivalS": {
+     "all": null,
+     "byRound": {}
+    },
+    "loot": {
+     "unitsPerIntermission": null,
+     "recipesPerIntermission": null,
+     "byRound": {},
+     "purchasesPerRun": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 4,
+     "tutorialArrivalS": null
+    },
+    "barricadesFallen": {
+     "perRound": null,
+     "byRound": {}
+    },
+    "boss": {
+     "spawnAfterWaveS": null,
+     "firstInsideBaseS": null,
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": null,
+     "kills": 0,
+     "reached": 0
+    },
+    "towers": {
+     "runs": 4,
+     "rootsPerRun": {
+      "n": 4,
+      "mean": 0.25,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "tokensPerRun": {
+      "n": 4,
+      "mean": 0.25,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 4,
+     "earned": {
+      "n": 4,
+      "mean": 121.5,
+      "min": 51,
+      "median": 90,
+      "max": 255
+     },
+     "spent": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "evolutions": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "repairs": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "forge": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "final": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "chaveiro": {
+     "runs": 4,
+     "wins": 0,
+     "winsWithDebt": 0,
+     "debt": null
+    },
+    "banks": {
+     "runs": 4,
+     "grana": {
+      "n": 4,
+      "mean": 55,
+      "min": 15,
+      "median": 60,
+      "max": 85
+     },
+     "share": {
+      "n": 4,
+      "mean": 0.49,
+      "min": 0.29,
+      "median": 0.49,
+      "max": 0.68
+     },
+     "pooledShare": 0.453,
+     "withdraws": {
+      "n": 4,
+      "mean": 11,
+      "min": 3,
+      "median": 12,
+      "max": 17
+     },
+     "enemyWithdraws": {
+      "n": 4,
+      "mean": 2.25,
+      "min": 0,
+      "median": 2.5,
+      "max": 4
+     },
+     "enemyGrana": {
+      "n": 4,
+      "mean": 4.25,
+      "min": 0,
+      "median": 4.5,
+      "max": 8
+     },
+     "primes": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 4,
+      "mean": 3.75,
+      "min": 1,
+      "median": 4,
+      "max": 6
+     },
+     "verdict": "high"
+    },
+    "econ": {
+     "runs": 4,
+     "buysPerRun": {
+      "build:vigia-do-predio": {
+       "count": 0.25,
+       "grana": 0
+      }
+     },
+     "idleMean": {
+      "n": 4,
+      "mean": 63.59,
+      "min": 18.04,
+      "median": 56.85,
+      "max": 122.62
+     },
+     "firstAffordable": {
+      "vigia-do-predio": {
+       "reached": 1,
+       "s": {
+        "n": 1,
+        "mean": 397,
+        "min": 397,
+        "median": 397,
+        "max": 397
+       }
+      },
+      "vigias-armados": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 47.86,
+        "min": 10.3,
+        "median": 33.65,
+        "max": 113.85
+       }
+      },
+      "atiradores-do-telhado": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 65.39,
+        "min": 25,
+        "median": 48.33,
+        "max": 139.9
+       }
+      },
+      "ninho-de-metralhadora": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 122.94,
+        "min": 54.8,
+        "median": 108.1,
+        "max": 220.75
+       }
+      },
+      "guarnicao-do-predio": {
+       "reached": 3,
+       "s": {
+        "n": 3,
+        "mean": 122.05,
+        "min": 59.8,
+        "median": 133.2,
+        "max": 173.15
+       }
+      },
+      "ninho-do-sniper": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 122.94,
+        "min": 54.8,
+        "median": 108.1,
+        "max": 220.75
+       }
+      },
+      "equipe-antimaterial": {
+       "reached": 3,
+       "s": {
+        "n": 3,
+        "mean": 122.05,
+        "min": 59.8,
+        "median": 133.2,
+        "max": 173.15
+       }
+      },
+      "rojao-de-festa": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 47.86,
+        "min": 10.3,
+        "median": 33.65,
+        "max": 113.85
+       }
+      },
+      "morteiro": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 65.39,
+        "min": 25,
+        "median": 48.33,
+        "max": 139.9
+       }
+      },
+      "lanca-foguetes": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 122.94,
+        "min": 54.8,
+        "median": 108.1,
+        "max": 220.75
+       }
+      },
+      "obuseiro": {
+       "reached": 3,
+       "s": {
+        "n": 3,
+        "mean": 122.05,
+        "min": 59.8,
+        "median": 133.2,
+        "max": 173.15
+       }
+      },
+      "gustavao": {
+       "reached": 0,
+       "s": null
+      },
+      "holofote": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 47.86,
+        "min": 10.3,
+        "median": 33.65,
+        "max": 113.85
+       }
+      },
+      "arame-e-sirene": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 65.39,
+        "min": 25,
+        "median": 48.33,
+        "max": 139.9
+       }
+      },
+      "antiaerea-quadrupla": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 122.94,
+        "min": 54.8,
+        "median": 108.1,
+        "max": 220.75
+       }
+      },
+      "posto-de-radar": {
+       "reached": 3,
+       "s": {
+        "n": 3,
+        "mean": 122.05,
+        "min": 59.8,
+        "median": 133.2,
+        "max": 173.15
+       }
+      },
+      "muro": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 45.11,
+        "min": 7.45,
+        "median": 30.83,
+        "max": 111.35
+       }
+      },
+      "barricada": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 45.11,
+        "min": 7.45,
+        "median": 30.83,
+        "max": 111.35
+       }
+      },
+      "reparo": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 47.86,
+        "min": 10.3,
+        "median": 33.65,
+        "max": 113.85
+       }
+      },
+      "gambiarra": {
+       "reached": 2,
+       "s": {
+        "n": 2,
+        "mean": 175.6,
+        "min": 174.7,
+        "median": 175.6,
+        "max": 176.5
+       }
+      },
+      "torre-chinelo": {
+       "reached": 2,
+       "s": {
+        "n": 2,
+        "mean": 184.28,
+        "min": 177.65,
+        "median": 184.28,
+        "max": 190.9
+       }
+      }
+     },
+     "waves": [
+      {
+       "index": 1,
+       "runs": 4,
+       "grana": 60.5,
+       "idleMean": 87.84,
+       "maxWallet": 39.5
+      },
+      {
+       "index": 2,
+       "runs": 1,
+       "grana": 230,
+       "idleMean": 237.92,
+       "maxWallet": 68
+      }
+     ]
+    },
+    "verdict": {
+     "wins": "too-hard",
+     "target": {
+      "min": 1.75,
+      "max": 2.75
+     },
+     "round1": "deaths"
+    }
+   }
+  },
+  "verdict": {
+   "ok": false,
+   "notes": [
+    "6p: banks 45.3 % of the Grana, target 25–35 % (high)",
+    "6p: 0/4 wins, target 1.75–2.75 (too-hard)",
+    "6p: 4 death(s) in round 1"
+   ]
+  }
+ }
+}

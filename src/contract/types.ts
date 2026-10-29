@@ -78,6 +78,12 @@ export interface SimPlayer extends Point {
   eliminated?:boolean;
   /** Per-weapon next-fire tick, keyed by weapon id. */
   weaponReady:Record<string,number>;
+  /**
+   * Pente e recarga (sim/weapons/system.ts): shots fired from each weapon's magazine since its last reload, and the
+   * reload running (absolute ticks: it ends at `until` and lasts `ticks`). Absent: full magazines, no reload.
+   */
+  magUsed?:Record<string,number>;
+  reloading?:Record<string,{until:number;ticks:number}>;
   invulnerableUntil?:number;
   /** Class kit stat bonus (VGM-044A); pass to refreshStats whenever the build changes (D-005). */
   classBonus?:Partial<PlayerStats>;
@@ -220,6 +226,8 @@ export type SimEvent=
   | {type:'pix';from:string;to:string;amount:number;memo:number}
   | {type:'spawn-warning';x:number;y:number;atTick:number;count:number}
   | {type:'fire';player:string;weapon:string;x:number;y:number;dx?:number;dy?:number}
+  /** Pente e recarga: a weapon's reload began (it lasts `ticks`) or ended (the animations and the sound key on it). */
+  | {type:'reload';player:string;weapon:string;phase:'start'|'end';ticks?:number}
   | {type:'pickup';player:string;pickup:string;kind:PickupKind;value:number}
   | {type:'levelup';level:number}
   | {type:'offer';player:string;offer:string}

@@ -52,8 +52,30 @@ const byRarity=(base:WeaponLevel,top:4|5=4):WeaponLevel[]=>RARITIES.slice(0,top)
 const describe=(intro:string)=>(level:number)=>`${intro} (${RARITY_NAME[(isRarity(level)?level:1) as Rarity]})`;
 const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{verde:WeaponLevel;intro:string}):ArsenalWeapon=>{
   const {verde,intro,...rest}=def,top=def.minRarity===5?5:4;
-  return {...rest,kind:'weapon',maxLevel:top,levels:byRarity(verde,top),describe:describe(intro)};
+  const base=def.mag?{...verde,damage:verde.damage*magDpsFactor(def.pattern,verde,def.mag)}:verde;
+  return {...rest,kind:'weapon',maxLevel:top,levels:byRarity(base,top),describe:describe(intro)};
 };
+/**
+ * Pente e recarga: how much more a shot of a weapon with a magazine hits so its average damage a second stays the
+ * table's. A full magazine is `size` shots `interval` apart, then the reload instead of the last gap (the longer one):
+ * ((size − 1)·interval + max(interval, reload)) / (size·interval). A zone lingers its duration before the cooldown runs.
+ */
+export function magDpsFactor(pattern:WeaponDef['pattern'],row:WeaponLevel,mag:{size:number;reload:number}){
+  const interval=row.cooldown+(pattern==='zone'||pattern==='orbit'||pattern==='shield'?row.duration:0);
+  return ((mag.size-1)*interval+Math.max(interval,mag.reload))/(mag.size*interval);
+}
+/**
+ * Pente e recarga (the card's table, sent to E7 for the animations): shots per magazine and reload seconds. The faca
+ * and the Pack 12 weapons have none.
+ */
+export const MAGAZINES={
+  pistola:{size:8,reload:1},
+  escopeta:{size:2,reload:1.6},
+  submetralhadora:{size:24,reload:1.4},
+  rifle:{size:5,reload:1.5},
+  macarico:{size:25,reload:1.8},
+  rojao:{size:1,reload:2},
+} as const;
 
 /**
  * The seven weapons (proposal §1). Every verde row deals about 25 a second to one target (the crowd patterns to each one
@@ -73,22 +95,22 @@ export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
     quip:'Corta pão, corta bicho.',intro:'Golpe em arco bem de perto. Não faz barulho nenhum.',
     //           dmg  cd  amt area spd dur pierce kb  hit  range
     verde:row(12,.5,1,FACA_REACH,0,.15,1e6,.3,.2,FACA_REACH)}),
-  weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:NOISE.pistola,
+  weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',mag:MAGAZINES.pistola,minRarity:1,noise:NOISE.pistola,
     quip:'Tava guardada no armário desde 1987.',intro:'Um tiro certeiro no bicho mais perto.',
     verde:row(15,.6,1,.22,10,.7,0,.2,.5,7)}),
-  weapon({id:'escopeta',name:'Espalha-Chumbo',icon:'escopeta',pattern:'cone',coneHalfAngle:.45,minRarity:2,noise:NOISE.escopeta,
+  weapon({id:'escopeta',name:'Espalha-Chumbo',icon:'escopeta',pattern:'cone',coneHalfAngle:.45,mag:MAGAZINES.escopeta,minRarity:2,noise:NOISE.escopeta,
     quip:'Mira? Pra quê?',intro:'Leque de chumbo de perto: estrago em quem estiver na frente.',
     verde:row(28,1.1,1,4,0,.15,1e6,.6,.2,4)}),
-  weapon({id:'submetralhadora',name:'Metralhadora de Feira',icon:'submetralhadora',pattern:'pierce',minRarity:2,noise:NOISE.submetralhadora,
+  weapon({id:'submetralhadora',name:'Metralhadora de Feira',icon:'submetralhadora',pattern:'pierce',mag:MAGAZINES.submetralhadora,minRarity:2,noise:NOISE.submetralhadora,
     quip:'Três por dez, freguesa!',intro:'Rajada rápida de tiro fraquinho.',
     verde:row(6,.2,1,.18,11,.55,0,.05,.5,6)}),
-  weapon({id:'rifle',name:'Cano Longo',icon:'rifle',pattern:'pierce',minRarity:3,noise:NOISE.rifle,
+  weapon({id:'rifle',name:'Cano Longo',icon:'rifle',pattern:'pierce',mag:MAGAZINES.rifle,minRarity:3,noise:NOISE.rifle,
     quip:'Acerta o bicho e o vizinho dele.',intro:'Tiro de longe que atravessa a fila de bichos.',
     verde:row(36,1.1,1,.25,16,.7,3,.4,.5,11)}),
-  weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,minRarity:3,noise:NOISE.macarico,
+  weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,mag:MAGAZINES.macarico,minRarity:3,noise:NOISE.macarico,
     quip:'Era pra soldar o portão.',intro:'Fogo contínuo bem na frente: derrete enxame.',
     verde:row(5,.2,1,3.5,0,.15,1e6,0,.2,3.5)}),
-  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:NOISE.rojao,effect:{thrown:true},
+  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',mag:MAGAZINES.rojao,minRarity:4,noise:NOISE.rojao,effect:{thrown:true},
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
     verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];

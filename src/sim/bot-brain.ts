@@ -370,6 +370,8 @@ export interface Decision {
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const norm=(v:Point):Point=>{const l=Math.hypot(v.x,v.y);return l>1e-6?{x:v.x/l,y:v.y/l}:{x:0,y:0};};
 const toward=(from:Point,to:Point,weight=1):Point=>{const n=norm({x:to.x-from.x,y:to.y-from.y});return {x:n.x*weight,y:n.y*weight};};
+/** Pente e recarga: how near a reloading bot stays to the teammate it reloads behind (u). */
+export const RELOAD_COVER=1.5;
 const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
 /**
@@ -1060,7 +1062,16 @@ export function decide(input:BrainInput):Decision{
     // City: not into a wall (a critter in sight past a building's corner had the bot push its edge for seconds).
     const chase=target&&toward(at,target,siege?1.2:.7),open=!chase||!city||walkable({x:at.x+chase.x/(siege?1.2:.7)*.8,y:at.y+chase.y/(siege?1.2:.7)*.8},terrain);
     const stand=siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6;
-    if(target&&open&&(siege||roam)&&dist(target,at)>stand){
+    // Pente e recarga: reloading, the bot chases nothing; it backs off the horde and steps behind the nearest standing
+    // teammate (RELOAD_COVER u off them) until the magazine is back.
+    const reloading=(me.reloadUntil??0)>tick;
+    if(reloading){
+      want=add(want,repel(view.enemies,at,.8));
+      const mates=view.players.filter(p=>p.id!==selfId&&standing(p)).map(positionOf).filter((q):q is Point=>!!q);
+      const mate=nearest(mates,at);
+      if(mate&&dist(mate,at)>RELOAD_COVER)want=add(want,go(mate,.9));
+    }
+    if(!reloading&&target&&open&&(siege||roam)&&dist(target,at)>stand){
       // Item 2: one it gets no nearer to (nor hurts) is left out (the boss at the car never is).
       if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp)){want=add(want,chase!);engaged=true;}
     }else if(target&&dist(target,at)<=stand)engaged=true;

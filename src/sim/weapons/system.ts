@@ -26,7 +26,7 @@ import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {floorOf} from '../../maps/index.ts';
 import {AURA,HERO_SHOT_SPEED_MULT,THROW_TICKS,attackTargets} from '../../rules/index.ts';
-import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
+import {PIERCE_INFINITE,getWeapon,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
@@ -112,6 +112,63 @@ export const auraLevel=(build:PlayerBuild)=>build.passives.find(p=>p.id===AURA_S
 export function auraRadius(player:{build:PlayerBuild;stats:{area:number}}){
   const level=auraLevel(player.build);
   return level>0?AURA.radius(level)*player.stats.area:0;
+}
+
+/**
+ * Pente e recarga (NEW-20261029-ORQ-pente-e-recarga): a magazine left part used this long past its weapon's cooldown
+ * (the trigger let go, a bot with nothing in reach) reloads by itself, so there is no reload button.
+ */
+export const IDLE_RELOAD_TICKS=ticks(.5);
+/** A weapon's reload (ticks) at this row and these stats: WeaponDef.mag.reload scaled like its cooldown; 0 without a magazine. */
+export function reloadTicks(def:WeaponDef,w:ResolvedWeapon){
+  return def.mag?Math.max(1,Math.round(def.mag.reload*w.cooldownTicks/def.levels[0].cooldown)):0;
+}
+/** Starts `weapon`'s reload: no shot from it until the reload ends (weaponReady too, for whoever reads only that). */
+function startReload(ctx:SimContext,player:SimPlayer,weapon:string,length:number){
+  const until=ctx.tick+length;
+  (player.reloading??={})[weapon]={until,ticks:length};
+  player.weaponReady[weapon]=Math.max(player.weaponReady[weapon]??0,until);
+  ctx.emit({type:'reload',player:player.id,weapon,phase:'start',ticks:length});
+}
+/** Ends the reloads that ran out: their magazines are full again. */
+function endReloads(ctx:SimContext,player:SimPlayer){
+  const running=player.reloading!;
+  for(const [weapon,r] of Object.entries(running)){
+    if(ctx.tick<r.until)continue;
+    delete running[weapon];
+    if(player.magUsed)delete player.magUsed[weapon];
+    ctx.emit({type:'reload',player:player.id,weapon,phase:'end'});
+  }
+  if(!Object.keys(running).length)delete player.reloading;
+  if(player.magUsed&&!Object.keys(player.magUsed).length)delete player.magUsed;
+}
+/**
+ * Reloads a part-used magazine that sat IDLE_RELOAD_TICKS past its cooldown: the weapon in the hand only (manual
+ * combat: `equipped`), every weapon in the automatic game. A weapon no longer owned forgets its magazine.
+ */
+function idleReload(ctx:SimContext,player:SimPlayer,equipped:{id:string;level:number}|undefined,catalog:{get(id:string):WeaponDef|undefined}){
+  const used=player.magUsed!;
+  for(const weapon of Object.keys(used)){
+    const owned=player.build.weapons.find(o=>o.id===weapon),def=owned&&catalog.get(weapon);
+    if(!owned||!def?.mag){delete used[weapon];continue;}
+    if(equipped&&owned.id!==equipped.id||player.reloading?.[weapon]||!used[weapon])continue;
+    if(ctx.tick<(player.weaponReady[weapon]??0)+IDLE_RELOAD_TICKS)continue;
+    startReload(ctx,player,weapon,reloadTicks(def,resolveWeapon(def,owned.level,player.stats)));
+  }
+  if(!Object.keys(used).length)delete player.magUsed;
+}
+/**
+ * Pente e recarga, what the frames and the bots see of the weapon in the hand (manual combat): `mag` shots left in its
+ * magazine, and while it reloads, until when and for how long (the HUD's ring, the bots' retreat). Nothing for a
+ * weapon without a magazine.
+ */
+export function magView(p:Pick<SimPlayer,'build'|'magUsed'|'reloading'>,tick:number):{mag?:number;reloadUntil?:number;reloadTicks?:number}{
+  if(p.build.hand===undefined)return {};
+  const owned=equippedWeapon(p.build),def=owned&&getWeapon(owned.id);
+  if(!def?.mag)return {};
+  const r=p.reloading?.[def.id];
+  if(r&&tick<r.until)return {mag:0,reloadUntil:r.until,reloadTicks:r.ticks};
+  return {mag:Math.max(0,def.mag.size-(p.magUsed?.[def.id]??0))};
 }
 
 export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
@@ -411,12 +468,15 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       // Pack 12 fatia A2: the placed turrets shoot on their own, held attack or not.
       tickTurrets(ctx,api);
       for(const player of ctx.players.values()){
+        // Pente e recarga: a reload that ran out fills the magazine (a down hero's too: it ran in their hands).
+        if(player.reloading)endReloads(ctx,player);
         if(!canAct(player))continue;
         aura(ctx,player);
+        const equipped=manual?equippedWeapon(player.build,catalog):undefined;
+        if(player.magUsed)idleReload(ctx,player,equipped,catalog);
         // D-051 manual combat: only the equipped weapon, only while the attack is held.
         if(manual&&!manual.attacking(player.id))continue;
         if(opts.busy?.(player.id))continue;
-        const equipped=manual?equippedWeapon(player.build,catalog):undefined;
         for(const owned of player.build.weapons){
           if(manual&&owned!==equipped)continue;
           const def=catalog.get(owned.id);
@@ -429,11 +489,17 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
             delete player.weaponReady[base];
           }
           if(ctx.tick<(player.weaponReady[def.id]??0))continue;
+          // A skill that resets the cooldowns (skills.ts) does not cut a reload short.
+          if(ctx.tick<(player.reloading?.[def.id]?.until??-Infinity))continue;
           const w=resolveWeapon(def,owned.level,player.stats);
           // Weapons with nothing to shoot at keep their cooldown and retry next tick.
           if(!fire(ctx,player,w))continue;
           const lingers=def.pattern==='orbit'||def.pattern==='shield'||def.pattern==='zone';
           player.weaponReady[def.id]=ctx.tick+(lingers?w.durationTicks:0)+w.cooldownTicks;
+          if(def.mag){
+            const used=(player.magUsed??={})[def.id]=(player.magUsed[def.id]??0)+1;
+            if(used>=def.mag.size)startReload(ctx,player,def.id,reloadTicks(def,w));
+          }
         }
       }
     },

@@ -90,6 +90,11 @@ export interface PlayerRunView {
   moveSpeed?:number;
   /** Fear (rules/fear.ts): the dark around this hero, 0..1 (1 = consumed); absent = 0. The client's vignette draws it. */
   fear?:number;
+  /**
+   * Pente e recarga (sim/weapons/system.ts magView): shots left in the hand weapon's magazine (absent: a weapon without
+   * one), and while it reloads, the tick it ends and its length in ticks (the HUD's ring; the bots step back meanwhile).
+   */
+  mag?:number;reloadUntil?:number;reloadTicks?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

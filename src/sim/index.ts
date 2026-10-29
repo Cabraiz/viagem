@@ -17,6 +17,8 @@ export * from './player-effects.ts';
 export * from './progression.ts';
 export * from './revive.ts';
 export * from './fear.ts';
+// Pente e recarga: the hand weapon's magazine as the frames and the bots see it.
+export {magView} from './weapons/system.ts';
 export * from './run.ts';
 export * from './shame.ts';
 export * from './skills.ts';

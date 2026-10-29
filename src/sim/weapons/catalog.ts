@@ -74,6 +74,12 @@ export interface WeaponDef extends ItemDef {
   effect?:{slowSeconds?:number;blocksHostile?:boolean;scatter?:number;fanStep?:number;
     /** A zone the hero throws (rules/thrown.ts): it flies THROW_TICKS from the hero to its spot before it bursts. */
     thrown?:boolean};
+  /**
+   * Pente e recarga (NEW-20261029-ORQ-pente-e-recarga): the firearms of the manual combat hold `size` shots, then reload
+   * for `reload` seconds (at the verde row's cooldown; it scales with the rarity and the cooldown stat like the cooldown
+   * does). Ammo is endless. Absent: the weapon never reloads (the faca, Pack 12, the legendaries, the automatic game).
+   */
+  mag?:{size:number;reload:number};
 }
 
 export const PIERCE_INFINITE=1_000_000;

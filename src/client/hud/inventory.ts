@@ -63,6 +63,18 @@ export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undef
   });
 }
 /** The slot's accessible name: "Pistola (azul), na mão", "Coxinha, 2". */
+/**
+ * Pente e recarga: the hand slot's badge. `count`: rounds left in the magazine (0 while reloading); `reload`: how far the
+ * reload has run (0–1), only while it runs. Nothing for a weapon with no magazine (faca, Pack 12) or no player.
+ */
+export function magBadge(me:Pick<PlayerRunView,'mag'|'reloadUntil'|'reloadTicks'>|undefined,tick:number):{count?:number;reload?:number}{
+  if(!me)return {};
+  if(me.reloadUntil!==undefined&&me.reloadUntil>tick){
+    const total=Math.max(1,me.reloadTicks??1);
+    return {count:0,reload:Math.min(1,Math.max(0,1-(me.reloadUntil-tick)/total))};
+  }
+  return me.mag===undefined?{}:{count:me.mag};
+}
 export function slotLabel(slot:InventorySlot):string{
   if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', escolhido: toque no mapa para pôr':': tocar para construir'}, segurar para largar`;
   if(slot.kind==='consumable')return `${slot.name}${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para usar, segurar para largar`;
@@ -153,7 +165,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
   const buttons:HTMLButtonElement[]=[];
   for(let i=0;i<INVENTORY_SLOTS;i++){
     const b=doc.createElement('button');b.type='button';b.className='rh-inv-slot';b.dataset.slot=String(i);
-    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
+    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-pente" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
     grid.append(b);buttons.push(b);
   }
   let slots:InventorySlot[]|undefined,hero:{x:number;y:number}|undefined,pickups:readonly PickupView[]=[],candidate:PickupView|undefined;
@@ -188,6 +200,18 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       b.setAttribute('aria-pressed',String(!!s?.hand));
     }
     paintSwap();
+    paintMag();
+  };
+  // Pente e recarga: the bullets left on the hand slot and, while it reloads, a ring filling round it.
+  let mag:{count?:number;reload?:number}={};
+  const paintMag=()=>{
+    for(let i=0;i<INVENTORY_SLOTS;i++){
+      const b=buttons[i],on=!!slots?.[i]?.hand&&slots[i].kind==='weapon';
+      const pente=b.querySelector<HTMLElement>('.rh-inv-pente')!,text=on&&mag.count!==undefined?String(mag.count):'';
+      if(pente.textContent!==text)pente.textContent=text;
+      if(on&&mag.reload!==undefined){b.dataset.recarga='';b.style.setProperty('--recarga',mag.reload.toFixed(3));}
+      else if(b.dataset.recarga!==undefined){delete b.dataset.recarga;b.style.removeProperty('--recarga');}
+    }
   };
   // Tap / hold / drag on a slot (pointer events: finger and mouse alike).
   let press:{slot:number;x:number;y:number;timer:ReturnType<typeof setTimeout>;dropped:boolean;dragging:boolean;left:boolean;id:number;area:DOMRect}|undefined;
@@ -242,7 +266,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
     get shown(){return !el.hidden;},
     update(view:RunView,ctx:HudContext){
       const me=view.players.find(p=>p.id===ctx.localId);
-      slots=inventorySlots(me,options.kitSlot?.());pickups=view.pickups;
+      slots=inventorySlots(me,options.kitSlot?.());pickups=view.pickups;mag=magBadge(me,view.tick);
       live=!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
       if(!live)endPress();
       paint();

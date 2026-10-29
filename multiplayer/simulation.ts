@@ -10,7 +10,7 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {bodyRadius,resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {bodyRadius,resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf,magView} from '../src/sim/index.ts';
 import {CALMA,FEAR_TICKS,kitItem,kitPiece,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,BOT_WALK_MULT,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
@@ -193,6 +193,9 @@ function playerRunOk(run:unknown){
   if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
   if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
+  // Pente e recarga (sim/weapons/system.ts): shots fired per weapon, whole; reloads with finite ticks.
+  if(run.magUsed!==undefined&&!(isObject(run.magUsed)&&Object.values(run.magUsed).every(v=>Number.isSafeInteger(v)&&(v as number)>=0)))return false;
+  if(run.reloading!==undefined&&!(isObject(run.reloading)&&Object.values(run.reloading).every(r=>isObject(r)&&finite(r.until)&&finite(r.ticks))))return false;
   // Fear (sim/fear.ts): whole ticks of dark, 0..FEAR_TICKS.
   if(run.fear!==undefined&&!(Number.isSafeInteger(run.fear)&&(run.fear as number)>=0&&(run.fear as number)<=FEAR_TICKS))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
@@ -1051,6 +1054,8 @@ export class Simulation {
         // The ride too (bot-loot.ts vehicleGoal): without it a riding bot walked to a parked vehicle the sim never gives
         // a rider, and dithered on top of it (city-room-bots, mapa-175-com-viaduto).
         ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{}),
+        // Pente e recarga: a reloading bot steps back behind the team (bot-brain.ts).
+        ...magView(p,w.tick),
         // uno-caminho-caixas-vender (c): the bots leave the people's crates (bot-loot.ts forAPerson).
         ...(this.bots.has(p.id)?{bot:true}:{})})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
@@ -1086,6 +1091,7 @@ export class Simulation {
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...(p.grana!==undefined?{grana:p.grana}:{}),
         ...fearView(p),
         ...(p.andar===1?{andar:1 as const}:{}),
+        ...magView(p,w.tick),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
@@ -1121,6 +1127,8 @@ export class Simulation {
           ...(p.grana!==undefined?{grana:p.grana}:{}),
           // The viaduct: on a deck (it drives the phone's prediction and the lift of the sprite).
           ...(p.andar===1?{andar:1 as const}:{}),
+          // Pente e recarga: the hand weapon's magazine (the HUD's count and ring).
+          ...magView(p,w.tick),
         };
       }),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),

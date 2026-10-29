@@ -5,7 +5,7 @@
  * holds every group's manifest: {version:2, groups:{[group]:{output, pieces:{[id]:ArtPiece}}}}.
  * Pure (no Phaser, no DOM): renderers ask `artPiece(group,id)` / `artUrl(group,file)`; loading is `loadArtManifest`.
  */
-import {trocarInimigos} from './teste-inimigo.ts';
+import {withMendigo} from './mendigo.ts';
 
 export interface ArtPage {file:string;columns:number;rows:number;firstFrame:number;frameCount:number}
 export interface ArtFile {
@@ -152,7 +152,6 @@ export function parseArtIndex(value:unknown,pc=false):ArtIndex{
   return {version:2,groups};
 }
 
-
 /** Replaces the current index (tests, or the loader). */
 /** Bumped at every index change: parts drawn before the index arrived (HUD faces) redraw when it moves. */
 export let artIndexVersion=0;
@@ -160,7 +159,7 @@ export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
 /** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. `pc`: see parseArtIndex. */
 export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'}),pc=false){
-  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?trocarInimigos(parseArtIndex(await r.json(),pc)):EMPTY);}
+  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?withMendigo(parseArtIndex(await r.json(),pc)):EMPTY);}
   catch{setArtIndex(EMPTY);}
   return index;
 }

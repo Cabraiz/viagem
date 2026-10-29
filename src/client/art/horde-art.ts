@@ -21,7 +21,7 @@ import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
-import {testeInimigo} from './teste-inimigo.ts';
+import {gameEnemyArt} from './mendigo.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -39,8 +39,9 @@ const LEGACY=new Set<string>(ENEMY_KINDS);
  * Art id of an enemy (arte-do-roster-no-render): a legacy kind keeps ENEMY_ART_ID; any roster id (D-040) is its own
  * art id in the `inimigos` group. A roster id never borrows its base kind's art: without its own piece it keeps the
  * role's procedural reserve (render/textures.ts with the roster accent).
+ * So-o-mendigo-no-jogo: every common enemy draws the mendigo (art/mendigo.ts gameEnemyArt); the chefões keep theirs.
  */
-export const enemyArtId=(viewKind:string,kind:EnemyKind)=>LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind;
+export const enemyArtId=(viewKind:string,kind:EnemyKind)=>gameEnemyArt(LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind);
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;
 /**
@@ -280,7 +281,9 @@ export function queueHordeArt(scene:Phaser.Scene){
 const asked=new WeakMap<object,Set<string>>();
 /** Critters first seen while the background was held (queueEnemyArt): asked when it lets go. */
 const deferred=new WeakMap<object,Set<string>>();
-export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
+export function queueEnemyArt(scene:Phaser.Scene,requested:string):boolean{
+  // The rotation ({t:'elenco'}) names roster ids: a common one asks for the mendigo, never its old sheets.
+  const id=gameEnemyArt(requested);
   // The opening's near art holds the link (background-hold.ts, cena-nasce-rapido): the critters seen under the cover
   // ask once it lets go (the procedural look stands in meanwhile, as for any sheet still on its way).
   if(backgroundHeld()){
@@ -523,7 +526,7 @@ const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
 export const WAVE_BOSS_SHADOW=1.2;
 export const artShadowLength=(id:string|undefined)=>id&&WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
-export const artTargetHeight=(id:string)=>testeInimigo()?HERO_FIGURE_PX*DEFAULT_HEIGHT:HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
 export const MASS_ALPHA=128;
 /**
@@ -720,7 +723,7 @@ export function playEnemyAction(image:object,art:string,action:string,now:number
   return !!piece&&!!played&&startAction(stateOf(image),piece,played,now);
 }
 /** A legacy kind → its ENEMY_ART_ID; anything else (a roster id) is already an art id. */
-const artOf=(id:string)=>LEGACY.has(id)?ENEMY_ART_ID[id as EnemyKind]:id;
+const artOf=(id:string)=>gameEnemyArt(LEGACY.has(id)?ENEMY_ART_ID[id as EnemyKind]:id);
 /** Last facing row of a pooled enemy image (0 = facing the camera when it never had art): the death plays on it. */
 export function enemyArtRow(image:object){const s=states.get(image);return s&&s.row>=0?s.row:0;}
 
@@ -757,7 +760,7 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
 }
 export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
-  const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
+  const id=actor.art??gameEnemyArt(ENEMY_ART_ID[actor.kind]),piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
   if(!piece){const s=states.get(image);return s?off(image,actor,s):false;}
   const s=stateOf(image),loop=loopAnim(piece,moving,actor.elite,actor.bossPhase,actor.act);
@@ -886,7 +889,7 @@ export function deathDuration(art:string){
  */
 export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string,costume?:{image:Phaser.GameObjects.Image;variant?:string}):boolean{
   // `kind` sizes it (enemyDrawScale); `art` (the roster id) picks the sheet, the kind's own art without it.
-  const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
+  const id=art===undefined?gameEnemyArt(ENEMY_ART_ID[kind]):artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
   if(!piece||!anim||!file){overlay.setVisible(false);costume?.image.setVisible(false);return false;}
   const info=fileInfo(id,anim,file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
   const frame=alpha>0?enemyFrame(id,piece,anim,row,elapsedMs,base,true):undefined;

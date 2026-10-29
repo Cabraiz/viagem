@@ -37,6 +37,7 @@ import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
 import {heldReach,heldWeapon} from './hud/weapon-reach.ts';
 import {icon,compass} from './ui/icon.ts';
+import {gearTagSeen,guardBack,wantsGearTag} from './match-guard.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
@@ -93,7 +94,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar-camera',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar-camera',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
-    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}${wantsGearTag()?'<span class="explore-config-tag" aria-hidden="true">Pausa</span>':''}</button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
@@ -366,6 +367,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // a slow network the waiting room shows long before that (manifesto-enxuto-3g; lobby-dead-controls).
   if(net)applyControls(shell,controlsFor({phase:net.run?.phase??'lobby'}));
   const abort=new AbortController(),signal=abort.signal;
+  // The match's history entry (match-guard.ts); set with the gear's handlers below.
+  let releaseBack=()=>{};
   const direction=new JoystickInput();
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
@@ -408,7 +411,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
-    if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
+    if(closed)return;closed=true;active=false;abort.abort();releaseBack();gearTagSeen();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
     ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
@@ -477,9 +480,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
   // Esc: from the menu's settings or its exit question back to the menu, from the menu (or solo's settings) to the game.
-  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();},{signal});
+  const settingsBack=()=>{const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();};
+  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();settingsBack();},{signal});
   $('.explore-exit').addEventListener('click',close,{signal});
   shell.addEventListener('cancel',e=>{e.preventDefault();openSettings();},{signal});
+  // Back guard (celular-voltar-e-pinca A): the iPhone's edge swipe, the browser's back or an Android Back that Chrome no
+  // longer lets `cancel` stop (no tap since the last one) opens the gear or steps back in it; leaving stays "Sair".
+  releaseBack=guardBack(history,window,()=>{if(settings.open)settingsBack();else openSettings();},signal);
+  // That uncancelable Back closes a dialog by itself: the match comes back with the gear open, the gear goes as "Voltar".
+  shell.addEventListener('close',()=>{if(closed)return;shell.showModal();openSettings();},{signal});
+  settings.addEventListener('close',()=>{if(!closed&&shell.classList.contains('settings-open'))closeSettings();},{signal});
+  // No long-press menu in the match (C; explore.css .explore-shell touch-action:none keeps the page from pinch zoom).
+  shell.addEventListener('contextmenu',e=>e.preventDefault(),{signal});
   // Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): data-input="mouse" hides the joystick in every phase
   // (explore.css) and the walk words speak of keys and clicks; a finger on the screen brings the phone's controls back.
   const inputWatch=new InputKindWatch(finePointer());

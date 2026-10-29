@@ -5,6 +5,8 @@
  * holds every group's manifest: {version:2, groups:{[group]:{output, pieces:{[id]:ArtPiece}}}}.
  * Pure (no Phaser, no DOM): renderers ask `artPiece(group,id)` / `artUrl(group,file)`; loading is `loadArtManifest`.
  */
+import {withMendigo} from './mendigo.ts';
+
 export interface ArtPage {file:string;columns:number;rows:number;firstFrame:number;frameCount:number}
 export interface ArtFile {
   /** Single-page sheet, relative to the group's output folder. */
@@ -157,7 +159,7 @@ export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
 /** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. `pc`: see parseArtIndex. */
 export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'}),pc=false){
-  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?parseArtIndex(await r.json(),pc):EMPTY);}
+  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?withMendigo(parseArtIndex(await r.json(),pc)):EMPTY);}
   catch{setArtIndex(EMPTY);}
   return index;
 }

@@ -52,9 +52,9 @@ test('the fall whistles once; the caído\'s call is its own sos ping (a recipe, 
   assert.ok(/play\('sos'\)/.test(src));
 });
 
-test('a rescue: the rescuer full, the rescued stands up, the team quietly; rescue.ts plays it no more',()=>{
+test('a rescue: the rescuer full, the rescued sighs "ufa", the team quietly; rescue.ts plays it no more',()=>{
   assert.deepEqual(cueForEvent({type:'revived',player:OTHER,by:ME},ME),{id:'resgate'});
-  assert.deepEqual(cueForEvent({type:'revived',player:ME,by:OTHER},ME),{id:'levantar'});
+  assert.deepEqual(cueForEvent({type:'revived',player:ME,by:OTHER},ME),{id:'ufa'});
   assert.deepEqual(cueForEvent({type:'revived',player:OTHER,by:'p3'},ME),{id:'resgate',gain:TEAM_RESCUE_GAIN});
   assert.ok(TEAM_RESCUE_GAIN<.5);
   const src=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
@@ -142,4 +142,52 @@ test('300 critters hit every frame for 3 s: each sound within its throttle, ≤ 
   assert.ok(rms<1,`the storm at ${(20*Math.log10(rms)).toFixed(1)} dBFS`);
   const db=(x:number)=>(20*Math.log10(x)).toFixed(1);
   console.log(`storm: ${[...counts].map(([id,n])=>`${id} ${n}`).join(', ')}; ${maxVoices} voices; ${db(rms)} dBFS (all in phase ${db(inPhase)}, the limiter's)`);
+});
+
+// ---- NEW-20261029-ORQ-som-golpe-e-resgate ----
+
+test('a slash storm through the engine: every pitch of the hit is heard, a crit lower, ≤ 1 thwack per 70 ms',async()=>{
+  const ctx=new Ctx();let now=0;
+  const engine=new AudioEngine({createContext:()=>ctx as unknown as AudioContext,nowMs:()=>now,format:'webm',random:()=>.5,storage:null,
+    loadFile:url=>Promise.resolve(new TextEncoder().encode(url).buffer as ArrayBuffer)});
+  engine.unlock();engine.preload(['golpe']);await settle();
+  const before=ctx.played().length;
+  // 300 critters slashed every 10 ms for 2 s (faster than any frame): the crowd, not one target.
+  for(let t=0;t<2000;t+=10){
+    now=t;ctx.currentTime=t/1000;
+    const i=t/10;
+    playEvents(engine,[{type:'damage',target:`e${(i*37)%300}`,amount:2,source:ME,weapon:'faca',crit:i%23===0}],ME);
+  }
+  const golpes=ctx.played().slice(before).filter(s=>s.buffer?.name?.includes('golpe'));
+  assert.ok(golpes.length<=Math.ceil(2000/70)+1,`${golpes.length} thwacks in 2 s`);
+  assert.ok(golpes.length>=20,'the storm is heard');
+  const rates=new Set(golpes.map(s=>Math.round(s.playbackRate.value*100)/100));
+  for(const r of HIT_RATES)assert.ok(rates.has(r),`the pitch ${r} is heard (${[...rates]})`);
+  assert.ok(rates.has(CRIT_CUE.rate),'the crit lands lower');
+});
+
+test('one rescue sounds once on each phone: resgate for the rescuer, ufa for the rescued, a quiet resgate for the team',()=>{
+  const event:SimEvent={type:'revived',player:'p2',by:'p1'};
+  const heard=(local:string)=>{const calls:[SoundId,unknown][]=[];playEvents({play:(id,opts)=>{calls.push([id,opts]);return true;}},[event],local);return calls;};
+  assert.deepEqual(heard('p1'),[['resgate',{}]]);
+  assert.deepEqual(heard('p2'),[['ufa',{}]]);
+  assert.deepEqual(heard('p3'),[['resgate',{gain:TEAM_RESCUE_GAIN}]]);
+  // 'ufa' and 'tsc' are recipes only: no file asked for, short and heard over the crowd's hits.
+  for(const id of ['ufa','tsc'] as const){
+    assert.ok((SOUND_IDS as readonly string[]).includes(id));
+    assert.equal(SFX[id].takes,0);assert.ok(!sfxNames().includes(id));
+    const r=RECIPES[id];
+    assert.ok(r.priority>RECIPES.golpe.priority&&r.throttleMs>=300&&r.tones.length<=3,id);
+  }
+  assert.ok(Math.max(...RECIPES.tsc.tones.map(t=>t.from))<1000,'the "tsc" is low');
+});
+
+test('"sem alvo" is heard: the skill\'s empty answer plays the tsc once, the engine throttles a second tap',()=>{
+  const src=readFileSync(new URL('../../src/client/hud/skill.ts',import.meta.url),'utf8');
+  assert.ok(/if\(verdict==='none'\)\{this\.flash\(NOTE_NO_TARGET,now\);const audio=getAudio\(\);if\(audio\.unlocked\)audio\.play\('tsc'\);\}/.test(src));
+  const ctx=new Ctx();let now=0;
+  const engine=new AudioEngine({createContext:()=>ctx as unknown as AudioContext,nowMs:()=>now,storage:null,loadFile:()=>Promise.reject(new Error('no file'))});
+  engine.unlock();
+  assert.ok(engine.play('tsc'));now=100;assert.ok(!engine.play('tsc'),'a second tap 100 ms later stays quiet');
+  now=400;assert.ok(engine.play('tsc'));
 });

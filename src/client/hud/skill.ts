@@ -14,6 +14,7 @@ import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
 import type {BicoId,CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
+import {getAudio} from '../audio/engine.ts';
 import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
 import {itemDisplay} from './items.ts';
 import {WORKING_WORD,WORK_WORD,workLabel,workingLabel} from './bicos.ts';
@@ -256,7 +257,8 @@ export class SkillButton {
   answer(result:CastAnswer,now:number){
     const verdict=this.taps.answer(result,now);
     if(verdict==='cast'&&result.readyTick>0)this.answered={castTick:this.tick,readyTick:result.readyTick};
-    if(verdict==='none')this.flash(NOTE_NO_TARGET,now);
+    // NEW-20261029-ORQ-som-golpe-e-resgate: "sem alvo" is heard too, a low "tsc".
+    if(verdict==='none'){this.flash(NOTE_NO_TARGET,now);const audio=getAudio();if(audio.unlocked)audio.play('tsc');}
     else this.refresh(now);
   }
   /** Each authoritative view: the local player's cooldown. */

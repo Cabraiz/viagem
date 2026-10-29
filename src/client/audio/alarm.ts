@@ -32,6 +32,14 @@ export const ALARM_GAP_S=4;
 /** The fade at each end of a pass (s): the pass meets the gap at zero. */
 export const ALARM_EDGE_FADE_S=.01;
 
+/** The alarm stays loud this long after the car's last hit (ms). */
+export const ALARM_HIT_MS=1500;
+/**
+ * Whether the alarm is loud now (ALARM_HIT_BOOST): while the sim's own alarm runs (render/chaveiro/rules.ts alarmOn,
+ * the car's hits push it on; card som-alarme-gema-e-chefe) or within ALARM_HIT_MS of a hit the client saw.
+ */
+export function alarmHit(alarmed:boolean,sinceHitMs:number){return alarmed||sinceHitMs<=ALARM_HIT_MS;}
+
 /** The alarm's level for the hero `distance` units away (0 beyond the radius), louder while `hit`. */
 export function alarmLevel(distance:number,hit:boolean):number{
   if(!Number.isFinite(distance)||distance<0||distance>=ALARM_RADIUS_U)return 0;

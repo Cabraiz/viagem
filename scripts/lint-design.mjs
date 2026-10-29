@@ -28,7 +28,7 @@ const MIN_MATCH=13,MIN_MATCH_12=12,MIN_OTHER=10,ROOT_PX=16;
  * Files still under their own card for L6 (perfis.css: L1; inventory.css: L3). Here only px/rem count, as before; the
  * card that fixes the file takes its line out.
  */
-const PENDING_L6=new Set(['src/client/hud/perfis.css','src/client/hud/inventory.css']);
+const PENDING_L6=new Set(['src/client/hud/perfis.css']);
 /** The floor of a file: 13 px in the HUD, 12 px in the rest of the match, 10 px outside. */
 export function minFont(file){return MATCH_CSS.has(file)?MIN_MATCH:MATCH_12_CSS.has(file)&&!PENDING_L6.has(file)?MIN_MATCH_12:MIN_OTHER;}
 const EMOJI=/(?![★☆])\p{Extended_Pictographic}|✦/gu;// ★/☆ are text stars, and ICU versions (Node 22 × 24) disagree on them

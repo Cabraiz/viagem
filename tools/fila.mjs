@@ -3,7 +3,7 @@
 // once, sends back what conflicts or breaks it (a conflict only in public/art/manifest.json is regenerated instead:
 // resolveIndexConflict), publishes the Worker once (the Orquestrador's step, D-029) and pushes once.
 //
-//   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N]
+//   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N] [--sem-checagem]
 //   node tools/fila.mjs lista
 //   node tools/fila.mjs lote [--suite local|ci|"<command>"] [--smoke ci|off|"<command>"]   (the Orquestrador)
 //   node tools/fila.mjs publicar <lote> [--manter-remotas]       (after `npm run deploy:rooms` when the lote needs it:
@@ -29,8 +29,13 @@
 // infra there aborts the lote like a red smoke here, and no answer from the CI falls back to the PC's smoke.
 // publicar deletes, on the remote, each integrated vgm/ branch whose remote head the new main contains (--manter-remotas:
 // keep them); the batch fila/ branch goes whenever the lote pushed it.
+// The static checks (STATIC_CHECKS: lint-design) run with no checkout on the tree of the branch merged with the base:
+// `pronto` refuses a branch that fails one the base passes (--sem-checagem: queue it anyway), and the lote sends one back
+// before its suite. The culprit of a red suite is looked for in ONE worktree, by binary search over the batch's prefixes;
+// a failure only in files a static check stands for is looked for first on the prefixes' trees, with no worktree at all.
 import {execFileSync,spawnSync} from 'node:child_process';
-import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
+import {existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {JUNCTIONS,removeWorktreeSafe} from './wt-rm.mjs';
@@ -47,7 +52,7 @@ function parse(argv){
     const a=argv[i];
     if(!a.startsWith('--')){o._.push(a);continue;}
     const k=a.slice(2);
-    if(['worker','protocol','no-modules','dry','qualquer-versao','manter-remotas'].includes(k))o.flags.add(k);
+    if(['worker','protocol','no-modules','dry','qualquer-versao','manter-remotas','sem-checagem'].includes(k))o.flags.add(k);
     else o[k]=argv[++i];
   }
   // The main checkout, also when the tool runs from a worktree (D:/Gits/viagem-wt/x): the parent of git's common dir.
@@ -231,6 +236,78 @@ function addWorktree(opt,name,branch,at){
   }
   return dir;
 }
+// ---------- static checks with no checkout (NEW-20261029-ORQ-fila-culpado-rapido) ----------
+/**
+ * Pure, fast checks run on a git tree's files alone: the tree's own `script` (absent there: skipped) with the extracted
+ * folder as its argument, exit 0 = ok. `arquivos` picks the blobs it reads; `testes` are the suite files it stands for
+ * (a red suite only in them is looked for on trees first). Lote 20261029-062428 failed only in design-lint.test.ts and
+ * the step-by-step search was ~5 min per worktree on the HD; lint-design over each branch's tree found it in 2 min.
+ */
+export const STATIC_CHECKS=[
+  {nome:'lint-design',script:'scripts/lint-design.mjs',testes:['tests/tools/design-lint.test.ts'],
+    arquivos:(f)=>/^(src|multiplayer)\/.+\.(css|ts)$/.test(f)||f==='scripts/lint-design.mjs'||f==='scripts/design-lint-baseline.json'},
+];
+/** The tree of `a` merged with `b`, written to the object store only: {ok, tree}; ok false on a conflict or an error. */
+export function mergeTree(repo,a,b){
+  const r=tryGit(repo,'merge-tree','--write-tree',a,b);
+  return {ok:r.ok,tree:r.ok?r.out.split('\n')[0].trim():null};
+}
+/** Writes the blobs of `tree` whose path passes `want` under `dest` (git ls-tree + one cat-file --batch). Returns the count. */
+export function extractTree(repo,tree,want,dest){
+  const ls=execFileSync('git',['ls-tree','-r','-z',tree],{cwd:repo,maxBuffer:256<<20,stdio:['ignore','pipe','pipe']}).toString('utf8');
+  const blobs=[];
+  for(const rec of ls.split('\0')){
+    const tab=rec.indexOf('\t');if(tab<0)continue;
+    const [,type,oid]=rec.slice(0,tab).split(' '),p=rec.slice(tab+1);
+    if(type==='blob'&&want(p))blobs.push({oid,p});
+  }
+  if(!blobs.length)return 0;
+  const out=execFileSync('git',['cat-file','--batch'],{cwd:repo,input:blobs.map(b=>b.oid).join('\n')+'\n',maxBuffer:1<<30,stdio:['pipe','pipe','pipe']});
+  let at=0;
+  for(const b of blobs){
+    const nl=out.indexOf(10,at),size=Number(out.subarray(at,nl).toString().split(' ')[2]);
+    const f=join(dest,b.p);mkdirSync(dirname(f),{recursive:true});writeFileSync(f,out.subarray(nl+1,nl+1+size));
+    at=nl+1+size+1;
+  }
+  return blobs.length;
+}
+/** The STATIC_CHECKS (or `checks`) that fail on `tree`: [{nome, testes, linhas}], each run on its own extracted copy. */
+export function checkTree(repo,tree,checks=STATIC_CHECKS){
+  const falhas=[],tmp=mkdtempSync(join(tmpdir(),'fila-arvore-'));
+  try{
+    for(const c of checks){
+      if(!tryGit(repo,'cat-file','-e',`${tree}:${c.script}`).ok)continue;
+      const dir=join(tmp,c.nome);extractTree(repo,tree,c.arquivos,dir);
+      const r=spawnSync(process.execPath,[join(dir,c.script),dir],{cwd:dir,encoding:'utf8',env:childEnv(),maxBuffer:64<<20});
+      if(r.status===0)continue;
+      const lines=`${r.stdout??''}${r.stderr??''}`.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      falhas.push({nome:c.nome,testes:c.testes,linhas:lines.slice(0,6).join(' / ').slice(0,600)||`saiu com ${r.status}`});
+    }
+  }finally{rmSync(tmp,{recursive:true,force:true});}
+  return falhas;
+}
+/**
+ * The static checks that `sha` merged with `base` fails and `base` itself passes (a check red on the main blames nobody:
+ * logged once). A merge with conflicts is checked on the branch's own tree. `memo` keeps the base's answer for a lote.
+ */
+function checkBranch(opt,sha,base,memo={}){
+  // A check none of whose files the branch changes gives the base's answer on the merge: not run.
+  const d=base?tryGit(opt.repo,'diff','--name-only',`${base}...${sha}`):{ok:false};
+  const changed=d.ok?d.out.split('\n').filter(Boolean):undefined;
+  const checks=STATIC_CHECKS.filter(c=>!changed||changed.some(c.arquivos));
+  if(!checks.length)return [];
+  const m=base?mergeTree(opt.repo,base,sha):{ok:false};
+  const falhas=checkTree(opt.repo,m.ok?m.tree:`${sha}^{tree}`,checks);
+  if(!falhas.length||!base)return falhas;
+  if(!memo.base){
+    memo.base=new Set(checkTree(opt.repo,`${base}^{tree}`).map(f=>f.nome));// all checks, once per lote
+    if(memo.base.size)log(`checagem estática já falha na ${opt.base} (${[...memo.base].join(', ')}): não culpa ninguém`);
+  }
+  return falhas.filter(f=>!memo.base.has(f.nome));
+}
+/** "lint-design: <its lines>; …" for a refusal or a send-back. */
+const staticWhy=(falhas)=>falhas.map(f=>`${f.nome}: ${f.linhas}`).join('; ');
+
 /** Whether this lote pushes its batch branch (for the CI suite or the CI smoke). */
 const pushesBatch=(opt)=>opt.suite==='ci'||opt.smoke==='ci';
 function removeWorktree(opt,dir,branch,pushed=pushesBatch(opt)){
@@ -395,6 +472,14 @@ function pronto(opt){
   const [card]=opt._.slice(1);
   if(!card||!opt.branch)throw new Error('uso: pronto <card> --branch <branch> [--worker] [--protocol] [--prio P0] [--dono Executor-N]');
   const sha=git(opt.repo,'rev-parse',opt.branch);
+  // The static checks before the queue (fila-culpado-rapido): a branch that breaks lint-design is told now, not after a
+  // lote. Against the last fetched base (no fetch here); --sem-checagem queues it anyway.
+  if(!opt.flags.has('sem-checagem')){
+    const b=tryGit(opt.repo,'rev-parse','--verify','-q',`${opt.remote}/${opt.base}`);
+    const falhas=checkBranch(opt,sha,b.ok?b.out:undefined);
+    if(falhas.length)throw new Error(`${opt.branch}@${sha.slice(0,7)} não entra na fila: checagem estática falha — ${staticWhy(falhas)} `
+      +`(corrija, ou --sem-checagem para pôr assim mesmo)`);
+  }
   const entry={card,branch:opt.branch,sha,worker:opt.flags.has('worker')||opt.flags.has('protocol'),protocol:opt.flags.has('protocol'),
     prio:opt.prio??'P1',dono:opt.dono??'',at:new Date().toISOString()};
   writeJson(join(opt.board,'fila',`${card}.json`),entry);
@@ -462,8 +547,10 @@ function lote(opt){
     const base=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
     const devolvidos=[],sendBack=(e,why)=>{devolvidos.push({card:e.card,...why});answer(opt,e,{status:'devolvido',lote:id,...why});log(`devolvido: ${e.card} — ${why.motivo}`);};
     /** The base + `list` merged in order (+ the bump when one of them changes the protocol), in a fresh worktree. */
-    const build=(name,branch,list,commit)=>{
-      const dir=wt(name,branch,base),merged=[];
+    const build=(name,branch,list,commit)=>mergeAll(wt(name,branch,base),list,commit);
+    /** `list` merged in order into the checkout `dir` (at the base), the bump too: {dir, merged, ok, protocol}. */
+    const mergeAll=(dir,list,commit)=>{
+      const merged=[];
       for(const e of list){
         const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${id}: ${e.card}`,e.sha);
         if(!r.ok){
@@ -489,6 +576,14 @@ function lote(opt){
       if(!now.ok||now.out!==e.sha)sendBack(e,{motivo:'branch mudou depois do pronto (rode pronto de novo)',agora:now.out||null});
       else candidates.push(e);
     }
+    // The static checks before any suite: each candidate over the base, on trees (no worktree).
+    const memo={};
+    candidates=candidates.filter(e=>{
+      const falhas=checkBranch(opt,e.sha,base,memo);
+      if(!falhas.length)return true;
+      sendBack(e,{motivo:`checagem estática: ${falhas.map(f=>f.nome).join(', ')}`,falhas:[...new Set(falhas.flatMap(f=>f.testes))],checagem:staticWhy(falhas)});
+      return false;
+    });
     let suites=0,result;
     while(candidates.length){
       const batch=build(`fila-${id}`,`fila/${id}`,candidates,true);
@@ -509,17 +604,49 @@ function lote(opt){
         log(`lote ${id} abortado: ${msg}; as entradas continuam na fila`);
         return {lote:id,abortado,falhas:s.failedFiles,...more,integrados:[],devolvidos,suites};
       };
-      /** `check(dir)` on the base, then on the batch rebuilt one branch at a time (with the bump): {base} or {e, at}. */
+      /**
+       * `check(dir)` on the base, then by binary search over the batch's prefixes (base + the first k, with the bump), all
+       * in ONE worktree reset between steps (a `worktree add` was ~5 min on the HD): {base}, {e, at} or {} (not
+       * reproduced), with busca {worktrees, passos} — the k of each prefix run, 0 the base. The full batch is red, so a
+       * prefix N is run only when the search lands on it (to tell a real failure from a flaky one).
+       */
       const firstFailing=(check)=>{
-        const bare=wt(`fila-${id}-base`,`fila/${id}-base`,base),atBase=check(bare);
-        drop(bare,`fila/${id}-base`);
-        if(!atBase.ok)return {base:atBase};
+        const name=`fila-${id}-c`,br=`fila/${id}-c`,dir=wt(name,br,base),passos=[],res=new Map(),n=batch.ok.length;
+        const busca=()=>({worktrees:1,passos:[...passos]});
+        const at=(k)=>{
+          if(res.has(k))return res.get(k);
+          git(dir,'reset','-q','--hard',base);git(dir,'clean','-fdq');// node_modules is ignored: clean leaves the junctions
+          if(k)mergeAll(dir,batch.ok.slice(0,k),false);
+          passos.push(k);const r=check(dir);res.set(k,r);return r;
+        };
+        try{
+          const atBase=at(0);
+          if(!atBase.ok)return {base:atBase,busca:busca()};
+          let lo=0,hi=n;// prefix lo passes, prefix hi is taken as red
+          while(hi-lo>1){const mid=(lo+hi)>>1;if(at(mid).ok)lo=mid;else hi=mid;}
+          const r=at(hi);
+          return r.ok?{busca:busca()}:{e:batch.ok[hi-1],at:r,busca:busca()};
+        }finally{drop(dir,br);}
+      };
+      /**
+       * The cheap road first: a red suite only in files the static checks stand for (design-lint.test.ts) is looked for
+       * by those checks on the trees of the batch's prefixes (merge-tree + commit-tree, no worktree). {base}, {e, nome,
+       * busca} or undefined (other files, a merge-tree conflict, or no prefix red: the worktree search decides).
+       */
+      const staticCulprit=(files)=>{
+        const checks=STATIC_CHECKS.filter(c=>files.some(f=>c.testes.includes(f)));
+        if(!checks.length||!files.every(f=>checks.some(c=>c.testes.includes(f))))return undefined;
+        if(checkTree(opt.repo,`${base}^{tree}`,checks).length)return {base:true};
+        let prev=base;
         for(let k=1;k<=batch.ok.length;k++){
-          const step=build(`fila-${id}-c`,`fila/${id}-c`,batch.ok.slice(0,k),false),at=check(step.dir);
-          drop(step.dir,`fila/${id}-c`);
-          if(!at.ok)return {e:batch.ok[k-1],at};
+          const e=batch.ok[k-1],m=mergeTree(opt.repo,prev,e.sha);
+          if(!m.ok){log(`atalho estático parado em ${e.card} (merge-tree com conflito): busca no worktree`);return undefined;}
+          const falhas=checkTree(opt.repo,m.tree,checks);
+          if(falhas.length)return {e,falhas,busca:{worktrees:0,atalho:falhas.map(f=>f.nome).join(', '),passos:k}};
+          prev=git(opt.repo,'-c','user.name=fila','-c','user.email=fila@local','commit-tree',m.tree,'-p',prev,'-p',e.sha,'-m',`fila ${id}: ${e.card}`);
         }
-        return {};
+        log(`atalho estático: nenhum prefixo falha em ${checks.map(c=>c.nome).join(', ')}: busca no worktree`);
+        return undefined;
       };
       // A CI job's failure is not a file (tools/ci.mjs: `job:<name>`); with test files too, the files decide first.
       const files=s.failedFiles.filter(f=>!f.startsWith('job:')),jobs=s.failedFiles.filter(f=>f.startsWith('job:'));
@@ -542,16 +669,26 @@ function lote(opt){
           :abort(`a ${opt.base} falha`,`o smoke da ${opt.base} já falha (${f.base.linha??f.base.motivo})`,{smoke:f.base});
         if(f.at?.infra)return abort('smoke sem resposta',`o smoke não rodou ao refazer o lote (${f.at.motivo})`,{smoke:f.at});
         if(!f.e)return abort('falha não reproduzida','o smoke do CI falhou, mas não falha aqui ao refazer o lote passo a passo (instável?)');
-        sendBack(f.e,{motivo:'smoke',smoke:f.at.linha??f.at.motivo,falhas:s.failedFiles,url:s.url??null});
+        sendBack(f.e,{motivo:'smoke',smoke:f.at.linha??f.at.motivo,falhas:s.failedFiles,url:s.url??null,busca:f.busca});
         candidates=batch.ok.filter(e=>e!==f.e);
         continue;
       }
       // The main itself red in those files: not the branches' fault. Else the first branch whose addition makes them fail
       // goes back, the rest gets another suite.
+      const fast=staticCulprit(files);
+      if(fast?.base)return abort(`a ${opt.base} falha`,`a ${opt.base} já falha na checagem estática de ${files.join(', ')}`);
+      if(fast){
+        log(`culpada pelo atalho estático (${fast.busca.atalho}, ${fast.busca.passos} árvore(s), nenhum worktree): ${fast.e.card}`);
+        sendBack(fast.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null,
+          checagem:staticWhy(fast.falhas),busca:fast.busca});
+        candidates=batch.ok.filter(e=>e!==fast.e);
+        continue;
+      }
       const f=firstFailing((dir)=>runSuite(local,dir,`fila/${id}-c`,files));
       if(f.base)return abort(`a ${opt.base} falha`,`a ${opt.base} já falha em ${files.join(', ')}`);
       if(!f.e)return abort('falha não reproduzida','a falha não se repete ao refazer o lote passo a passo (instável?)');
-      sendBack(f.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null});
+      log(`culpada em ${f.busca.passos.length} passo(s) num worktree (prefixos ${f.busca.passos.join(', ')}): ${f.e.card}`);
+      sendBack(f.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null,busca:f.busca});
       candidates=batch.ok.filter(e=>e!==f.e);
     }
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}

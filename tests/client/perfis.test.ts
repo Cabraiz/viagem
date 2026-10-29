@@ -6,8 +6,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,MOLDURA_CONTO,MatchBook,SMALL_SCALE,TILT_DEG,contoCard,distanciaTexto,perfilOf,placeProfiles} from '../../src/client/hud/perfis.ts';
-import {CONTOS,CONTO_MAX,PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
+import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,FOIL_TAROT,MOLDURA_TAROT,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles,tarotCard,ARCANOS} from '../../src/client/hud/perfis.ts';
+import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
 
@@ -111,17 +111,14 @@ test('the card never covers the hero, the Uno, the allies or the mission band: a
   assert.equal(placeProfiles(home,useful,[{x:0,y:0,width:390,height:844}]),undefined,'no room anywhere: no card');
 });
 
-test('livro de contos: every profile has a tale that fits the plaque (three lines at 12 px), and the frame is light',()=>{
-  for(const kind of Object.keys(PERFIS_TEXTO)){
-    const tale=CONTOS[kind];
-    assert.ok(tale,`${kind} has no tale`);
-    assert.ok(tale.length<=CONTO_MAX,`${kind}: ${tale.length} > ${CONTO_MAX} chars`);
-    assert.doesNotMatch(tale,/match|tinder|curtir|crush/i,`${kind}: the tale is a fairy tale, not the dating app`);
+test('tarot card: the ChatGPT frame and foil are light, the Cinzel font ships with its OFL, the three arcana',()=>{
+  for(const art of [MOLDURA_TAROT,FOIL_TAROT,...Object.values(ARCANOS).map(a=>a.arte)]){
+    const file=fileURLToPath(new URL(`../../public${art}`,import.meta.url));
+    assert.ok(existsSync(file),`${art} ships`);
+    assert.ok(statSync(file).size<=100_000,`${art} is ≤ 100 KB (phone)`);
   }
-  assert.deepEqual(Object.keys(CONTOS).filter(kind=>!PERFIS_TEXTO[kind]),[],'no tale without a profile');
-  const frame=fileURLToPath(new URL(`../../public${MOLDURA_CONTO}`,import.meta.url));
-  assert.ok(existsSync(frame),'the ChatGPT frame ships');
-  assert.ok(statSync(frame).size<=100_000,'the frame is ≤ 100 KB (phone)');
+  for(const f of ['cinzel-700.woff2','OFL-cinzel.txt'])assert.ok(existsSync(fileURLToPath(new URL(`../../public/fonts/${f}`,import.meta.url))),f);
+  assert.deepEqual(Object.values(ARCANOS).map(a=>a.num),['I','II'],'the beggar is I, the saci II (the sanfoneiro III later)');
 });
 
 /** Just enough DOM for one card: elements with class, children, text, attributes and dataset. */
@@ -134,16 +131,28 @@ function fakeDoc(){
 }
 const walk=(n:any):any[]=>[n,...n.children.flatMap(walk)];
 
-test('the phone storybook card: photo in the frame, the name and the tale; nothing of the dating app',()=>{
-  const card:any=contoCard(fakeDoc(),{kind:'bebado',distance:12,tilt:0});
+test('the phone tarot card: photo in the frame, roman numeral and ONLY the name; nothing of the dating app',()=>{
+  const card:any=tarotCard(fakeDoc(),{kind:'bebado',distance:12,tilt:0});
   const all=walk(card);
   const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
-  assert.ok(cls('rh-conto').length&&cls('rh-perfil-compacto').length,'the compact card, storybook flavour');
+  assert.ok(cls('rh-tarot').length&&cls('rh-perfil-compacto').length,'the compact card, tarot flavour');
   assert.equal(cls('rh-perfil-img')[0].src,perfilOf('bebado')!.foto,'the enemy current photo');
-  assert.equal(cls('rh-conto-moldura')[0].src,MOLDURA_CONTO);
-  assert.equal(cls('rh-conto-nome')[0].textContent,perfilOf('bebado')!.name);
-  assert.equal(cls('rh-conto-texto')[0].textContent,CONTOS.bebado);
+  assert.equal(cls('rh-tarot-moldura')[0].src,MOLDURA_TAROT);
+  assert.equal(cls('rh-tarot-nome')[0].textContent,`${perfilOf('bebado')!.name.toLocaleUpperCase('pt-BR')}.`,'the name with a full stop, like THE SUN.');
+  assert.equal(cls('rh-tarot-num')[0].textContent,'','a legacy kind has no numeral');
+  assert.equal(cls('rh-tarot-foil').length,1,'the foil layer');
+  const texts=all.map(n=>n.textContent).filter(Boolean);
+  assert.equal(texts.length,1,'only the name: no tale, no subtitle');
   assert.equal(all.filter(n=>n.tagName==='BUTTON').length,0,'no ✕/♥');
   assert.ok(!all.some(n=>/MATCH/i.test(n.textContent)),'no DEU MATCH');
   assert.ok(!cls('rh-perfil-balao').length&&!cls('rh-perfil-dist').length,'no balloon nor distance');
+});
+
+test('the beggar as arcanum I: its Rider-Waite art, numeral and name, and its kill counts as a match without a dating profile',()=>{
+  const all=walk(tarotCard(fakeDoc(),{kind:'mendigo',distance:0,tilt:0}) as any);
+  const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+  assert.equal(cls('rh-perfil-img')[0].src,ARCANOS.mendigo.arte);
+  assert.equal(cls('rh-tarot-num')[0].textContent,'I');
+  assert.equal(cls('rh-tarot-nome')[0].textContent,'O MENDIGO.');
+  assert.ok(new MatchBook(undefined,()=>0).kill({kind:'mendigo',by:'p1',x:0,y:0},'p1'),'the beggar matches');
 });

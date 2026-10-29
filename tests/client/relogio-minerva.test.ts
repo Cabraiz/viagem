@@ -103,6 +103,9 @@ test('the phone lying down puts the clock beside the mission line, at the top of
   assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\*\{grid-column:1\/-1\}/);
   assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\.rh-minerva\{grid-column:2;/);
   assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>:is\(\.rh-missao,\.rh-missao-grande\)\{grid-column:3\}/);
+  // At ≤500 px tall the line keeps the stack's top (not centred on the clock, 12 px lower): there the hero's guard
+  // (hud.ts avoidHero) sent the stack to its low slot, on the hero, once the hero spoke (640×296 in the match).
+  assert.match(css,/@media \(max-height:500px\) and \(orientation:landscape\)\{[^}]*\.rh\[data-hud=fone\] \.rh-stack\{align-items:start\}/);
   // No more fixed clock under the minimap: at 296 px tall it sat on the joystick.
   assert.doesNotMatch(css,/position:fixed/);
   // inicio-no-uno-caixas-120: only the disc, no words: the face stays on the wake flash too (it is all there is).

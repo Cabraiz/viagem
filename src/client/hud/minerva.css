@@ -37,3 +37,8 @@
 @media (max-height:500px){
   .rh[data-hud=fone] .rh-minerva-face{width:38px;height:38px}
 }
+@media (max-height:500px) and (orientation:landscape){
+  /* The mission line at the stack's top, as before the clock joined the row: centred on the clock it sat 12 px lower and
+     the hero's guard (hud.ts avoidHero, ±40 px) sent the stack to its low slot, on the hero, at 296 px tall. */
+  .rh[data-hud=fone] .rh-stack{align-items:start}
+}

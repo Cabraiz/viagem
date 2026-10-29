@@ -20,3 +20,14 @@ test('ui/base.webp is the Uno: 128×128, blue-grey, not the orange tent', async 
   assert.ok(n>2000,`the car fills the icon (${n} px)`);
   assert.ok(b/n>r/n+15,`blue over red (r ${Math.round(r/n)}, b ${Math.round(b/n)})`);
 });
+
+test('uno-icone-halo: the base icon has a 1 px branco-papel halo all round, in CSS, the box unchanged', async ()=>{
+  const {readFileSync}=await import('node:fs');
+  const css=readFileSync('src/client/ui/icons.css','utf8');
+  const rule=/img\.ic\[data-icon=base\]\{([^}]*)\}/.exec(css)?.[1];
+  assert.ok(rule,'a rule for img.ic[data-icon=base]');
+  const shadows=[...rule!.matchAll(/drop-shadow\(([^)]*\))\)/g)].map(m=>m[1]!.replace(/\s+/g,' ').trim());
+  assert.deepEqual(shadows.map(s=>s.split(' ').slice(0,3).join(' ')).sort(),['-1px 0 0','0 -1px 0','0 1px 0','1px 0 0']);
+  assert.ok(shadows.every(s=>s.includes('var(--c-papel-claro)')),'the halo is branco-papel');
+  assert.ok(!/width|height|margin|padding/.test(rule!),'no size change');
+});

@@ -506,7 +506,8 @@ export async function sourceAsset():Promise<CityAsset>{
  * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo), then the narrow ways into the hero's ground widen for
  * the Uno's body and the loose fences in the open go (becos-cidade.ts alargarAreaUno, tirarCercasSoltas, version + 1:
  * uno-atravessa-tralha), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
- * version + 1: sem-tralha-nas-entradas).
+ * version + 1: sem-tralha-nas-entradas); then the tall pieces and the graffiti on the walls (altos-grafites-cidade.ts
+ * altosEGrafites, version + 1: cidade-decor-alto-e-grafite).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
   const {decorate,semDecorNasBocas}=await import('./cenario-cidade.ts');
@@ -528,6 +529,10 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
   // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
   const bocas=semDecorNasBocas(opened.data);opened.data.version++;
   Object.assign(log,{decorNasBocas:bocas.length});
+  // What the mouths lost comes back on the walls: tall pieces and graffiti (version + 1: cidade-decor-alto-e-grafite).
+  const {altosEGrafites}=await import('./altos-grafites-cidade.ts');
+  const altos=altosEGrafites(opened.data,bocas);opened.data.version++;
+  Object.assign(log,{altos:altos.altos.length,grafites:altos.grafites.length});
   return {text:encodeCityAsset(opened.data),log};
 }
 

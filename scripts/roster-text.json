@@ -1,5 +1,5 @@
 {
-  "_comment": "pt-BR copy of the enemy roster (D-033 tone), merged with the board packs by scripts/import-roster.mjs. P0: barks (4, <=30), death (3, <=30), pop (ALL CAPS, <=21), gag (<=60). P1/P2: gag only. names: display-name overrides (reason in the import script).",
+  "_comment": "pt-BR copy of the enemy roster (D-033 tone), merged with the board packs by scripts/import-roster.mjs. P0: barks (4, <=30), death (3, <=30), pop (ALL CAPS, <=21), gag (<=60). P1/P2: gag only. names: display-name overrides (reason in the import script). extra: entries from no pack (role, cell, accent, gag; P1, pack 5).",
   "names": {
     "peladeiro-de-vidro": "Boleiro com Joelho de Vidro",
     "guru-do-linkedin": "Guru do Networking",
@@ -505,5 +505,10 @@
     "polvo-da-enchente": {"gag": "O ralo desentope e ele é sugado feito espaguete"},
     "o-engarrafamento": {"gag": "O sinal abre, cada carro vai pra um lado e ele desmonta"},
     "sogra-tita": {"gag": "É convidada pro almoço de domingo, sorri e some"}
+  }
+,
+  "extra": {
+    "aberracao-saci": {"name": "Saci Aberração", "role": "mini-chefe", "cell": 256, "accent": "0xc8322c",
+      "gag": "Some num redemoinho e só sobra o cachimbo quicando"}
   }
 }

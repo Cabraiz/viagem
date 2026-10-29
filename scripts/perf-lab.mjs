@@ -76,13 +76,13 @@ async function scene(){
   cdp.on('Network.webSocketFrameSent',e=>{if(!counting)return;ws.out.n++;ws.out.bytes+=size(e.response);});
   await page.goto(web+'/');
   const joined=await page.evaluate(async([code,rooms])=>{
-    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
-    const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
+    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');const {PERSONAGEM_PADRAO:heroi}=await import('/src/rules/personagens-liberados.ts');
+    const c=new CoopClient(rooms,code,'Tia Cleide Aparecida',heroi);window.__net=c;
     // The room plays on the city: the client brings its manifest, as "Jogar sozinho" does (lobby.ts openSolo).
     const city=await import('/src/client/net/city-asset-loader.ts');c.cityRef=await city.loadCityManifest();c.cityManifest=()=>city.loadCityManifest();
     try{await c.join();}catch(e){return String(e.message);}
     const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');
-    void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
+    void openExploration(classes.find(k=>k.id===heroi),'Tia Cleide Aparecida',c);
     const layout=document.querySelector('dialog.explore-shell .explore-layout');if(layout)mountWaitingRoom(layout,c);
     return 'ok';
   },[code,rooms]);
@@ -207,14 +207,14 @@ async function entry(){
   if(cpu>1)await cdp.send('Emulation.setCPUThrottlingRate',{rate:cpu});
   opened=Date.now();
   const joined=await page.evaluate(async([code,rooms])=>{
-    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
-    const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
+    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');const {PERSONAGEM_PADRAO:heroi}=await import('/src/rules/personagens-liberados.ts');
+    const c=new CoopClient(rooms,code,'Tia Cleide Aparecida',heroi);window.__net=c;
     // The room plays on the city: the client brings its manifest, as "Jogar sozinho" does (lobby.ts openSolo).
     const city=await import('/src/client/net/city-asset-loader.ts');c.cityRef=await city.loadCityManifest();c.cityManifest=()=>city.loadCityManifest();
     try{await c.join();}catch(e){return String(e.message);}
     window.__t0=performance.now();
     const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');
-    void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
+    void openExploration(classes.find(k=>k.id===heroi),'Tia Cleide Aparecida',c);
     const layout=document.querySelector('dialog.explore-shell .explore-layout');if(layout)mountWaitingRoom(layout,c);
     // First frame drawn after the scene's create(): what the player sees instead of the loading line.
     const watch=()=>{const g=window.__island?.game;if(!g){setTimeout(watch,5);return;}

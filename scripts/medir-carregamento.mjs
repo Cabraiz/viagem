@@ -43,7 +43,7 @@ async function rodada(nome,page){
   await page.goto(url,{waitUntil:'load',timeout:120000});
   await page.waitForSelector('#confirm',{timeout:60000});
   const menu=Date.now()-t0;
-  await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Sonda';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card')?.click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+  await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Sonda';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card[data-hero]:not([data-bloqueado])')?.click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await page.waitForSelector('#enter-island',{state:'visible',timeout:20000});
   await page.waitForTimeout(ESPERA);
   const tClick=Date.now();

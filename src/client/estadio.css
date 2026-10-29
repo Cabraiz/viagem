@@ -17,23 +17,16 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-palco { background-image: url('/art/ui-extra/estadio-1920.webp'); }
 }
 
-/* The hero. --dh is the dance canvas's height: its soles are at .754 of it (the median), the highest head of any frame at
-   .039, so the figure is .715 x --dh tall; it reaches from the bar up to a small margin under the top. The canvas is
-   lifted to .78 so the boots stand on the bar's top, not in front of its face. */
+/* The hero, standing still (menu-sem-danca: the dance is only in the match). --dh is the old dance canvas's height, kept
+   as the measure: the figure is .715 x --dh tall, from the bar up to a small margin under the top. */
 .estadio-heroi { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .estadio-heroi > * { --bar: var(--bar-y, 88%); --dh: calc((var(--bar) - 4vh) / .715); }
-.estadio-heroi .menu-dance {
-  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .78);
-  width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%);
-}
-/* The portrait only when the dance fails for good (danca-sem-fallback): feet at ~97% of the square art. */
+/* The portrait: feet at ~97% of the square art. */
 .estadio-heroi img {
   position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .715 / .97);
   width: calc(var(--dh) * .715 / .97); height: calc(var(--dh) * .715 / .97); transform: translateX(-50%); object-fit: contain;
 }
-.estadio-heroi.dancing img { visibility: hidden; }
-.estadio-heroi.dance-pending img { visibility: hidden; }
-/* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the dance hides. */
+/* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the portrait hides. */
 .estadio-recorte { position: absolute; z-index: 1; pointer-events: none; }
 .estadio-recorte[hidden] { display: none; }
 /* mureta-camada-frente: the stadium's bar drawn over the hero (the back sneaker behind it), framed like the background. */

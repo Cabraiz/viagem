@@ -18,6 +18,7 @@ import {cityFlowGrid} from '../src/sim/city/grid.ts';
 import {cityUnoStart} from '../src/sim/city/uno-start.ts';
 import {placeWall} from '../src/sim/stonewards/wall.ts';
 import {PASS_DIST} from '../src/sim/crates.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const cityText=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -39,9 +40,9 @@ const anySpot=(rng:Rng)=>{for(;;){const p={x:pl.x+rng.next()*pl.w,y:pl.y+rng.nex
 const [bots=3,minutes=12,seeds=3]=process.argv.slice(2).map(Number);
 for(let seed=1;seed<=seeds;seed++){
   const s=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
-  s.add('p0','P0','cidadao-comum');
+  s.add('p0','P0',PERSONAGEM_PADRAO);
   const rb=new RoomBots();
-  for(let i=0;i<bots;i++){s.addBot(`b${i}`,`B${i}`,'cidadao-comum');rb.add(`b${i}`,i);}
+  for(let i=0;i<bots;i++){s.addBot(`b${i}`,`B${i}`,PERSONAGEM_PADRAO);rb.add(`b${i}`,i);}
   s.resetRun();
   (s as unknown as {botState:()=>unknown}).botState=()=>rb.state();
   let now=1000;const rng=new Rng(seed*7);

@@ -2,7 +2,7 @@
  * The "Minuto de Minerva" clock (card NEW-20261022-ORQ-relogio-minerva): at the start of a run the monsters stand still
  * for a while (the sim's `minervaAteTick`, card monstros-espalhados) so the players can walk the map. Card
  * inicio-no-uno-caixas-120 (the user, 23/10: "apareça somente o relógio, com o ponteiro decrescendo"): 120 s, and the HUD
- * shows ONLY an analog clock, no title, no seconds written (the aria-label still says them): the hand walks back from the
+ * shows ONLY an analog clock (missao-proteger-uno-tempo: 30 s), no title, no seconds written (the aria-label still says them): the hand walks back from the
  * full turn to 12 and the coloured sector it closes (the time left) shrinks with it; the last MINERVA_URGENT_SECONDS
  * pulse in the danger colour and, at zero, the face flashes for WAKE_MS and the clock goes away. The same clock shows
  * the time to explore after each wave (RunState.exploraDesdeTick/exploraAteTick), its full turn that window's length.
@@ -14,7 +14,7 @@ import {SIM_HZ, type RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';
 
 /** One full sweep of the hand (sim ninhos.ts MINERVA_S). */
-export const MINERVA_SECONDS=120;
+export const MINERVA_SECONDS=30;
 /** The last seconds pulse in the danger colour. */
 export const MINERVA_URGENT_SECONDS=10;
 /** How long the wake flash stays (ms of sim time). */

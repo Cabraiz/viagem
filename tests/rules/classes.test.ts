@@ -20,8 +20,10 @@ test('literal requested classes exist and search ignores accents',()=>{
   assert.equal(getClass('tia-festa'),undefined);
   assert.equal(getClass('mendigo')?.name,'Mendigo');
   assert.equal(getClass('viciado-em-bet')?.name,'Viciado em Bet');
-  // D-053: the menu's search sees the playable classes only (the Cidadão is hidden for now).
-  assert.equal(filterClasses('UNIVERSITARIO','Todas')[0].id,'universitario');
+  // D-053: the menu's search sees the playable classes only; herois-legados-escondidos (29/10): the 6 active heroes,
+  // so the Universitário and the Cidadão are hidden legacy heroes.
+  assert.equal(filterClasses('APOSENTÁDO','Todas')[0].id,'aposentado');
+  assert.equal(filterClasses('UNIVERSITARIO','Todas').length,0);
   assert.equal(filterClasses('CIDADAO','Todas').length,0);
   assert.equal(filterClasses('TI','Suporte').every(hero=>hero.role==='Suporte'),true);
   assert.equal(filterClasses('inexistente-xyz','Todas').length,0);

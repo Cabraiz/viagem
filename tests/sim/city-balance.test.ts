@@ -336,6 +336,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // The city again for sem-arma-girando-no-chao (the chinelo and the rings out of the catalog: the offers' and crates' rolls move).
 // The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
 // reached on foot, the revive's shove).
+// levelup-espalhado (levels 2/3 cheaper, a solo run's XP ×1.5 below level 3) leaves it: on top of comeca-armado the
+// 4-player neutral run to tick 4000 hashes the same with the old curve.
 const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fd1459aba23a7dd1',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{

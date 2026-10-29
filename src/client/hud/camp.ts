@@ -218,7 +218,7 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Base ficha ----------
   const readout=el('div','rh-camp');readout.hidden=true;readout.setAttribute('role','group');readout.setAttribute('aria-label','Base');
   const wallRow=el('span','rh-camp-wall',readout);
-  // The base has one symbol everywhere (design onda 6 D10): the tent with its flag, as on the map, the arrows and the minimap.
+  // The base has one symbol everywhere (design onda 6 D10): the Uno (icone-base-vira-uno; the tent left), as on the arrows and the objective.
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
   // The bar and the number each in their own box (.rh-camp-barra, .rh-camp-num): the chaveiro's car bar takes these
   // places later (Executor-4), the order unchanged. The bar is what gives way on a narrow screen.

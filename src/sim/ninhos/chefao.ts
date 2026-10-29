@@ -17,7 +17,8 @@
  * A checkpoint keeps no live enemy: one taken while he stands (the calm checkpoint never is, Simulation.calmCheckpointDue)
  * brings him back on the next step, scene and all.
  */
-import {enemyTerrain,walkable,type Point} from '../../maps/index.ts';
+import {BOT_WALK_MULT,SIM_HZ} from '../../contract/index.ts';
+import {CITY_HERO_SPEED,HERO_SPEED_MULT,RADIUS,enemyTerrain,walkable,type Point} from '../../maps/index.ts';
 import {WAVE_BOSS,pickWaveBoss,waveBossById,type WaveBoss} from '../../rules/index.ts';
 import {BOSS_TUNING,createBoss,type BossController,type BossLineKey,type BossOptions,type BossState,type BossTuning} from '../boss.ts';
 import type {SimContext,SimSystem} from '../context.ts';
@@ -87,15 +88,40 @@ export function holdChaveiroClock(clock:ChaveiroClock,by=1){
 }
 
 /**
+ * Card chefao-desviavel (auditoria-inimigos-29-10, item A: his areas grew with his size, his warnings did not, and
+ * nobody could walk out of the slam, the stamp or the charge). The walk his warnings are timed for (u/s): the slowest
+ * hero in the city, a room bot (BOT_WALK_MULT of a person's heroSpeed: ≈3.19; a person walks ≈3.99).
+ */
+export const DODGE_WALK=CITY_HERO_SPEED*HERO_SPEED_MULT*BOT_WALK_MULT;
+/** How far past an area's edge (u, beyond the hero's RADIUS) that walk ends when the golpe lands. */
+export const DODGE_SLACK=.3;
+/**
+ * The farthest walk out of a cone (range, full aperture) from inside it: on its axis at range / (1 + sin(aperture/2)),
+ * as far from its side as from its rim. A circle's is its radius (aimed at the hero: he starts at the centre), a line's
+ * half its width (he walks sideways).
+ */
+export const coneEscape=(range:number,aperture:number)=>range*Math.sin(aperture/2)/(1+Math.sin(aperture/2));
+/** Ticks to walk `reach` + RADIUS + DODGE_SLACK at `walk`, one tick to react. */
+export const dodgeTicks=(reach:number,walk:number=DODGE_WALK)=>Math.ceil((reach+RADIUS+DODGE_SLACK)/walk*SIM_HZ)+1;
+
+/**
  * WAVE_BOSS's numbers over a tuning: its hp, × damage on every hit, and his size (drawScale): the body and the charge's
  * width × it, the areas on the ground (slam, stamp, sweep) × (1 + it) / 2, so a golpe reaches past his bigger body.
+ * Every warning is then at least what `walk` needs to leave its area from the worst spot (dodgeTicks): slam ≈1.45 s,
+ * stamp ≈1.35 s, charge ≈1 s (both phases), each cone ≈1.4 s. The stomp at his feet (boss.ts slam, the stamp's
+ * radius + .6) never needs more than the stamp: a hero there starts at his body's edge, and his radius is past the .6.
  */
-export function waveBossTuning(base:Readonly<BossTuning>=BOSS_TUNING,drawScale:number=WAVE_BOSS.drawScale):BossTuning{
+export function waveBossTuning(base:Readonly<BossTuning>=BOSS_TUNING,drawScale:number=WAVE_BOSS.drawScale,walk:number=DODGE_WALK):BossTuning{
   const d=WAVE_BOSS.damage,t={...base},s=drawScale,area=(1+s)/2;
   t.baseHp=WAVE_BOSS.baseHp;t.hpPerExtraPlayer=WAVE_BOSS.hpPerExtraPlayer;
   for(const k of ['slamDamage','fineDamage','chargeDamage','coneDamage'] as const)t[k]=Math.round(base[k]*d);
   t.radius=base.radius*s;t.chargeWidth=base.chargeWidth*s;
   t.slamRadius=base.slamRadius*area;t.fineRadius=base.fineRadius*area;t.coneRange=base.coneRange*area;
+  t.slamDelay=Math.max(base.slamDelay,dodgeTicks(t.slamRadius,walk));
+  t.fineDelay=Math.max(base.fineDelay,dodgeTicks(t.fineRadius,walk));
+  t.chargeDelay=Math.max(base.chargeDelay,dodgeTicks(t.chargeWidth/2,walk));
+  t.chargeDelay2=Math.max(base.chargeDelay2,dodgeTicks(t.chargeWidth/2,walk));
+  t.coneDelay=Math.max(base.coneDelay,dodgeTicks(coneEscape(t.coneRange,t.coneAngle),walk));
   t.soloDamage=WAVE_BOSS.soloDamage;t.slamPush=WAVE_BOSS.slamPush;t.chargePush=WAVE_BOSS.chargePush;
   return t;
 }

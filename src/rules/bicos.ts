@@ -47,6 +47,9 @@ export const BICO_EXPULSO='O gerente te botou pra fora';
  * so porSegundo went 1 → 2 (dupla .6 → 1.2). Production mode (chaveiro + ninhos + manual) 31.4/23.2/23.8 % of the Grana
  * (1p/3p/6p) against the ATMs' 25/21/28.3 %; the default flags 13.5/34.7/27.6 % against 9.2/18.5/20.7 %
  * (evidence/NEW-20261024-ORQ-bancos-viram-bicos/bench-bicos*.json; 1, 1.5 and 1.8 R$/s beside it).
+ * No limit (bico-sem-limite-pix-voando, same bench, default flags): 15.9/31.8/40.6 % (was 16.1/19.6/17.1 %), wins
+ * 5/15/6 of 16 (was 5/14/4). 6p is over only in the runs it loses by round ~5 (55 %; the won ones 31 %), and a lower
+ * rate does not bring it down: 2/.9 gave 41.1 % (3p wins 13), 1.6/1 gave 45.3 % (6p wins 2). So 2/1.2 stays.
  * - porSegundo: R$/s of one hero alone in a shift; dupla: R$/s EACH when two or more work it ("o chefe divide o salário").
  * - nota: the pay goes into the wallet in notes of this much (and each note lures the critters around, BANCO.iscaR).
  * - filaCorte: pay × (1 − filaCorte × critters in the queue); filaExpulsa critters in it throw everyone out.

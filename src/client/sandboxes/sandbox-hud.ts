@@ -55,7 +55,7 @@
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
-import {shownTargets,missionKeys,nestTarget} from '../hud/arrows.ts';
+import {HUD_SWITCH,shownTargets,missionKeys,nestTarget} from '../hud/arrows.ts';
 import type {EdgeKind} from '../hud/edges.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
@@ -88,6 +88,9 @@ const cidade=params.get('mapa')==='cidade';
 const tutorial=cidade&&(requested as string|null)==='tutorial';
 let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:tutorial?'wave':cidade?'camp-horn':'wave';
 const frozen=params.has('frozen');
+// The forge is off in the player's game (arrows.ts HUD_SWITCH, user 18/10), so state=camp-forge drew no window: this
+// page turns it on for that state only, the window as it would open (card modo-foto-cidade-e-oferta-retrato).
+if(scenario==='camp-forge')HUD_SWITCH.forge=true;
 const bordas=params.get('cenario')==='bordas';
 const dica=(LESSON_ORDER as readonly string[]).includes(params.get('dica')??'')?params.get('dica') as Lesson:undefined;
 const bicho=params.get('bicho')||undefined;
@@ -609,7 +612,8 @@ if(cidade)void (async()=>{
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
   // D-047: `cida=1|aberta` puts the hero by the moto (Dona Cida's reach), else the fixture's spot.
   const cidaAt=params.get('chaveiro')==='1'&&params.has('cida');
-  let hero=tutorial?spot(params.get('ponto')):at(82,125);
+  // state=camp-forge: the hero by the plaza's wall (inside CAMP_RADIUS), where the forge opens.
+  let hero=tutorial?spot(params.get('ponto')):scenario==='camp-forge'?{x:map.plaza.x+1.5,y:map.plaza.y+1.5}:at(82,125);
   const people:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
     ?[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:P.inicio.x-1.4,y:P.inicio.y+.6},{id:'p3',name:'Zé do Pix',x:P.inicio.x+1.2,y:P.inicio.y+1}]
     :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',...at(58,100)},

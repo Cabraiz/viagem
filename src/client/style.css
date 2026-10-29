@@ -52,6 +52,6 @@
 @media(prefers-reduced-motion:reduce){.estadio .estadio-nome #nickname.nome-faltando{animation:none}}
 /* Menu touch targets of at least 44x44 (auditoria-ui-menus 13: the profile's ≡ was 30x30, "Privacidade" 22 tall): a
    transparent hit area around them, the drawing unchanged. */
-.estadio :is(.insta-menu,.menu-privacidade){position:relative}
+.estadio :is(.insta-menu,.menu-rodape a){position:relative}
 .estadio .insta-menu::after{content:'';position:absolute;inset:min(0px,calc((100% - 44px) / 2))}
-.estadio .menu-privacidade::after{content:'';position:absolute;inset:min(0px,calc((100% - 44px) / 2)) min(0px,calc((100% - 64px) / 2))}
+.estadio .menu-rodape a::after{content:'';position:absolute;inset:min(0px,calc((100% - 44px) / 2)) min(0px,calc((100% - 64px) / 2))}

@@ -17,8 +17,9 @@
   }
   .estadio .estadio-escolha > * { flex: none; width: calc(var(--u) * 734); max-width: none; }
 
-  /* The privacy link (estadio.css) on the light profile: dark text, centred in the air under the card. */
-  .estadio .menu-privacidade { left: 50%; transform: translateX(-50%); color: var(--insta-texto); text-shadow: none; opacity: .6; }
+  /* The privacy and about links (estadio.css) on the light profile: dark text, centred in the air under the card. */
+  .estadio .menu-rodape { left: 50%; transform: translateX(-50%); }
+  .estadio .menu-rodape a { color: var(--insta-texto); text-shadow: none; opacity: .6; }
 
   .insta-topo { display: block; }
   .insta-grade-area { display: block; margin-top: calc(var(--u) * 28); }

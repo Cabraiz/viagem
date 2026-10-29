@@ -57,17 +57,17 @@ test('the rounds mode keeps the walk from the wreck (cityRunStart, far from the 
   assert.ok(Math.hypot(p.x-car.x,p.y-car.y)>20);
 });
 
-test('the minuto de Minerva is 120 s and the first wave leaves 150–180 s after the start for six (as with the 60 s one), 210–240 s for a solo (balanco-mapa-175)',()=>{
-  assert.equal(MINERVA_S,120);assert.equal(NEST_PACE.minerva,120);
-  assert.deepEqual(NEST_PACE.first,[30,60]);assert.deepEqual(NEST_PACE.firstLate,[60,0]);
-  assert.equal(pace(NEST_PACE.firstLate,1),60);assert.equal(pace(NEST_PACE.firstLate,6),0);
+test('the minuto de Minerva is 30 s and the first wave leaves 35–45 s after the start, a solo too (missao-proteger-uno-tempo: the 5:00 is defence)',()=>{
+  assert.equal(MINERVA_S,30);assert.equal(NEST_PACE.minerva,30);
+  assert.deepEqual(NEST_PACE.first,[5,15]);assert.deepEqual(NEST_PACE.firstLate,[0,0]);
+  assert.equal(pace(NEST_PACE.firstLate,1),0);assert.equal(pace(NEST_PACE.firstLate,6),0);
   for(const seed of [1,2,3,4,5]){
     const sim=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
     sim.add('p0','P0','cidadao-comum');sim.resetRun();
     let now=1000;sim.step(now+=50);
     const nests=sim.run.nests!.state,start=nests.startTick!;
-    assert.equal(nests.minervaUntil,start+ticks(120));
-    assert.ok(nests.nextWave!>=start+ticks(210)&&nests.nextWave!<=start+ticks(240),`seed ${seed}: first wave at ${(nests.nextWave!-start)/20} s`);
+    assert.equal(nests.minervaUntil,start+ticks(30));
+    assert.ok(nests.nextWave!>=start+ticks(35)&&nests.nextWave!<=start+ticks(45),`seed ${seed}: first wave at ${(nests.nextWave!-start)/20} s`);
   }
 });
 

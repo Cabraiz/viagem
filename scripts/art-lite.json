@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3277,
-  "bytes": 2254911620,
-  "liteBytes": 785626626,
+  "files": 3286,
+  "bytes": 2257634440,
+  "liteBytes": 786833328,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -21908,6 +21908,78 @@
    ],
    "psnr": 43.6,
    "shownPsnr": 44.6
+  },
+  "enemies/mendigo/idle.webp": {
+   "source": "a75be4447f6d8559c42ed5d74e9c4cf0e829c64f53472de053ac4e9c70dff3d7",
+   "lite": "a0aaa851cf1a88ce40150fd6ddc6cd9824068c85a1a44651a36357eff96ba749",
+   "bytes": 395268,
+   "liteBytes": 143038,
+   "psnr": 37.8,
+   "shownPsnr": 43
+  },
+  "enemies/mendigo/walk-E.webp": {
+   "source": "6ad86a4a9407d3a7bca92aa2707da45586a94437824fbf7c58e296d43efcbcb4",
+   "lite": "fa9a04e4cf1942591957989ff14b21bc804606b8b80ab76bafb1d3c04e1f2835",
+   "bytes": 363312,
+   "liteBytes": 141788,
+   "psnr": 39.1,
+   "shownPsnr": 43.9
+  },
+  "enemies/mendigo/walk-N.webp": {
+   "source": "69c48c7614752a6deca76047a4c77ad3a4ea5d324fd85aad5fde125111cc5ed6",
+   "lite": "a7a9f33787d2c393e47a40afa538ae7bf8a717cafd75f437cd5945d45aa00531",
+   "bytes": 135708,
+   "liteBytes": 109366,
+   "psnr": 40.4,
+   "shownPsnr": 45
+  },
+  "enemies/mendigo/walk-NE.webp": {
+   "source": "bdc38b9a606111adc6bf96c460a56815c112691538718fca3a1235f5f0640a88",
+   "lite": "d804390eaa21b0dfa6cd123d24592e65d66221d7df4653989f254253a09993a9",
+   "bytes": 357996,
+   "liteBytes": 137436,
+   "psnr": 40.3,
+   "shownPsnr": 44.7
+  },
+  "enemies/mendigo/walk-NW.webp": {
+   "source": "abf4d1e75a343c52df4ecf5e3f80dae62326675b15e1b235a8b481dc96154005",
+   "lite": "875901b1f81018be0ba2f8590b7e7a74375df8e7729056d418dd405dfe66f3d8",
+   "bytes": 290446,
+   "liteBytes": 112202,
+   "psnr": 40.8,
+   "shownPsnr": 45
+  },
+  "enemies/mendigo/walk-S.webp": {
+   "source": "6629542abe4cb76e0555d31d0058e158af3fc0573124767c2147fac653f96473",
+   "lite": "f4714cb247282604c08f682c08faefab7e957a2a8a95abaa438922a0a27810b9",
+   "bytes": 186454,
+   "liteBytes": 152484,
+   "psnr": 38.4,
+   "shownPsnr": 43.1
+  },
+  "enemies/mendigo/walk-SE.webp": {
+   "source": "b933d1c701ba37daf1557c4b60ce0f23e8663fcfb4c4280adf4ada4ee26c15df",
+   "lite": "020664cb480c2fd8a10f969c1e2b9964e0a9bc16e8c7565cef8dd0e7ca19a432",
+   "bytes": 350010,
+   "liteBytes": 135052,
+   "psnr": 39.1,
+   "shownPsnr": 44
+  },
+  "enemies/mendigo/walk-SW.webp": {
+   "source": "5acfc5ba5f7354a0555c0078010e72d66884b579a1ab123c845430302f2a1c67",
+   "lite": "59fb746714ad3d42bb4722271664d3df993af05955db5b18a7f485dc0e4a5e75",
+   "bytes": 350206,
+   "liteBytes": 134288,
+   "psnr": 39.1,
+   "shownPsnr": 44
+  },
+  "enemies/mendigo/walk-W.webp": {
+   "source": "8ab3145d448d53eb895aef6933be5dc461fa10217b4f8915106b5bc236adab63",
+   "lite": "bd8f2a5b8f8370a365df04816eb0aff123c57e690cef3e3018f9283dfc1e9813",
+   "bytes": 293420,
+   "liteBytes": 141048,
+   "psnr": 39.4,
+   "shownPsnr": 43.7
   },
   "enemies/mico-da-dentadura/attack.webp": {
    "source": "88c2e400c32c23b5a275c3182f37e503d77656e8a87ce8bcc2b7ff7e17c64710",

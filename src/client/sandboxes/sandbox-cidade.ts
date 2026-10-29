@@ -76,6 +76,8 @@
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
+import {exposureGameConfig,setExposure} from '../render/exposure-pipeline.ts';
+import {exposureFor} from '../render/light.ts';
 import {ZOOM_DEFAULT,ZOOM_DESKTOP,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
@@ -983,7 +985,9 @@ class CitySandbox extends Phaser.Scene {
 }
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
-  scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
+  scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true},...exposureGameConfig()});
+// jogo-mais-escuro: the city's exposure (`?exposicao=` to compare), as the game's Vignette.set gives it.
+setExposure(exposureFor('cidade'));
 // The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art;
 // zoom=pc also takes the computer's enemy copies (manifest.ts pcCell), as the game on a fine pointer.
 if(base||params.get('arte')!=='0')void loadArtManifest(undefined,params.get('zoom')==='pc').then(start);else start();

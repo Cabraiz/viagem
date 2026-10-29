@@ -5,7 +5,8 @@
  */
 import Phaser from 'phaser';
 import {CITY_PALETTE} from './city/palette.ts';
-import {GRADES,VIGNETTE_RANGE,lightEnabled,type LightWorld} from './light.ts';
+import {GRADES,VIGNETTE_RANGE,exposureFor,lightEnabled,type LightWorld} from './light.ts';
+import {setExposure} from './exposure-pipeline.ts';
 
 const KEY='luz-vinheta',SIZE=256;
 export const VIGNETTE_DEPTH=9e8;
@@ -28,8 +29,8 @@ export class Vignette {
   }
   /** The image (screen space): a second camera (the Uno's live window, chaveiro/pip.ts) ignores it. */
   get object():Phaser.GameObjects.Image|undefined{return this.image;}
-  /** The map's strength; hidden in economy mode. */
-  set(world:LightWorld,economy:boolean){this.shown=!economy;this.image?.setAlpha(GRADES[world].vignette).setVisible(this.shown&&!this.covered);}
+  /** The map's strength; hidden in economy mode. The map's exposure too (jogo-mais-escuro), economy or not. */
+  set(world:LightWorld,economy:boolean){setExposure(exposureFor(world));this.shown=!economy;this.image?.setAlpha(GRADES[world].vignette).setVisible(this.shown&&!this.covered);}
   /** The fear's dark (render/fear-dark.ts) covers the screen: hidden under it (a full-screen layer nobody would see). */
   cover(covered:boolean){if(covered===this.covered)return;this.covered=covered;this.image?.setVisible(this.shown&&!covered);}
   /** Every frame: covers the camera (scroll factor 0 still zooms around the centre, so undo the zoom). */

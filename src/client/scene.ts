@@ -6,6 +6,7 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {exposureGameConfig} from './render/exposure-pipeline.ts';
 import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
 import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
@@ -2051,7 +2052,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
-    antialias:true,transparent:false,autoFocus:false,
+    antialias:true,transparent:false,autoFocus:false,...exposureGameConfig(),
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
   // Phone turned: Phaser 3.90 refreshes on screen.orientation 'change' with the old parent size, then reads the new one
   // inside that refresh, so its own size check never sees a change and the canvas stays stretched (22/10, espectador

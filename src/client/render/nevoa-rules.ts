@@ -15,9 +15,9 @@ export interface NevoaLevel {readonly haze:number;readonly bands:number;readonly
 const level=(l:NevoaLevel)=>Object.freeze({...l,clear:Object.freeze([...l.clear])}) as NevoaLevel;
 export const NEVOA_LEVELS:readonly NevoaLevel[]=Object.freeze([
   level({haze:0,bands:0,ash:0,sepia:0,clear:[0,0],floor:1}),
-  level({haze:.42,bands:.32,ash:30,sepia:.18,clear:[.09,.32],floor:.35}),
-  level({haze:.58,bands:.44,ash:48,sepia:.28,clear:[.10,.34],floor:.3}),
-  level({haze:.74,bands:.5,ash:70,sepia:.38,clear:[.11,.36],floor:.25}),
+  level({haze:.42,bands:.32,ash:40,sepia:.18,clear:[.09,.32],floor:.35}),
+  level({haze:.58,bands:.44,ash:64,sepia:.28,clear:[.10,.34],floor:.3}),
+  level({haze:.74,bands:.5,ash:90,sepia:.38,clear:[.11,.36],floor:.25}),
 ]);
 /** The level each world gets with no `?nevoa=`: the city is the board's scene; the tropical maps stay clear. */
 export const NEVOA_DEFAULT:Readonly<Record<LightWorld,number>>=Object.freeze({cidade:2,infinito:0,ilha:0});

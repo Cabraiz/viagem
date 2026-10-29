@@ -13,7 +13,7 @@ import type {LightWorld} from './light.ts';
 const HAZE='nevoa:haze',BANDS='nevoa:vento',ASH='nevoa:cinza';
 const URL={[HAZE]:'/art/nevoa/haze.webp',[BANDS]:'/art/nevoa/vento.webp',[ASH]:'/art/nevoa/cinza.webp'} as const;
 /** One tile across this many screen px (the texture is 1024 px): big soft shapes, the bands a bit tighter. */
-const HAZE_SPAN=900,BANDS_SPAN=860,ASH_CELL=128,ASH_PX=[4,9] as const;
+const HAZE_SPAN=900,BANDS_SPAN=860,ASH_CELL=128,ASH_PX=[8,16] as const;
 /** The haze a touch warm, the bands lighter (the board's fog 4 colour), the ash dark grey (it reads on the snow). */
 const HAZE_TINT=0xcfcac2,BANDS_TINT=0xffffff,ASH_TINT=0x6f685f;
 
@@ -63,7 +63,7 @@ export class Nevoa {
     const [vx,vy]=WIND.ashFall,k=windScale(this.options.reduced);
     this.ash=add.particles(0,0,ASH,{frame:[...Array(16).keys()],lifespan:9000,speedX:{min:vx*k*.6,max:vx*k*1.4},speedY:{min:vy*k*.7,max:vy*k*1.3},
       rotate:{min:0,max:360},scale:{onEmit:()=>Phaser.Math.FloatBetween(ASH_PX[0],ASH_PX[1])/32/this.zoom},
-      emitZone:{type:'random',source:this.ashZone} as Phaser.Types.GameObjects.Particles.EmitZoneData,alpha:{start:.75,end:0,ease:'Quad.easeIn'},tint:ASH_TINT,emitting:false})
+      emitZone:{type:'random',source:this.ashZone} as Phaser.Types.GameObjects.Particles.EmitZoneData,alpha:{start:.9,end:0,ease:'Quad.easeIn'},tint:ASH_TINT,emitting:false})
       .setScrollFactor(0).setDepth(NEVOA_DEPTH+2).setPipeline(NEVOA_PIPELINE).setVisible(false);
     this.show();
   }

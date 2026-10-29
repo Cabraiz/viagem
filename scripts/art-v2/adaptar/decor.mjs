@@ -40,12 +40,12 @@ const FOOTPRINT_RULE=/^(ninho-|montanha-|morro-|penhasco|rampa$|ponte$|cachoeira
 export const DECOR_HEIGHT=Object.freeze({
   alambrado:2.4,'cerca-madeira':1.6,'cerca-madeira-portao':2.6,grade:2.2,'muro-condominio':2.6,'muro-pichado':2.4,tapume:2.6,
   'academia-praca':2.4,'antena-parabolica':1.6,'arvore-natal-torta':3.2,'banca-jornal':2.8,'barraca-feira':2.8,
-  'barril-quebravel':1.2,bebedouro:1.3,bicicleta:1.4,'cacamba-entulho':1.6,'cadeira-praia':1.1,'caixa-dagua':1.8,
+  'barril-quebravel':1.2,bebedouro:1.3,bicicleta:1.4,'cacamba-entulho':1.6,'cadeira-praia':1.1,'caixa-dagua':1.8,'caixa-dagua-torre':7,
   'caixa-papelao':.8,'caixote-quebravel':1,'carrinho-pipoca':2.2,carroca:1.8,'fogueira-tambor':1.6,
-  'gaiola-passarinho':1,'geladeira-calcada':2.2,'kombi-velha':2.6,'luminaria-quebrada-pisca':2.5,
+  'gaiola-passarinho':1,'geladeira-calcada':2.2,'kombi-velha':2.6,'letreiro-velho':3.5,'luminaria-quebrada-pisca':2.5,
   'maquina-lavar-calcada':1.3,'mesa-domino':1.3,'moto-velha':1.5,outdoor:5,pedregulho:1.2,'piscina-plastico':.7,
-  'pneus-empilhados':1.3,'ponto-mototaxi':3,'poste-aceso-amarelo':5,'poste-concreto':5.5,'poste-gato':5,
-  'presepio-quebrado':1.6,'saco-lixo':.8,'varal-roupa':2.2,'vaso-planta':1.1,banco:2.6,
+  'placa-forro':3.5,'placa-igreja':3,'pneus-empilhados':1.3,'ponto-mototaxi':3,'poste-aceso-amarelo':5,'poste-concreto':5.5,'poste-gato':5,
+  'presepio-quebrado':1.6,'saco-lixo':.8,'torre-celular':10,'varal-roupa':2.2,'vaso-planta':1.1,banco:2.6,
 });
 /** Meta keys copied from the delivery (positions are rewritten through the piece's transform). */
 const COPY_META=['footprint','storeys','fps','loop'];

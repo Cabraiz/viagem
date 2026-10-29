@@ -130,8 +130,8 @@ function near(img:Img,x:number,y:number,rgb:[number,number,number]){
 }
 
 test('decor ids: 223 unique stems, no break sheet or overlay among them, every one expected by the cenario group',()=>{
-  assert.equal(DECOR_IDS.length,223);
-  assert.equal(new Set(DECOR_IDS).size,223);
+  assert.equal(DECOR_IDS.length,244);
+  assert.equal(new Set(DECOR_IDS).size,244);
   assert.ok(!DECOR_IDS.some(id=>/-quebra$|-anim(-|$)/.test(id)));
   assert.deepEqual(Object.keys(GROUPS.cenario.expected),[...DECOR_IDS]);
   assert.equal(GROUPS.cenario.kind,'decor');

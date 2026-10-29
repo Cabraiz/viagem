@@ -34,4 +34,8 @@ export const DECOR_IDS=Object.freeze([
   'rachadura-3','rampa','saco-lixo-1','saco-lixo-2','salao-beleza-1','salao-beleza-2','tapume-ponta-intacto','tapume-ponta-quebrado',
   'tapume-portao-intacto','tapume-portao-quebrado','tapume-quina-intacto','tapume-quina-quebrado','tapume-reto-intacto','tapume-reto-quebrado','tapume-t-intacto','tapume-t-quebrado',
   'ubs-1','ubs-2','varal-roupa-1','varal-roupa-2','vaso-planta-1','vaso-planta-2',
+  // altos e grafites (NEW-20261029-ORQ-cidade-decor-alto-e-grafite, Codex, E1)
+  'caixa-dagua-torre-1','letreiro-velho-1','placa-forro-1','placa-igreja-1','torre-celular-1',
+  'grafite-arretado','grafite-asa-branca','grafite-bode','grafite-boneco-cangaceiro','grafite-cade-verao','grafite-chapeu-cangaceiro','grafite-coracao-jm','grafite-fora-uno',
+  'grafite-jegue','grafite-mandacaru','grafite-oxe','grafite-sextou','grafite-sol-gorro','grafite-tags','grafite-te-amo-maria','grafite-ze-do-gas',
 ]);

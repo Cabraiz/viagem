@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3271,
-  "bytes": 2245683342,
-  "liteBytes": 786467478,
+  "files": 3276,
+  "bytes": 2252226272,
+  "liteBytes": 788092530,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -769,6 +769,18 @@
    "psnr": 40.8,
    "shownPsnr": 40.8
   },
+  "city/decor/caixa-dagua-torre-1/sheet.webp": {
+   "source": "f38c2c70af40312a2168dd34e749e89b57ad6c58248919baf78c69ea3e787c24",
+   "lite": "4be087d805e30a13647899b5ce987bdf40ef2b399a6eef4fbc7a5d1bc1f23d9b",
+   "bytes": 624830,
+   "liteBytes": 402556,
+   "liteCell": [
+    156,
+    456
+   ],
+   "psnr": 99,
+   "shownPsnr": 99
+  },
   "city/decor/carrinho-pipoca-1/sheet.webp": {
    "source": "0c87836c3349566cede6a1b5117cc69220facb949869259c84dc5924ace3d280",
    "lite": "58135ff410ecf161344f9a24248e60d97246286e651b142f9081a91d9f01f47e",
@@ -1525,6 +1537,18 @@
    "psnr": 36.4,
    "shownPsnr": 36.4
   },
+  "city/decor/letreiro-velho-1/sheet.webp": {
+   "source": "74cc0286788df7b0e8e2def5051026183d980279f79e633651adb0fff2a7bdb5",
+   "lite": "2e789a901e014c03112c86bc01545748aa11dbd05e98a331633fdd87c5239dc7",
+   "bytes": 235324,
+   "liteBytes": 55944,
+   "liteCell": [
+    264,
+    234
+   ],
+   "psnr": 41,
+   "shownPsnr": 41
+  },
   "city/decor/loterica-1/anim-letreiro.webp": {
    "source": "fefb8416a023407bbe63511077bf8c17ed78fd9a9ae0ba2cd5050551b300a99f",
    "lite": "2449ff9f898f81d710c798f99fddbc47a49f4db4cedb9548dc3e9b73def21527",
@@ -2221,6 +2245,30 @@
    "psnr": 38.7,
    "shownPsnr": 38.7
   },
+  "city/decor/placa-forro-1/sheet.webp": {
+   "source": "ee216284cbc8ef9c206e4a73704f04cb938ad55500adfd8c0774fd75caebd499",
+   "lite": "3556647820a6e46ad7c5497e7707a58064a724e226a0e725a2182d462bbbb990",
+   "bytes": 252910,
+   "liteBytes": 73400,
+   "liteCell": [
+    276,
+    234
+   ],
+   "psnr": 36.2,
+   "shownPsnr": 36.2
+  },
+  "city/decor/placa-igreja-1/sheet.webp": {
+   "source": "89fe28a8d69b6f5494d968d633c460f2840d4650de2ebd66ec7665b9c76abde6",
+   "lite": "fcad22ca9f68b7365b1ee2d20856b2c7dcdfa226d351791a08632e61b6d342a0",
+   "bytes": 146478,
+   "liteBytes": 38508,
+   "liteCell": [
+    246,
+    204
+   ],
+   "psnr": 40.5,
+   "shownPsnr": 40.5
+  },
   "city/decor/pneus-empilhados-1/sheet.webp": {
    "source": "e3d0227a925a783346e9c1ddcc7b5916ca73bb050513fc641c37cb0e9943dfd2",
    "lite": "c8f018c43c33bb81dc32a2026a618efcd8a040050402cc74351f052bc347cc29",
@@ -2712,6 +2760,18 @@
    ],
    "psnr": 47.5,
    "shownPsnr": 47.5
+  },
+  "city/decor/torre-celular-1/sheet.webp": {
+   "source": "bd23c2a2376f0fab9d185305edf3c3a7e0d53e24cdd3923b4a7e595e1e68f8bd",
+   "lite": "773182ea69b2599a6e90384120cb0b46d874b95e3e29fb181242e362aed1ed7a",
+   "bytes": 756102,
+   "liteBytes": 211552,
+   "liteCell": [
+    210,
+    642
+   ],
+   "psnr": 37.3,
+   "shownPsnr": 37.3
   },
   "city/decor/ubs-1/sheet.webp": {
    "source": "49cf1fa6cef575f69ee2820ac87c9eda51c5d7e17aac643475673a921d331ca7",

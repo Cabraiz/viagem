@@ -2341,6 +2341,52 @@
         ]
       }
     },
+    "caixa-dagua-torre-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "caixa-dagua-torre-1/sheet.webp",
+          "cell": [
+            208,
+            608
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.986842
+          ],
+          "pages": [
+            {
+              "file": "caixa-dagua-torre-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "f38c2c70af40312a2168dd34e749e89b57ad6c58248919baf78c69ea3e787c24"
+            }
+          ],
+          "sha256": "f38c2c70af40312a2168dd34e749e89b57ad6c58248919baf78c69ea3e787c24",
+          "liteCell": [
+            156,
+            456
+          ]
+        }
+      },
+      "sha256": "8ed035245faa2d39754ad67861071e627df23e6ee9a63cc023f0beb67b5817ba",
+      "meta": {
+        "cell": [
+          208,
+          608
+        ],
+        "footprint": [
+          1,
+          1
+        ]
+      }
+    },
     "caixa-papelao-1": {
       "kind": "decor",
       "files": {
@@ -5117,6 +5163,566 @@
         ]
       }
     },
+    "grafite-arretado": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-arretado/sheet.webp",
+          "cell": [
+            184,
+            74
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-arretado/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a5836e6459ea6fd1858309d18df49247c52b8c6c737f49dca2eef84e63d8e2ad"
+            }
+          ],
+          "sha256": "a5836e6459ea6fd1858309d18df49247c52b8c6c737f49dca2eef84e63d8e2ad"
+        }
+      },
+      "sha256": "167694c4e085f71db75d6e45566a784d00a1e421414556c9ee6f96ae9f556185",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-asa-branca": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-asa-branca/sheet.webp",
+          "cell": [
+            184,
+            111
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-asa-branca/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "56b347375e6dad6243abcd9703e72500d005cf09fb9f555401da8e34bb54a9b7"
+            }
+          ],
+          "sha256": "56b347375e6dad6243abcd9703e72500d005cf09fb9f555401da8e34bb54a9b7"
+        }
+      },
+      "sha256": "b59ccdbdccd99458adee2b926f06e142ade33fd9e0eff887ecdba0a9166a53a1",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-bode": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-bode/sheet.webp",
+          "cell": [
+            184,
+            179
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-bode/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d6ae178a362cee53f79a13bff0238fe7cc5562e17ab08cbbf4526d7703e63e43"
+            }
+          ],
+          "sha256": "d6ae178a362cee53f79a13bff0238fe7cc5562e17ab08cbbf4526d7703e63e43"
+        }
+      },
+      "sha256": "2881714231c4671415f551adc7fbbae397e773d567bc7c67dc7175a921e818e7",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-boneco-cangaceiro": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-boneco-cangaceiro/sheet.webp",
+          "cell": [
+            176,
+            184
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-boneco-cangaceiro/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "38443a946ff3f4f9e9d49a84f8080426b0204a1e0e3950012223ef20ecb1c6d8"
+            }
+          ],
+          "sha256": "38443a946ff3f4f9e9d49a84f8080426b0204a1e0e3950012223ef20ecb1c6d8"
+        }
+      },
+      "sha256": "07c84929935f9ebdeb5796f6634f16014ef6c7ffe4cbdb665431e7012be3092b",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-cade-verao": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-cade-verao/sheet.webp",
+          "cell": [
+            184,
+            65
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-cade-verao/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7444ddbffe420003d07edc0aeee999477374d34cb188f1cfaa650933969a5eee"
+            }
+          ],
+          "sha256": "7444ddbffe420003d07edc0aeee999477374d34cb188f1cfaa650933969a5eee"
+        }
+      },
+      "sha256": "651f55af5f013f16117bc15ebaa38d70861403b3ebbb0abcd25a2efa884348bd",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-chapeu-cangaceiro": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-chapeu-cangaceiro/sheet.webp",
+          "cell": [
+            184,
+            130
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-chapeu-cangaceiro/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "610aac8468135572730797b3669819ab3d5e174b0dce0156c7e00370972659f2"
+            }
+          ],
+          "sha256": "610aac8468135572730797b3669819ab3d5e174b0dce0156c7e00370972659f2"
+        }
+      },
+      "sha256": "7eadb3d37a632e6493eb8e3e7cdbb04959c16b4c560459d6e1458a9046ef0970",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-coracao-jm": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-coracao-jm/sheet.webp",
+          "cell": [
+            184,
+            167
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-coracao-jm/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2e43a228def8c3447eac58d98a9e94ce307b1d3c9d9b9003f76719be4cc10b90"
+            }
+          ],
+          "sha256": "2e43a228def8c3447eac58d98a9e94ce307b1d3c9d9b9003f76719be4cc10b90"
+        }
+      },
+      "sha256": "c3cae119bc6bc0452e4d38dc2b772ec2d575eac303d8ac2544dfd83772475fdc",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-fora-uno": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-fora-uno/sheet.webp",
+          "cell": [
+            184,
+            86
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-fora-uno/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fb27d14635e80700fad5af845eb8946c9c004398af4fa607f81c17500987802b"
+            }
+          ],
+          "sha256": "fb27d14635e80700fad5af845eb8946c9c004398af4fa607f81c17500987802b"
+        }
+      },
+      "sha256": "4ae11e668e0337152f9eccefb5ce282435830b6a7a6d7630d68bb428033aeed0",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-jegue": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-jegue/sheet.webp",
+          "cell": [
+            164,
+            184
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-jegue/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "72df8555df5ca847df678a0280c2b0501dc88a2cc17530a06efc2b15b3ec22d8"
+            }
+          ],
+          "sha256": "72df8555df5ca847df678a0280c2b0501dc88a2cc17530a06efc2b15b3ec22d8"
+        }
+      },
+      "sha256": "fc4b71dffae1358bf7e4dd88f10270e745c97d711165311713e3074a17aa115e",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-mandacaru": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-mandacaru/sheet.webp",
+          "cell": [
+            181,
+            184
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-mandacaru/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b3f9e4c9754fac07fe8a64982e6652a26cbfa60b279199cb0bdd26304ca63167"
+            }
+          ],
+          "sha256": "b3f9e4c9754fac07fe8a64982e6652a26cbfa60b279199cb0bdd26304ca63167"
+        }
+      },
+      "sha256": "9d7c416884aad8693092865be175aee5d1fe3f8784a787fc5e6656d3d2a07ec6",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-oxe": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-oxe/sheet.webp",
+          "cell": [
+            184,
+            106
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-oxe/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3df0472fd7f63a1a44bbb86318636fd8176c37fd68c8fb8760e780812138bbca"
+            }
+          ],
+          "sha256": "3df0472fd7f63a1a44bbb86318636fd8176c37fd68c8fb8760e780812138bbca"
+        }
+      },
+      "sha256": "185af168b0be0939dfacf7c00eee93f3429a53ad3215830b904d85f47f05496d",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-sextou": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-sextou/sheet.webp",
+          "cell": [
+            184,
+            89
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-sextou/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fab2ba8e1c852394dccc3f8ee9ae1e2df5eb067b744b64b140881eb612dbe8ed"
+            }
+          ],
+          "sha256": "fab2ba8e1c852394dccc3f8ee9ae1e2df5eb067b744b64b140881eb612dbe8ed"
+        }
+      },
+      "sha256": "688cfaec24ee392f9877d3e90d9c68de275b4442b3dbb190514e8e1d56915d3b",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-sol-gorro": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-sol-gorro/sheet.webp",
+          "cell": [
+            184,
+            180
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-sol-gorro/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4cca61e114eebd561f022f2d12a4e4771403956b601c29947d89ec34ae9cd3bd"
+            }
+          ],
+          "sha256": "4cca61e114eebd561f022f2d12a4e4771403956b601c29947d89ec34ae9cd3bd"
+        }
+      },
+      "sha256": "51edb890fd098420ba826387e51ee1b8fca2cb04350b1ed2baebec2f0d1438df",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-tags": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-tags/sheet.webp",
+          "cell": [
+            184,
+            92
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-tags/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c14aed03810b8b917e1f3a2e8f6c6d003a666e81bc9483944c01b5ae47bb890e"
+            }
+          ],
+          "sha256": "c14aed03810b8b917e1f3a2e8f6c6d003a666e81bc9483944c01b5ae47bb890e"
+        }
+      },
+      "sha256": "5bba9facf78fcb8736c11ec2f79a3ea9968bae0282bc16178b9cdd72f849a0f1",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-te-amo-maria": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-te-amo-maria/sheet.webp",
+          "cell": [
+            184,
+            102
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-te-amo-maria/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "8896b9f51e499dff2f541c22d226d72993a2fc67686c15b8c68d4739ac2e2775"
+            }
+          ],
+          "sha256": "8896b9f51e499dff2f541c22d226d72993a2fc67686c15b8c68d4739ac2e2775"
+        }
+      },
+      "sha256": "2acfb36aec48d8aab917ff6ec838cf01592e24ddaa968bc67e0394cea71ee93c",
+      "meta": {
+        "decal": true
+      }
+    },
+    "grafite-ze-do-gas": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "grafite-ze-do-gas/sheet.webp",
+          "cell": [
+            184,
+            94
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "pages": [
+            {
+              "file": "grafite-ze-do-gas/sheet.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "da78cab9eb4128d3eb3abf59ae2711da0ed5be387f5da085f38938d1d602ba68"
+            }
+          ],
+          "sha256": "da78cab9eb4128d3eb3abf59ae2711da0ed5be387f5da085f38938d1d602ba68"
+        }
+      },
+      "sha256": "ba023f902f4215791d25a5640558eb21f5ad673b575241ca3e139535812478f6",
+      "meta": {
+        "decal": true
+      }
+    },
     "igreja-evangelica-1": {
       "kind": "decor",
       "files": {
@@ -5958,6 +6564,52 @@
             ]
           }
         }
+      }
+    },
+    "letreiro-velho-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "letreiro-velho-1/sheet.webp",
+          "cell": [
+            352,
+            312
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.974359
+          ],
+          "pages": [
+            {
+              "file": "letreiro-velho-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "74cc0286788df7b0e8e2def5051026183d980279f79e633651adb0fff2a7bdb5"
+            }
+          ],
+          "sha256": "74cc0286788df7b0e8e2def5051026183d980279f79e633651adb0fff2a7bdb5",
+          "liteCell": [
+            264,
+            234
+          ]
+        }
+      },
+      "sha256": "b5558f382089c279dd88aba173609774f28b42aeb3ef971b7255e747a83425eb",
+      "meta": {
+        "cell": [
+          352,
+          312
+        ],
+        "footprint": [
+          1,
+          1
+        ]
       }
     },
     "loterica-1": {
@@ -9398,6 +10050,98 @@
         "origem": "arte-entrada/cenario/decor/viaduto/p-placas.png (Codex, E6, card mapa-175-com-viaduto)"
       }
     },
+    "placa-forro-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "placa-forro-1/sheet.webp",
+          "cell": [
+            368,
+            312
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.974359
+          ],
+          "pages": [
+            {
+              "file": "placa-forro-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "ee216284cbc8ef9c206e4a73704f04cb938ad55500adfd8c0774fd75caebd499"
+            }
+          ],
+          "sha256": "ee216284cbc8ef9c206e4a73704f04cb938ad55500adfd8c0774fd75caebd499",
+          "liteCell": [
+            276,
+            234
+          ]
+        }
+      },
+      "sha256": "b4b1dd1135907e96250bd2e3558227a9277780bf3b9ab46be4d8413749d98070",
+      "meta": {
+        "cell": [
+          368,
+          312
+        ],
+        "footprint": [
+          1,
+          1
+        ]
+      }
+    },
+    "placa-igreja-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "placa-igreja-1/sheet.webp",
+          "cell": [
+            328,
+            272
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.970588
+          ],
+          "pages": [
+            {
+              "file": "placa-igreja-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "89fe28a8d69b6f5494d968d633c460f2840d4650de2ebd66ec7665b9c76abde6"
+            }
+          ],
+          "sha256": "89fe28a8d69b6f5494d968d633c460f2840d4650de2ebd66ec7665b9c76abde6",
+          "liteCell": [
+            246,
+            204
+          ]
+        }
+      },
+      "sha256": "78e0303571c98255a50814197c5b658bdc2aee10d09bb73843a608405cf39fd2",
+      "meta": {
+        "cell": [
+          328,
+          272
+        ],
+        "footprint": [
+          1,
+          1
+        ]
+      }
+    },
     "placa-pare": {
       "kind": "decor",
       "files": {
@@ -12200,6 +12944,52 @@
         "cell": [
           944,
           272
+        ],
+        "footprint": [
+          1,
+          1
+        ]
+      }
+    },
+    "torre-celular-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "torre-celular-1/sheet.webp",
+          "cell": [
+            280,
+            856
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.990654
+          ],
+          "pages": [
+            {
+              "file": "torre-celular-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "bd23c2a2376f0fab9d185305edf3c3a7e0d53e24cdd3923b4a7e595e1e68f8bd"
+            }
+          ],
+          "sha256": "bd23c2a2376f0fab9d185305edf3c3a7e0d53e24cdd3923b4a7e595e1e68f8bd",
+          "liteCell": [
+            210,
+            642
+          ]
+        }
+      },
+      "sha256": "bc4368745b573e86bbf89a24e1b667a36b6c67a5978ca8a789be02b3266c4ae9",
+      "meta": {
+        "cell": [
+          280,
+          856
         ],
         "footprint": [
           1,

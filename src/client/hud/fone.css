@@ -82,6 +82,11 @@
   .rh.rh[data-hud=fone] .rh-offer[data-mode=combat]{max-width:calc(100vw - var(--rh-l) - var(--rh-r))}
   .rh.rh[data-hud=fone] :is(.rh-forge,.rh-cida){left:var(--rh-l)}
 }
+/* Lying down over 500 px tall (1335×620, card hud-deitado-sem-tapar-heroi): the minimap is beside the band, not a row of
+   it (zones.ts minimapInBand), so the announcement slot starts under the band and keeps clear of the minimap's column. */
+@media (min-height:501px) and (orientation:landscape){
+  .rh.rh[data-hud=fone] .rh-stack{left:calc(var(--rh-l) + var(--rh-mm) + 8px)}
+}
 @media (max-height:500px){
   /* Landscape: one row (level + bar, then the fan beside them), the boss bar under it in a boss fight. */
   .rh.rh[data-hud=fone] .rh-top>.rh-team{flex:0 0 auto;margin-left:12px;padding:0}

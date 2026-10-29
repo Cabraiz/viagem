@@ -9,7 +9,7 @@
  *   EDGE_COLUMN above the joystick, as the desktop's minimap floats (zones.ts ZoneInput.minimap).
  * The real layout is measured in the browser (zones.ts measureZoneInput); this is its reference.
  */
-import {computeZones,orientationOf,right,type Rect,type ScreenZones} from './zones.ts';
+import {computeZones,minimapInBand,orientationOf,right,type Rect,type ScreenZones} from './zones.ts';
 import {wcMinimapSide,HUD_FLOOR,HERO_SIDE} from './city/layout.ts';
 
 /** fone.css numbers (checked against the file by the tests). */
@@ -96,8 +96,8 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
   }
   const boss=input.boss?{x:band.x,y:bottomY+FONE.rowGap+FONE.bossGap,width:band.width,height:40}:undefined;
   band.height=(boss?boss.y+boss.height:bottomY)-band.y;
-  // Portrait: the minimap is a status row of the band (the slot under it); landscape: it floats (trims nothing).
-  const status=[gear,level,bar,fanRect,boss,...(orientation==='portrait'?[minimap]:[])];
+  // Standing: the minimap is a status row of the band (the slot under it); lying down: it floats (trims nothing).
+  const status=[gear,level,bar,fanRect,boss,...(minimapInBand(viewport)?[minimap]:[])];
   const zones=computeZones({viewport,safe,status,joystick:input.joystick,skill:input.skill,minimap});
   const hero={x:Math.round(viewport.width/2-HERO_SIDE/2),y:Math.round(viewport.height/2-HERO_SIDE/2),width:HERO_SIDE,height:HERO_SIDE};
   return {orientation,minimap,gear,band,level,bar,fan:fanRect,...(boss?{boss}:{}),zones,hero};

@@ -14,7 +14,7 @@ export type EnemyRole=typeof ENEMY_ROLES[number];
  * Mirrors sim/enemies/catalog.ts EnemyBehavior (rules may not import sim): chase walks straight and hits; stagger is the
  * bêbado's (burp); swarm the pombos' (poop drops); joker the Tio's joke and warned charge; ranged the agiota's shot;
  * thrower the anão's molotov; coach the lecture buff; kamikaze the motoboy's warned charge and blast; poser the
- * influencer's reflecting pose; brute walks and shoves on contact; summoner keeps distance and calls minions with a
+ * influencer's reflecting pose; brute walks, shoves on contact and stomps a telegraphed circle; summoner keeps distance and calls minions with a
  * spawn-warning; minichefe walks, shoves and slams a telegraphed circle; boss is boss.ts.
  */
 export type RoleBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'coach'|'kamikaze'|'poser'|'brute'|'summoner'|'minichefe'|'boss';

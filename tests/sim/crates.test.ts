@@ -7,7 +7,7 @@ import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
   BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,CRATE_WEAPONS,MAX_CRATES,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
-  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
+  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,NEAR_START_REACH,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
   VERDE_PISTOL,createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
@@ -185,10 +185,14 @@ test('start crates (caixas-sumiram): START_CRATES_PER_PLAYER a player (1..6), on
     const ctx=makeCtx(3),crates=createCrates({seed:3,points:line(30).map(p=>({...p,x:p.x+100})),startPoints:spots});
     for(let i=0;i<players;i++)addPlayer(ctx,`p${i}`,0,0);
     crates.step(ctx);
-    const start=chests(ctx).filter(c=>crates.state.crates[c.id].start);
-    assert.equal(start.length,want,`${players} players`);
-    assert.ok(start.every(c=>crates.state.crates[c.id].origin==='dropped'&&Math.hypot(c.x,c.y)<=48+1e-9));
-    assert.deepEqual(start.map(c=>c.value),start.map((_,i)=>i%2?2:1),'verde and azul alternate');
+    const all=chests(ctx).filter(c=>crates.state.crates[c.id].start);
+    assert.equal(all.length,want,`${players} players`);
+    assert.ok(all.every(c=>crates.state.crates[c.id].origin==='dropped'&&Math.hypot(c.x,c.y)<=48+1e-9));
+    // comeca-armado-e-levanta-seguro: a verde one by each hero (NEAR_START_REACH), the rest in the bands, azul.
+    const near=all.filter(c=>Math.hypot(c.x,c.y)<=NEAR_START_REACH+1e-9),start=all.filter(c=>!near.includes(c));
+    assert.equal(near.length,Math.min(players,START_PLAYERS_MAX),'one near crate a hero');
+    assert.ok(near.every(c=>c.value===1));
+    assert.deepEqual(start.map(c=>c.value),start.map((_,i)=>near.length||i%2?2:1),'verde and azul alternate (all azul beside the near verdes)');
     start.forEach((c,i)=>{const band=i%START_CRATES_PER_PLAYER;assert.ok(bands[band].some(b=>b.x===c.x&&b.y===c.y),`crate ${i} in band ${band}`);});
     const gap=Math.min(...start.flatMap((a,i)=>start.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.y-b.y))));
     assert.ok(gap>=4,`not piled up (closest pair ${gap.toFixed(1)} u)`);

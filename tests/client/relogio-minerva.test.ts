@@ -93,13 +93,24 @@ test('the HUD mounts the clock first in the announcement slot and the explore wi
   assert.match(css,/\.rh-minerva\{[^}]*pointer-events:none/);
 });
 
-test('the phone lying down moves the clock under the minimap, off the hero (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem)',()=>{
+test('the phone lying down puts the clock beside the mission line, at the top of the slot, off the hero (card hud-deitado-sem-tapar-heroi)',()=>{
   const css=readFileSync(new URL('../../src/client/hud/minerva.css',import.meta.url),'utf8');
-  const landscape=css.slice(css.indexOf('@media (max-height:500px){'));
+  const landscape=css.slice(css.indexOf('@media (orientation:landscape){'));
   assert.ok(landscape.length<css.length,'a landscape block');
-  // Only the phone (data-hud=fone) in landscape: PC and portrait keep the announcement slot.
-  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-minerva\{position:fixed;top:calc\(var\(--rh-t\) \+ var\(--rh-mm\) \+ 8px\);left:calc\(var\(--rh-l\) \+ var\(--rh-mm\) \/ 2/);
-  assert.doesNotMatch(css.slice(0,css.indexOf('@media (max-height:500px){')),/position:fixed/);
+  // Only the phone (data-hud=fone) lying down: one row, the clock (column 2) then the line (column 3), centred by the
+  // flexible columns on both sides; every other row of the slot spans it, under them. PC and portrait keep the column.
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,auto\) minmax\(0,1fr\)/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\*\{grid-column:1\/-1\}/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\.rh-minerva\{grid-column:2;/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>:is\(\.rh-missao,\.rh-missao-grande\)\{grid-column:3\}/);
+  // At ≤500 px tall the line keeps the stack's top (not centred on the clock, 12 px lower): there the hero's guard
+  // (hud.ts avoidHero) sent the stack to its low slot, on the hero, once the hero spoke (640×296 in the match).
+  assert.match(css,/@media \(max-height:500px\) and \(orientation:landscape\)\{[^}]*\.rh\[data-hud=fone\] \.rh-stack\{align-items:start\}/);
+  // No more fixed clock under the minimap: at 296 px tall it sat on the joystick.
+  assert.doesNotMatch(css,/position:fixed/);
   // inicio-no-uno-caixas-120: only the disc, no words: the face stays on the wake flash too (it is all there is).
   assert.doesNotMatch(landscape,/\.rh-minerva-face\{display:none\}/);
+  // The mission line is built right after the clock, so the two share the first row (hud.ts stack order).
+  const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8');
+  assert.match(hud,/stack\.append\(minerva\.el,mission\.band,mission\.row,/);
 });

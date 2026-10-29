@@ -328,6 +328,8 @@ export class CoopClient {
   lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** "Me salva" pings relayed by the room (UX-resgate-e-ping), the local player's own included. */
   onSos:(ping:SosPing)=>void=()=>{};
+  /** Another hero tapped "Dançar" (the room's {t:'dancou'}): it dances now on this screen too. */
+  onDance:(player:string)=>void=()=>{};
   /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
   onEmote:(e:EmoteNote)=>void=()=>{};
   /** Minimap pings relayed by the room (minimapa-wc3, rules/marks.ts), this phone's own included. */
@@ -642,6 +644,7 @@ export class CoopClient {
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
+    else if(m.t==='dancou'&&typeof m.player==='string'&&m.player.length>0&&m.player.length<=64&&m.player!==this.id)this.onDance(m.player);
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean'){
@@ -932,6 +935,13 @@ export class CoopClient {
   /** Whether this player owns the room (the post moves when the owner leaves for good). */
   get isOwner(){return !!this.id&&this.run?.owner===this.id;}
   rematch(){this.runCommand({t:'rematch'});}
+  /**
+   * Card exploracao-espera-carregar: this phone drew its first frame of the run (scene.ts). The room holds the minuto de
+   * Minerva's clock full until every phone says it (at most 20 s, multiplayer/load-wait.ts); an older room ignores it.
+   */
+  loaded(){this.runCommand({t:'carregou'});}
+  /** The own hero dances (empty hands, "Dançar"): the room tells the others. */
+  dance(){this.runCommand({t:'dancar'});}
   /**
    * Owner's map pick in the lobby (cidade-09): exactly {t:'setMap',map} (no round: map-select validateSetMap). The room
    * answers everyone with {t:'map'}, or the owner with a notice. False when there is no open connection to send it on.

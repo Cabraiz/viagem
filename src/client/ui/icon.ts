@@ -10,7 +10,7 @@
  */
 import {artPiece,artUrl} from '../art/manifest.ts';
 
-export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','pronto','relogio','boia','sem-linha','pipoca','saiu',
+export const ICON_NAMES=['config','girar','girar-camera','bussola','agulha','aviao','fechar','pronto','relogio','boia','sem-linha','pipoca','saiu',
   'balao','sacola','risada','chamar','suor','dado','coracao','cadeado','voltar','som','mudo','vibrar','sem-vibrar','letra-n',
   // Fora da tela e minimapa (UX-bordas-fora-da-tela, ORQ-minimapa): base, chefe, bichos chegando e baú.
   'base','chefe','onda','bau',

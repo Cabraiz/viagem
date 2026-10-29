@@ -215,6 +215,13 @@ export interface NestsSystem extends SimSystem {
   alive():number;
   /** Whether the minuto de Minerva still holds at `tick` (true before the first step: nothing moves before the run). */
   minerva(tick:number):boolean;
+  /**
+   * The room still waits for the team to load (multiplayer/load-wait.ts, card exploracao-espera-carregar): the minuto de
+   * Minerva ends a whole NEST_PACE.minerva after `tick` and the first wave keeps its distance from it. It moves half a
+   * second at a time (the clock rounds up, so it still reads the full minute): two {t:'run'} a second, not one a tick.
+   * Nothing before the first step nor once the Minerva is over.
+   */
+  holdMinerva(tick:number):void;
   /** The time to explore running at `tick` ([first tick, end tick]), undefined outside one (the Minerva is not one). */
   exploring(tick:number):{from:number;until:number}|undefined;
   /** The plan the run plays (drawn on the first step); undefined before it. */
@@ -406,6 +413,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     plan:()=>plan,
     alive:()=>state.nests.filter(n=>!n.down).length,
     minerva:tick=>state.startTick===null||tick<(state.minervaUntil??0),
+    holdMinerva(tick){
+      if(state.minervaUntil===undefined||tick>=state.minervaUntil)return;
+      const by=tick+ticks(NEST_PACE.minerva)-state.minervaUntil;
+      if(by<ticks(.5))return;
+      state.minervaUntil+=by;
+      if(state.nextWave!==undefined)state.nextWave+=by;
+    },
     exploring:tick=>state.exploreFrom!==undefined&&state.exploreUntil!==undefined&&tick>=state.exploreFrom&&tick<state.exploreUntil?{from:state.exploreFrom,until:state.exploreUntil}:undefined,
     bossSpot(){
       let best:NestRun|undefined;

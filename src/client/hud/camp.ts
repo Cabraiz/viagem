@@ -225,6 +225,9 @@ export function createCamp(options:CampOptions):CampPart{
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  // resultado-e-topo-com-rotulo: a sticker before each number of the band ("170" read as nothing): the heart before the
+  // life, the wallet before the R$, the tower in its ring before the fichas. Decorative: the bar and the pills say it in words.
+  num.insertAdjacentHTML('afterbegin',icon('coracao',{className:'rh-camp-num-ic'}));
   // The phone's minimal top (hud-mobile-minimo, fone.css): the life's number, or a clock (barClock: the chaveiro's, D-047,
   // or the intermission's countdown), rides over the bar, small; the round chip that carries them elsewhere is not on the
   // phone. Over the bar's box, not inside the track (its overflow would cut the clock at 125 %). Hidden on the desktop,
@@ -251,6 +254,7 @@ export function createCamp(options:CampOptions):CampPart{
   };
   // My wallet (D-048, carteira-e-pix), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
+  grana.insertAdjacentHTML('afterbegin',sticker('carteira',{size:24,className:'rh-camp-grana-ic'}));
   const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
   let lastGrana:string|undefined;
   // The team's fichas de torre (D-048): one sticker in its ring and the count; rewritten only when the pile changes.

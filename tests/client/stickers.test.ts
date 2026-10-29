@@ -99,11 +99,11 @@ test('every award and vice has a sticker; the vice medals say the place in shape
   assert.ok(awards.length>0);for(const a of awards)assert.ok(isStickerName(a.icon),a.id);
 });
 
-test('the sound lab shows stickers and icons that exist (the stamp keeps its word)',()=>{
+test('the sound lab shows stickers and icons that exist (the stamp, the ufa and the tsc keep their word)',()=>{
   const icons=new Set<string>(ICON_NAMES);
   for(const [id,art] of Object.entries(SOUND_ART)){
     if('icon' in art)assert.ok(icons.has(art.icon),id);
     else if('sticker' in art)assert.ok(isStickerName(art.sticker),id);
-    else assert.equal(art.word,'tum');
+    else assert.equal(art.word,({carimbo:'tum',ufa:'ufa',tsc:'tsc'} as Record<string,string>)[id],id);
   }
 });

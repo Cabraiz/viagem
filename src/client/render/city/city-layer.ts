@@ -57,8 +57,12 @@ const GLINT_DEPTH=CITY_GROUND_DEPTH+2;
 const FOG_DEPTH=CITY_GROUND_DEPTH-1;
 /** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
 const GLINT_PERIOD_MS=4000;
-/** Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. */
-export const GROUND_RESOLUTION=0.75;
+/**
+ * Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. Fixed, not following
+ * the zoom (no re-bake mid-match): 1 keeps the setts sharp at the phone's zoom (~0.9) for +43 MB of GPU texture over
+ * 0.75 at the spawn (card chao-pedra-nitida, evidence/medidas.log).
+ */
+export const GROUND_RESOLUTION=1;
 export const GROUND_RT_MAX_PX=2048;
 
 /** Fills a polygon with the current fill style: a convex one as a triangle fan (fan.ts, no earcut), any other through Phaser. */

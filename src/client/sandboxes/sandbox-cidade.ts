@@ -156,6 +156,8 @@ const KIT_OBRA={dx:-1.4,dy:1.4},KIT_GHOST={dx:1.6,dy:1.4};
 const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** torres=lista: `tiro=1` the listed defenses fire; `lento=K` (1..20) the defenses' clock K× slower (see the header). */
+/** `chaores=r` (card chao-pedra-nitida): baked ground texels per world px instead of GROUND_RESOLUTION (memory A/B). */
+const groundRes=params.has('chaores')?Number(params.get('chaores')):undefined;
 const listFires=params.get('tiro')==='1',slowMo=Math.max(1,Math.min(20,Number(params.get('lento'))||1));
 const towerFocus=params.get('foco')==='torre',towerOutline=params.get('contorno')!=='0',towerAnim=params.get('anim')!=='0';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
@@ -406,7 +408,7 @@ class CitySandbox extends Phaser.Scene {
         this.load.start();
       }
     }
-    this.layer=new CityLayer(this,this.asset,{art:this.art});
+    this.layer=new CityLayer(this,this.asset,{art:this.art,groundResolution:groundRes});
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its cast silhouette scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;

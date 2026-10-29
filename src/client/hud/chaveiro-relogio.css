@@ -27,3 +27,10 @@
    phone's team column steps down under it as it does under the boss bar. */
 .rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden])){flex-wrap:wrap}
 @media (min-height:501px){.rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 180px)}}
+/* Card faixa-chaveiro-minimapa-celular: on the phone the top row is only the gap between the minimap and the gear (~190 px
+   at 390 px), and the band's two nowrap cells overflowed it on both sides, onto the minimap. There it stacks: the title
+   over "Segurem N s", a size smaller, inside the row; the boss bar (order 3) stays above it. */
+.rh[data-hud=fone] .rh-top>.rh-chaveiro-chegou{grid-template-columns:minmax(0,auto);justify-items:center;max-width:100%;margin-top:4px;padding:5px 10px 7px;row-gap:3px}
+.rh[data-hud=fone] .rh-chegou-titulo{font-size:var(--t-16)}
+.rh[data-hud=fone] .rh-chegou-segurem{font-size:var(--t-13)}
+.rh[data-hud=fone] .rh-chegou-track{justify-self:stretch;height:8px}

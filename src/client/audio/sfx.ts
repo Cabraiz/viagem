@@ -31,7 +31,7 @@ export type SfxFormat='webm'|'m4a';
 
 const spec=(throttleMs:number,priority:number,gain:number,takes=1,align=false):SfxSpec=>Object.freeze({takes,throttleMs,priority,gain,...(align?{align}:{})});
 /** The groups' levels: spam (hits, footsteps, every shot) under the moments (chests, level up, the boss). */
-const UI=spec(40,2,.6),SHOT=spec(70,0,.45),PACK=spec(90,0,.4),TOWER=spec(120,0,.32);
+const UI=spec(40,2,.6),SHOT=spec(70,0,.45),PACK=spec(90,0,.4),TOWER=spec(120,0,.32),VOICE=spec(400,2,.6,2);
 const own=(id:ProceduralId,gain:number,takes=1)=>spec(RECIPES[id].throttleMs,RECIPES[id].priority,gain,takes);
 
 export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
@@ -59,6 +59,10 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   coxinha:spec(60,1,.5),ima:spec(300,1,.55),
   'ultimo-bicho':spec(0,3,.7),apagao:spec(1000,2,.6),'caixa-registradora':spec(250,1,.5),'peca-cai':spec(200,1,.5),
   'moto-tranco':spec(400,1,.55),'moto-morre':spec(400,1,.55),pix:spec(300,2,.55),'ninho-acordou':spec(2000,1,.5),
+  // The voices, two takes each, one per 400 ms (events.ts VoiceGate also keeps different voices of one kind apart).
+  'voz-bet-ai':VOICE,'voz-bet-cai':VOICE,'voz-clt-ai':VOICE,'voz-clt-cai':VOICE,'voz-gato-ai':VOICE,'voz-gato-cai':VOICE,
+  'voz-maromba-ai':VOICE,'voz-maromba-cai':VOICE,'voz-vendedor-ai':VOICE,'voz-vendedor-cai':VOICE,
+  'voz-aposentado-ai':VOICE,'voz-aposentado-cai':VOICE,'voz-mendigo-ai':VOICE,'voz-mendigo-cai':VOICE,'voz-saci-risada':VOICE,
 });
 
 /**

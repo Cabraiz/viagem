@@ -12,6 +12,9 @@
  * NEW-20261029-ORQ-sons-novos-tangoflux (itens 21, 22, 23, 25 e 26, new TangoFlux files): the last critter's tcham, the
  * happenings' jingles, a car part's clank and the moto's engine, the money (Cida's register, the pix's plim, the bank's
  * cash and its empty till) and a nest waking up from its side of the screen.
+ * NEW-20261029-E8-voz-por-personagem: the local hero's class says its own "ai" when hit and every fallen hero screams in
+ * its own voice (the mendigo grunts); the saci laughs when it hits me. While a voice's file is not ready the generic
+ * sound plays (dano-heroi, queda) and the file starts loading; one voice of a kind per VOICE_MS (VoiceGate).
  */
 import {CAR_ID,type HappeningKind,type MotoMoment,type SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
@@ -67,7 +70,9 @@ export function chestSound(rarity:number):SoundId{
  * A sound and how to play it: its level (1 = the file's), its pitch (playback rate, files only), its side (-1..1) and
  * a second sound played with it.
  */
-export interface EventCue {id:SoundId;gain?:number;rate?:number;pan?:number;with?:EventCue}
+export interface EventCue {id:SoundId;gain?:number;rate?:number;pan?:number;with?:EventCue;
+  /** A voice's generic sound, played instead while the voice's file is not ready. */
+  fallback?:EventCue}
 /** The hit's four pitches, drawn by the target (the same critter always sounds the same, the crowd varies). */
 export const HIT_RATES:readonly number[]=[.9,.97,1.04,1.12];
 /** A crit: lower and louder than any plain hit. */
@@ -122,7 +127,40 @@ export interface EventWorld {
   boss?:(enemy:string)=>boolean;
   /** A telegraph's place by id (view.telegraphs); undefined: not in this client's view. */
   telegraph?:(id:string)=>Point|undefined;
+  /** A player's class by id (feed.players), for the hero's voice. */
+  classOf?:(player:string)=>string|undefined;
+  /** An enemy's kind by id (feed.enemies; the damage event has no kind), for the saci's laugh. */
+  kindOf?:(enemy:string)=>string|undefined;
 }
+/** Each voiced class's "ai" when hit and scream at the fall; the other classes keep the generic sounds. */
+export const HERO_VOICES:Readonly<Record<string,{hit:SoundId;fall:SoundId}>>={
+  'viciado-em-bet':{hit:'voz-bet-ai',fall:'voz-bet-cai'},'clt-cansado':{hit:'voz-clt-ai',fall:'voz-clt-cai'},
+  'gato-nada-pra-comer':{hit:'voz-gato-ai',fall:'voz-gato-cai'},maromba:{hit:'voz-maromba-ai',fall:'voz-maromba-cai'},
+  'vendedor-praia':{hit:'voz-vendedor-ai',fall:'voz-vendedor-cai'},aposentado:{hit:'voz-aposentado-ai',fall:'voz-aposentado-cai'},
+  mendigo:{hit:'voz-mendigo-ai',fall:'voz-mendigo-cai'},
+};
+/** An enemy kind's voice when it hits me, on top of my "ai" (the sanfoneiro's waits for his art in main). */
+export const ENEMY_VOICES:Readonly<Record<string,SoundId>>={saci:'voz-saci-risada'};
+/** At most one voice of a kind (ai, cai, risada) per this many ms, so a crowd never becomes a choir. */
+export const VOICE_MS=400;
+export const isVoice=(id:SoundId)=>id.startsWith('voz-');
+/** The voice's kind: the id's last word (voz-clt-ai → ai). */
+export const voiceKind=(id:SoundId)=>id.slice(id.lastIndexOf('-')+1);
+/** One voice of a kind per VOICE_MS, for the whole match. */
+export class VoiceGate {
+  private at=new Map<string,number>();
+  open(id:SoundId,now:number){
+    const kind=voiceKind(id),last=this.at.get(kind);
+    if(last!==undefined&&now-last<VOICE_MS)return false;
+    this.at.set(kind,now);return true;
+  }
+}
+/** A hero's voice (`hit` or `fall`) over the generic cue, or the generic cue for a class without a voice. */
+function heroVoice(player:string,moment:'hit'|'fall',generic:EventCue,world?:EventWorld):EventCue{
+  const cls=world?.classOf?.(player),voice=cls?HERO_VOICES[cls]?.[moment]:undefined;
+  return voice?{id:voice,fallback:generic}:generic;
+}
+
 /** The danger warning's level and side at `at`, or undefined when too far or out of view. */
 export function warnCue(rate:number,at:Point|undefined,world?:EventWorld):EventCue|undefined{
   if(!at)return world?.telegraph?undefined:{id:'chefe-passo',rate};
@@ -159,7 +197,11 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
   const mine=(id:string|undefined)=>localPlayer!==undefined&&id===localPlayer;
   switch(event.type){
     case 'damage':{
-      if(mine(event.target))return {id:'dano-heroi'};
+      if(mine(event.target)){
+        const cue=heroVoice(event.target,'hit',{id:'dano-heroi'},world);
+        const kind=event.source?world?.kindOf?.(event.source):undefined,laugh=kind?ENEMY_VOICES[kind]:undefined;
+        return laugh?{...cue,with:{id:laugh}}:cue;
+      }
       if(!mine(event.source))return undefined;
       // The boss or an elite takes the heavy hit; a slash lands with a thwack; a shot with the critter's splat.
       const id:SoundId=elite?.(event.target)||world?.boss?.(event.target)?'chefe-acerto'
@@ -189,6 +231,8 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
     case 'bank-prime':return {...BANK_PRIME_CUE};
     case 'bank-empty':return {...BANK_EMPTY_CUE};
     case 'acordou':return nestCue(event,world);
+    // The fall's whistle, for everyone, in the fallen hero's own scream when its class has one.
+    case 'downed':return heroVoice(event.player,'fall',{id:'queda'},world);
   }
   const id=soundForEvent(event,localPlayer);return id?{id}:undefined;
 }
@@ -237,9 +281,13 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
 export const GEMS=new GemCombo();
 /** The match's danger warnings, one per WARN_MS. */
 export const WARNINGS=new WarnGate();
-/** The gem combo, the warnings' gate and their clock (ms); tests pass their own. */
-export interface GemClock {gems:GemCombo;warn?:WarnGate;now:()=>number}
+/** The match's voices, one of a kind per VOICE_MS. */
+export const VOICES=new VoiceGate();
+/** The gem combo, the warnings' and voices' gates and their clock (ms); tests pass their own. */
+export interface GemClock {gems:GemCombo;warn?:WarnGate;voice?:VoiceGate;now:()=>number}
 type Play=(id:SoundId,opts?:{gain?:number;rate?:number;pan?:number})=>boolean;
+/** The engine (engine.ts): a voice plays only once its file is decoded, else its fallback while preload fetches it. */
+interface EventAudio {play:Play;hasFile?:(id:SoundId)=>boolean;preload?:(ids:Iterable<SoundId>)=>void}
 
 /**
  * Plays every mapped event; per-sound throttling in the engine keeps hit storms in check. Returns sounds played.
@@ -247,8 +295,9 @@ type Play=(id:SoundId,opts?:{gain?:number;rate?:number;pan?:number})=>boolean;
  * `elite`: an elite enemy by id (cueForEvent).
  * Each of my gems climbs the combo's pitch (recipes.ts GemCombo); a heard one already did.
  * `world`: the hero, the screen's sides, the boss and the telegraphs (EventWorld); a danger warning passes `clock.warn`.
+ * A voice (isVoice) passes `clock.voice`; while its file is not decoded its fallback plays instead and the file loads.
  */
-export function playEvents(audio:{play:Play},events:Iterable<SimEvent>,localPlayer?:string,
+export function playEvents(audio:EventAudio,events:Iterable<SimEvent>,localPlayer?:string,
   heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean,clock:GemClock={gems:GEMS,now:()=>performance.now()},world?:EventWorld):number{
   let played=0;
   for(const event of events){
@@ -258,7 +307,13 @@ export function playEvents(audio:{play:Play},events:Iterable<SimEvent>,localPlay
     if(cue.id==='gema'&&cue.rate===undefined)cue.rate=clock.gems.next(clock.now());
     if((event.type==='spawn-warning'||event.type==='telegraph')&&!(clock.warn??WARNINGS).open(clock.now()))continue;
     for(let c:EventCue|undefined=cue;c;c=c.with){
-      const {id,with:_,...opts}=c;
+      let play:EventCue|undefined=c;
+      if(isVoice(c.id)){
+        if(audio.hasFile&&!audio.hasFile(c.id)){audio.preload?.([c.id]);play=c.fallback;}
+        else if(!(clock.voice??VOICES).open(c.id,clock.now()))play=undefined;
+      }
+      if(!play)continue;
+      const {id,with:_,fallback:__,...opts}=play;
       if(audio.play(id,opts))played++;
     }
   }

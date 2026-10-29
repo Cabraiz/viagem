@@ -29,6 +29,10 @@ export const FILE_SOUND_IDS=[
   'bau-comum','bau-raro','bau-epico','bau-lendario','caca-niquel',
   'coxinha','ima',
   'ultimo-bicho','apagao','caixa-registradora','peca-cai','moto-tranco','moto-morre','pix','ninho-acordou',
+  // NEW-20261029-E8-voz-por-personagem: each hero's "ai" when hit and scream at the fall (the mendigo grunts), the saci's laugh.
+  'voz-bet-ai','voz-bet-cai','voz-clt-ai','voz-clt-cai','voz-gato-ai','voz-gato-cai','voz-maromba-ai','voz-maromba-cai',
+  'voz-vendedor-ai','voz-vendedor-cai','voz-aposentado-ai','voz-aposentado-cai','voz-mendigo-ai','voz-mendigo-cai',
+  'voz-saci-risada',
 ] as const;
 export type ProceduralId=typeof SOUND_IDS[number];
 export type SoundId=ProceduralId|typeof FILE_SOUND_IDS[number];

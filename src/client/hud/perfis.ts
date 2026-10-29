@@ -142,10 +142,12 @@ function profileCard(doc:Document,m:Match,className:string,onButton:(how:'passar
  * numeral, name and the ChatGPT illustration in the Rider-Waite line. Any other kind (legacy, hidden) keeps its photo and
  * gets no numeral. The sanfoneiro joins as III when E1's art is picked.
  */
-export const ARCANOS:Readonly<Record<string,{num:string;name:string;arte:string}>>={
-  mendigo:{num:'I',name:'O Mendigo',arte:'/art/perfis/tarot-mendigo.webp'},
-  'aberracao-saci':{num:'II',name:'O Saci',arte:'/art/perfis/tarot-saci.webp'},
+export const ARCANOS:Readonly<Record<string,{num:string;name:string;arte:string;pop:string}>>={
+  mendigo:{num:'I',name:'O Mendigo',arte:'/art/perfis/tarot-mendigo.webp',pop:'/art/perfis/pop-mendigo.webp'},
+  'aberracao-saci':{num:'II',name:'O Saci',arte:'/art/perfis/tarot-saci.webp',pop:'/art/perfis/pop-saci.webp'},
 };
+/** The desktop's pop-up book (option 15, ChatGPT): the open book with the paper town, the same for every enemy. */
+export const LIVRO_POP='/art/perfis/pop-livro.webp';
 
 /**
  * The phone's tarot card (perfil-vira-livro-de-contos): the enemy's photo in the frame's window, its numeral on top and
@@ -164,6 +166,21 @@ export function tarotCard(doc:Document,m:Match){
   el(doc,'span','rh-tarot-num',node).textContent=arcano?.num??'';
   el(doc,'h3',name.length>NOME_CURTO?'rh-tarot-nome rh-tarot-nome-longo':'rh-tarot-nome',node).textContent=`${name.toLocaleUpperCase('pt-BR')}.`;
   el(doc,'div','rh-tarot-foil',node);
+  return node;
+}
+
+/**
+ * The desktop's pop-up book (perfil-vira-livro-de-contos, option 15): the enemy's paper cut-out (ChatGPT) rises once
+ * from the open book, its name in the book's cartouche. Only for the three arcana; the same rules as the tarot card.
+ */
+export function popCard(doc:Document,m:Match){
+  const arcano=ARCANOS[m.kind]!;
+  const node=el(doc,'article','rh-perfil rh-perfil-compacto rh-pop');node.dataset.kind=m.kind;
+  node.setAttribute('aria-label',arcano.name);
+  const book=el(doc,'img','rh-pop-livro',node);book.alt='';book.draggable=false;book.decoding='async';book.src=LIVRO_POP;
+  const fig=el(doc,'img','rh-pop-figura rh-perfil-img',node);fig.alt='';fig.draggable=false;fig.decoding='async';
+  fig.onload=()=>{node.dataset.foto='ok';};fig.src=arcano.pop;if(fig.complete&&fig.naturalWidth>0)node.dataset.foto='ok';
+  el(doc,'h3','rh-pop-nome',node).textContent=`${arcano.name.toLocaleUpperCase('pt-BR')}.`;
   return node;
 }
 
@@ -186,8 +203,8 @@ export interface ProfilesOptions {
   guards?():readonly Box[]|undefined;
   useful?():Box|undefined;
   /**
-   * The compact card is the tarot card (tarotCard) instead of the profile; by default on the phone (the HUD's
-   * data-hud=fone), the desktop keeps the profile until its pop-up is decided.
+   * The compact card is the tarot card (tarotCard); by default on the phone (the HUD's data-hud=fone). Off: the
+   * desktop's pop-up book (popCard) for the three arcana.
    */
   tarot?():boolean;
 }
@@ -231,10 +248,12 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
   const open=()=>{
     const last=book.matches.at(-1);if(!last)return;
     close();
-    // An arcanum with no dating profile (the beggar, the saci) shows as the tarot card on the desktop too.
-    const tarot=!perfilOf(last.kind)||(options.tarot?.()??slot.closest('[data-hud]')?.getAttribute('data-hud')==='fone');
-    slot.classList.toggle('rh-perfil-slot-tarot',tarot);
-    card=tarot?tarotCard(doc,last):profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
+    // The phone: the tarot card. The desktop: the pop-up book for the three arcana; a kind with neither pop-up nor dating
+    // profile (the sanfoneiro until its art) falls back to the tarot card.
+    const fone=options.tarot?.()??slot.closest('[data-hud]')?.getAttribute('data-hud')==='fone';
+    const pop=!fone&&!!ARCANOS[last.kind]?.pop,tarot=!pop&&(fone||!perfilOf(last.kind));
+    slot.classList.toggle('rh-perfil-slot-tarot',tarot);slot.classList.toggle('rh-perfil-slot-pop',pop);
+    card=pop?popCard(doc,last):tarot?tarotCard(doc,last):profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
       if(how==='curtir'){node.dataset.sai='curtir';closeTimer=setTimeout(close,700);}else close();
     });
     card.addEventListener('click',close);

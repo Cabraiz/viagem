@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,FOIL_TAROT,MOLDURA_TAROT,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles,tarotCard,ARCANOS} from '../../src/client/hud/perfis.ts';
+import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,FOIL_TAROT,MOLDURA_TAROT,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles,tarotCard,popCard,ARCANOS,LIVRO_POP} from '../../src/client/hud/perfis.ts';
 import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
@@ -111,8 +111,8 @@ test('the card never covers the hero, the Uno, the allies or the mission band: a
   assert.equal(placeProfiles(home,useful,[{x:0,y:0,width:390,height:844}]),undefined,'no room anywhere: no card');
 });
 
-test('tarot card: the ChatGPT frame and foil are light, the Cinzel font ships with its OFL, the three arcana',()=>{
-  for(const art of [MOLDURA_TAROT,FOIL_TAROT,...Object.values(ARCANOS).map(a=>a.arte)]){
+test('tarot card and pop-up book: the ChatGPT frame, foil, book and cut-outs are light, the Cinzel font ships with its OFL, the three arcana',()=>{
+  for(const art of [MOLDURA_TAROT,FOIL_TAROT,LIVRO_POP,...Object.values(ARCANOS).flatMap(a=>[a.arte,a.pop])]){
     const file=fileURLToPath(new URL(`../../public${art}`,import.meta.url));
     assert.ok(existsSync(file),`${art} ships`);
     assert.ok(statSync(file).size<=100_000,`${art} is ≤ 100 KB (phone)`);
@@ -155,4 +155,17 @@ test('the beggar as arcanum I: its Rider-Waite art, numeral and name, and its ki
   assert.equal(cls('rh-tarot-num')[0].textContent,'I');
   assert.equal(cls('rh-tarot-nome')[0].textContent,'O MENDIGO.');
   assert.ok(new MatchBook(undefined,()=>0).kill({kind:'mendigo',by:'p1',x:0,y:0},'p1'),'the beggar matches');
+});
+
+test('the desktop pop-up book: the cut-out on the open book and ONLY the name in the cartouche',()=>{
+  for(const kind of Object.keys(ARCANOS)){
+    const all=walk(popCard(fakeDoc(),{kind,distance:0,tilt:0}) as any);
+    const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+    assert.ok(cls('rh-pop').length&&cls('rh-perfil-compacto').length,kind);
+    assert.equal(cls('rh-pop-livro')[0].src,LIVRO_POP);
+    assert.equal(cls('rh-pop-figura')[0].src,ARCANOS[kind].pop);
+    assert.equal(cls('rh-pop-nome')[0].textContent,`${ARCANOS[kind].name.toLocaleUpperCase('pt-BR')}.`);
+    assert.equal(all.map(n=>n.textContent).filter(Boolean).length,1,'only the name');
+    assert.equal(all.filter(n=>n.tagName==='BUTTON').length,0,'no ✕/♥');
+  }
 });

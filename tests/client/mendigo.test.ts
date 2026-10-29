@@ -4,6 +4,7 @@ import {artPiece,loadArtManifest,parseArtIndex,setArtIndex} from '../../src/clie
 import {MENDIGO,gameEnemyArt,keepsOwnArt,withMendigo} from '../../src/client/art/mendigo.ts';
 import {enemyArtId,enemyPieceLoads} from '../../src/client/art/horde-art.ts';
 import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
+import {MENDIGO_NAME,enemyName,enemyNameTag,fallenByText} from '../../src/client/render/enemy-name-rules.ts';
 
 const raw={version:2,groups:{
   inimigos:{output:'public/art/enemies',pieces:{bebado:{kind:'animations',files:{walk:{file:'bebado/walk.webp',cell:[160,160]}}},chefe:{kind:'animations',files:{idle:{file:'chefe/idle.webp',cell:[384,384]}}}}},
@@ -47,4 +48,17 @@ test('só o mendigo: o carregamento do manifest põe a peça, e a horda pede só
     assert.equal(urls.length,9);
     assert.ok(urls.every(u=>u.startsWith('/art/lite/enemies/mendigo/')),urls.join());
   }finally{setArtIndex(parseArtIndex({}));}
+});
+test('só o mendigo: um nome só na tela, "Morador de Rua" (Mendigo é herói); chefões e saci com o nome próprio',()=>{
+  setArtIndex(withMendigo(parseArtIndex(raw)));
+  try{
+    for(const id of ['bebado','tio-pave','agiota','pombos'])assert.equal(enemyName(id),MENDIGO_NAME,id);
+    assert.equal(fallenByText('agiota'),'Te derrubou: Morador de Rua');
+    assert.equal(enemyNameTag('bebado',true,false),'Morador de Rua');
+    assert.equal(enemyName('chefe'),'Síndico Supremo');
+    for(const b of WAVE_BOSS_IDS)assert.notEqual(enemyName(b),MENDIGO_NAME,b);
+    assert.equal(enemyName('nao-existe'),undefined);
+  }finally{setArtIndex(parseArtIndex({}));}
+  // sem a peça (índice à mão), cada um com o seu
+  assert.equal(enemyName('tio-pave'),'Tio do Pavê');
 });

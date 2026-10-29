@@ -1,6 +1,6 @@
 /**
- * "You in the world" (UX-voce-e-dano): the local hero's ground ring with a beak toward where they face, the sticker
- * contour on their sprite, the mini health bar and the "Você" arrow, plus a see-through copy (85%) on top of the canopy
+ * "You in the world" (UX-voce-e-dano): the local hero's ground ring with a beak toward where they face, a thin
+ * contour on their sprite (heroi-contorno-fino), the mini health bar and the "Você" arrow, plus a see-through copy (85%) on top of the canopy
  * for any hero standing behind a tree.
  * Colors are palette tokens (src/client/ui/tokens.css): "você" is Lilás Janela (--c-voce) plus shape, never Amarelo (that is
  * only what you tap to choose; design onda 3 §0). Every layer is hard (no glow, no blur): Breu/Lilás/Papel bands, so at
@@ -9,35 +9,20 @@
  */
 import type Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
-import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,ringSize,spiralPoints} from './you-rules.ts';
+import {ARROW_MS,HP_BAR_CSS,LOW_HP,CONTOUR_DEPTH,HERO_CONTOUR,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,arrowFrame,beakPoints,clampFraction,contourLine,grownBeak,hpBarStep,ringBands,ringSize,spiralPoints,type ContourStyle} from './you-rules.ts';
 import {HEART_CSS,LOW_NUMBER_CSS,crackPoints,heartPoints,lowHpText,lowMarkLayout,lowMarkOn} from './low-hp-mark.ts';
 import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
-import {CITY_STICKER,baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
+import {baseDisplay,type VariantGeometry} from './city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from './draw-scale.ts';
 import type {VehicleKind} from '../../contract/index.ts';
 
-/**
- * What the markers ask of render/city-outline.ts CityOutlines: the city copy a sprite shows now, if any, and the city
- * "você" sticker baked for that copy (CITY_STICKER), once built.
- */
+/** What the markers ask of render/city-outline.ts CityOutlines: the city copy a sprite shows now, if any. */
 export interface MarkCopies {
   copyOf(key:string):{geom:VariantGeometry}|undefined;
-  sticker?(copyKey:string):{key:string;geom:VariantGeometry}|undefined;
 }
 
 type Sprite=Phaser.GameObjects.Sprite;
-
-/**
- * The city's offset-copy contour, drawn until the baked sticker of the copy on show is built (a clip seen for the first
- * time, or rebuilt after a zoom change): CITY_STICKER's bands at their outer distances (CSS px), outermost lowest, each
- * 8 tint-filled copies. With the island's two (Papel 2, Breu 3) the Breu outside the Papel was 1 px and dotted, so the
- * black looked gone for those frames (card corrida-proporcao-contorno). The first two bands share the island's tints.
- */
-export const CITY_CONTOUR=(()=>{
-  let r=0;const out=CITY_STICKER.map(b=>r+=b.css);
-  return [out[2],out[1],out[0]].map((radius,i)=>({r:radius,depth:-.25+i*.05}));
-})();
 
 type Pt={x:number;y:number};
 
@@ -78,13 +63,14 @@ export class YouMarkers {
   /** Hp number next to the low bar (low-hp-mark.ts): Papel with a Breu stroke. */
   private lowText:Phaser.GameObjects.Text;
   private ghosts=new Map<string,Sprite>();
-  /** Sticker contour of the local hero: 8 Breu copies (outer) and 8 Papel copies, tint-filled, under the sprite; the city adds 8 Breu (CITY_CONTOUR). */
+  /** Contour of the local hero: 8 tint-filled copies under the sprite, one line (you-rules.ts contourLine). */
   private contour:Sprite[]=[];
+  private contourStyle:ContourStyle=HERO_CONTOUR;
   private arrowAt=-Infinity;
   private fullSince:number|undefined;
   private readonly color={voce:tokenColor('--c-voce'),breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone'),cartolina:tokenColor('--c-cartolina')};
   /** Last frame, for the acceptance probe (dev) and tests of the scene wiring. */
-  readonly last={ring:false,bar:false,arrow:false,low:false,lowMark:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false,ride:undefined as VehicleKind|undefined};
+  readonly last={ring:false,bar:false,arrow:false,low:false,lowMark:false,covered:[] as string[],ghosts:0,contour:false,slow:false,slip:false,ride:undefined as VehicleKind|undefined};
   /** Scratch for the slip swirl (no allocation per frame). */
   private swirl=Array.from({length:14},()=>({x:0,y:0}));
   /** Imported "Você" ring (art/frames-art.ts heroi-voce); nothing is made without the art. */
@@ -94,9 +80,6 @@ export class YouMarkers {
   /** City copies (contorno-breu): the ring, arrow and chips size from the base frame even while the copy shows. */
   private copies?:MarkCopies;
   private figure={width:0,height:0,originX:0,originY:0};
-  /** City: the one sprite that shows the baked sticker in place of the 16 offset copies. */
-  private stickerSprite?:Sprite;
-  private stickerOrigin={x:0,y:0};
 
   constructor(scene:Phaser.Scene,reduced=false,copies?:MarkCopies){
     this.scene=scene;this.reduced=reduced;this.copies=copies;this.art=new FramesPool(scene);
@@ -111,19 +94,21 @@ export class YouMarkers {
   setReduced(reduced:boolean){this.reduced=reduced;}
   /** City mode on/off (the markers survive a world swap; the scene sets it every frame). */
   setCity(city:boolean){this.city=city;}
+  /** The contour's look ('traco' Breu, 'brilho' Lilás); HERO_CONTOUR by default. */
+  setContour(style:ContourStyle){this.contourStyle=style;}
   /** Start of a round or the local hero back on their feet: the "Você" arrow shows for ARROW_MS. */
   showArrow(now:number){this.arrowAt=now;}
 
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
     g.clear();this.ring.clear();this.art.begin();
-    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.lowMark=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;this.last.ride=undefined;
+    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.lowMark=false;this.last.covered=[];this.last.contour=false;this.last.slow=false;this.last.slip=false;this.last.ride=undefined;
     this.lowText.setVisible(false);
     const live=new Set<string>();
     let selfShown=false;
     for(const mark of marks){
       const sprite=mark.sprite;
-      // The sprite on top: the real one, or its 85% copy over the canopy. The sticker contour follows whichever it is.
+      // The sprite on top: the real one, or its 85% copy over the canopy. The contour follows whichever it is.
       let top:Sprite=sprite;
       if(mark.covered){
         live.add(mark.id);this.last.covered.push(mark.id);
@@ -205,7 +190,7 @@ export class YouMarkers {
         this.last.arrow=true;
       }
     }
-    if(!selfShown){for(const copy of this.contour)copy.setVisible(false);this.stickerSprite?.setVisible(false);}
+    if(!selfShown)for(const copy of this.contour)copy.setVisible(false);
     for(const [id,ghost] of this.ghosts)if(!live.has(id))ghost.setVisible(false);
     this.last.ghosts=live.size;
   }
@@ -279,38 +264,22 @@ export class YouMarkers {
   arrowLeft(now:number){return Math.max(0,ARROW_MS-(now-this.arrowAt));}
 
   /**
-   * Hard sticker contour (§2.4): tint-filled copies offset in 8 directions, Breu farther out, Papel inside, under `top`.
-   * City (contorno-breu): where `top` shows its city copy and the sticker is built, ONE sprite with the bands baked as
-   * true distances (CITY_STICKER: Papel 2, then a solid Breu 2 CSS px outermost), placed from the base frame like the
-   * ring (figureOf), so it hugs the figure exactly; the offset copies only before it is built (CITY_CONTOUR's three
-   * bands) and off the city (the island's two).
+   * The hero's thin contour (heroi-contorno-fino): 8 copies of `top` tint-filled with the line's colour, offset its
+   * width in 8 directions, under it. On a city copy they trace its Breu ring, so 'brilho' lies outside that ring and
+   * 'traco' needs none (the ring is the line).
    */
   private drawContour(top:Sprite,s:number){
-    const sticker=this.city&&this.copies?.copyOf(top.texture.key)?this.copies.sticker?.(top.texture.key):undefined;
-    if(sticker){
-      for(const copy of this.contour)copy.setVisible(false);
-      const fig=this.figureOf(top),g=sticker.geom,o=variantOrigin(g,fig.originX,fig.originY,this.stickerOrigin);
-      const sx=fig.width/g.cellW*g.kx*(top.scaleX<0?-1:1),sy=fig.height/g.cellH*g.ky*(top.scaleY<0?-1:1);
-      const sp=this.stickerSprite??=this.scene.add.sprite(0,0,sticker.key,top.frame.name);
-      if(sp.texture.key!==sticker.key)sp.setTexture(sticker.key,top.frame.name);
-      else if(sp.frame.name!==top.frame.name)sp.setFrame(top.frame.name);
-      sp.setOrigin(o.x,o.y).setScale(sx,sy).setFlipX(top.flipX).setRotation(top.rotation).setPosition(top.x,top.y)
-        .setDepth(top.depth-.2).setAlpha(top.alpha).setVisible(top.visible);
-      this.last.contour=top.visible;this.last.sticker=top.visible;
-      return;
-    }
-    this.stickerSprite?.setVisible(false);
-    const city=this.city,n=city?24:16;
-    while(this.contour.length<n){const i=this.contour.length;this.contour.push(this.scene.add.sprite(0,0,top.texture.key,top.frame.name).setTintFill(i<8||i>=16?this.color.breu:this.color.papel));}
-    const depth=top.depth;
+    const line=contourLine(this.contourStyle,this.city&&!!this.copies?.copyOf(top.texture.key)),n=line?8:0,color=line?this.color[line.token==='--c-voce'?'voce':'breu']:0;
+    while(this.contour.length<n)this.contour.push(this.scene.add.sprite(0,0,top.texture.key,top.frame.name));
     for(let i=0;i<this.contour.length;i++){
       const copy=this.contour[i];
       if(i>=n){copy.setVisible(false);continue;}
-      const dir=OUTLINE_DIRS[i%8],band=city?CITY_CONTOUR[i>>3]:undefined,r=(band?band.r:i<8?STICKER_CSS.breu:STICKER_CSS.papel)*s;
+      const dir=OUTLINE_DIRS[i],r=line!.css*s;
+      if(copy.tint!==color)copy.setTintFill(color);
       copy.setTexture(top.texture.key,top.frame.name).setOrigin(top.originX,top.originY).setScale(top.scaleX,top.scaleY).setFlipX(top.flipX).setRotation(top.rotation)
-        .setPosition(top.x+dir.x*r,top.y+dir.y*r).setDepth(depth+(band?band.depth:i<8?-.2:-.1)).setAlpha(top.alpha).setVisible(top.visible);
+        .setPosition(top.x+dir.x*r,top.y+dir.y*r).setDepth(top.depth+CONTOUR_DEPTH).setAlpha(top.alpha).setVisible(top.visible);
     }
-    this.last.contour=top.visible;
+    this.last.contour=n>0&&top.visible;
   }
 
   private ghost(id:string,sprite:Sprite){
@@ -319,5 +288,5 @@ export class YouMarkers {
     return ghost;
   }
   forget(id:string){this.ghosts.get(id)?.destroy();this.ghosts.delete(id);}
-  destroy(){this.art.destroy();this.g.destroy();this.ring.destroy();this.label.destroy();this.lowText.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
+  destroy(){this.art.destroy();this.g.destroy();this.ring.destroy();this.label.destroy();this.lowText.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;}
 }

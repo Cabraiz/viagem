@@ -8,8 +8,9 @@ import {CityOutlines,type CityOutlineHost} from '../../src/client/render/city-ou
 import {bandsRgba,outlineRgba} from '../../src/client/render/outline.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
-import {CITY_CONTOUR,YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
-import {OUTLINE_DIRS,RING_UNDER,STICKER_CSS} from '../../src/client/render/you-rules.ts';
+import {YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
+import {CONTOUR_DEPTH,HERO_CONTOUR,HERO_LINE_CSS,OUTLINE_DIRS,RING_UNDER} from '../../src/client/render/you-rules.ts';
+import {tokenColor} from '../../src/client/ui/tokens.ts';
 import {ENEMY_KINDS,ENEMY_TEXTURES,PICKUP_KINDS,enemyTexture,pickupTexture} from '../../src/client/render/keys.ts';
 import {ELITE_ART_SCALE,applyEnemyArt,enemyArtKey,enemyDrawScale} from '../../src/client/art/horde-art.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
@@ -455,52 +456,38 @@ test('city "você" sticker, pure: Papel then a SOLID Breu band whose outer 2 CSS
   }
 });
 
-test('city "você" sticker in YouMarkers: one baked sprite, figure px on the copy\'s, flipped or not; island path unchanged',()=>{
-  for(const flip of [false,true]){
-    const {f,out,base,copy,h,v}=heroPair(flip);
+test('"você" contour in YouMarkers (heroi-contorno-fino): one thin line of 8 copies; on the city copy its own Breu ring is the line',()=>{
+  const {out,base,copy,h}=heroPair(true),s=1/h.z;
+  const breu=tokenColor('--c-breu'),voce=tokenColor('--c-voce');
+  const draw=(sprite:FakeSprite,city:boolean,style?:'traco'|'brilho')=>{
     const m=markerScene(sizeIn(out)),you=new YouMarkers(m.scene as never,true,out);
-    you.setCity(true);
-    // The frame that built the copy cannot build the sticker too (one build per frame): offset copies meanwhile, with
-    // the sticker's three bands (corrida-proporcao-contorno: Breu outermost, Papel, Breu), not the island's thin Breu.
-    you.update(100,h.z,[selfMark(copy)]);
-    assert.equal(you.last.sticker,false);assert.equal(m.sprites.length,24);
-    const s=1/h.z;
+    you.setCity(city);if(style)you.setContour(style);you.update(100,h.z,[selfMark(sprite)]);
+    return {m,you};
+  };
+  assert.equal(HERO_CONTOUR,'traco');assert.equal(HERO_LINE_CSS,1);
+  // The city copy already carries CITY_RING (Breu, the line every figure has): no copy, no Papel band, no sticker.
+  const ringed=draw(copy,true);
+  assert.equal(ringed.m.sprites.length,0);assert.equal(ringed.you.last.contour,false);
+  const cases:[FakeSprite,boolean,'traco'|'brilho',number][]=[
+    [base,true,'traco',breu],  // the city before the copy is built: the line on the base frame
+    [base,false,'traco',breu], // off the city (island, endless map)
+    [copy,true,'brilho',voce], // Lilás outside the copy's Breu ring
+    [base,false,'brilho',voce],
+  ];
+  for(const [sprite,city,style,color] of cases){
+    const {m,you}=draw(sprite,city,style),r=HERO_LINE_CSS*s;
+    assert.equal(m.sprites.length,8,`${style} city ${city}`);assert.equal(you.last.contour,true);
     m.sprites.forEach((c,i)=>{
-      const band=CITY_CONTOUR[i>>3],dir=OUTLINE_DIRS[i%8];
-      assert.equal(c.tint,i<8||i>=16?0x1e1530:0xeeddb8);
-      assert.deepEqual([c.x,c.y,c.depth,c.visible],[copy.x+dir.x*band.r*s,copy.y+dir.y*band.r*s,copy.depth+band.depth,true]);
-    });
-    assert.deepEqual(CITY_CONTOUR.map(b=>b.r),[CITY_STICKER_CSS,CITY_RING.cssPx+2,CITY_RING.cssPx]);
-    assert.ok(CITY_CONTOUR.every((b,i)=>b.depth<0&&b.depth>-RING_UNDER&&(!i||b.depth>CITY_CONTOUR[i-1].depth)),'outermost lowest, over the ring');
-    f.next();you.update(116,h.z,[selfMark(copy)]);
-    assert.equal(you.last.sticker,true);
-    const sticker=m.sprites[24],st=out.copyOf(sticker.texture.key)!;
-    assert.ok(isCityKey(sticker.texture.key)&&sticker.texture.key!==copy.texture.key);
-    assert.ok(m.sprites.slice(0,24).every(s=>!s.visible),'offset copies hidden');
-    assert.ok(sticker.visible&&sticker.depth<copy.depth&&sticker.flipX===flip);
-    assert.equal(st.geom.kx,v.geom.kx);assert.equal(st.geom.ky,v.geom.ky);assert.deepEqual(st.geom.crop,v.geom.crop);
-    assert.ok(st.geom.pad>=Math.ceil(CITY_STICKER_CSS*st.geom.perCss)+1);
-    const box=spriteCatalog.porteiro.figure!;
-    for(const p of [box.left,box.right,96]){
-      close(worldX(sticker,copyX(st.geom,p)),worldX(copy,copyX(v.geom,p)),`flip ${flip} x ${p}`);
-      close(worldX(sticker,copyX(st.geom,p)),worldX(base,p),`flip ${flip} x ${p} (base)`);
-    }
-    for(const p of [box.top,box.bottom])close(worldY(sticker,copyY(st.geom,p)),worldY(base,p),`y ${p}`);
-  }
-  // Off the city (the island, the endless map): the 16 tint-filled offset copies exactly as before, no sticker sprite,
-  // even with the outlines wired and a sticker available.
-  const {out,base,copy,h}=heroPair(true);
-  for(const sprite of [base,copy]){
-    const m=markerScene(sizeIn(out)),you=new YouMarkers(m.scene as never,true,out),s=1/h.z;
-    you.setCity(false);you.update(100,h.z,[selfMark(sprite)]);
-    assert.equal(m.sprites.length,16);assert.equal(you.last.sticker,false);
-    m.sprites.forEach((c,i)=>{
-      const dir=OUTLINE_DIRS[i%8],r=(i<8?STICKER_CSS.breu:STICKER_CSS.papel)*s;
-      assert.equal(c.texture.key,sprite.texture.key);assert.equal(c.tint,i<8?0x1e1530:0xeeddb8);
-      assert.deepEqual([c.x,c.y,c.originX,c.originY,c.scaleX,c.scaleY,c.flipX,c.depth],
-        [sprite.x+dir.x*r,sprite.y+dir.y*r,sprite.originX,sprite.originY,sprite.scaleX,sprite.scaleY,sprite.flipX,sprite.depth-(i<8?.2:.1)]);
+      const dir=OUTLINE_DIRS[i];
+      assert.equal(c.texture.key,sprite.texture.key);assert.equal(c.tint,color);
+      assert.deepEqual([c.x,c.y,c.originX,c.originY,c.scaleX,c.scaleY,c.flipX,c.depth,c.visible],
+        [sprite.x+dir.x*r,sprite.y+dir.y*r,sprite.originX,sprite.originY,sprite.scaleX,sprite.scaleY,sprite.flipX,sprite.depth+CONTOUR_DEPTH,true]);
     });
   }
+  assert.ok(CONTOUR_DEPTH<0&&CONTOUR_DEPTH>-RING_UNDER,'under the sprite, over the ring on the ground');
+  // Switching to the city copy hides the copies (the ring takes over), with no new sprites.
+  const {m,you}=draw(base,true);you.update(116,h.z,[selfMark(copy)]);
+  assert.equal(m.sprites.length,8);assert.ok(m.sprites.every(c=>!c.visible));assert.equal(you.last.contour,false);
 });
 
 // Last in the file: the page's outline worker is created once and kept, so every test above runs the sync path.

@@ -6,9 +6,10 @@
     <meta name="theme-color" content="#5B3F8C" />
     <!-- seo-natural (NEW-20261023-ORQ-seo-natural, docs/seo.md): English head for people everywhere; the game's own text
          is pt-BR, so <html lang> stays pt-BR and there is no hreflang (no /pt or /es pages). Everything here is true in the
-         game: up to six players (protocol/room.ts MAX_PLAYERS), the three open heroes (rules/personagens-liberados.ts).
-         tests/tools/seo-head.test.ts keeps the tone rules (no superlatives, no "!", description <= 155). -->
-    <meta name="description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
+         game: up to six players (protocol/room.ts MAX_PLAYERS), the six open heroes (rules/personagens-liberados.ts;
+         tests/client/site-paginas.test.ts counts them). tests/tools/seo-head.test.ts keeps the tone rules (no superlatives,
+         no "!", description <= 155). -->
+    <meta name="description" content="A free browser game for up to six players. You survive waves of creatures in a city as one of six city characters, from a gambler to a hungry cat." />
     <link rel="canonical" href="https://viagem.cyou/" />
     <!-- icone-uno-2b (NEW-20261023-ORQ-icone-uno-2b, docs/seo.md): the 2B logo (the Uno on a snowy V street, 16-bit). The
          .ico carries a hand-drawn 16 px (the reduced one is a smudge); Google's search icon uses the 48/96/192 PNGs. -->
@@ -18,11 +19,40 @@
     <link rel="icon" type="image/png" href="/icon-192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- site-textos-404-sobre (NEW-20261029-ORQ-site-textos-404-sobre): the home screen shortcut on iOS. The name under
+         the icon, the status bar over the dark menu, and a startup screen (the logo on the menu's purple) per iPhone size
+         instead of a white flash; scripts/ios-splash.mjs makes public/splash/, tests/client/site-paginas.test.ts checks it. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="viagem" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- ios-splash:begin (scripts/ios-splash.mjs) -->
+    <link rel="apple-touch-startup-image" href="/splash/1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2868x1320.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2622x1206.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2796x1290.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2556x1179.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2778x1284.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2532x1170.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2436x1125.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/2688x1242.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/1792x828.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+    <link rel="apple-touch-startup-image" href="/splash/750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/1334x750.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+    <!-- ios-splash:end -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="viagem" />
     <meta property="og:url" content="https://viagem.cyou/" />
     <meta property="og:title" content="viagem: co-op survival in the browser" />
-    <meta property="og:description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
+    <meta property="og:description" content="A free browser game for up to six players. You survive waves of creatures in a city as one of six city characters, from a gambler to a hungry cat." />
     <meta property="og:image" content="https://viagem.cyou/og.jpg?v=2b" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -31,12 +61,12 @@
     <meta property="og:locale:alternate" content="pt_BR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="viagem: co-op survival in the browser" />
-    <meta name="twitter:description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
+    <meta name="twitter:description" content="A free browser game for up to six players. You survive waves of creatures in a city as one of six city characters, from a gambler to a hungry cat." />
     <meta name="twitter:image" content="https://viagem.cyou/og.jpg?v=2b" />
     <meta name="twitter:image:alt" content="The viagem logo: a snowy city street shaped like a V, with a small boxy car." />
     <script type="application/ld+json">
       {"@context":"https://schema.org","@type":"VideoGame","name":"viagem","url":"https://viagem.cyou/","image":"https://viagem.cyou/og.jpg?v=2b",
-       "description":"A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat.",
+       "description":"A free browser game for up to six players. You survive waves of creatures in a city as one of six city characters, from a gambler to a hungry cat.",
        "genre":"Survival","gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","inLanguage":"pt-BR",
        "playMode":["SinglePlayer","CoOp"],"numberOfPlayers":{"@type":"QuantitativeValue","minValue":1,"maxValue":6},
        "offers":{"@type":"Offer","price":"0","priceCurrency":"USD","availability":"https://schema.org/InStock"}}

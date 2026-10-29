@@ -5,6 +5,7 @@
  */
 import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
+import './coach/dicas.css';
 import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';

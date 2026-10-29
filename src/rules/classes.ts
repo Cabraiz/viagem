@@ -51,8 +51,12 @@ export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['viciado-em-
  * asking for one of them plays a playable class (playableClassId), never an error.
  */
 export const LEGACY_CLASS_IDS: readonly string[] = Object.freeze(classes.map(hero => hero.id).filter(id => !PLAYABLE_CLASS_IDS.includes(id)));
-/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now; the vendedor and the aposentado until their 8-direction walk128 art). */
-export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer','vendedor-praia','aposentado']);
+/**
+ * Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now). The vendedor and the aposentado are bots
+ * since bots-vendedor-aposentado: their M16 sheets cover the 8 directions (3 mirrored), the same clips the viciado and the
+ * maromba walk on (movementPlan takes M16 first, so a walk128 would never show).
+ */
+export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer']);
 /** The classes a room bot may get: the playable ones minus NOT_FOR_BOTS, in the roster's order. */
 export const BOT_CLASS_IDS: readonly string[] = Object.freeze(PLAYABLE_CLASS_IDS.filter(id => !NOT_FOR_BOTS.includes(id)));
 /** The playable classes, in the roster's order. */

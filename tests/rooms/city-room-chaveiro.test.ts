@@ -113,7 +113,9 @@ test('ACCEPTANCE (D-047): a city room with three bots and a person plays the cha
   for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective)last=r.view.objective;}
   assert.ok(last,'frames carry the objective');
   assert.equal(last!.route.length,start.route.length,'the static route came through');
-  assert.ok(Math.abs(last!.etaS-end.etaS)<=2,`the phone's ETA ${last!.etaS} vs ${end.etaS}`);
+  // A finished run's last frame is the moment it ended: the bill's ETA (the view after a defeat reads 0).
+  const lastEta=state.phase==='result'&&state.objective?state.objective.eta:end.etaS;
+  assert.ok(Math.abs(last!.etaS-lastEta)<=2,`the phone's ETA ${last!.etaS} vs ${lastEta}`);
   // A finished run carries the bill.
   if(state.phase==='result'){
     assert.ok(state.objective,'the result carries the objective');

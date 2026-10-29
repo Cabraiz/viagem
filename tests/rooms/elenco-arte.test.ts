@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL,ELENCO_MAX,parseElenco} from '../../src/protocol/room.ts';
-import {ROSTER,ROTATION_SIZE} from '../../src/rules/index.ts';
+import {INIMIGOS_LIBERADOS,MINI_COUNT,ROSTER,ROSTER_ONLY_LIBERADOS,ROTATION_SIZE} from '../../src/rules/index.ts';
 
 function peer(){
   const messages:any[]=[];
@@ -31,7 +31,9 @@ test('the room sends the drawn rotation once when the run draws it, and to a joi
   const sent=elencos(a);
   assert.equal(sent.length,1,'once per rotation, not per tick');
   const ids:string[]=sent[0].ids,known=new Set(ROSTER.map(r=>r.id));
-  assert.ok(ids.length>=ROTATION_SIZE.min&&ids.length<=ROTATION_SIZE.max+2,`${ids.length} ids`);
+  // Só 3 inimigos (ROSTER_ONLY_LIBERADOS): the liberated ones and the drawn minis; the hidden roster: a full rotation.
+  if(ROSTER_ONLY_LIBERADOS)assert.ok(INIMIGOS_LIBERADOS.every(id=>ids.includes(id))&&ids.length<=INIMIGOS_LIBERADOS.length+MINI_COUNT,`${ids.join()}`);
+  else assert.ok(ids.length>=ROTATION_SIZE.min&&ids.length<=ROTATION_SIZE.max+2,`${ids.length} ids`);
   assert.ok(ids.every(id=>known.has(id)),'roster ids');
   assert.deepEqual(ids,room.sim.rotationIds());
   assert.deepEqual(parseElenco(sent[0]),ids,'the client reads it whole');

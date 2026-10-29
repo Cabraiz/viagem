@@ -58,14 +58,17 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio .menu-tela-cheia[hidden] { display: none; }
 .estadio .menu-tela-cheia:active { transform: translateY(2px); }
 
-/* The privacy policy (anuncios-h5-games, AdSense): a quiet link in the bottom-left corner, under
-   the choice column (centred) and away from the hero's feet. */
-.estadio .menu-privacidade {
+/* The privacy policy (anuncios-h5-games, AdSense) and the about page (site-textos-404-sobre): quiet links in the
+   bottom-left corner, under the choice column (centred) and away from the hero's feet. */
+.estadio .menu-rodape {
   position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; gap: 12px;
+}
+.estadio .menu-rodape a {
   padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
   text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);
 }
-.estadio .menu-privacidade:hover, .estadio .menu-privacidade:focus-visible { opacity: 1; text-decoration: underline; }
+.estadio .menu-rodape a:hover, .estadio .menu-rodape a:focus-visible { opacity: 1; text-decoration: underline; }
 
 /* The choice: title, class, row, name, button. Left column on a wide screen. */
 .estadio-escolha {
@@ -281,7 +284,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   padding-top: 0; padding-bottom: 8px;
 }
 .estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
-.estadio:has(.estadio-escolha[data-teclado]) .menu-privacidade { display: none; }
+.estadio:has(.estadio-escolha[data-teclado]) .menu-rodape { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }
 #explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

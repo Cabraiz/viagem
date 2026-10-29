@@ -1,5 +1,5 @@
 {
-  "_comment": "pt-BR copy of the enemy roster (D-033 tone), merged with the board packs by scripts/import-roster.mjs. P0: barks (4, <=30), death (3, <=30), pop (ALL CAPS, <=21), gag (<=60). P1/P2: gag only. names: display-name overrides (reason in the import script).",
+  "_comment": "pt-BR copy of the enemy roster (D-033 tone), merged with the board packs by scripts/import-roster.mjs. P0: barks (4, <=30), death (3, <=30), pop (ALL CAPS, <=21), gag (<=60). P1/P2: gag only. names: display-name overrides (reason in the import script). held: P0 copy of the entries kept out of the wave draw (HELD in the import script).",
   "names": {
     "peladeiro-de-vidro": "Boleiro com Joelho de Vidro",
     "guru-do-linkedin": "Guru do Networking",
@@ -16,6 +16,14 @@
     "motoboy": {"gag": "Freia no poste e espalha o pedido pela rua toda"},
     "influencer": {"gag": "A panturrilha estoura ao vivo, no melhor ângulo"},
     "chefe": {"gag": "Lavra a própria morte em ata e é despejado"}
+  },
+  "held": {
+    "sanfoneiro": {
+      "barks": ["Bora arrastar o pé, meu povo!","Anarriê! Pro meio do salão!","Quadrilha não tem saída!","Ninguém sai antes do forró"],
+      "death": ["Furou o fole, acabou o forró","Desafinei pra sempre...","Quem toca no São João agora?"],
+      "pop": "FOLE FURADO!",
+      "gag": "A sanfona dá um último fom-fom e se fecha sozinha"
+    }
   },
   "entries": {
     "flanelinha-interdimensional": {

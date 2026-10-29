@@ -30,6 +30,7 @@ import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
+import {RELOAD_WEAPONS,hasReloadStrip,reloadFrame,reloadKey,reloadUrl,type ReloadClock} from './reload-strip.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
 import {THROW_MS} from '../../rules/index.ts';
 import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
@@ -120,6 +121,8 @@ export class ArsenalFx{
   private arcs:Phaser.GameObjects.Graphics;
   private hands=new Map<string,{image:Image;sil:Image;grip:Image;icon:string;seen:number}>();
   private handOf=new Map<string,string>();
+  /** Heroes reloading the weapon in hand (render/reload-strip.ts): the hand shows the strip's frame. */
+  private reloadOf=new Map<string,ReloadClock>();
   private shots:Ring<ShotFx>;
   private pellets:Ring<PelletFx>;
   private spread:{angle:number;reach:number}[]=[];private pelletSeed=0;
@@ -177,7 +180,7 @@ export class ArsenalFx{
   /** Per authoritative view: is this the manual combat, who holds what (and the art, the first time). */
   push(view:RunView){
     let manual=false;
-    this.handOf.clear();this.canOpen.clear();this.selfCone=undefined;this.auraOf.clear();
+    this.handOf.clear();this.reloadOf.clear();this.canOpen.clear();this.selfCone=undefined;this.auraOf.clear();
     const car=view.objective?.car,me=this.options.selfId?.();
     for(const p of view.players){
       const aura=p.spectator||p.eliminated||p.downed?0:auraRingRadius(p);
@@ -187,6 +190,7 @@ export class ArsenalFx{
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
       const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id,p.weapons[p.hand]?.level);
       if(icon)this.handOf.set(p.id,icon);
+      if(icon&&p.reloadUntil!==undefined&&p.reloadUntil>view.tick)this.reloadOf.set(p.id,{until:p.reloadUntil,ticks:p.reloadTicks??0,tick:view.tick,at:this.now});
       if(p.id===me){const weapon=p.weapons[p.hand]?.id,cone=weapon&&meleeCone(weapon,p,p.classId);if(cone)this.selfCone={weapon,...cone};}
     }
     this.manual=manual;
@@ -319,15 +323,19 @@ export class ArsenalFx{
     const {projector}=this.options,b=this.body,now=this.now;
     for(const [id,icon] of this.handOf){
       const at=this.options.locate?.(id);if(!at||this.options.away?.(id))continue;
-      const key=iconKey(icon);if(!this.scene.textures.exists(key))continue;
+      let key=iconKey(icon),frame:number|undefined;if(!this.scene.textures.exists(key))continue;
+      // Reloading: the strip's frame instead of the icon (same size and grip; the dourada edition keeps its icon).
+      const reload=this.reloadOf.get(id),f=reload&&hasReloadStrip(icon)?reloadFrame(reload,now):undefined;
+      if(f!==undefined&&this.scene.textures.exists(reloadKey(icon))){key=reloadKey(icon);frame=f;}
       let hand=this.hands.get(id);
       if(!hand){
         hand={image:this.track(this.scene.add.image(0,0,key).setDepth(HAND_DEPTH)),sil:this.track(silhouetteImage(this.scene,key,HAND_SIL_DEPTH)),
           grip:this.track(this.scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false)),icon:'',seen:0};
         this.hands.set(id,hand);
       }
-      if(hand.icon!==icon){hand.icon=icon;hand.sil.setTexture(key);}
-      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,this.scene.textures.getFrame(key)?.width??1),held=this.options.hand?.(id);
+      const shown=frame===undefined?key:`${key}#${frame}`;
+      if(hand.icon!==shown){hand.icon=shown;hand.sil.setTexture(key,frame);}
+      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,this.scene.textures.getFrame(key,frame)?.width??1),held=this.options.hand?.(id);
       let dx=HAND_DX*b,dy=HAND_DY*b,k=HAND_PX*b/w,rotation=0,flipX=false,flipY=false,ox=.5,oy=.5,depth=HAND_DEPTH;
       if(held){
         const hold=WEAPON_HOLD[plainIcon(icon)]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
@@ -338,8 +346,8 @@ export class ArsenalFx{
       // Held (card arma-na-mao): the matte copy in the figure's light and, in the city, the heroes' ring; the side
       // sticker keeps the icon as it was.
       const look=held?this.heldTexture(key):key,outlines=held?this.options.cityOutlines:undefined;
-      if(!outlines?.show(hand.image,outlines.variant(look,k),look,undefined,ox,oy,k,k)){
-        if(hand.image.texture.key!==look)hand.image.setTexture(look);
+      if(!outlines?.show(hand.image,outlines.variant(look,k),look,frame,ox,oy,k,k)){
+        if(hand.image.texture.key!==look||(frame!==undefined&&hand.image.frame.name!==String(frame)))hand.image.setTexture(look,frame);
         hand.image.setOrigin(ox,oy).setScale(k);
       }
       if(held)hand.image.setTint(held.behind?HELD_TINT.behind:HELD_TINT.front);else hand.image.clearTint();
@@ -372,7 +380,10 @@ export class ArsenalFx{
     image.setPosition(p.x,p.y).setOrigin(p.ox,p.oy).setScale(p.sx,p.sy).setFlipX(p.flip).setCrop(...p.crop)
       .setDepth(depth+HELD_DEPTH.front/2).setVisible(true).setActive(true);
   }
-  /** The held look of an icon texture (hand-points.ts heldLook), baked once into `<key>:mao`; the icon until it can be. */
+  /**
+   * The held look of an icon texture (hand-points.ts heldLook), baked once into `<key>:mao`, with the source's frames (a
+   * reload strip); the icon until it can be.
+   */
   private heldTexture(key:string){
     const textures=this.scene.textures,held=`${key}:mao`;
     if(textures.exists(held))return held;
@@ -380,7 +391,10 @@ export class ArsenalFx{
     const tex=src.width>0&&src.height>0?textures.createCanvas(held,src.width,src.height):null;
     if(!tex)return key;
     const c=tex.getContext(),data=(c.drawImage(src,0,0),c.getImageData(0,0,src.width,src.height));
-    heldLook(data.data);c.putImageData(data,0,0);tex.refresh();
+    heldLook(data.data);c.putImageData(data,0,0);
+    const source=textures.get(key);
+    for(const name of source.getFrameNames()){const f=source.get(name);tex.add(name,0,f.cutX,f.cutY,f.cutWidth,f.cutHeight);}
+    tex.refresh();
     return held;
   }
   private queueArt(){
@@ -393,6 +407,12 @@ export class ArsenalFx{
         load.image(`${l.key}:src`,l.url);
         load.once(`filecomplete-image-${l.key}:src`,()=>this.cutStrip(`${l.key}:src`,l.key));
       }else load.image(l.key,l.url);
+      any=true;
+    }
+    for(const icon of RELOAD_WEAPONS){
+      const key=reloadKey(icon);if(this.scene.textures.exists(key))continue;
+      load.image(`${key}:src`,reloadUrl(icon));
+      load.once(`filecomplete-image-${key}:src`,()=>this.cutStrip(`${key}:src`,key));
       any=true;
     }
     if(any&&!load.isLoading())load.start();

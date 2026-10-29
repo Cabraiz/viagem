@@ -199,7 +199,8 @@ const veiculos=tele&&params.get('veiculos')==='1';
 /**
  * `arsenal=1` (with tele=1; card armas-caixas-render, D-051): the manual combat's crates by rarity, one opening under the
  * hero and one bursting open, items on the ground, the hero's hand and the arsenal's shots (sandboxes/arsenal-view.ts);
- * `arma=pistola|escopeta|…` fixes the weapon (default: all seven in turn).
+ * `arma=pistola|escopeta|…` fixes the weapon (default: all seven in turn); `recarga=1` (card animacoes-de-recarga): it fires a
+ * second, reloads (its reload strip in the hand), and again.
  */
 const arsenal=tele&&params.get('arsenal')==='1';
 /**
@@ -860,7 +861,7 @@ class CitySandbox extends Phaser.Scene {
   private drawLab(time:number,dt:number){
     const lab=this.lab;if(!lab)return;
     lab.projector.view=this.view;
-    if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma'),Number(params.get('aura')??0)||0));}}
+    if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma'),Number(params.get('aura')??0)||0,params.get('recarga')==='1'));}}
     if(lab.nests){
       // The band wakes (asleep → awake: layers.ts plays `wake`), again every NEST_WAKE_MS; the modo foto's clock is fixed.
       const now=fotoT??time,step=fotoT!==undefined?0:Math.floor(time/NEST_WAKE_MS);

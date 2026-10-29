@@ -29,12 +29,24 @@ export const ALLY_PRIZE='macarico';
 /** The weapon shown at `timeMs`: `arma` when it is one of the arsenal's shots, else the cycle. */
 export const sandboxWeapon=(arma:string|null,timeMs:number)=>arma&&FIRE_LOOK[arma]?arma:CYCLE[Math.floor(timeMs/(FIRE_EVERY_MS*3))%CYCLE.length];
 
+/** Reload seconds per firearm (sim/weapons/arsenal.ts MAGAZINES, card pente-e-recarga), for `recarga=1`. */
+const RELOAD_S:Record<string,number>={pistola:1,escopeta:1.6,submetralhadora:1.4,rifle:1.5,macarico:1.8,rojao:2};
+/** `recarga=1` (card animacoes-de-recarga): the hero fires FIRE_BEFORE_RELOAD_MS, reloads, holds the icon a beat, again. */
+const FIRE_BEFORE_RELOAD_MS=1000,AFTER_RELOAD_MS=600;
+/** The reload at `timeMs` for `weapon` under `recarga=1`: its start and length (ms), or undefined (firing or holding). */
+export function sandboxReload(weapon:string,timeMs:number):{start:number;ms:number}|undefined{
+  const ms=(RELOAD_S[weapon]??0)*1000;if(!ms)return undefined;
+  const period=FIRE_BEFORE_RELOAD_MS+ms+AFTER_RELOAD_MS,start=Math.floor(timeMs/period)*period+FIRE_BEFORE_RELOAD_MS;
+  return timeMs>=start&&timeMs<start+ms?{start,ms}:undefined;
+}
+
 /** `aura=N` (upgrades-megabonk): the hero and the ally carry the Defumador at level N (its smoke on the ground; the ally's fainter). */
-export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:string|null,aura=0):RunView{
+export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:string|null,aura=0,recarga=false):RunView{
   const tick=100+Math.floor(timeMs/50),step=Math.floor(timeMs/ARSENAL_PUSH_MS),weapon=sandboxWeapon(arma,timeMs);
   const target={x:x+1.5,y:y-.2}; // the agiota of the lab's view
   const crates:PickupView[]=[1,2,3,4,5].map((rarity,i)=>({id:`bau-${rarity}`,kind:'chest',value:rarity,resource:CRATE_ITEMS[i],x:x-2.4+i*1.2,y:y+2.6-Math.abs(i-2)*.35}));
-  crates.push({id:'bau-aqui',kind:'chest',value:3,resource:'rifle',x:x+.75,y:y+.45});
+  // recarga=1: no crate opening under the hero, its prize would cover the weapon in the hand.
+  if(!recarga)crates.push({id:'bau-aqui',kind:'chest',value:3,resource:'rifle',x:x+.75,y:y+.45});
   const cycle=Math.floor(timeMs/BURST_EVERY_MS),burstAt=(cycle+1)*BURST_EVERY_MS-BURST_GONE_MS,prize=SELF_PRIZES[cycle%SELF_PRIZES.length];
   const events:(SimEvent&{eventId:number})[]=[];
   if(timeMs<burstAt)crates.push({id:`bau-abre-${cycle}`,kind:'chest',value:prize.rarity,resource:prize.item,x:x-1.9,y:y+.9});
@@ -52,7 +64,8 @@ export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:st
   const opened=timeMs>=burstAt;
   if(opened&&prize.chao)items.push({id:`it-kit-${cycle}`,kind:'item',resource:prize.item,value:1,x:x-1.9,y:y+.9});
   const fired=Math.floor(timeMs/FIRE_EVERY_MS);
-  if(timeMs-fired*FIRE_EVERY_MS<ARSENAL_PUSH_MS){
+  const reload=recarga?sandboxReload(weapon,timeMs):undefined;
+  if(!reload&&timeMs-fired*FIRE_EVERY_MS<ARSENAL_PUSH_MS){
     const look=FIRE_LOOK[weapon],dx=target.x-x,dy=target.y-y,len=Math.hypot(dx,dy);
     events.push({type:'fire',player:SANDBOX_SELF,weapon,x,y,...(look.kind==='blast'?{dx,dy}:{dx:dx/len,dy:dy/len}),eventId:step*4+2});
   }
@@ -64,7 +77,8 @@ export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:st
   else if(FIRE_LOOK[weapon].kind==='muzzle')projectiles.push({id:`p-${fired}`,source:weapon,x:x+(target.x-x)*t,y:y+(target.y-y)*t,vx:(target.x-x)*2,vy:(target.y-y)*2,radius:.22,hostile:false});
   const self:PlayerRunView={id:SANDBOX_SELF,name:'Você',classId:'concursado',hp:80,maxHp:100,online:true,spectator:false,
     weapons:[{id:'faca',level:1},{id:weapon,level:3},{id:'coxinha',level:2},...(opened&&!prize.chao?[{id:prize.item,level:prize.rarity}]:[])],
-    passives:aura>0?[{id:'defumador',level:aura}]:[],hand:1};
+    passives:aura>0?[{id:'defumador',level:aura}]:[],hand:1,
+    ...(reload?{mag:0,reloadUntil:100+Math.round((reload.start+reload.ms)/50),reloadTicks:Math.round(reload.ms/50)}:{})};
   const parca:PlayerRunView={id:SANDBOX_ALLY,name:'Parça',classId:'merendeira',hp:100,maxHp:100,online:true,spectator:false,
     weapons:[{id:'escopeta',level:2},{id:'pacoca',level:1},...(timeMs>=allyBurst?[{id:ALLY_PRIZE,level:2}]:[])],passives:aura>0?[{id:'defumador',level:aura}]:[],hand:0};
   return {...base,tick,players:[self,parca],pickups:[...base.pickups,...crates,...items],projectiles,events};

@@ -5,6 +5,8 @@
  * holds every group's manifest: {version:2, groups:{[group]:{output, pieces:{[id]:ArtPiece}}}}.
  * Pure (no Phaser, no DOM): renderers ask `artPiece(group,id)` / `artUrl(group,file)`; loading is `loadArtManifest`.
  */
+import {trocarInimigos} from './teste-inimigo.ts';
+
 export interface ArtPage {file:string;columns:number;rows:number;firstFrame:number;frameCount:number}
 export interface ArtFile {
   /** Single-page sheet, relative to the group's output folder. */
@@ -149,6 +151,7 @@ export function parseArtIndex(value:unknown,pc=false):ArtIndex{
   }
   return {version:2,groups};
 }
+
 
 /** Replaces the current index (tests, or the loader). */
 /** Bumped at every index change: parts drawn before the index arrived (HUD faces) redraw when it moves. */

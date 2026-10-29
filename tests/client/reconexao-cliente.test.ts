@@ -468,3 +468,84 @@ test('f5-volta-pra-sala: the address carries the room from the welcome until the
     assert.equal(calls.length,2);
   }finally{delete g.location;delete g.history;stop();cleanup();}
 });
+
+/** A full frame (base 0) cut short after its header: what a 3G stall can hand the page; it never decodes. */
+const brokenFull=()=>new Uint8Array([0x56,41,0xff,0xff,0xff,0x7f,0,1,0,0]).buffer;
+async function inCombat(){
+  const ana=client();await ana.join();ana.ready(true);
+  for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+  assert.equal(ana.run?.phase,'combat');
+  return ana;
+}
+
+test('nao-e-versao-nova: full frames that never decode after a stall renew the link (same seat, playing), never "Saiu versão nova"',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  const {UPDATE_NEEDED}=await import('../../src/protocol/room.ts');
+  try{
+    const ana=await inCombat();const id=ana.id;
+    for(let round=0;round<3;round++){
+      const old=sockets(ana),from=Date.now();
+      for(let i=0;i<3;i++)old.onmessage?.({data:brokenFull()});
+      while(Date.now()-from<5000&&!(ana.connected&&sockets(ana)!==old))await sleep(10);
+      assert.notEqual(sockets(ana),old,`round ${round}: a fresh socket`);
+      assert.equal(ana.fatal,undefined,`round ${round}: not terminal`);assert.notEqual(ana.fatal,UPDATE_NEEDED);
+      for(let i=0;i<100&&ana.run?.phase!=='combat';i++)await sleep(25);
+      assert.ok(Date.now()-from<5000,`round ${round}: back playing in ${Date.now()-from} ms`);
+      assert.equal(ana.id,id,'the same seat');assert.equal(ana.run?.phase,'combat');
+      await sleep(300);
+    }
+    assert.equal(net.room.sim.players.size,1,'no duplicate');
+  }finally{stop();cleanup();}
+});
+
+test('nao-e-versao-nova: one or two bad full frames only ask a resync; the socket stays',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=await inCombat();const old=sockets(ana);
+    old.onmessage?.({data:brokenFull()});old.onmessage?.({data:brokenFull()});
+    await sleep(400);
+    assert.equal(sockets(ana),old);assert.equal(ana.connected,true);assert.equal(ana.fatal,undefined);
+    assert.ok(net.sent.some(s=>s.t==='resync'),'asked the room for a full frame');
+  }finally{stop();cleanup();}
+});
+
+test('nao-e-versao-nova: frames this page can never read: renewed MAX_FRAME_RENEWALS times, then LINK_LOST ("Voltar pra sala")',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  const {LINK_LOST,MAX_FRAME_RENEWALS}=await import('../../src/client/net/client.ts');
+  try{
+    const ana=await inCombat();const opened=net.opened;
+    // Every frame fails (the welcome resets the same decoder, so the patch stays).
+    (ana as any).feed.decode=()=>({ok:false,error:'malformed frame'});
+    for(let i=0;i<400&&!ana.fatal;i++)await sleep(25);
+    assert.equal(ana.fatal,LINK_LOST);
+    assert.equal(net.opened-opened,MAX_FRAME_RENEWALS,'one fresh socket per renewal');
+  }finally{stop();cleanup();}
+});
+
+test('nao-e-versao-nova: a world signature this page did not build renews the link; the welcome brings the right terrain',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=await inCombat();const id=ana.id,old=sockets(ana),right=ana.terrain.signature;
+    (ana as any).terrain={...ana.terrain,signature:'outro-mundo'};
+    (ana as any).out(old,{t:'resync'});
+    for(let i=0;i<200&&!(ana.connected&&sockets(ana)!==old);i++)await sleep(10);
+    assert.notEqual(sockets(ana),old);assert.equal(ana.fatal,undefined);
+    assert.equal(ana.terrain.signature,right);assert.equal(ana.id,id);
+  }finally{stop();cleanup();}
+});
+
+test('nao-e-versao-nova: the room refusing the version keeps the seat token; "Reconectar" (restart) takes the same seat back',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  const {UPDATE_NEEDED}=await import('../../src/protocol/room.ts');
+  try{
+    const ana=await inCombat();const id=ana.id;
+    sockets(ana).onmessage?.({data:JSON.stringify({t:'error',message:UPDATE_NEEDED})});
+    await sleep(50);
+    assert.equal(ana.fatal,UPDATE_NEEDED);assert.ok(store.get('viagem:room:ABCDEF1234'),'token kept');
+    ana.restart();
+    for(let i=0;i<200&&!ana.connected;i++)await sleep(10);
+    assert.equal(ana.fatal,undefined);assert.equal(ana.connected,true);assert.equal(ana.id,id);
+    for(let i=0;i<100&&ana.run?.phase!=='combat';i++)await sleep(25);
+    assert.equal(ana.run?.phase,'combat');assert.equal(net.room.sim.players.size,1);
+  }finally{stop();cleanup();}
+});

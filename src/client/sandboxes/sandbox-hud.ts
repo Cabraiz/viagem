@@ -352,8 +352,8 @@ function load(next:HudScenario){
   }
   // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").
   if(inv){
-    // `pente=cheio|recarga` (pente-e-recarga): the pistola in the hand with 5 shots left, or half way through its reload.
-    const mag=pente==='cheio'?{mag:5}:pente==='recarga'?{mag:0,reloadUntil:view.tick+10,reloadTicks:20}:{};
+    // `pente=cheio|recarga` (pente-e-recarga): the pistola in the hand with 5 shots left, or half way through its reload (a long reload, so the sandbox's moving tick keeps it there).
+    const mag=pente==='cheio'?{mag:5}:pente==='recarga'?{mag:0,reloadUntil:view.tick+1e6,reloadTicks:2e6}:{};
     view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1,...mag}:p)};
     if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'audio-lendario'}];
   }

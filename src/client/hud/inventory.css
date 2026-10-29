@@ -31,9 +31,9 @@
 .rh-inv-ic .ic{width:24px;height:24px;display:block}
 .rh-inv-pilha{position:absolute;right:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 11px/14px var(--f-sistema);text-align:center}
 .rh-inv-pilha:empty{display:none}
-/* Pente e recarga: the hand weapon's bullets left (bottom-left corner) and, while it reloads, an Amarelo ring filling
+/* Pente e recarga: the hand weapon's bullets left (top-right corner: the rarity dots take the bottom edge, the key the top-left) and, while it reloads, an Amarelo ring filling
    clockwise round the slot (--recarga 0–1, hud/inventory.ts magBadge). */
-.rh-inv-pente{position:absolute;left:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 11px/14px var(--f-sistema);text-align:center;pointer-events:none}
+.rh-inv-pente{position:absolute;right:-3px;top:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 12px/14px var(--f-sistema);text-align:center;pointer-events:none}
 .rh-inv-pente:empty{display:none}
 .rh-inv-slot[data-recarga] .rh-inv-pente{color:var(--c-amarelo)}
 .rh-inv-slot[data-recarga]::after{content:'';position:absolute;inset:-6px;border-radius:50%;pointer-events:none;

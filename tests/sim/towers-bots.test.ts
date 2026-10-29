@@ -369,7 +369,8 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
   assert.ok(c.forges.every(f=>f.needed||f.after>=f.keep+f.reserve),'no forge buy under it');
   assert.ok(c.orders.every(o=>!o.endsWith('→ grana')&&!o.endsWith('→ balance')),'no order refused for money');
   // bot-solo-gasta-grana: alone the bill's share was more than the bot ever earned, so it never evolved; now it does.
-  const solo=cityRun(4,1,6,'chaveiro'),soloSpends=solo.grana.filter(g=>g.spent>0);
+  // To round 7 (so-3-inimigos): with the mendigo alone, seed 4 has the solo bot's first evolutions in round 7 (seeds 1-3, 5, 6: by round 6).
+  const solo=cityRun(4,1,7,'chaveiro'),soloSpends=solo.grana.filter(g=>g.spent>0);
   console.log(`[D-048 chaveiro] 1 bot, seed 4, to round ${solo.sim.world.round.index}: ${soloSpends.length} Grana orders (${soloSpends.map(g=>`${g.before}-${g.spent} keep ${g.keep}`).join(', ')}), `+
     `${solo.forges.length} forge buys, Grana at the end ${solo.sim.teamGrana()}`);
   assert.ok(soloSpends.length>0,'a bot alone spends its Grana');

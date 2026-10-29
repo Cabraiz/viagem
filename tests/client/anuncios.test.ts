@@ -63,8 +63,9 @@ test('privacy policy: /privacidade/ in PT-BR with an English section covers Goog
   for(const must of ['https://policies.google.com/technologies/partner-sites','https://adssettings.google.com/','LGPD','localStorage','ANPD','https://github.com/Cabraiz/viagem/issues'])
     assert.ok(html.includes(must),must);
   assert.doesNotMatch(html,/<script/,'a static page: no code, no tracker');
-  assert.ok(html.includes('<a href="mailto:cabraiz@cabraiz.com">cabraiz@cabraiz.com</a>'),'the contact e-mail the user chose');
+  assert.ok(html.includes('<a href="mailto:contact@cabraiz.com">contact@cabraiz.com</a>'),'the contact e-mail the user chose');
   assert.doesNotMatch(html,/mateusccabr/,'the old e-mail is gone everywhere');
+  assert.doesNotMatch(html,/cabraiz@cabraiz\.com/,'the mistaken interim e-mail is gone too');
   assert.doesNotMatch(html,/CONTATO/,'no placeholder left');
   const menu=fs.readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
   assert.match(menu,/<a class="menu-privacidade" href="\/privacidade\/">Privacidade<\/a>/);

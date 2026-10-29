@@ -7,7 +7,7 @@ import {CLASS_LINES,type Situation} from './lines.data.ts';
 
 export type {Situation};
 export const SITUATIONS:readonly Situation[]=['levelUp','down','revive','upgrade','win','lose'];
-export const SITUATION_LABELS:Readonly<Record<Situation,string>>={levelUp:'Subiu de nível',down:'Caiu',revive:'Resgatou',upgrade:'Escolheu upgrade',win:'Vitória',lose:'Derrota'};
+export const SITUATION_LABELS:Readonly<Record<Situation,string>>={levelUp:'Subiu de nível',down:'Caiu',revive:'Resgatou',upgrade:'Escolheu melhoria',win:'Vitória',lose:'Derrota'};
 /** Longest line that still fits a phone balloon. */
 export const LINE_MAX=34;
 /** Used for a class id that has no lines (new class, bad data): still funny, never empty. */

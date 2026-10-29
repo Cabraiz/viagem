@@ -88,7 +88,7 @@ export function soloNext(plan:SoloPlan,room:SoloRoom,mem:SoloMemory,now:number):
 }
 
 /** The pt-BR line under the buttons when the solo start fails: our own messages pass, platform ones do not. */
-export const SOLO_FAILED='Não foi possível começar a partida. Tente novamente.';
+export const SOLO_FAILED='Deu ruim ao começar a partida. Tenta de novo.';
 export function soloErrorText(error:unknown):string{
   return error instanceof Error&&error.name==='Error'&&error.message?error.message:SOLO_FAILED;
 }

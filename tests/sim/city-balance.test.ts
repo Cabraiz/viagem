@@ -219,8 +219,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * through thin walls and the rubble off the Uno's way open new routes for the bodies).
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+// Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'a4febc34d85c4284',
+  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'e90551f1a18407a9',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

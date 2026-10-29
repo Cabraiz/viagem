@@ -75,13 +75,13 @@ export function killcamCaption(byName:string|undefined,kind:string,seed:number,u
  */
 export type ShameWhen='round'|'onda'|'ninhos';
 export function shameText(m:ShameMoment,name:string,when:ShameWhen='round'):{text:string;line:string;joke:string}{
-  const the=critter(m.source),at=when==='ninhos'?'':when==='onda'?`na Onda ${m.round}`:`na rodada ${m.round}`,r=at?` ${at}`:'';
+  const the=critter(m.source),at=when==='ninhos'?'':when==='onda'?`na onda ${m.round}`:`na rodada ${m.round}`,r=at?` ${at}`:'';
   const lines:Record<ShameKey,()=>{verb:string;joke:string}>={
     recaida:()=>({verb:`levantou e caiu de novo em ${m.seconds??1} s.`,joke:'O resgate pediu reembolso.'}),
     apagao:()=>({verb:`caiu no apagão${r}.`,joke:'Disse que tropeçou no fio.'}),
     coxinha:()=>({verb:`caiu com uma coxinha do lado${r}.`,joke:'Tava ali. Do ladinho.'}),
     pombos:()=>({verb:`caiu pra um pombo${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
-    cedo:()=>({verb:when==='ninhos'?`caiu logo no começo pra ${the.one}.`:`caiu ${when==='onda'?'na Onda':'na rodada'} 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
+    cedo:()=>({verb:when==='ninhos'?`caiu logo no começo pra ${the.one}.`:`caiu ${when==='onda'?'na onda':'na rodada'} 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
     'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
     'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia${r}.`,joke:'Era só fome mesmo.'}),
     caiu:()=>({verb:`caiu pra ${the.one}${r}.`,joke:'Escorregou no chão molhado. Não tinha placa.'}),

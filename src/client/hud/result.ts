@@ -76,7 +76,7 @@ export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'
   const team=topCause(causes);
   if(team)parts.push(`O que derrubou a turma: ${causeCopy(team.kind).name} (${team.count} ${team.count===1?'queda':'quedas'})`);
   const left=result.objective?0:result.totalRounds-result.round;
-  if(left>0)parts.push(`Faltou ${left===1?'1 round':`${left} rounds`} pro síndico`);
+  if(left>0)parts.push(`Faltou ${left===1?'1 rodada':`${left} rodadas`} pro síndico`);
   return parts.length?parts.join('. '):undefined;
 }
 

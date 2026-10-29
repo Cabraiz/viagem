@@ -36,29 +36,29 @@
  *    isPrime(e) reads it (EnemyView.prime). The lure is enemies/ai.ts baitEnemy (memory baitX, baitY, baitUntil).
  *
  * Rules (a tick):
- *  - 'sem-cedulas' (closed): nothing until `until`; then another gig (nextBico), saldo = BICO.saldo, 'aberto', event
- *    bank-refill.
+ *  - No limit (NEW-20261029-ORQ-bico-sem-limite-pix-voando): nothing spends the saldo (it stays BANCO.saldo, which the
+ *    view carries for clients from before) and no shop closes. A row restored 'sem-cedulas' (a checkpoint from before)
+ *    opens at once with another gig (nextBico), event bank-refill.
  *  - The shift: a worker stays while standing, within holdR and work is not false (moving or letting go: event bico
  *    'saiu'); a standing hero within holdR with work true clocks in (event bico 'entrou') unless banned or working
  *    another shop. Workers are invulnerable through the next tick (core damagePlayer skips them) and do not fire.
  *  - With workers it is 'sacando': fila = live critters within filaR (not the boss, not a retreater). At
  *    BICO.filaExpulsa the manager throws them out (event bico 'expulso', slowed BICO.expulsoS, banned BICO.banidoS).
  *    Else each worker earns bicoPay(bico, workers, fila) a tick (thousandths of R$: porSegundo alone, dupla each when
- *    shared, × (1 − filaCorte × fila)); every BICO.nota earned pays min(nota, saldo) into their wallet (carteira-e-pix),
+ *    shared, × (1 − filaCorte × fila)); every BICO.nota earned pays a note into their wallet (carteira-e-pix),
  *    event bank-cash by 'hero', and lures every critter within iscaR (not the boss, not a retreater) to the bank for
  *    iscaS (baitEnemy).
  *  - No worker but a standing hero within holdR: 'aberto', nobody draws ("tem gente").
  *  - No hero within holdR and a live critter within bichoR (not the boss, not a retreater): 'bicho', drawer = it (kept
- *    while it stays in reach, else the nearest); every bichoSaqueS it withdraws min(nota, saldo) (the money goes
+ *    while it stays in reach, else the nearest); every bichoSaqueS it withdraws BANCO.nota (the money goes
  *    nowhere: it keeps it, bankTake), event bank-cash by 'enemy'. At primeCada withdrawn (once: a Prime stays one, it
  *    never grows again) maxHp and hp × primeVida, prime, event bank-prime.
  *  - Nobody: 'aberto', the count starts over.
- *  - saldo 0 after a note: 'sem-cedulas' until now + recargaS, the shift out (bico 'saiu'), event bank-empty.
  * Deterministic: the placement stream is forked from the seed, the step reads ctx (players and enemies in their order).
  */
 import type {Point} from '../../maps/index.ts';
 import {BANK_IDS,BICO_IDS,Rng,SIM_HZ,ticks,type BankName,type BankState,type BankView,type BicoId,type EnemyState,type SimPlayer} from '../../contract/index.ts';
-import {BANCO,BICO,BICOS,bicoSaldo} from '../../rules/index.ts';
+import {BANCO,BICO,BICOS} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {baitEnemy} from '../enemies/ai.ts';
@@ -188,10 +188,10 @@ export function nextBico(seed:number,bank:number,opened:number,now:BicoId,others
 
 export function createBanksState(places:readonly BankPlace[],seed=0):BanksState{
   const bicos=firstBicos(seed,places.length);
-  return {list:places.map((_,i)=>({saldo:BICO.saldo,state:'aberto' as BankState,until:0,clock:0,held:0 as const,bico:bicos[i],opened:0})),paid:0,taken:0,primes:0};
+  return {list:places.map((_,i)=>({saldo:BANCO.saldo,state:'aberto' as BankState,until:0,clock:0,held:0 as const,bico:bicos[i],opened:0})),paid:0,taken:0,primes:0};
 }
 
-const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
+const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS);
 const EXPULSO=ticks(BICO.expulsoS),BANIDO=ticks(BICO.banidoS),NOTA_MIL=BICO.nota*1000;
 /** A worker's pay this tick, in thousandths of R$: alone or shared, cut by the queue (rules/bicos.ts). */
 export function bicoPay(bico:BicoId,workers:number,fila:number){
@@ -208,15 +208,6 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
   {const first=firstBicos(options.seed,places.length);state.list.forEach((row,i)=>{if(row.bico===undefined){row.bico=first[i];row.opened=0;}});}
   const near:EnemyState[]=[];
 
-  function note(ctx:SimContext,i:number,amount:number){
-    const row=state.list[i];
-    row.saldo-=amount;
-    if(row.saldo>0)return;
-    row.saldo=0;row.state='sem-cedulas';row.until=ctx.tick+RECARGA;row.clock=0;row.held=0;delete row.drawer;
-    for(const id of row.workers??[])ctx.emit({type:'bico',bank:places[i].id,player:id,what:'saiu'});
-    delete row.workers;delete row.earn;
-    ctx.emit({type:'bank-empty',bank:places[i].id,until:row.until});
-  }
   /** Bicos: who stays in the shift (Trabalhar not let go, standing, in the ring) and who clocks in now. */
   function shift(ctx:SimContext,i:number){
     const b=places[i],row=state.list[i],keep:string[]=[];
@@ -269,14 +260,12 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
   function stepBank(ctx:SimContext,i:number){
     const b=places[i],row=state.list[i];
     if(row.state==='sem-cedulas'){
-      if(ctx.tick<row.until)return;
       row.opened++;
       row.bico=nextBico(options.seed,i,row.opened,row.bico,state.list.filter(r=>r!==row).map(r=>r.bico));
-      row.saldo=BICO.saldo;row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
+      row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
       ctx.emit({type:'bank-refill',bank:b.id});
     }
-    // The shift by seat (bicoSaldo): a team's shop holds less; one who joins mid-shift trims what is left.
-    row.saldo=Math.min(row.saldo,bicoSaldo(ctx.players.size));
+    row.saldo=BANCO.saldo;
     delete row.fila;
     const workers=shift(ctx,i);
     if(workers.length){
@@ -290,13 +279,11 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
       const pay=bicoPay(row.bico,workers.length,queue),earn=row.earn??={};
       for(const id of workers){
         earn[id]=(earn[id]??0)+pay;
-        if(earn[id]<NOTA_MIL||row.state!=='sacando')continue;
+        if(earn[id]<NOTA_MIL)continue;
         earn[id]-=NOTA_MIL;
-        const amount=Math.min(BICO.nota,row.saldo);
-        options.wallet.add(amount,ctx.players.get(id)!);state.paid+=amount;
-        ctx.emit({type:'bank-cash',bank:b.id,amount,by:'hero'});
+        options.wallet.add(BICO.nota,ctx.players.get(id)!);state.paid+=BICO.nota;
+        ctx.emit({type:'bank-cash',bank:b.id,amount:BICO.nota,by:'hero'});
         lure(ctx,b);
-        note(ctx,i,amount);
       }
       return;
     }
@@ -310,14 +297,13 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
     row.state='bicho';
     if(++row.clock<BICHO_SAQUE)return;
     row.clock=0;
-    const amount=Math.min(BANCO.nota,row.saldo),rich=drawer as EnemyState&BankEnemy;
+    const amount=BANCO.nota,rich=drawer as EnemyState&BankEnemy;
     rich.bankTake=(rich.bankTake??0)+amount;state.taken+=amount;
     ctx.emit({type:'bank-cash',bank:b.id,amount,by:'enemy',enemy:drawer.id});
     if(!rich.prime&&rich.bankTake>=BANCO.primeCada){
       rich.prime=true;drawer.maxHp*=BANCO.primeVida;drawer.hp*=BANCO.primeVida;state.primes++;
       ctx.emit({type:'bank-prime',bank:b.id,enemy:drawer.id});
     }
-    note(ctx,i,amount);
   }
 
   return {

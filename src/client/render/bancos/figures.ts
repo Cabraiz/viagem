@@ -13,6 +13,8 @@ export const BANK_COLORS=Object.freeze({
   screen:Object.freeze({azul:0x3c6fa8,verde:0x4f9a5b,vermelho:0xc0443a,apagado:0x2b2533} as Record<ScreenLook,number>),
   sign:Object.freeze({'pao-duro':0xe0b84a,juros:0x8a63b8,posto:0xd9763a} as Record<BankName,number>),
   note:0x7fc28a,
+  /** The PIX diamond around a hero on a shift (pix.ts), the PIX logo's teal. */
+  pix:0x32bcad,
 });
 const C=BANK_COLORS;
 const m=(x:number,y:number,z:number,l:number,w:number,h:number,color:number,extra?:Partial<Box>):Box=>({x:x*M,y:y*M,z:z*M,l:l*M,w:w*M,h:h*M,color,...extra});

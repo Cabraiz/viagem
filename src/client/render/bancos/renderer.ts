@@ -9,6 +9,8 @@
  *   "RETIRE SEU DINHEIRO" beep, now and then one of the screen's lines instead (rules.ts BankTracker).
  * Bicos (card bancos-viram-bicos, etapa 2): when the manifest has the bank's shop (bico-art.ts), the pixel-art building
  * stands behind the rings instead of the kiosk, its door lit while a hero works inside.
+ * PIX voando (card bico-sem-limite-pix-voando): with `playerAt`, notes and PIX diamonds spiral around each hero on a
+ * shift and every note paid pops a "+R$ 5" over them (pix.ts); the hero's note out of the screen gives way to them.
  * Each kiosk draws at its own actor depth and fades while it covers the hero, like the chaveiro's figures. Pure
  * drawing: the scene pushes each view's banks and calls update every frame.
  */
@@ -18,15 +20,16 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
-import {BANCO} from '../../../rules/index.ts';
+import {BANCO,BICO} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
-import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
 import {bicoTag,type BicoTagLook} from '../../hud/bicos.ts';
+import {POP_POOL,PixSwarm,bitPose,popPose,type BitPose} from './pix.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -43,7 +46,9 @@ const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined;
   /** Bicos: a player's name on the shop's tag ("Você" for the local one); absent: "1 no turno". */
-  nameOf?:(id:string)=>string}
+  nameOf?:(id:string)=>string;
+  /** A player's foot in the world (the local one predicted): the PIX fly around who is on a shift; absent: no PIX. */
+  playerAt?:(id:string)=>Pt|undefined}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
@@ -79,6 +84,12 @@ export class BankRenderer {
   /** Each bank's shop (undefined: the kiosk) and whether its texture is in (filtered nearest, it is pixel art). */
   private bicos=new Map<string,BicoArt|undefined>();
   private bicoIn=new Set<string>();
+  /** The PIX around the heroes on a shift, and the "+R$ 5" pops (made on the first one, then reused). */
+  private swarm=new PixSwarm();
+  private popTexts:Phaser.GameObjects.Text[]=[];
+  /** Reused every frame: who is on a shift now, and a bit's pose. */
+  private workers:string[]=[];
+  private pose:BitPose={dx:0,dy:0,tilt:0,alpha:0,scale:1};
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
@@ -87,7 +98,7 @@ export class BankRenderer {
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
     // The fonts came: the tag and the balloon take their style again on the next frame (the balloon by its text).
-    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}});
+    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}for(const t of this.popTexts)t.setStyle(this.popStyle());});
     this.queueArt();
   }
 
@@ -123,7 +134,14 @@ export class BankRenderer {
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
   /** `events`: the room's view events (bank-cash); the sandbox's fake banks have none (the saldo's drop stands in). */
-  push(banks:readonly BankView[]|undefined,tick:number,events?:readonly StampedEvent[]){this.state.push(banks,tick,this.now,events);}
+  push(banks:readonly BankView[]|undefined,tick:number,events?:readonly StampedEvent[]){
+    const st=this.state;st.push(banks,tick,this.now,events);
+    if(!this.options.playerAt)return;
+    for(const p of st.paid){
+      const workers=st.banks.find(b=>b.id===p.bank)?.workers;
+      if(workers?.length)this.swarm.cash(this.now,workers,Math.min(POP_POOL,p.count),BICO.nota,this.options.reduced);
+    }
+  }
 
   /** After a view turn or a depth re-base. */
   refresh(){this.update(this.now);}
@@ -154,6 +172,7 @@ export class BankRenderer {
       this.drawBalloon(b,d,k);
     }
     for(const n of st.notes)this.drawNote(n,k);
+    this.drawPix(k);
     for(const [id,d] of this.draws)if(!live.has(id)){this.destroyDraw(d);this.draws.delete(id);}
   }
 
@@ -237,6 +256,7 @@ export class BankRenderer {
 
   destroy(){
     this.fx.destroy();
+    for(const t of this.popTexts)t.destroy();this.popTexts=[];
     for(const d of this.draws.values())this.destroyDraw(d);
     this.draws.clear();
   }
@@ -331,7 +351,7 @@ export class BankRenderer {
   /** The tag over the shop (hud/bicos.ts bicoTag): its gig and saldo, who is on the shift, the robbery, the closed sign. */
   private drawTag(b:BankView,d:BankDraw,k:number){
     const nameOf=this.options.nameOf;
-    const {look,text}=bicoTag(b,emptySeconds(b,this.state.tick),id=>nameOf?.(id)??'1');
+    const {look,text}=bicoTag(b,id=>nameOf?.(id)??'1');
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
     const p=this.topAt(b,-.2*M,.5*M);
@@ -350,7 +370,10 @@ export class BankRenderer {
   private drawNote(n:FlyingNote,k:number){
     const b=this.state.banks.find(x=>x.id===n.bank);if(!b)return;
     const t=(this.now-n.born)/NOTE_MS;if(t<0||t>=1)return;
-    const start=this.screenAt(b),hero=n.by==='hero',reduced=this.options.reduced;
+    const hero=n.by==='hero';
+    // The PIX around the worker say it already (drawPix).
+    if(hero&&this.options.playerAt&&b.workers?.some(id=>this.options.playerAt!(id)))return;
+    const start=this.screenAt(b),reduced=this.options.reduced;
     const dx=(hero?(n.slot-1)*14:28+n.slot*10)*k*t,dy=(hero?-70*t:-24*t+50*t*t)*k;
     const x=start.x+dx,y=start.y+dy,w=20*k,h=11*k,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
     const g=this.fx,cos=Math.cos(tilt),sin=Math.sin(tilt);
@@ -360,5 +383,53 @@ export class BankRenderer {
     g.lineStyle(1.4*k,this.c.breu,a).strokePoints(quad,true);
     // the "2" in the middle: two strokes are enough at this size
     g.fillStyle(this.c.breu,a).fillCircle(x,y,2.6*k);
+  }
+  /**
+   * The PIX swarm (pix.ts): green notes and PIX diamonds spiralling up around each hero on a shift, drawn with the one fx
+   * Graphics, and the "+R$ 5" pops over them (a pool of POP_POOL Texts). Nothing without `playerAt`.
+   */
+  private drawPix(k:number){
+    const at=this.options.playerAt;if(!at)return;
+    const ws=this.workers;ws.length=0;
+    for(const b of this.state.banks)if(b.workers)for(const id of b.workers)ws.push(id);
+    const sw=this.swarm,now=this.now,proj=this.options.projector,g=this.fx,o=this.pose;
+    sw.step(now,ws,this.options.reduced);
+    for(const bit of sw.bits){
+      if(!bit||!bitPose(bit,now,o))continue;
+      const w=at(bit.worker);if(!w)continue;
+      const f=proj.project(w.x,w.y,this.q),x=f.x+o.dx*k,y=f.y+o.dy*k,a=o.alpha,s=o.scale*k;
+      const cos=Math.cos(o.tilt),sin=Math.sin(o.tilt),pts=this.pts;
+      if(bit.kind==='nota'){
+        const hw=8*s,hh=4.5*s;
+        pts[0].x=x-hw*cos+hh*sin;pts[0].y=y-hw*sin-hh*cos;
+        pts[1].x=x+hw*cos+hh*sin;pts[1].y=y+hw*sin-hh*cos;
+        pts[2].x=x+hw*cos-hh*sin;pts[2].y=y+hw*sin+hh*cos;
+        pts[3].x=x-hw*cos-hh*sin;pts[3].y=y-hw*sin+hh*cos;
+        g.fillStyle(BANK_COLORS.note,a).fillPoints(pts,true);
+        g.lineStyle(1.2*k,this.c.breu,a).strokePoints(pts,true);
+        g.fillStyle(this.c.breu,a).fillCircle(x,y,1.6*s);
+      }else{
+        // The PIX diamond: a square on its corner, teal with a Breu rim and a light core.
+        const r=6.5*s;
+        pts[0].x=x+r*sin;pts[0].y=y-r*cos;pts[1].x=x+r*cos;pts[1].y=y+r*sin;
+        pts[2].x=x-r*sin;pts[2].y=y+r*cos;pts[3].x=x-r*cos;pts[3].y=y-r*sin;
+        g.fillStyle(BANK_COLORS.pix,a).fillPoints(pts,true);
+        g.lineStyle(1.2*k,this.c.breu,a).strokePoints(pts,true);
+        g.fillStyle(this.c.papel,a).fillCircle(x,y,1.8*s);
+      }
+    }
+    for(let i=0;i<sw.pops.length;i++){
+      const pop=sw.pops[i],pose=pop&&popPose(pop,now,this.options.reduced),w=pop&&pose&&at(pop.worker);
+      let t=this.popTexts[i];
+      if(!pop||!pose||!w){t?.setVisible(false);continue;}
+      if(!t){t=this.scene.add.text(0,0,'',this.popStyle()).setOrigin(.5,1).setDepth(FX_DEPTH+3);this.popTexts[i]=t;}
+      if(t.text!==pop.text)t.setText(pop.text);
+      const f=proj.project(w.x,w.y,this.q);
+      t.setPosition(f.x+pose.dx*k,f.y+pose.dy*k).setScale(k).setAlpha(pose.alpha).setVisible(true);
+    }
+  }
+  private popStyle(){
+    return {fontFamily:token('--f-cartaz'),fontSize:'16px',color:'#'+BANK_COLORS.note.toString(16).padStart(6,'0'),
+      stroke:token('--c-breu'),strokeThickness:4};
   }
 }

@@ -99,8 +99,10 @@ for(const [mode,options] of [['chaveiro (default)',{}],['muralha (objective:fals
     assert.ok(after.length>=ticks(BICO.nota/BICO.porSegundo),`the phone kept getting frames: ${after.length}`);
     const last=after.at(-1)!.view.banks!.find(b=>b.id===b0.id)!;
     assert.equal(last.state,'sacando');assert.deepEqual(last.workers,[r.ana]);assert.equal(last.bico,row0.bico);
-    assert.ok(last.saldo<=BICO.saldo-2*BICO.nota,`two notes out: R$ ${last.saldo}`);
+    // bico-sem-limite-pix-voando: no limit, the saldo old phones read stays full; the notes are the bank-cash events.
+    assert.equal(last.saldo,BANCO.saldo,'the saldo stays full');
     const cashEvents=after.flatMap(s=>s.view.events).filter(e=>e.type==='bank-cash');
+    assert.ok(cashEvents.filter(e=>e.type==='bank-cash'&&e.bank===b0.id&&e.by==='hero').length>=2,'two notes out');
     assert.ok(cashEvents.some(e=>e.type==='bank-cash'&&e.bank===b0.id&&e.by==='hero'&&e.amount===BICO.nota),'the bank-cash event reaches the phone');
     // The other banks are as the sim has them.
     for(const b of after.at(-1)!.view.banks!){const i=places.findIndex(p=>p.id===b.id),row=sim.run.banks.state.list[i];assert.deepEqual([b.saldo,b.state],[row.saldo,row.state],b.id);}

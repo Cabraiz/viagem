@@ -9,8 +9,9 @@
  *    between its two rows; a 1-thick one: through its cells), then made 4-connected (a diagonal step gets the corner
  *    point) and stripped of short spurs (corner artefacts of the thinning);
  *  - the skeleton's edges form straight runs; each run is cut into pieces one cell long, back to back, the posts
- *    shared at the ends (L corners, T and + junctions meet on one point); a run of an odd half-cell length overlaps its
- *    last piece by half a cell. Every piece is the straight art (`reto`) turned along its run: no corner or T art.
+ *    shared at the ends (L corners, T and + junctions meet on one point); a run of an odd half-cell length stops half a
+ *    cell short at a free end, or overlaps its last piece by half a cell between two junctions. Every piece is the
+ *    straight art (`reto`) turned along its run: no corner or T art.
  * Pure and deterministic: the result depends only on the wall cells.
  */
 
@@ -217,13 +218,22 @@ function thin(g:Uint8Array,NW:number,NH:number,at:(x:number,y:number)=>number){
 /** Point of a run at `along`, in sub coordinates. */
 const pt=(r:WallRun,along:number):[number,number]=>r.o==='h'?[along,r.k]:[r.k,along];
 
-/** The pieces of the runs: one cell (2 sub) long each, back to back; an odd remainder overlaps the last by half. */
+/**
+ * The pieces of the runs: one cell (2 sub) long each, back to back. A run of an odd length leaves its half cell at a
+ * free end (an end no other run touches: the line just stops half a cell sooner, inside its wall) or, between two
+ * junctions, overlaps its last piece by half (NEW-20261029-ORQ-cercas-nordeste-ligadas: no piece over another where a
+ * free end can take the slack).
+ */
 export function wallPieces(runs:readonly WallRun[]):WallPiece[]{
+  const ends=new Map<number,number>(),key=([x,y]:[number,number])=>y*0x10000+x;
+  for(const r of runs)for(const e of [r.a,r.b]){const k=key(pt(r,e));ends.set(k,(ends.get(k)??0)+1);}
   const out:WallPiece[]=[];
   for(const r of runs){
     const len=r.b-r.a,n=Math.floor(len/2),put=(along:number)=>{const [cx,cy]=pt(r,along);out.push({cx,cy,o:r.o});};
-    for(let i=0;i<n;i++)put(r.a+1+2*i);
-    if(len%2&&n)put(r.b-1);
+    const freeA=ends.get(key(pt(r,r.a)))===1,freeB=ends.get(key(pt(r,r.b)))===1;
+    const from=len%2&&freeA&&!freeB?r.a+1:r.a;
+    for(let i=0;i<n;i++)put(from+1+2*i);
+    if(len%2&&n&&!freeA&&!freeB)put(r.b-1);
   }
   return out;
 }

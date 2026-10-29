@@ -34,7 +34,7 @@ import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} 
 import {PELLET_TEX} from './keys.ts';
 import {THROW_MS} from '../../rules/index.ts';
 import {CRATE_ART,CRATE_RING_KEY,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
-  FLOAT_PX,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
+  FLOAT_PX,PELLET_ART,PELLET_HIT,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -70,7 +70,7 @@ interface PelletFx {image:Image;born:number;x:number;y:number;ux:number;uy:numbe
  * The pellet's texture (made once): a short hot streak (Amarelo core, Breu edge: it reads on the snow and on the grass),
  * drawn rotated along its flight, PELLET_PX long at body 1.
  */
-const PELLET_KEY=PELLET_TEX.key,PELLET_W=PELLET_TEX.w,PELLET_H=PELLET_TEX.h,PELLET_PX=36;
+const PELLET_KEY=PELLET_TEX.key,PELLET_W=PELLET_TEX.w,PELLET_H=PELLET_TEX.h,PELLET_PX=36,PELLET_PAINTED_PX=58;
 interface BurstFx {image:Image;born:number;x:number;y:number;rarity:Rarity}
 /** A crate's prize: pending (look undefined) until a view shows what the opener got, then `start` is when it rises. */
 interface PrizeFx {sticker:Image;glow:Image;rays:Image;label:Phaser.GameObjects.Text;born:number;start:number;x:number;y:number;
@@ -445,7 +445,8 @@ export class ArsenalFx{
     for(const o of pelletSpread(look.count,look.half,++this.pelletSeed,this.spread)){
       const s=this.pellets.spawn();
       s.born=this.now;s.x=x;s.y=y;s.ux=ux;s.uy=uy;s.angle=o.angle;s.reach=look.reach*o.reach;s.look=look;
-      s.image.setTexture(PELLET_KEY).setOrigin(.5,.5).setDepth(FX_DEPTH);
+      const art=fxKey(PELLET_ART);
+      s.image.setTexture(this.scene.textures.exists(art)?art:PELLET_KEY).setOrigin(.5,.5).setDepth(FX_DEPTH);
     }
   }
   private pelletTexture(){
@@ -462,13 +463,22 @@ export class ArsenalFx{
     return true;
   }
   private drawPellet=(s:PelletFx)=>{
-    const age=this.now-s.born,u=age/s.look.ms;if(u>=1)return false;
-    const c=Math.cos(s.angle),n=Math.sin(s.angle),dx=s.ux*c-s.uy*n,dy=s.ux*n+s.uy*c,d=pelletDistance(u,s.reach);
+    const age=this.now-s.born,u=age/s.look.ms;
+    const c=Math.cos(s.angle),n=Math.sin(s.angle),dx=s.ux*c-s.uy*n,dy=s.ux*n+s.uy*c;
+    if(u>=1){this.pelletHit(s.x+dx*s.reach,s.y+dy*s.reach);return false;}
+    const d=pelletDistance(u,s.reach),painted=s.image.texture.key!==PELLET_KEY;
     const p=this.options.projector,b=this.body,q=p.project(s.x+dx*d,s.y+dy*d,this.q),ahead=p.project(s.x+dx*(d+1),s.y+dy*(d+1),this.q2);
-    s.image.setPosition(q.x,q.y-22*b).setRotation(Math.atan2(ahead.y-q.y,ahead.x-q.x)).setScale(PELLET_PX*b/PELLET_W)
+    s.image.setPosition(q.x,q.y-22*b).setRotation(Math.atan2(ahead.y-q.y,ahead.x-q.x)).setScale((painted?PELLET_PAINTED_PX:PELLET_PX)*b/Math.max(1,s.image.width))
       .setAlpha(pelletAlpha(u));
     return true;
   };
+  /** A puff of dust where a pellet ends (visual only; the sim's hit is its own). */
+  private pelletHit(x:number,y:number){
+    const key=fxKey(PELLET_HIT.art!);if(!this.scene.textures.exists(key))return;
+    const s=this.shots.spawn();
+    s.born=this.now;s.x=x;s.y=y;s.angle=0;s.look=PELLET_HIT;s.frames=Math.max(1,this.scene.textures.get(key).frameTotal-1);s.scale=.8+.4*Math.random();
+    s.image.setTexture(key,0).setOrigin(.5,.5).setDepth(FX_DEPTH);
+  }
   private burst(at:Pt,rarity:Rarity,player:string){
     // No open-crate sheet (bau-antigo-ainda-visivel): a crate is its floating item, so the burst is the ring and the prize.
     const b=this.bursts.spawn();

@@ -269,7 +269,7 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
   // BUG-20261023-ORQ-armas-sem-projetil: the shotgun's flash stays at the barrel; its pellets fly (render/shot-flight.ts).
-  escopeta:{art:'clarao-espingarda',kind:'muzzle',size:80,ms:130},
+  escopeta:{art:'clarao2-escopeta',kind:'muzzle',size:120,ms:150},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
   // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
@@ -280,6 +280,9 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
 /** How far ahead of the hero (u, along the aim) a slash's arc is centred (melee-alcance-2x: .5 doubled with the faca's reach). */
 export const SLASH_AHEAD=1;
 /** Texture key of an `efeitos` strip loaded for the arsenal. */
+/** tiros-realistas-chatgpt: the shotgun pellet's painted streak, and the dust puff where each pellet ends. */
+export const PELLET_ART='chumbo2';
+export const PELLET_HIT:FireLook={art:'impacto2-poeira',kind:'blast',size:64,ms:320};
 export const fxKey=(art:string)=>`arsenal:fx:${art}`;
 /** Frame of a strip of `frames` frames `ageMs` into an effect of `ms` (the last one holds). */
 export const fxFrame=(ageMs:number,ms:number,frames:number)=>frames<=1?0:Math.min(frames-1,Math.floor(Math.max(0,ageMs)/ms*frames));
@@ -359,6 +362,8 @@ export function arsenalLoads():ArsenalLoad[]{
   const ring=firstPageUrl('efeitos',fileOf('efeitos',CRATE_RING_ID));if(ring)out.push({key:CRATE_RING_KEY,url:ring,strip:false});
   // The melee aim cone's piece (melee-cone.ts), one image laid on the sector.
   const cone=firstPageUrl('efeitos',fileOf('efeitos',CONE_ART_ID));if(cone)out.push({key:CONE_ART_KEY,url:cone,strip:false});
+  // tiros-realistas-chatgpt: the painted pellet streak and its puff where it lands.
+  for(const id of [PELLET_ART,PELLET_HIT.art!]){const url=firstPageUrl('efeitos',fileOf('efeitos',id));if(url)out.push({key:fxKey(id),url,strip:id!==PELLET_ART});seen.add(id);}
   for(const look of Object.values(FIRE_LOOK)){
     if(!look.art||seen.has(look.art))continue;seen.add(look.art);
     const url=firstPageUrl('efeitos',fileOf('efeitos',look.art));if(url)out.push({key:fxKey(look.art),url,strip:true});

@@ -37,6 +37,36 @@ export function teamColor(players:readonly {id:string}[],id:string):string{
   const i=players.findIndex(p=>p.id===id);
   return ALLY_COLORS[(i<0?0:i)%ALLY_COLORS.length];
 }
+/**
+ * Each team colour has its own shape for the dot (no face), so a colour-blind player tells allies apart by the outline
+ * too (auditoria-legibilidade L5: yellow × green and green × orange are ΔE 7 for deutan). No square: those are enemies.
+ */
+export const ALLY_SHAPES=Object.freeze(['circle','diamond','triangle','hexagon','star','triangle-down'] as const);
+export type AllyShape=typeof ALLY_SHAPES[number];
+export function allyShape(color:string):AllyShape{
+  const i=ALLY_COLORS.indexOf(color);
+  return ALLY_SHAPES[(i<0?0:i)%ALLY_SHAPES.length];
+}
+/** The outline of an ally's dot, `r` its radius (the circle's; the others are sized to look as big). */
+function allyPath(ctx:CanvasRenderingContext2D,shape:AllyShape,x:number,y:number,r:number){
+  ctx.beginPath();
+  if(shape==='circle'){ctx.arc(x,y,r,0,Math.PI*2);return;}
+  const poly=(n:number,rot:number,rr:number,inner=0)=>{
+    const k=inner?2*n:n;
+    for(let i=0;i<k;i++){const a=rot+i*Math.PI*2/k,d=inner&&i%2?inner:rr;if(i)ctx.lineTo(x+Math.cos(a)*d,y+Math.sin(a)*d);else ctx.moveTo(x+Math.cos(a)*d,y+Math.sin(a)*d);}
+    ctx.closePath();
+  };
+  if(shape==='diamond')poly(4,-Math.PI/2,r*1.3);
+  else if(shape==='triangle')poly(3,-Math.PI/2,r*1.45);
+  else if(shape==='triangle-down')poly(3,Math.PI/2,r*1.45);
+  else if(shape==='hexagon')poly(6,0,r*1.1);
+  else poly(5,-Math.PI/2,r*1.5,r*.7);
+}
+/** A downed ally: a white cross with a Breu edge over them (not the enemies' red, which a deutan reads as their colour). */
+function downedCross(ctx:CanvasRenderingContext2D,x:number,y:number,r:number,unit:number){
+  ctx.beginPath();ctx.moveTo(x-r,y-r);ctx.lineTo(x+r,y+r);ctx.moveTo(x+r,y-r);ctx.lineTo(x-r,y+r);
+  ctx.lineCap='round';ctx.strokeStyle='#1d1830';ctx.lineWidth=3.4*unit;ctx.stroke();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.6*unit;ctx.stroke();ctx.lineCap='butt';
+}
 export interface MmUnit {x:number;y:number}
 /** `classId`: their face (art.ts) in a ring of `color`; without art or a face, a dot of `color`. */
 export interface MmAlly extends MmUnit {color:string;downed?:boolean;classId?:string}
@@ -198,9 +228,13 @@ export class WcMinimap {
     for(const al of input.allies){
       toMini(al,f,p);if(!insideMini(p,f))continue;
       const face=atlas?faceCell(al.classId):-1;
-      if(face>=0){this.face(atlas!,face,p.x,p.y,ALLY_R*unit,al.downed&&blink?'#ff3b30':al.color,unit);continue;}
-      if(al.downed&&!blink)continue;
-      ctx.beginPath();ctx.arc(p.x,p.y,3*unit,0,Math.PI*2);ctx.fillStyle=al.downed?'#ff3b30':al.color;ctx.fill();ctx.lineWidth=1.2*unit;ctx.strokeStyle='#1d1830';ctx.stroke();
+      if(face>=0){
+        this.face(atlas!,face,p.x,p.y,ALLY_R*unit,al.color,unit);
+        if(al.downed&&blink)downedCross(ctx,p.x,p.y,ALLY_R*unit*.7,unit);
+        continue;
+      }
+      allyPath(ctx,allyShape(al.color),p.x,p.y,3*unit);ctx.fillStyle=al.color;ctx.fill();ctx.lineWidth=1.2*unit;ctx.strokeStyle='#1d1830';ctx.stroke();
+      if(al.downed&&blink)downedCross(ctx,p.x,p.y,3.4*unit,unit);
     }
     const me=input.self;
     if(me){

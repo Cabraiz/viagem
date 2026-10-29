@@ -165,7 +165,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mae-pet',role:'Suporte',weapon:'pombo',
     classBonus:{growth:0.06,luck:0.1},
     skill:{name:'Cadê o Neném',cooldown:18,
-      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante o round.'},
+      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante a rodada.'},
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
   },
   {

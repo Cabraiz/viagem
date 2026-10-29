@@ -25,7 +25,7 @@ import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
-import {CIDADE_MODIFIERS,LEGACY_KINDS,MAX_ROUND_ENEMIES,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,THREAT,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
+import {CIDADE_MODIFIERS,LEGACY_KINDS,enemyFeel,MAX_ROUND_ENEMIES,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,THREAT,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
   roundRoster,type RegularKind} from '../../src/rules/index.ts';
 import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src/sim/city/balance.ts';
 import {walkable,SPAWN,type Point} from '../../src/maps/world.ts';
@@ -73,16 +73,18 @@ test('enemyDef: the nine are their catalog defs; every roster id is its role on 
     const def=enemyDef(e.id),r=ROLE_PROFILES[e.role],base=ENEMIES[r.base];
     assert.equal(def,enemyDef(e.id),'built once');
     assert.equal(def.id,e.id);assert.equal(def.name,e.name);assert.equal(def.behavior,r.behavior,e.id);
-    assert.equal(def.hp,roleHp(e.role,base.hp),`${e.id} hp (the role's, ROLE_HITS)`);
-    assert.equal(def.speed,base.speed*r.speed);assert.equal(def.damage,Math.max(1,Math.round(base.damage*r.damage)));
-    assert.equal(def.radius,base.radius*r.radius*e.cell/r.cell);assert.equal(def.contactCooldown,base.contactCooldown);
+    // The clones' feel (rules/enemy-feel.ts, tests/sim/inimigos-variedade.test.ts) sits on top; the rest are the role's own numbers.
+    const f=enemyFeel(e.id)??{speed:1,hp:1,radius:1,sway:1};
+    assert.equal(def.hp,f.hp===1?roleHp(e.role,base.hp):Math.round(roleHp(e.role,base.hp)*f.hp),`${e.id} hp (the role's, ROLE_HITS)`);
+    assert.equal(def.speed,base.speed*r.speed*f.speed);assert.equal(def.damage,Math.max(1,Math.round(base.damage*r.damage)));
+    assert.equal(def.radius,base.radius*r.radius*e.cell/r.cell*f.radius);assert.equal(def.contactCooldown,base.contactCooldown);
     assert.equal(def.accent,e.accent);
     const lines=entryLines(e.id)!;
     assert.equal(def.barks,lines.barks);assert.equal(def.deathLines,lines.deathLines);assert.equal(def.reactionLines,r.reactionLines);
     assert.ok(def.reactionLines.length>0,`${e.id}: a palhaço's joke needs a line to start`);
     assert.equal(def.marks,undefined,`${e.id}: only the agiota marks`);
     if(r.behavior==='ranged')assert.equal(def.shotSource,GENERIC_SHOT_SOURCE);
-    if(r.behavior==='swarm'||r.behavior==='stagger')assert.deepEqual(def.zigzag,base.zigzag,`${e.id} sways like its base`);
+    if((r.behavior==='swarm'||r.behavior==='stagger')&&f.sway===1)assert.deepEqual(def.zigzag,base.zigzag,`${e.id} sways like its base`);
     assert.ok(Object.isFrozen(def));
   }
   assert.equal(ENEMIES.agiota.marks,'devendo');assert.equal(ENEMIES.agiota.shotSource,AGIOTA_SHOT.source);
@@ -132,6 +134,7 @@ test('brutamontes: walks in and every contact hit shoves the player BRUTE.shove 
   const A=arena(5,7);
   const p=addPlayer(A.world,'p',at(.9));
   const brute=createEnemy(A.world,ofRole('brutamontes'),O);
+  brute.memory={...brute.memory,actReady:1e9};// the contact alone: his stomp (BRUTE_SLAM) is tests/sim/inimigos-variedade.test.ts
   const before={x:p.x,y:p.y};let hit=-1;
   A.step(ticks(1),()=>{if(hit<0&&A.events.some(e=>e.type==='damage'&&e.target==='p'&&e.source===brute.id))hit=A.world.tick;});
   assert.ok(hit>0,'it hit');
@@ -404,7 +407,7 @@ test('round 6 with the rotation: bodies, threat and hp within a few % of the rou
   const thr=(k:string)=>k in THREAT?THREAT[k as RegularKind]:ROLE_PROFILES[roleOf(k)!].threat;
   const mods=[undefined,...MODIFIERS.filter(m=>!m.banRounds.includes(6)).map(m=>m.id)];
   const mid=new Set(['corredor','enxame','voador','palhaco','atirador','arremessador','suporte']);
-  let cases=0,ratio=0;
+  let cases=0,ratio=0,feltHp=0;
   for(let i=0;i<60;i++){
     const roster=roundRoster(drawRotation(new Rng(i*7919+13)),6);
     for(const players of [1,3,6])for(const modifierId of mods){
@@ -413,7 +416,8 @@ test('round 6 with the rotation: bodies, threat and hp within a few % of the rou
         const knob=(p:ReturnType<typeof planRound>)=>city?applyCityBalance(p,roundKnobs(CITY_BALANCE,6,p.players)):p;
         const table=knob(planRound(6,players,theme,new Rng(seed))),rot=knob(planRound(6,players,theme,new Rng(seed),roster));
         const reg=(p:typeof table)=>p.groups.filter(g=>!g.boss&&!g.elite&&!g.solo).flatMap(g=>g.members);
-        const a=reg(table),b=reg(rot),hp=(p:typeof table,m:string[])=>m.reduce((n,k)=>n+enemyDef(k).hp,0)*p.hp;
+        // hp: the role's (the clones' feel taken off); the feel trades hp for speed (rules/enemy-feel.ts), checked below on average.
+        const a=reg(table),b=reg(rot),hp=(p:typeof table,m:string[],feel=false)=>m.reduce((n,k)=>n+enemyDef(k).hp/(feel?1:enemyFeel(k)?.hp??1),0)*p.hp;
         const at=`${players}p ${modifierId??'none'}${city?' city':''}`;
         assert.ok(!rot.groups.some(g=>g.elite||g.solo||g.boss),`${at}: no elite, mini-chefe nor boss`);
         for(const k of b)assert.ok(mid.has(roleOf(k)!),`${at}: ${k} (${roleOf(k)}) is not a mid-band role`);
@@ -422,9 +426,13 @@ test('round 6 with the rotation: bodies, threat and hp within a few % of the rou
         // ×0.7 bodies (CLASH_BODIES, vida-inimigos-estilo-clash): one body more or less is a bigger share at 1 player.
         assert.ok(t>.9&&t<1.12,`${at}: threat ×${t.toFixed(3)}`);
         assert.ok(h>.9&&h<1.12,`${at}: hp ×${h.toFixed(3)}`);
-        cases++;ratio+=b.length/a.length;
+        // With the feel: a rotation may draw only the sturdy clone of a role (measured .80-1.25, ×1.016 on average).
+        const hf=hp(rot,b,true)/hp(table,a,true);
+        assert.ok(hf>.75&&hf<1.3,`${at}: hp with the feel ×${hf.toFixed(3)}`);
+        cases++;ratio+=b.length/a.length;feltHp+=hf;
       }
     }
   }
   assert.ok(ratio/cases<1.03,`bodies ×${(ratio/cases).toFixed(3)} on average`);
+  assert.ok(Math.abs(feltHp/cases-1)<.05,`hp with the feel ×${(feltHp/cases).toFixed(3)} on average`);
 });

@@ -70,7 +70,7 @@ test('revive alerts: own fall first, then allies by urgency, with rescue progres
 
 test('offer copy distinguishes round upgrades from level-ups; deadline fraction',()=>{
   const [level,round]=fakeView('offer-prepare',1).offers;
-  assert.deepEqual(offerTitle(round),{title:'Oferta do round'});
+  assert.deepEqual(offerTitle(round),{title:'Escolha da rodada'});
   assert.deepEqual(offerTitle(level),{title:'Nível 12!'});
   assert.equal(offerDeadlineFraction(level,1000,1000),1);
   assert.equal(offerDeadlineFraction(level,1000+ticks(FIXTURE_INTERMISSION_SECONDS/2),1000),.5);
@@ -110,7 +110,7 @@ test('item display covers every fixed id with pt-BR copy and falls back for unkn
   for(const def of Object.values(PASSIVE_DEFS)){assert.equal(itemDisplay(def.id).name,def.name,def.id);assert.equal(itemDisplay(def.id).kind,'passive',def.id);}
   for(const item of allItemDisplays())assert.ok(item.blurb.length<=36&&item.joke.length<=22,`${item.id}: ${item.blurb.length}/${item.joke.length}`);
   assert.equal(itemDisplay('cafe-evo').kind,'evolution');assert.equal(itemDisplay('x-y').name,'X y');
-  assert.equal(levelTag('pombo',1),'Novo!');assert.equal(levelTag('pombo',4),'Nv 4');assert.equal(levelTag('boleto-evo',1),'Evolução');
+  assert.equal(levelTag('pombo',1),'Novo!');assert.equal(levelTag('pombo',4),'Nív. 4');assert.equal(levelTag('boleto-evo',1),'Evolução');
 });
 
 test('fixtures use real classes with approved portraits and cover every scenario',()=>{
@@ -288,7 +288,7 @@ test('D-050 (replaced D-021 in waves): a held offer shows only in the level-up p
 });
 
 test('etiqueta price: "Nv" plus the number, "Novo!" on the star, sentence-case words, no caps anywhere',()=>{
-  assert.deepEqual(priceTag('boleto',6),{kind:'level',label:'Nv 6',level:6});
+  assert.deepEqual(priceTag('boleto',6),{kind:'level',label:'Nív. 6',level:6});
   assert.deepEqual(priceTag('pombo',1),{kind:'new',label:'Novo!'});
   assert.deepEqual(priceTag('boleto-evo',1),{kind:'evo',label:'Evolução'});
   assert.deepEqual(priceTag(HEAL_CHOICE,1),{kind:'snack',label:'Lanche'});

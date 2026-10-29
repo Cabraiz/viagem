@@ -2,10 +2,10 @@
 // key/frame mapping, budget and rebuild, and the proof that the island and the endless map keep their base keys.
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {CITY_RING,CITY_STICKER,CITY_STICKER_CSS,GROUND_LUMINANCE,MAX_COPIES_PER_BASE,RIM_SWITCH_LUMINANCE,baseDisplay,changedEnough,copyResolution,
+import {CITY_RING,GROUND_LUMINANCE,MAX_COPIES_PER_BASE,RIM_SWITCH_LUMINANCE,baseDisplay,changedEnough,copyResolution,
   cityGroundLuminance,copyX,copyY,cropOf,isCityKey,rimForGround,slotOf,textureBytes,variantGeometry,variantOrigin} from '../../src/client/render/city-outline-rules.ts';
 import {CityOutlines,type CityOutlineHost} from '../../src/client/render/city-outline.ts';
-import {bandsRgba,outlineRgba} from '../../src/client/render/outline.ts';
+import {outlineRgba} from '../../src/client/render/outline.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
@@ -189,12 +189,12 @@ test('copies: same frame names in a padded grid, one build per frame, inactive =
   assert.equal(out.variant('sheet',HERO_SCALE),undefined,'outside the city: no copy');
 });
 
-test('evicting one streamed atlas frees its city ring/sticker and keeps other bases intact',()=>{
+test('evicting one streamed atlas frees its city ring and keeps other bases intact',()=>{
   const f=fakeScene({movement:{cell:96,cols:16,rows:8},other:{single:[32,32]}}),out=new CityOutlines(f.scene,host());
   const move=out.variant('movement',HERO_SCALE*2)!;assert.ok(move);f.next();
-  const sticker=out.sticker(move.key)!;assert.ok(sticker);f.next();const other=out.variant('other',1)!;assert.ok(other);
-  out.releaseBase('movement');assert.equal(out.copyOf(move.key),undefined);assert.equal(out.copyOf(sticker.key),undefined);
-  assert.ok(f.removed.includes(move.key)&&f.removed.includes(sticker.key));assert.equal(out.copyOf(other.key),other);assert.equal(out.stats().count,1);
+  const other=out.variant('other',1)!;assert.ok(other);
+  out.releaseBase('movement');assert.equal(out.copyOf(move.key),undefined);
+  assert.ok(f.removed.includes(move.key));assert.equal(out.copyOf(other.key),other);assert.equal(out.stats().count,1);
 });
 
 test('zoom change > 10%: copies rebuilt under new keys, the old ones destroyed a few frames later',()=>{
@@ -258,7 +258,7 @@ test('imported style-A enemy: umber rim (its own sheet) on light ground, the Bre
   assert.deepEqual([img.texture.key,img.originX,img.originY,img.scaleX],[key,.5,.88,scale]);
 });
 
-// ---------- review fixes (H1, H2, M1, M2, M3) and the city "você" sticker ----------
+// ---------- review fixes (H1, H2, M1, M2, M3) and the city "você" contour ----------
 
 /** A sprite as CharacterSprites, CityOutlines.show and YouMarkers touch it; its frame size follows its texture. */
 function fakeSprite(key:string,size:(key:string)=>[number,number]){
@@ -284,7 +284,7 @@ type FakeSprite=ReturnType<typeof fakeSprite>;
  */
 const worldX=(sp:FakeSprite,u:number)=>(sp.flipX?sp.frame.width-u-sp.originX*sp.frame.width:u-sp.originX*sp.frame.width)*sp.scaleX;
 const worldY=(sp:FakeSprite,v:number)=>(v-sp.originY*sp.frame.height)*sp.scaleY;
-/** Frame size of a base sheet (192 px cells) or of a city copy / sticker (its slot). */
+/** Frame size of a base sheet (192 px cells) or of a city copy (its slot). */
 const sizeIn=(out:CityOutlines)=>(k:string):[number,number]=>{const v=out.copyOf(k);return v?[v.geom.slotW,v.geom.slotH]:[192,192];};
 const close=(a:number,b:number,what:string)=>assert.ok(Math.abs(a-b)<1e-6,`${what}: ${a} vs ${b}`);
 
@@ -428,34 +428,6 @@ test('M1 "Você" ring, beak, bar, arrow and status chips: identical geometry wit
   sameCalls(run(copy),run(base));
 });
 
-test('city "você" sticker, pure: Papel then a SOLID Breu band whose outer 2 CSS px are opaque, at DPR 1 and 2',()=>{
-  for(const [scale,res] of [[1,1],[.25,2]] as const){
-    const g=variantGeometry(128,128,scale,1,res,undefined,CITY_STICKER_CSS)!;
-    assert.equal(g.perCss,res,'copy px per CSS px');
-    const w=g.slotW,h=g.slotH,px=new Uint8ClampedArray(w*h*4),x0=g.pad+10,x1=w-g.pad-10,y0=g.pad+10,y1=h-g.pad-10;
-    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=(y*w+x)*4;px[i]=200;px[i+1]=40;px[i+2]=40;px[i+3]=255;}
-    const out=bandsRgba(px,w,h,CITY_STICKER.map(b=>({width:b.css*g.perCss,color:b.color})),w,h);
-    const at=(x:number,y:number)=>{const i=(y*w+x)*4;return [out[i]<<16|out[i+1]<<8|out[i+2],out[i+3]];};
-    const y=Math.floor(h/2),solid=2*res;
-    // Walking out of the figure along a row: inner Breu, Papel, then the outer band; its last `solid` px before the
-    // anti-aliased fringe are opaque Breu.
-    let last=x1;while(last+1<w&&at(last+1,y)[1]>0)last++;
-    let opaque=last;while(at(opaque,y)[1]<255)opaque--;
-    assert.ok(last-opaque<=1,'at most 1 px of anti-aliased fringe');
-    for(let k=0;k<solid;k++)assert.deepEqual(at(opaque-k,y),[CITY_RING.color,255],`res ${res}: outer px ${k}`);
-    assert.deepEqual(at(x1-1+Math.round((CITY_RING.cssPx+1)*res),y),[CITY_STICKER[1].color,255],`res ${res}: Papel inside it`);
-    assert.deepEqual(at(x1,y),[CITY_RING.color,255],'the figure\'s own Breu ring innermost (hidden under the sprite)');
-    // Every px at least half a px inside the outer band is pure, opaque Breu (the corners' diagonals too).
-    const inner=(CITY_RING.cssPx+2)*res,outer=CITY_STICKER_CSS*res;
-    let checked=0;
-    for(let yy=0;yy<h;yy++)for(let x=0;x<w;x++){
-      const dx=x<x0?x0-x:x>=x1?x-x1+1:0,dy=yy<y0?y0-yy:yy>=y1?yy-y1+1:0,d=Math.hypot(dx,dy);
-      if(d>=inner+.5&&d<=outer-.5){checked++;assert.deepEqual(at(x,yy),[CITY_RING.color,255],`(${x},${yy}) d ${d}`);}
-    }
-    assert.ok(checked>0);
-  }
-});
-
 test('"você" contour in YouMarkers (heroi-contorno-fino): one thin line of 8 copies; on the city copy its own Breu ring is the line',()=>{
   const {out,base,copy,h}=heroPair(true),s=1/h.z;
   const breu=tokenColor('--c-breu'),voce=tokenColor('--c-voce');
@@ -493,7 +465,7 @@ test('"você" contour in YouMarkers (heroi-contorno-fino): one thin line of 8 co
 // Last in the file: the page's outline worker is created once and kept, so every test above runs the sync path.
 test('worker path (pior-quadro-2s): the copy paints off the main thread, one job per base, late or cancelled replies are dropped',async()=>{
   const g=globalThis as Record<string,unknown>,saved=['Worker','OffscreenCanvas','createImageBitmap','ImageBitmap'].map(k=>[k,Object.getOwnPropertyDescriptor(g,k)] as const);
-  const posted:{id:number;width:number;height:number;cells:unknown[];bands?:unknown;ring?:unknown}[]=[],workers:{onmessage?:(e:{data:unknown})=>void}[]=[];let closed=0;
+  const posted:{id:number;width:number;height:number;cells:unknown[];ring?:unknown}[]=[],workers:{onmessage?:(e:{data:unknown})=>void}[]=[];let closed=0;
   class FakeBitmap {width:number;height:number;constructor(w=0,h=0){this.width=w;this.height=h;}close(){closed++;}}
   Object.assign(g,{OffscreenCanvas:class{},ImageBitmap:FakeBitmap,createImageBitmap:async()=>new FakeBitmap(),
     Worker:class{constructor(){workers.push(this);}postMessage(m:never){posted.push(m);}terminate(){}}});
@@ -503,22 +475,19 @@ test('worker path (pior-quadro-2s): the copy paints off the main thread, one job
     const f=fakeScene({movement:{cell:96,cols:16,rows:8}}),h=host(),out=new CityOutlines(f.scene,h);
     assert.equal(out.variant('movement',HERO_SCALE),undefined,'painting: the base meanwhile');
     f.next();assert.equal(out.variant('movement',HERO_SCALE),undefined);assert.equal(out.pending,1,'one job per base');
-    await flush();assert.equal(posted.length,1);assert.equal(posted[0].cells.length,128);assert.ok(posted[0].ring&&!posted[0].bands);
+    await flush();assert.equal(posted.length,1);assert.equal(posted[0].cells.length,128);assert.ok(posted[0].ring);
     assert.equal(f.made.size,0,'no canvas painted on the main thread');
     reply(0);f.next();
     const v=out.variant('movement',HERO_SCALE)!;assert.ok(v);assert.equal(out.pending,0);
     assert.deepEqual([f.made.get(v.key)!.w,f.made.get(v.key)!.h],[v.width,v.height]);assert.equal(f.made.get(v.key)!.frames.size,128);
     assert.deepEqual(f.made.get(v.key)!.frames.get('17'),[1*v.geom.slotW,1*v.geom.slotH,v.geom.slotW,v.geom.slotH]);
-    // The "você" sticker of that copy: the bands, same lifecycle.
-    assert.equal(out.sticker(v.key),undefined);await flush();assert.ok(posted[1].bands&&!posted[1].ring);
-    reply(1);f.next();const st=out.sticker(v.key)!;assert.ok(st);assert.equal(f.made.get(st.key)!.frames.size,128);
     // A zoom change while a rebuild paints: the old copies retire, the late reply of a cancelled job is closed, not shown.
     f.next();h.z=PORTRAIT*1.2;assert.equal(out.variant('movement',HERO_SCALE),undefined);await flush();
     f.next();h.z=PORTRAIT*1.5;out.variant('movement',HERO_SCALE);await flush();
-    assert.equal(posted.length,4,'two rebuild jobs posted: '+posted.length);const before=closed;reply(2);assert.equal(closed,before+1,'cancelled job: bitmap closed');
-    reply(3);f.next();const w=out.variant('movement',HERO_SCALE)!;assert.ok(w&&w.key!==v.key);
+    assert.equal(posted.length,3,'two rebuild jobs posted: '+posted.length);const before=closed;reply(1);assert.equal(closed,before+1,'cancelled job: bitmap closed');
+    reply(2);f.next();const w=out.variant('movement',HERO_SCALE)!;assert.ok(w&&w.key!==v.key);
     // releaseBase frees the worker copy's bitmap with its texture.
-    const c0=closed;out.releaseBase('movement');assert.equal(out.copyOf(w.key),undefined);assert.ok(f.removed.includes(w.key));assert.equal(closed,c0+3,'its bitmap closed, and the retiring copy and sticker of the old zoom');
+    const c0=closed;out.releaseBase('movement');assert.equal(out.copyOf(w.key),undefined);assert.ok(f.removed.includes(w.key));assert.equal(closed,c0+2,'its bitmap closed, and the retiring copy of the old zoom');
     // A failed paint marks the base: no retry loop.
     const f2=fakeScene({gem:{single:[22,28]}}),out2=new CityOutlines(f2.scene,host());
     out2.variant('gem',CITY_VIEW_SCALE);await flush();const m=posted.at(-1)!;workers[0].onmessage!({data:{id:m.id,error:'boom'}});

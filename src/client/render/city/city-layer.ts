@@ -27,7 +27,7 @@ const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HE
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
-import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,texelOf,type CityArtPlan,type CityLot} from './art-plan.ts';
+import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,texelOf,type CityArtPlan,type CityLot,type DecorSheet} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,heroRect,marksRect,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -40,6 +40,7 @@ import {cliffCells,withoutCliffs} from './relevo/field.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {decorCentre,decorChunk,decorFade,decorSprite} from './decor-art.ts';
 import {CityLive,decalMeshes,type LivePiece} from './live/layer.ts';
+import {grafiteQuad} from './grafite-parede.ts';
 import {liveSheets,livePieces} from './live/art.ts';
 import {decorKey,isDecal,type DecorEntry} from './live/rules.ts';
 export {decorSprite} from './decor-art.ts';
@@ -91,6 +92,9 @@ const lerp=(a:Pt,b:Pt,t:number):Pt=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 const lotCentre=(lot:CityLot):[number,number]=>[lot.x+Math.floor((lot.w-1)/2),lot.y+Math.floor((lot.h-1)/2)];
 /** Fade id of one unit column (a piece of a block): only the columns in front of a figure turn see-through. */
 const columnFade=(pieceId:string)=>`c:${pieceId}`;
+const rectKey=(e:DecorEntry)=>`${e.c},${e.r},${e.w},${e.h}`;
+/** A graffito's depth key over its wall's (keys are spaced >= 1; the live overlays sit at +0.25). */
+const GRAFITE_ON_WALL=.3;
 
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
@@ -145,7 +149,7 @@ interface Band {blockId:string;key:number;body:TriBand;outline:TriBand;
   /** Fade id of each unit column, in part order. */
   ids:string[]}
 /** A building drawn as one painted image (materials.ts building sheet) or a lot of imported art. */
-interface BlockSprite {blockId:string;key:number;fade:string;obj:Phaser.GameObjects.Image}
+interface BlockSprite {blockId:string;key:number;fade:string;obj:Phaser.GameObjects.Image|Phaser.GameObjects.Mesh}
 /** A prop; `rect` is its drawn screen bounds (projected px) for the see-through test. */
 interface LiveProp {key:number;fade:string;x:number;y:number;rect:Rect;obj:Phaser.GameObjects.Graphics|Phaser.GameObjects.Image}
 /** One unit column of a band: its part index in the band's body and outline (TriBand.setPartAlpha). */
@@ -222,6 +226,8 @@ export class CityLayer {
    */
   private readonly decorOf=new Map<string,DecorEntry[]>();
   private readonly decorAt=new Map<number,DecorEntry>();
+  /** The standing wall pieces by rect (rectKey): the wall a graffito of the same rect is painted on. */
+  private readonly wallAt=new Map<string,DecorEntry>();
   /** Ground decals by chunk (every chunk whose baked ring they touch). */
   private readonly decalsOf=new Map<string,DecorEntry[]>();
   /** Cenário vivo (E3, live/layer.ts): overlays, wires, lights and nests over the decor; none without decor. */
@@ -300,6 +306,7 @@ export class CityLayer {
       }
       const sheet=this.art?.decor[e.id];
       if(!sheet)continue;
+      if(sheet.rule==='wall'&&!e.cover)this.wallAt.set(rectKey(e),e);
       if(e.cover){if(sheet.covers)for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);continue;}
       const key=decorChunk(e,size);
       push(this.decorOf,key,e);
@@ -617,6 +624,7 @@ export class CityLayer {
     for(const e of this.decorOf.get(key)??[]){
       const sheet=this.art!.decor[e.id];
       if(!this.scene.textures.exists(sheet.key))continue;
+      if(sheet.rule==='face'){const s=this.drawGrafite(e,sheet,view);if(s)sprites.push(s);continue;}
       const d=decorSprite(e,sheet,view,this.asset,this.pivot),fade=decorFade(e);
       const img=this.scene.add.image(d.x,d.y,sheet.key,d.frame).setOrigin(d.originX,d.originY).setScale(d.scale).setDepth(this.depthOf(d.depth));
       if(sheet.rule==='prop'){
@@ -634,6 +642,29 @@ export class CityLayer {
       out.push(decorKey(e));
     }
     return out;
+  }
+
+  /**
+   * A graffito (grafite-parede.ts) as a Mesh on the face of the wall piece of its rect, just above the wall's image and
+   * fading with it; nothing when the face looks away, the wall has no sheet or the renderer is not WebGL.
+   */
+  private drawGrafite(e:DecorEntry,sheet:DecorSheet,view:number):BlockSprite|undefined{
+    const wall=this.wallAt.get(rectKey(e)),ws=wall&&this.art!.decor[wall.id];
+    if(!wall||!ws||!this.webgl||!this.scene.textures.exists(ws.key))return undefined;
+    const {cell,origin}=this.asset,frame=this.scene.textures.getFrame(sheet.key,0);
+    const base=groundZ(this.asset,origin.x+(e.c+e.w/2)*cell,origin.y+(e.r+e.h/2)*cell);
+    const q=grafiteQuad(e,view,cell,origin,base,ws.height,frame.height/frame.width,this.pivot);
+    if(!q)return undefined;
+    const verts:number[]=[],uvs:number[]=[],g=Math.round(255*q.light),tint=(g<<16)|(g<<8)|g;
+    q.corners.forEach((p,k)=>{verts.push(p.x,-p.y);uvs.push(...frameUv(k===1||k===2?1:0,k>=2?1:0,frame));});
+    const m=this.scene.add.mesh(0,0,sheet.key);
+    m.hideCCW=false;
+    m.setOrtho(m.width,m.height);
+    m.addVertices(verts,uvs,[0,1,2,0,2,3],false,undefined,[tint,tint,tint,tint],[1,1,1,1]);
+    (m as unknown as {preUpdate(time:number,delta:number):void}).preUpdate(0,0);
+    const key=q.depth+GRAFITE_ON_WALL;
+    m.setDepth(this.depthOf(key));
+    return {blockId:decorFade(wall),key,fade:decorFade(wall),obj:m};
   }
 
   /**

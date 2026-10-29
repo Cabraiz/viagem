@@ -119,7 +119,8 @@ export const DECOR_GROUP='cenario';
  * - 'wall' (the 6 wall and fence families): centred on its cell, the lowest row on the anchor;
  * - 'prop' (objects, poles): feet on the anchor at the footprint's centre.
  */
-export type DecorRule='footprint'|'wall'|'prop';
+/** 'face': painted on a wall's face (a graffito, render/city/grafite-parede.ts), drawn as a Mesh, never standing. */
+export type DecorRule='footprint'|'wall'|'prop'|'face';
 export interface DecorSheet extends CitySheet {rule:DecorRule;
   /** Drawn over its cells instead of the procedural piece there ('footprint', 'wall' and the DECOR_FILL objects). */
   covers:boolean}
@@ -132,6 +133,7 @@ export const DECOR_WALL_FAMILIES=['alambrado','cerca-madeira','grade','muro-cond
 const DECOR_FOOTPRINT=/^(ninho-|montanha-|morro-|penhasco|rampa$|ponte$|cachoeira-)/;
 export function decorRule(id:string,meta?:Record<string,unknown>):DecorRule{
   if(DECOR_WALL_FAMILIES.some(f=>id.startsWith(`${f}-`)))return 'wall';
+  if(GRAFITE_ID.test(id))return 'face';
   return Number.isInteger(meta?.storeys)||DECOR_FOOTPRINT.test(id)?'footprint':'prop';
 }
 /**
@@ -149,6 +151,8 @@ export const WALL_RETO_SPAN:Readonly<Record<typeof DECOR_WALL_FAMILIES[number],n
   alambrado:176,'cerca-madeira':123,grade:166,'muro-condominio':207,'muro-pichado':195,tapume:208};
 /** Display scale (game px per art px) of a wall family's pieces with city cells of `cell` u: one cell along a line. */
 export const wallScale=(family:typeof DECOR_WALL_FAMILIES[number],cell:number)=>cell*TILE_X/WALL_RETO_SPAN[family];
+/** The graffiti (scripts/altos-grafites-cidade.ts GRAFITES): a 'face' each. */
+export const GRAFITE_ID=/^grafite-[a-z-]+$/;
 const NEST_ID=/^ninho-[a-z]+-(ativo|dormindo|destruido)$/;
 /** Ground decals (live/rules.ts isDecal; repeated here so the plan does not import the live layer). */
 const DECAL_ID=/^(bueiro|faixa-pedestre|mancha-oleo|pegadas-\d+|poca-congelada-\d+|rachadura-\d+)$/;
@@ -305,7 +309,10 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
     if(!p||!f||NEST_ID.test(id)||DECAL_ID.test(id))continue;
     const rule=decorRule(id,p.meta),key=`city:decor:${id}`;
     let s:DecorSheet;
-    if(rule==='footprint'){
+    if(rule==='face'){
+      // One view at the art's size: the layer stretches it over the face (grafite-parede.ts), the scale unused.
+      s={key,...cityTexture(cenario,f,1),originY:.5,height:0,rule,covers:false};
+    }else if(rule==='footprint'){
       const fp=footprintOf(p)??[1,1];
       s={...footprintSheet(cenario,key,p,f,fp),rule,covers:true};
     }else{

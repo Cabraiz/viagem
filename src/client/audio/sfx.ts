@@ -57,6 +57,8 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   // The caça-níquel when my weapon turns dourada (caixa-gamble, hud/caca-niquel.ts): the jackpot over the chest.
   'caca-niquel':spec(500,3,.85),
   coxinha:spec(60,1,.5),ima:spec(300,1,.55),
+  'ultimo-bicho':spec(0,3,.7),apagao:spec(1000,2,.6),'caixa-registradora':spec(250,1,.5),'peca-cai':spec(200,1,.5),
+  'moto-tranco':spec(400,1,.55),'moto-morre':spec(400,1,.55),pix:spec(300,2,.55),'ninho-acordou':spec(2000,1,.5),
 });
 
 /**

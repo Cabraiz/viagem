@@ -333,6 +333,12 @@ function load(next:HudScenario){
   // `bicho`: who got them (the downed banner's cause line and the result's "Te derrubou").
   if(bicho&&scenario==='result')view.events=view.events.map(e=>e.type==='downed'?{...e,source:bicho}:e);
   if(bicho&&scenario==='downed')view.events=[...view.events,{type:'downed',player:'p1',source:bicho,eventId:++eventId}];
+  // Card solo-segunda-chance (`solo=levantando|ultima`, players=1): the solo get-up at 60%, or the last-chance line right
+  // after it (the view carrying the get-up; `frozen` keeps the line, else it goes in 3 s).
+  const solo=params.get('solo');
+  if(solo==='levantando')view.players=view.players.map(p=>p.id==='p1'?{...p,hp:0,downed:{progress:.6,bleedOutTick:tick+26*SIM_HZ}}:p);
+  if(solo==='ultima')view={...view,events:[{type:'revived',player:'p1',eventId:++eventId}],
+    players:view.players.map(p=>p.id==='p1'?{...p,hp:Math.round(p.maxHp*.4),downed:undefined}:p)};
   // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
   if(dica){
     if(!tutorial)view.events=[];

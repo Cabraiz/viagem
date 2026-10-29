@@ -142,7 +142,7 @@ test('client: after a restart of the room mid-run the player is back in combat a
     for(let i=0;i<80&&!ana.connected;i++)await sleep(50);
     await sleep(100);
     assert.equal(ana.connected,true);assert.equal(ana.run?.phase,'combat');assert.equal(ana.roomNotice,undefined,'no lobby news');
-    assert.match(ana.resumedNotice?.title??'',/recomeçando o Round 2/);assert.match(ana.resumedNotice?.body??'',/armas/);
+    assert.match(ana.resumedNotice?.title??'',/recomeçando a rodada 2/);assert.match(ana.resumedNotice?.body??'',/armas/);
     assert.deepEqual(shown,[ana.resumedNotice!.title],'the match is told once (its row in the HUD slot)');
     // It stays over the match (combat does not clear it, unlike the lobby's).
     await sleep(500);assert.equal(ana.run?.phase,'combat');assert.ok(ana.resumedNotice);

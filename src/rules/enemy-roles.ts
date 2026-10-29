@@ -128,7 +128,7 @@ export const ROLE_PROFILES:Readonly<Record<EnemyRole,RoleProfile>>=Object.freeze
     reactionLines:['PANCADA NO CHÃO!','Treme o chão!','Segura essa, formiga!'],
     pops:['CHEFINHO CAIU!','DERRUBADO!','GIGANTE NO CHÃO!'],cause:'O grandão te esmagou'}),
   chefe:role({id:'chefe',label:'Chefe',behavior:'boss',base:'chefe',speed:1,damage:1,radius:1,xp:1,cell:384,threat:0,
-    barks:['Eu sou o fim da linha','Tremam. Ou peçam desconto.','Ninguém passa de mim','Último round, última dor'],
+    barks:['Eu sou o fim da linha','Tremam. Ou peçam desconto.','Ninguém passa de mim','Última rodada, última dor'],
     deathLines:['Impossível... eu era o chefe','Fim da minha era','Volto na sequência. Juro.'],
     reactionLines:['Fase dois, otários!','Ajoelhem, plebeus!','Chega de brincadeira!'],
     pops:['CHEFE DERRUBADO!','FIM DE REINADO!','CAIU O CHEFÃO!'],cause:'O chefão te esmagou'}),

@@ -12,7 +12,9 @@ import {icon} from './icon.ts';
 import type {UpdateReason} from './version-watch.ts';
 
 /** The notice, one line: in a match it is all there is (the joke below shows only out of the round, UX B5). */
-export const UPDATE_TITLE='Saiu versão nova do jogo! Toque para atualizar.';
+/** The one "new version" line (T9 of the texts audit): the notice, the retry window, the lobby and the map reuse it. */
+export const UPDATE_NEWS='Saiu versão nova do jogo.';
+export const UPDATE_TITLE=`${UPDATE_NEWS} Toca pra atualizar.`;
 /** Optional second line (the joke), outside the HUD slot only. */
 export const UPDATE_LINE='Saiu ajuste fresquinho.';
 /** How long the notice may hold the HUD's announcement slot: a whole run (30 min); danger notices still go first. */

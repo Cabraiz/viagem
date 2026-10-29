@@ -6,4 +6,4 @@ export const ALBEDO_GRID={cols:4,rows:2,tile:512,pad:16} as const;
 /** Slots that repeat (2×2 copies in the slot, wrapped padding): the shader reads them with materialTiled. */
 export const ALBEDO_TILED=["calcada"] as const;
 /** Mean colour (0..1 RGB) of each slot's material, in ALBEDO_SLOTS order. */
-export const ALBEDO_MEANS:readonly (readonly [number,number,number])[]=[[0.8157,0.8475,0.9024],[0.6353,0.6199,0.6083],[0.4797,0.4637,0.4503],[0.3014,0.53,0.676],[0.4782,0.4395,0.4175],[0.1441,0.2506,0.2738]];
+export const ALBEDO_MEANS:readonly (readonly [number,number,number])[]=[[0.8157,0.8475,0.9024],[0.6353,0.6199,0.6083],[0.4782,0.4625,0.4495],[0.3014,0.53,0.676],[0.4782,0.4395,0.4175],[0.1441,0.2506,0.2738]];

@@ -99,12 +99,14 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // share (~80 bodies) piled ~40 on it at 1 a second, the Uno down at ~6 min in half the seeds. A trickle under 1 now adds
 // up (warmTrickle did nothing for a solo before) and 1p leaves at .4 a second (× .34 while warming): with CHAVEIRO_PACE
 // 1p (ride 210, limit × 1.6) 1p 6/8 (16 seeds 11/16; .5 → 5/8, .3 → 3/8), 3p 8/8. Same bodies: the rest sleeps at waveCap.
+// After ritmo-morto-e-viaduto 1p fell to 3/8 (13/32); march 1p .85 → .7 with ride 150: 6/8 (22/32), 3p 7/8. Not more:
+// .6 → 15/32; crowd hp 1p .8 → 20/32 alone, 15/32 with .7; crowd damage .8 → 19/32 (the bench swings ±3 seeds in 32).
 const CROWD={march:[1,1,1.08,1.17,1.26,1.35] as number[],hp:[1,1,1.5,2,2.5,3] as number[],damage:[1,1,1.15,1.3,1.45,1.6] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,warmEase:120,warmTrickle:.34,ramp:NEST_RUN_SECONDS,
   // × CLASH_BODIES (rules/enemy-roles.ts, 1p → 6p): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
   size:[CLASH_BODIES[0],1.85*CLASH_BODIES[1]] as [number,number],mapShare:[.1*CLASH_BODIES[0],.1*CLASH_BODIES[1]] as [number,number],
-  trickle:[.4,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
+  trickle:[.4,3] as [number,number],march:[.7,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
   explore:120,waveMin:20,waveCap:150,crowd:CROWD};
 /** NEST_PACE.crowd's factor `k` for a room of `players` (1..6). */
 export const crowd=(k:keyof typeof CROWD,players:number)=>NEST_PACE.crowd[k][clampPlayers(players)-1]??1;

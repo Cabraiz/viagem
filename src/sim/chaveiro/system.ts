@@ -52,9 +52,11 @@ export const MOTO_RIDE_SECONDS=420;
  * never pushes a dead moto (each one waits MORTA_ALONE_SECONDS), so at 420 s his first ETA was ~752 s against 3p's 540;
  * 1p ride 210 s puts it at 540 (holdTick). limit 1p × 1.6 (192 hits): the first wave pinned the Uno at the rate cap
  * while the solo hero (level 4) fought ~40 bodies at it; with NEST_PACE.trickle 1p .4: 1p 3/8 → 6/8, 3p 6/8 → 8/8.
+ * After ritmo-morto-e-viaduto (visitors, deck sleepers recruited to the car) 1p fell to 3/8 (13/32); ride 150 (ETA0 still
+ * 540: the moto waits at the last delivery) with NEST_PACE.march 1p .7: 6/8 (22/32), 3p 7/8. ride 90/120 → 15/32, 7/16.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[210,420,420,580,740,900] as number[],limit:[1.6,1,1,1,1,1] as number[],rate:3};
+export const CHAVEIRO_PACE={ride:[150,420,420,580,740,900] as number[],limit:[1.6,1,1,1,1,1] as number[],rate:3};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**

@@ -106,7 +106,7 @@ export const LINHA={
 
 /** The top bar: the letreiro of the profile on screen (logoUrl), the bell (decorative) and ≡ (the sound settings). */
 // The bar is in the page from the start with no logo: main.ts renderInsta sets it, so the stadium never downloads one.
-export const barraHtml=()=>`<header class="insta-barra"><img class="insta-logo" alt="" decoding="async" draggable="false"><span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
+export const barraHtml=()=>`<header class="insta-barra"><img class="insta-logo" alt="" decoding="async" draggable="false"><span class="insta-acoes"><span class="insta-sino" aria-hidden="true">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
 
 /** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. A `copia` is
  *  the endless row's second set (ui/insta-aneis.ts): tappable, but hidden from screen readers and out of the tab order. */
@@ -316,4 +316,4 @@ export function storiesTelaHtml(p:InstaPerfil):string{
 }
 
 /** The tabs: grid (active), video and liked, as in the reference; only the grid exists, the others are drawn. */
-export const abasHtml=()=>`<div class="insta-abas" aria-hidden="true"><span class="insta-aba ativa">${LINHA.grade}</span><span class="insta-aba">${LINHA.video}</span><span class="insta-aba">${LINHA.coracao}</span></div>`;
+export const abasHtml=()=>`<div class="insta-abas" aria-hidden="true"><span class="insta-aba ativa">${LINHA.grade}</span><span class="insta-aba muda">${LINHA.video}</span><span class="insta-aba muda">${LINHA.coracao}</span></div>`;

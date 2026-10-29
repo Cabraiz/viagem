@@ -22,6 +22,8 @@
 #confirmation .chosen-id{min-width:0}
 #confirmation #chosen-name{display:block;font:400 var(--t-21)/1.1 var(--f-cartaz);color:var(--c-papel-claro);overflow-wrap:anywhere}
 #confirmation #chosen-class{margin:6px 0 0;font-size:12px;line-height:1.5}
+/* What the role does (menu-diz-o-jogo-e-convite #9), under the class: the badge's title says it too. */
+#confirmation .chosen-role-linha{display:block;margin-top:2px;font-size:11px;font-style:italic;opacity:.85}
 #confirmation .chosen-role{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;padding:3px 10px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);font-size:10px;font-weight:800;box-shadow:0 2px 0 var(--c-breu);margin-right:4px}
 #confirmation .save-status{font-size:11px;margin:8px 0 0}
 #confirmation .save-status:empty,#confirmation .explore-error:empty{display:none}

@@ -111,6 +111,7 @@ test('one screen, no scroll: the bands add up to the reference card (734x1415) a
     u('.insta-trocar','margin',0)+25+                                                                // ..442
     u('.insta-perfil','margin-top')+u('.insta-foto .insta-anel','height')+                          // ..778
     u('.insta-chips','margin',0)+u('.insta-chip','min-height')+                                      // ..870 (auditoria 12)
+    u('.menu-oque','margin-top')+u('.menu-oque','height')+                                          // ..939 (menu-diz-o-jogo #2)
     u('.insta-grade-area','margin-top')+u('.insta-aba','height')+2*3+u('.insta-grade','margin',0)+u('.insta-grade','height')+ // ..1232
     u('.estadio .estadio-escolha > .estadio-confirmar','margin',0)+u('.estadio .estadio-escolha > .estadio-confirmar','--bh')+
     u('.estadio .estadio-escolha > .estadio-confirmar','margin',1);                                  // ..1415

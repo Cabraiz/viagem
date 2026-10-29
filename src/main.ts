@@ -3,7 +3,7 @@ import './client/estadio.css';
 import { getClass, heroiPadrao, isLiberado, playableClasses, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
-import { suit } from './client/ui/suit.ts';
+import { ROLE_LINE, suit } from './client/ui/suit.ts';
 import { mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
@@ -11,10 +11,10 @@ import { startAds } from './client/ui/ads-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
-import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
+import { formatRoomCode, inviteCode, inviterName, setInviter } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
-import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
+import { confirmText, etapaOf, MENU_OQUE, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { manterAcimaDoTeclado } from './client/ui/teclado.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, updateNow, type ResumeIntent } from './client/ui/update-toast.ts';
 import { startPullToRefresh } from './client/ui/pull-refresh.ts';
@@ -86,10 +86,12 @@ app.innerHTML = `
   <button type="button" class="menu-tela-cheia" hidden></button>
   <a class="menu-privacidade" href="/privacidade/">Privacidade</a>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
+    <p class="convite-faixa" role="status" hidden></p>
     <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
     <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
     <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2></div>
+    <p class="menu-oque">${MENU_OQUE}</p>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>
@@ -416,7 +418,7 @@ function showLock() {
   if(button.disabled===locked) return;
   button.disabled=locked;
   button.querySelector<HTMLElement>('.estadio-cadeado')!.hidden=!locked;
-  document.querySelector('.estadio-confirmar-texto')!.textContent=locked?'EM BREVE':CONFIRM_TEXT[etapaOf(etapa)];
+  document.querySelector('.estadio-confirmar-texto')!.textContent=locked?'EM BREVE':confirmText(etapaOf(etapa),etapa.convite);
 }
 rowList.addEventListener('click',event=>{
   const button=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
@@ -448,7 +450,7 @@ nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameIn
 // Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
 // enters. ‹, Escape or the dialog's "Trocar de personagem" go back to the row.
 const etapa={section:document.getElementById('personagem')!,row:document.querySelector<HTMLElement>('.estadio-fileira')!,
-  nameRow:document.querySelector<HTMLElement>('.estadio-nome')!,input:nameInput,label:document.querySelector<HTMLElement>('.estadio-confirmar-texto')!};
+  nameRow:document.querySelector<HTMLElement>('.estadio-nome')!,input:nameInput,label:document.querySelector<HTMLElement>('.estadio-confirmar-texto')!,convite:false};
 function chooseHero() {
   if(!isLiberado(selected.id)) return;
   document.getElementById('escolhido')!.innerHTML=hasNewArt(selected.id)
@@ -481,32 +483,57 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   const saved={version:1,classId:selected.id,name:nickname,color};
   let persisted=false;
   try {localStorage.setItem('viagem:hero:v1',JSON.stringify(saved));persisted=true;} catch { /* fallback explícito abaixo */ }
-  text('chosen-name',saved.name);setArt('chosen-art',selected);
-  // The class with its suit, like the creation's seal (confirmacao-70h).
-  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role">${suit(selected.role)}${selected.role}</span> ${selected.name}`;
+  showChosen();
   // Saved: nothing to say. Only a failure to save is worth a line.
   text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
-  mostrarEscolha(dialog,selected.id);
+  // Invited (menu-diz-o-jogo-e-convite #11): ENTRAR goes into the room; the popup only if the room fails to open.
+  if(invite) {toMatch();void openInvite();return;}
   dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
   // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
   if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
+/** The popup's card: the chosen hero, his name, the class with its suit (confirmacao-70h) and what the role does (#9). */
+function showChosen() {
+  text('chosen-name',nickname.trim());setArt('chosen-art',selected);
+  const line=ROLE_LINE[selected.role];
+  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role" title="${line}">${suit(selected.role)}${selected.role}</span> ${selected.name}<small class="chosen-role-linha">${line}</small>`;
+  mostrarEscolha(dialog,selected.id);
+}
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
+// The links the lobby shares say who called (&de=, invite.ts setInviter). False when the lobby did not open: the popup
+// says why (a saved hero's invite opens it from the menu, so it is filled first).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
-  coopButton.disabled=true;
+  coopButton.disabled=true;setInviter(nickname.trim());
   const releaseDance=menuDance.hold();
   const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
   try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
-  catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
+  catch(e){
+    if(!chunkFailed(e)){text('explore-error','Não foi possível abrir as salas.');if(!dialog.open){showChosen();dialog.showModal();}}
+    return false;
+  }
   finally{releaseDance();coopButton.disabled=false;}
+  return true;
 }
 // Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
-// straight in (below); a new player makes one first and the confirmation's button says which room it opens.
+// straight in (below); a new player sees who called and which room on the menu (menu-diz-o-jogo-e-convite #11), picks a
+// hero and a name, and ENTRAR goes in. If the room does not open, the invite stays for the popup's button.
 let invite=inviteCode(location.search);
-if(invite)rotulo(coopButton).textContent=`Entrar na sala ${formatRoomCode(invite)}`;
-const openInvite=()=>{const room=invite;invite=undefined;rotulo(coopButton).textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
+const conviteFaixa=document.querySelector<HTMLElement>('.convite-faixa')!;
+function showInvite() {
+  etapa.convite=Boolean(invite);
+  if(invite)etapa.section.dataset.convite=''; else delete etapa.section.dataset.convite;
+  conviteFaixa.hidden=!invite;
+  if(invite)conviteFaixa.textContent=`${inviterName(location.search)??'Um amigo'} te chamou para a sala ${formatRoomCode(invite)}`;
+  rotulo(coopButton).textContent=invite?`Entrar na sala ${formatRoomCode(invite)}`:'Jogar com amigos';
+  if(isLiberado(selected.id))etapa.label.textContent=confirmText(etapaOf(etapa),etapa.convite);
+}
+showInvite();
+const openInvite=async()=>{
+  const room=invite;invite=undefined;showInvite();
+  if(!await openCoop({room,autoJoin:true})){invite=room;showInvite();}
+};
 coopButton.addEventListener('click',()=>{toMatch();void(invite?openInvite():openCoop());});
 document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots

@@ -90,6 +90,19 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   background: var(--c-amarelo); color: var(--c-lilas); box-shadow: var(--s-1);
   font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere; text-wrap: balance;
 }
+/* What the game is (menu-diz-o-jogo-e-convite #2): one quiet line under the hero's name, on every screen. */
+.menu-oque {
+  flex: none; max-width: min(100%, 34em); margin: 0; font: 600 clamp(13px, 1.9vh, 18px)/1.3 var(--f-sistema);
+  color: var(--c-papel-claro); text-shadow: 0 2px 0 var(--c-breu), 1px 0 0 var(--c-breu), -1px 0 0 var(--c-breu); text-wrap: balance;
+}
+/* An invite (?sala=, #11): who called and which room, a pill at the top centre; the button says ENTRAR (main.ts). */
+.estadio .convite-faixa {
+  position: fixed; z-index: 7; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(92vw, 640px); margin: 0; padding: .45em 1.1em .5em;
+  border: 3px solid var(--c-breu); border-radius: var(--r-pilula); background: var(--c-amarelo); color: var(--c-lilas);
+  box-shadow: var(--s-1); font: 400 clamp(17px, 2.6vh, 26px)/1.1 var(--f-cartaz); text-align: center; text-wrap: balance;
+}
+.estadio .convite-faixa[hidden] { display: none; }
 .estadio-fileira { display: flex; align-items: center; gap: 8px; width: 100%; }
 /* Step 2 (nome-depois-de-selecionar): the row gives its place to [‹] [the chosen tile, locked] [the name field]. */
 .estadio-nome { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 0 8px; }
@@ -241,6 +254,8 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 38vh; }
   .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 38vh / var(--sinal-ar)); }
   .estadio-classe { font-size: 18px; border-width: 2px; }
+  .menu-oque { font-size: 12px; }
+  .estadio .convite-faixa { font-size: 16px; top: max(6px, env(safe-area-inset-top)); }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
   .estadio .estadio-confirmar { --bh: 46px; }
@@ -280,7 +295,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   top: var(--tec-top); bottom: auto; height: var(--tec-h); justify-content: flex-end; overflow: hidden;
   padding-top: 0; padding-bottom: 8px;
 }
-.estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
+.estadio .estadio-escolha[data-teclado] > :is(.estadio-caixa-titulo, .menu-oque, .convite-faixa) { display: none; }
 .estadio:has(.estadio-escolha[data-teclado]) .menu-privacidade { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }

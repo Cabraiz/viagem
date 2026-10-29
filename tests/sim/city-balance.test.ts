@@ -336,7 +336,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // The city again for sem-arma-girando-no-chao (the chinelo and the rings out of the catalog: the offers' and crates' rolls move).
 // The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
 // reached on foot, the revive's shove).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fd1459aba23a7dd1',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+// The city again for economia-caixa-e-forja (the bico's shift by seat, bicoSaldo: 4 heroes hold R$ 20, not 40).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a98f622f0ffe608d',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

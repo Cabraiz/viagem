@@ -112,12 +112,12 @@ export function page(t,all){
   <meta property="og:url" content="${SITE}${pathOf(t.code)}">
   <meta property="og:title" content="viagem · ${attr(t.title)}">
   <meta property="og:description" content="${attr(t.description)}">
-  <meta property="og:image" content="${SITE}/og.jpg?v=2b">
+  <meta property="og:image" content="${SITE}/og.jpg?v=2c">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="${t.code.replace('-','_')}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="${SITE}/og.jpg?v=2b">
+  <meta name="twitter:image" content="${SITE}/og.jpg?v=2c">
 ${alt.join('\n')}
   <link rel="icon" href="/favicon.svg">
   <style>

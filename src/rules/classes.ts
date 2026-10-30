@@ -39,22 +39,30 @@ export const classes: HeroClass[] = [
 export const roles: Role[] = ['Linha de frente','Dano','Suporte','Controle'];
 export function getClass(id: string): HeroClass | undefined { return classes.find(hero => hero.id === id); }
 /**
- * D-053 (17/10/2026): for now only the heroes with the complete R06 movement art (8 directions, 128 poses, the 15 of
- * personagens-movimento128) can be picked in the menu or drawn for a room bot. The other 20 stay in the code and data,
- * hidden: a room or link asking for one of them plays one of these (playableClassId), never an error.
+ * The 6 active heroes (herois-legados-escondidos, the user 29/10: "dê hide em todos os personagens (serão legados). E
+ * teremos nossos 6 ativos"): the only ones a person can see or pick (menu, stories, lobby) or a room bot can get, in
+ * the menu's order (the first is the default, personagens-liberados.ts PERSONAGEM_PADRAO). The one list: the menu,
+ * index.html's preload (OPEN) and the room read it.
  */
-export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['clt-cansado','coach','concurseira','faxineira','feirante',
-  'gato-nada-pra-comer','maromba','mendigo','passageira','pedreiro','streamer','universitario','viciado-em-bet','vizinha-fofoqueira',
-  // The user (24/10, "falta liberar o aposentado e o vendedor"): playable with their 4-direction sheets until the 8-direction art lands.
-  'vendedor-praia','aposentado']);
-/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now; the vendedor and the aposentado until their 8-direction art). */
-export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer','vendedor-praia','aposentado']);
+export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
+/**
+ * LEGADO: every other class (the Mendigo hero included: the mendigo on screen now is an enemy, art/mendigo.ts). They
+ * stay in the code, the data and the art folders, hidden from the player and never preloaded: a room, a save or a link
+ * asking for one of them plays a playable class (playableClassId), never an error.
+ */
+export const LEGACY_CLASS_IDS: readonly string[] = Object.freeze(classes.map(hero => hero.id).filter(id => !PLAYABLE_CLASS_IDS.includes(id)));
+/**
+ * Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now). The vendedor and the aposentado are bots
+ * since bots-vendedor-aposentado: their M16 sheets cover the 8 directions (3 mirrored), the same clips the viciado and the
+ * maromba walk on (movementPlan takes M16 first, so a walk128 would never show).
+ */
+export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer']);
 /** The classes a room bot may get: the playable ones minus NOT_FOR_BOTS, in the roster's order. */
 export const BOT_CLASS_IDS: readonly string[] = Object.freeze(PLAYABLE_CLASS_IDS.filter(id => !NOT_FOR_BOTS.includes(id)));
 /** The playable classes, in the roster's order. */
 export const playableClasses: HeroClass[] = classes.filter(hero => PLAYABLE_CLASS_IDS.includes(hero.id));
 export const isPlayableClass = (id: unknown): id is string => typeof id === 'string' && PLAYABLE_CLASS_IDS.includes(id);
-/** `id` when playable; otherwise (hidden, unknown, not a string) the first playable class. */
+/** `id` when playable; otherwise (legacy, unknown, not a string) the first playable class (the viciado). */
 export const playableClassId = (id: unknown): string => isPlayableClass(id) ? id : playableClasses[0].id;
 /** The menu's search: over the playable classes only (D-053). */
 export function filterClasses(query: string, role: string): HeroClass[] {

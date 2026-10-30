@@ -16,12 +16,13 @@ import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {RoomBots} from '../multiplayer/room-bots.ts';
 import {FlowField} from '../src/maps/index.ts';
+import {herois} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
 const SEED=Number(arg('seed','4242')),PLAYERS=Number(arg('players','1')),AFTER_S=Number(arg('after','30')),OUT=arg('out','');
 const TOUR=process.argv.includes('--tour'),HZ=20,WAKE_S=3,TOUR_EVERY=10;
-const CLASSES=['cidadao-comum','clt-cansado','feirante','cidadao-comum','clt-cansado','feirante'];
+const CLASSES=herois(6);
 
 const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');
 const hash=(JSON.parse(fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;

@@ -361,7 +361,7 @@ class FakeHorde {
   view():RunView{
     const events=this.events;this.events=[];
     return {tick:this.tick,team:{xp:0,level:1,nextXp:5},enemies:this.enemies,pickups:this.pickups,projectiles:this.projectiles,telegraphs:this.telegraphs,structures:[],
-      players:CERCO.length?[{id:this.players[0].id,name:'',classId:this.players[0].classId,hp:70,maxHp:100,online:true,spectator:false,weapons:[],passives:[]} as unknown as RunView['players'][number]]:[],offers:[],events};
+      players:CERCO.length||TETO?[{id:this.players[0].id,name:'',classId:this.players[0].classId,hp:70,maxHp:100,online:true,spectator:false,weapons:[],passives:[]} as unknown as RunView['players'][number]]:[],offers:[],events};
   }
 }
 

@@ -13,7 +13,7 @@ import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
 import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
-import {bocaChao,entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {bocaChao,cityEntradas,entradasEstreitas,estreitaBoca,faixaCelulas} from '../src/maps/city/entradas.ts';
 import {semPropsNasBocas} from './becos-cidade.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
@@ -23,8 +23,11 @@ export const DECOR_SEED=20261016;
 /** Keep-out radii (u): the base and plaza, the start, the spawns and mouths, the nests' yards (+ margin), loot. */
 export const KEEP={praca:22,inicio:10,spawn:8,boca:6,yard:3,loot:1.5,nestBlock:1.5} as const;
 
-/** The asset with the scenery placed on `base` (an asset without decor). Returns the JSON text. */
-export function decorate(baseText:string,seed=DECOR_SEED):string{
+/**
+ * The asset with the scenery placed on `base` (an asset without decor). Returns the JSON text. `avoid`: more cells no
+ * place with life on open ground stands on (scripts/compactar-cidade.ts: the strips of the opened map).
+ */
+export function decorate(baseText:string,seed=DECOR_SEED,avoid:Iterable<number>=[]):string{
   const decoded=decodeCityAsset(baseText);
   if(!decoded.ok)throw new Error(decoded.error);
   const asset=decoded.asset;
@@ -49,7 +52,10 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
       return {x:b[0]-m,y:b[1]-m,w:b[2]+2*m,h:b[3]+2*m};
     }),
   ];
-  const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects});
+  // bocas-chao-aberto: no place with life on open ground in an entrance's strip (it would narrow the mouth, and the
+  // opening would take it). The base's strips and `avoid`: the opening moves a mouth and widens its strip.
+  const lugarAvoid=new Set([...cityEntradas(asset,true).flatMap(e=>faixaCelulas(asset,e)),...avoid]);
+  const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects,lugarAvoid});
   const data=cityAssetToData(asset),sw=asset.samples.w;
   for(const [c,r] of blocked)for(let j=0;j<SAMPLES_PER_CELL;j++)for(let i=0;i<SAMPLES_PER_CELL;i++)data.walkable[(r*SAMPLES_PER_CELL+j)*sw+c*SAMPLES_PER_CELL+i]=0;
   // Nothing of the ground's scenery under or beside a viaduct (deck and ramp, a cell around): a lamp, a wire or a car

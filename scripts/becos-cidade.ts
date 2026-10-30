@@ -12,12 +12,13 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityDecor,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
-import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_POOL,CITY_NEST_SPOTS,NEST_YARD_RADIUS,nestArte} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
+import {bocaSolido,naBoca} from '../src/maps/city/entradas.ts';
 import {CAR_BODY_R,CAR_RADIUS} from '../src/contract/index.ts';
-import {BIG_ROCKS,LINK,bigCliffRocks,lineShape,relayWallLines,wallLines,WALL_FAMILIES} from '../src/maps/city-decor.ts';
+import {BIG_ROCKS,LINK,LUGARES,bigCliffRocks,lineShape,relayWallLines,wallLines,WALL_FAMILIES} from '../src/maps/city-decor.ts';
 
 /** A dead end: a skeleton branch at least this long (cells) from its end to a junction. */
 export const BECO_MIN=3;
@@ -289,6 +290,22 @@ export const PROP_REMOVED='removido';
 const removed=(p:CityProp):CityProp=>({...p,kind:PROP_REMOVED,solid:false});
 
 /**
+ * NEW-20261030-ORQ-bocas-sem-muro-pedra-decor: the props (junk, ruins) on the ground of an entrance's free strip, of any
+ * width (maps/city/entradas.ts naBoca), go as PROP_REMOVED. None is solid there (sim/entradas-livres.test.ts), so the
+ * grid stays as it is. Changes `data`, returns the indices taken.
+ */
+export function semPropsNasBocas(data:CityAssetData):number[]{
+  const d=decodeCityAsset(encodeCityAsset(data));
+  if(!d.ok)throw new Error(d.error);
+  const a=d.asset,taken:number[]=[];
+  data.props=data.props.map((p,i)=>{
+    if(p.kind===PROP_REMOVED||!a.walkableAt(p.x,p.y)||!naBoca(a,{x:p.x-p.r,y:p.y-p.r,w:2*p.r,h:2*p.r}))return p;
+    taken.push(i);return removed(p);
+  });
+  return taken;
+}
+
+/**
  * The corners of `cells` set to a ramp between the corners of the `ground` cells around them: each free corner the mean
  * of its 4 neighbour corners that are free or ground corners, RAMP_PASSES times (a corner with none keeps its height).
  */
@@ -315,6 +332,15 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
   const m=data.cells.w,u=data.unitsPerCell!,S=SAMPLES_PER_CELL,sw=m*S;
   const set=new Set(cells);
   const was=(t:number)=>data.walkable[(Math.floor(t/m)*S+S/2)*sw+(t%m)*S+S/2]===1;
+  // A place with life on open ground the hole goes through goes whole: its other cells open too, else they stay
+  // blocked with nothing drawn on them (bocas-chao-aberto).
+  const onBlock=(t:number)=>{const c=t%m,r=(t-c)/m;return data.blocks.some(b=>b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));};
+  for(const d of data.decor??[]){
+    if(!LUGARES.some(([l])=>d.id.startsWith(`${l}-`)))continue;
+    const own:number[]=[];let hit=false;
+    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++){const t=c+r*m;if(set.has(t))hit=true;else own.push(t);}
+    if(hit)for(const t of own)if(!was(t)&&!onBlock(t))set.add(t);
+  }
   // A cliff cell keeps the shelf's height on its corners: open, it would stand as a pale rock slab. Its corners are
   // relaxed (Jacobi) between the ground's on both sides: a ramp.
   const cliff=[...set].filter(t=>{const c=t%m,r=(t-c)/m;return data.blocks.some(b=>b.kind==='cliff'&&b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));});
@@ -337,7 +363,14 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
     for(const d of data.decor){
       const cut:[number,number][]=[];let hit=false;
       for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(set.has(c+r*m))hit=true;else cut.push([c,r]);
-      if(!hit){decor.push(d);continue;}
+      if(!hit){
+        // A 1×1 cliff piece beside the hole: linked again to the cliff cells still around it.
+        if(d.w===1&&d.h===1&&/^penhasco2?-/.test(d.id)&&[[0,-1],[1,0],[0,1],[-1,0]].some(([dc,dr])=>set.has(d.c+dc+(d.r+dr)*m))){
+          const {c,r}=d,links=(isCliff(c,r-1)?LINK.N:0)|(isCliff(c+1,r)?LINK.E:0)|(isCliff(c,r+1)?LINK.S:0)|(isCliff(c-1,r)?LINK.W:0);
+          const {shape,rot}=lineShape(links);
+          decor.push({...d,id:shape==='quina'?'penhasco2-quina-externa':shape==='ponta'?'penhasco-ponta':'penhasco2-reto',rot,links});
+        }else decor.push(d);
+        continue;}
       if(WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)))wallHit=true;
       if(!d.id.startsWith('penhasco'))continue;
       for(const [c,r] of cut){if(!isCliff(c,r))continue;
@@ -539,7 +572,7 @@ function widenTo(a:CityAsset,g:CityGraph,allowed:(t:number)=>boolean,f:UnoField,
 }
 
 /** The cells a widened lane may take: open ones, and cuttable ones off passageBan inside the playable area (see WIDEN_KINDS). */
-function allowedIn(a:CityAsset,g:CityGraph):(t:number)=>boolean{
+export function allowedIn(a:CityAsset,g:CityGraph,step=CLIFF_STEP):(t:number)=>boolean{
   const ban=passageBan(g),{m,u}=g;
   const allowed=(t:number)=>{const cx=t%m,cy=(t-cx)/m,x=(cx+.5)*u,y=(cy+.5)*u,pl=a.playable;
     if(g.open[t])return true;
@@ -549,7 +582,7 @@ function allowedIn(a:CityAsset,g:CityGraph):(t:number)=>boolean{
   const gentle=(t:number)=>{const cx=t%m,cy=(t-cx)/m;let lo=Infinity,hi=-Infinity;
     for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const n=cx+dx+(cy+dy)*m;if(cx+dx<0||cy+dy<0||cx+dx>=m||cy+dy>=m||!g.open[n])continue;
       const h=a.heightAt((cx+dx+.5)*u,(cy+dy+.5)*u);lo=Math.min(lo,h);hi=Math.max(hi,h);}
-    return hi-lo<=CLIFF_STEP;};
+    return hi-lo<=step;};
   return allowed;
 }
 
@@ -818,4 +851,59 @@ export function alargarAreaUno(data:CityAssetData):{cells:number[];widened:numbe
   // The loot the body still misses (behind a building) moves out to the nearest street it reaches (as alargarParaUno).
   a=decode();const moved=moveLootToUno(data,a,decode,unoField(a,CAR_BODY_R,true));
   return {cells:opened,widened,refused,moved,before,after:unoArea(decode()).share};
+}
+
+// ——— The ground behind a mouth, open (NEW-20261030-ORQ-bocas-chao-aberto) ———
+
+/**
+ * Opens the solid cells inside the free strip of every entrance (entradas.ts bocaSolido: a wall, rubble, a cliff of one
+ * shelf, the map's edge narrowing the street right behind its mouth), so the street keeps the mouth's width across the
+ * whole strip; the wall or rock goes with the cell (openCells), no invisible wall. Only cuttable cells (allowedIn) and only
+ * while every safe place stays (it may lose a cell of its wall); a wall the defence would keep (the spawns' walk to the plaza) goes too: to the user a wall
+ * in a mouth is clutter (ORQ 30/10). All at once, else mouth by mouth, the worst first. Opening a cell moves the
+ * mouths, so it runs until nothing more opens. `data` changes in place.
+ */
+/** A cliff in a mouth's strip opens up to this step (u): two shelves, a steeper ramp than a hole's (CLIFF_STEP). */
+export const BOCA_CLIFF_STEP=3.2;
+/** A block of up to this many cells may go whole from a mouth (a piece of rock or wall in the entrance, clutter to the user). */
+export const BOCA_PEDACO=10;
+export function abrirChaoDasBocas(data:CityAssetData):{cells:number[];refused:number;left:number}{
+  const decode=()=>{const d=decodeCityAsset(encodeCityAsset(data));if(!d.ok)throw new Error(d.error);return d.asset;};
+  // A safe place may lose a cell of its wall (it is still a pocket behind one opening), never go: then the wall is a
+  // protected zone and stays.
+  const places=(x:CityAsset)=>citySafePlaces(new CityTerrain(x,'bocas')).map(p=>p.cells);
+  const holds=(now:ReadonlySet<number>[])=>now.length>=kept.length&&kept.every(p=>now.some(q=>[...p].some(t=>q.has(t))));
+  // Nor may a cut put a terreno nest a seed may draw (its art at the biggest size) in a strip: the wall cut short moves
+  // a mouth onto it (sim/entradas-livres.test.ts).
+  const nests=(x:CityAsset)=>CITY_NEST_POOL.filter(n=>n.kind==='terreno'&&naBoca(x,nestArte(x.unitsPerCell,n,n.maxSize))).map(n=>n.id);
+  let a=decode();const kept=places(a),opened:number[]=[],skip=new Set<number>();let refused=0,inStrip=new Set(nests(a));
+  // A cut that leaves a bit of wall alone (cercasSoltas) takes the bit too, if it may go (allowedIn) and the wall keeps the
+  // rest of it (no block over BOCA_PEDACO cells goes whole); else it is refused (the bit would go after, tirarCercasSoltas).
+  const loose=()=>new Set(cercasSoltas(data).map(g=>g.join(',')));let alone=loose();
+  const ids=()=>new Set(data.blocks.filter(b=>b.rects.reduce((n,r)=>n+r[2]*r[3],0)>BOCA_PEDACO*data.unitsPerCell!**2).map(b=>b.id));
+  const tryOpen=(cells:readonly number[],allowed:(t:number)=>boolean)=>{const was=structuredClone(data),had=ids();openCells(data,cells);
+    let bits=loose();const extra=[...bits].filter(g=>!alone.has(g)).flatMap(g=>g.split(',').map(Number));
+    if(extra.length&&extra.every(allowed)){openCells(data,extra);bits=loose();}
+    const next=decode(),has=ids();
+    const nowIn=nests(next);
+    if(!holds(places(next))||[...bits].some(g=>!alone.has(g))||[...had].some(i=>!has.has(i))||nowIn.some(i=>!inStrip.has(i))){Object.assign(data,was);return false;}
+    alone=bits;inStrip=new Set(nowIn);cells=[...cells,...extra.filter(t=>!cells.includes(t))];
+    a=next;opened.push(...cells);return true;};
+  // A cut refused now may hold once others are in (a mouth moved, a bit is no longer loose): the refused get another go.
+  for(let pass=0,from=0;pass<24;pass++){
+    const g=cityGraph(a),allowed=allowedIn(a,g,BOCA_CLIFF_STEP);
+    const groups=[...bocaSolido(a,true).values()].map(s=>s.filter(t=>allowed(t)&&!skip.has(t))).filter(s=>s.length).sort((p,q)=>q.length-p.length);
+    if(!groups.length)break;
+    if(tryOpen([...new Set(groups.flat())],allowed))continue;
+    let any=false;
+    for(const s of groups){const t=s.filter(k=>!opened.includes(k));if(!t.length)continue;
+      if(tryOpen(t,allowed)){any=true;continue;}
+      // Refused whole: cell by cell, so one cell that would leave a protected wall loose keeps only itself.
+      for(const k of t)if(tryOpen([k],allowed))any=true;else{refused++;skip.add(k);}}
+    if(!any){if(opened.length===from)break;from=opened.length;skip.clear();}
+  }
+  // The 1×1 rock pieces the cuts left: regrouped into big pieces (as alargarParaUno).
+  if(data.decor&&opened.length)data.decor=bigCliffRocks(data.decor,BIG_ROCKS,opened.length);
+  let left=0;for(const s of bocaSolido(decode(),true).values())left+=s.length;
+  return {cells:opened,refused,left};
 }

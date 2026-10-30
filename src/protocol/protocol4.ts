@@ -129,9 +129,13 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * enemy of every round (a P1 roster extra), at the DICT's last one-byte index (253); an older decoder would read it as
  * the DICT_EXTENDED escape.
  * 42 given by the integration queue (tools/fila.mjs, lote 20261030-063957) to: NEW-20261029-ORQ-so-3-inimigos.
+ * Next (the queue numbers it) since the heroes' collision (card NEW-20261030-ORQ-colisao-entre-herois): `pushing` and
+ * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
+ * refuse the masks.
+ * 43 given by the integration queue (tools/fila.mjs, lote 20261030-124249) to: NEW-20261030-ORQ-colisao-entre-herois.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=42;
+export const PROTOCOL_VERSION=43;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -476,6 +480,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     moveSpeed:c(optional(milli)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
     andar:c(optional(deckFlag)),
+    // colisao-entre-herois: "empurrando" / "empurrado" with the push's direction (the animation's), while it lasts.
+    pushing:c(slipDir),pushed:c(slipDir),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -489,6 +495,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     andar:c(optional(deckFlag)),
     // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
     radius:c(optional(milli)),
+    // colisao-entre-herois: a mendigo a hero is pushing ("empurrado"), the push's direction.
+    pushed:c(slipDir),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),

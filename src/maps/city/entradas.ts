@@ -32,7 +32,19 @@ export const BOCA_LIVRE=2.5;
 export interface CityBoca extends CityPoint {lo:CityPoint;hi:CityPoint;largura:number;ax:0|1;ay:0|1;
   /** Out of the street into the wider ground (a unit step along the street: -1, 0 or 1). */
   ox:number;oy:number}
-const memo=new WeakMap<object,readonly CityBoca[]>();
+const memo=new WeakMap<object,readonly CityBoca[]>(),memoBruto=new WeakMap<object,readonly CityBoca[]>();
+/**
+ * A mouth whose free strip holds a solid cell (a building, the plaza ring, a nest's yard, a high cliff: what
+ * scripts/becos-cidade.ts abrirChaoDasBocas does not cut) is no mouth on that row: it is measured up to BOCA_RECUO rows
+ * further into the street, on the first row whose strip is all ground (NEW-20261030-ORQ-bocas-chao-aberto).
+ */
+export const BOCA_RECUO=2;
+/**
+ * The plaza is no street: no mouth's strip goes within this (u) of its base point (points.praca), and that ring is a free
+ * zone of its own, where nothing solid is laid either (naBoca; the Uno parks there, NEW-20261030-ORQ-bocas-chao-aberto).
+ */
+export const PRACA_LIVRE=20;
+const naPraca=(a:CityAsset,x:number,y:number)=>Math.hypot(x-a.points.praca.x,y-a.points.praca.y)<PRACA_LIVRE;
 const walker=(a:CityAsset)=>{
   const C=a.unitsPerCell,{w,h}=a.cells;
   return (c:number,r:number)=>c>=0&&r>=0&&c<w&&r<h&&a.walkableAt((c+.5)*C,(r+.5)*C);
@@ -45,8 +57,8 @@ const depthMax=(wide:number)=>wide<=PASSAGE_MAX?PASSAGE_MAX:wide+Math.floor(wide
  * runs PASSAGE_DEPTH cells deep about as wide, so a notch in a wall is none) where the walkable ground across it widens
  * (opensBy: an avenue, a square, a crossing). The point is the middle of the passage's last cell row.
  */
-export function cityEntradas(a:CityAsset):readonly CityBoca[]{
-  const had=memo.get(a);
+export function cityEntradas(a:CityAsset,bruto=false):readonly CityBoca[]{
+  const had=(bruto?memoBruto:memo).get(a);
   if(had)return had;
   const C=a.unitsPerCell,{w,h}=a.cells,walk=walker(a);
   const reach=(c:number,r:number,dx:number,dy:number)=>{let k=0;while(k<RUN_CAP&&walk(c+(k+1)*dx,r+(k+1)*dy))k++;return k;};
@@ -64,14 +76,25 @@ export function cityEntradas(a:CityAsset):readonly CityBoca[]{
         let deep=true;
         for(let k=1;k<=PASSAGE_DEPTH&&deep;k++){const v=across(c-k*dx,r-k*dy,ax,ay);deep=v>0&&v<=depthMax(wide);}
         if(!deep)continue;
-        const lo=reach(c,r,-ax,-ay),hi=reach(c,r,ax,ay),mid=(hi-lo)/2,mc=c+mid*ax,mr=r+mid*ay,key=`${mc},${mr}`;
+        // The mouth on the row k cells into the street (k = 0: this one).
+        const row=(k:number):CityBoca|undefined=>{const rc=c-k*dx,rr=r-k*dy;if(!walk(rc,rr))return undefined;
+          const lo=reach(rc,rr,-ax,-ay),hi=reach(rc,rr,ax,ay),mid=(hi-lo)/2;
+          return {...at(rc+mid*ax,rr+mid*ay),lo:at(rc-lo*ax,rr-lo*ay),hi:at(rc+hi*ax,rr+hi*ay),largura:1+lo+hi,ax,ay,ox:dx,oy:dy};};
+        // A row further in counts only as wide as the mouth (2 cells less at most); else the mouth stays where it is, its
+        // whole width kept free (what is left solid there is what may not be cut: a building, a protected cell, a pillar).
+        const open=(q:CityBoca)=>faixaCelulas(a,q).every(t=>walk(t%w,Math.floor(t/w)));
+        let e=row(0);
+        if(!e)continue;
+        for(let k=1;!bruto&&k<=BOCA_RECUO&&!open(e);k++){const q=row(k);if(!q||q.largura<e.largura-2)break;if(open(q)){e=q;break;}}
+        if(!faixaCelulas(a,e).length)continue;
+        const key=`${e.x},${e.y},${e.ax}`;
         if(seen.has(key))continue;
         seen.add(key);
-        out.push({...at(mc,mr),lo:at(c-lo*ax,r-lo*ay),hi:at(c+hi*ax,r+hi*ay),largura:wide,ax,ay,ox:dx,oy:dy});
+        out.push(e);
       }
     }
   }
-  memo.set(a,out);
+  (bruto?memoBruto:memo).set(a,out);
   return out;
 }
 
@@ -90,8 +113,14 @@ export function bocaZona(a:CityAsset,e:CityBoca):Rect{
  * any width (ORQ 30/10: "a largura INTEIRA fica livre", the user twice about any obstacle at an entrance).
  */
 export const bocaFaixa=(a:CityAsset,e:CityBoca):Rect=>bocaZona(a,e);
-/** Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance (the strip run `fundo` u further into the street). */
+/**
+ * Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance (the strip run `fundo` u further into the
+ * street) or the plaza ring (PRACA_LIVRE).
+ */
 export function naBoca(a:CityAsset,r:Rect,folga=0,fundo=0):boolean{
+  // The plaza ring (PRACA_LIVRE): the rect, grown by `folga`, comes that close to the plaza's base point.
+  const P=a.points.praca,dx=Math.max(r.x-folga-P.x,0,P.x-r.x-r.w-folga),dy=Math.max(r.y-folga-P.y,0,P.y-r.y-r.h-folga);
+  if(Math.hypot(dx,dy)<PRACA_LIVRE)return true;
   for(const e of cityEntradas(a)){
     const f=bocaFaixa(a,e),z={x:f.x-(e.ox>0?fundo:0),y:f.y-(e.oy>0?fundo:0),w:f.w+(e.ox?fundo:0),h:f.h+(e.oy?fundo:0)};
     if(r.x-folga<z.x+z.w&&z.x<r.x+r.w+folga&&r.y-folga<z.y+z.h&&z.y<r.y+r.h+folga)return true;
@@ -139,4 +168,43 @@ export function estreitaBoca(a:CityAsset,e:CityPoint|CityBoca,p:{c:number;r:numb
     if(best*a.unitsPerCell<BOCA_LIVRE)return true;
   }
   return false;
+}
+
+/**
+ * The ground of the entrances (NEW-20261030-ORQ-bocas-sem-muro-pedra-decor, the user: a poste, a cacamba, a ruin in a
+ * mouth reads as a wall): the walkable map cells (r × cells.w + c) that overlap the free strip of any entrance, every
+ * width. No scenery stands on them (scripts/cenario-cidade.ts chaoLivreNasBocas). Memoised per asset.
+ */
+export function bocaChao(a:CityAsset):ReadonlySet<number>{
+  const had=chaoMemo.get(a);
+  if(had)return had;
+  const {w}=a.cells,walk=walker(a),out=new Set<number>();
+  for(const e of cityEntradas(a))for(const t of faixaCelulas(a,e))if(walk(t%w,Math.floor(t/w)))out.add(t);
+  chaoMemo.set(a,out);
+  return out;
+}
+const chaoMemo=new WeakMap<object,ReadonlySet<number>>();
+
+/** The map cells (r × cells.w + c) that overlap the free strip of the entrance `e`, walkable or not; none in the plaza ring. */
+export function faixaCelulas(a:CityAsset,e:CityBoca):number[]{
+  const C=a.unitsPerCell,{w,h}=a.cells,f=bocaFaixa(a,e),eps=1e-6,out:number[]=[];
+  for(let r=Math.max(0,Math.floor(f.y/C));r<Math.min(h,Math.ceil((f.y+f.h)/C));r++)
+    for(let c=Math.max(0,Math.floor(f.x/C));c<Math.min(w,Math.ceil((f.x+f.w)/C));c++)
+      if(c*C<f.x+f.w-eps&&(c+1)*C>f.x+eps&&r*C<f.y+f.h-eps&&(r+1)*C>f.y+eps&&!naPraca(a,(c+.5)*C,(r+.5)*C))out.push(r*w+c);
+  return out;
+}
+
+/**
+ * NEW-20261030-ORQ-bocas-chao-aberto: the solid map cells inside the free strip of each entrance (a wall, a rock, a
+ * building that narrows the street right behind its mouth), by entrance index (cityEntradas); entrances with none left out.
+ * None for the entrances (they move off a solid strip: BOCA_RECUO); `bruto`: the mouths where the ground first widens,
+ * the ones the map's opening works on.
+ */
+export function bocaSolido(a:CityAsset,bruto=false):Map<number,number[]>{
+  const {w}=a.cells,walk=walker(a),out=new Map<number,number[]>();
+  cityEntradas(a,bruto).forEach((e,i)=>{
+    const solid=faixaCelulas(a,e).filter(t=>!walk(t%w,Math.floor(t/w)));
+    if(solid.length)out.set(i,solid);
+  });
+  return out;
 }

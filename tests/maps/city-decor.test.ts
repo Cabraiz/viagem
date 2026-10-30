@@ -35,9 +35,10 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,8);
-  // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city).
-  assert.ok(asset.decor.length>2500,`${asset.decor.length} pieces`);
+  assert.equal(asset.version,10);
+  // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city); v10
+  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left).
+  assert.ok(asset.decor.length>2400,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
   const keys=Object.keys(JSON.parse(TEXT));
   assert.equal(keys.at(-2)==='decor'||keys.at(-1)==='decor',true);
@@ -114,7 +115,8 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
 
 test('poles keep their spacing; every place with life at least once, apart on open ground',()=>{
   const poles=asset.decor.filter(d=>isPole(d.id));
-  assert.ok(poles.length>300,`${poles.length} poles`);
+  // v9 (bocas-sem-muro-pedra-decor) took the 218 on an entrance's ground (maps/bocas-chao-livre.test.ts).
+  assert.ok(poles.length>120,`${poles.length} poles`);
   for(let i=0;i<poles.length;i++)for(let j=i+1;j<poles.length;j++)
     assert.ok(Math.max(Math.abs(poles[i].c-poles[j].c),Math.abs(poles[i].r-poles[j].r))>=POLE_SPACING);
   const lugares=asset.decor.filter(d=>isLugar(d.id));
@@ -133,7 +135,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,7);
+  assert.equal(b.decor.length,0);assert.equal(b.version,9);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);
@@ -159,7 +161,8 @@ test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells cov
   const cliff=asset.decor.filter(d=>d.id.startsWith('penhasco')),bigCells=cliff.filter(d=>d.id.startsWith('penhasco3-')).reduce((n,d)=>n+d.w*d.h,0);
   const all=cliff.reduce((n,d)=>n+d.w*d.h,0);
   // v6 (uno-anda-mapa-todo): the Uno's lanes cut 10 cliff cells, all under big pieces (v5 990 of 1099, v6 980 of 1089).
-  assert.ok(bigCells/all>.89,`${bigCells} of ${all} cliff cells under a big piece`);
+  // v10 (bocas-chao-aberto): the cliff in the entrances' strips opened, its edges 1-cell pieces (v9 976 of 1086, v10 808 of 913).
+  assert.ok(bigCells/all>.88,`${bigCells} of ${all} cliff cells under a big piece`);
 });
 
 /**
@@ -170,8 +173,9 @@ test('grades-sem-padrao: each wall is one line of straight pieces along it, back
   const walls=asset.decor.filter(d=>WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)));
   const pieces=walls.filter(d=>!d.cover);
   // cercas-nordeste-ligadas: the keep-outs' pieces are the runtime's (leftoverWallLines) and a free end no longer
-  // doubles its last half cell (was > 450).
-  assert.ok(pieces.length>400,`${pieces.length} pieces`);
+  // doubles its last half cell (was > 450). bocas-chao-aberto: the walls in the entrances' strips went (ORQ 30/10: a wall
+  // in a mouth is tralha).
+  assert.ok(pieces.length>320,`${pieces.length} pieces`);
   // Centre (sub units, half cells) and axis: rot 0 along y (rows), rot 90 along x; the rect is centred on the line.
   const key=(x:number,y:number)=>`${x},${y}`,centre=new Map<string,string>(),posts=new Map<string,number>();
   for(const d of pieces){

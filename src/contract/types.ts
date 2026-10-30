@@ -95,6 +95,12 @@ export interface SimPlayer extends Point {
    */
   knock?:Point; knockUntil?:number; downUntil?:number;
   /**
+   * Card colisao-entre-herois (the animation's state, E1's anim-ser-empurrado): while tick < until this hero is pushing
+   * a hero or a mendigo (`pushing`) and/or being pushed by a hero (`pushed`), along the unit (x, y) of the push (from the
+   * pusher to the pushed). The room's players system sets them (sim/bodies.ts PUSH_HOLD), the views send the live ones.
+   */
+  pushing?:PushMark; pushed?:PushMark;
+  /**
    * D-047 Dona Cida's sweets (objective.ts CIDA_ITEMS), absolute ticks: walking × CIDA_FAST_MULT while tick < fastUntil
    * (shared with the client's prediction, like slowUntil), damage dealt × CIDA_MIGHT_MULT while tick < mightUntil,
    * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
@@ -137,12 +143,16 @@ export const KNOCK_SECONDS=.35,KNOCK_DOWN_SECONDS=.45;
 export type TelegraphKind='arroto'|'molotov'|'fogo'|'coco'|'explosao'|'pancada'|'investida'|'varredura'|'carimbo';
 export const TELEGRAPH_KINDS:readonly TelegraphKind[]=['arroto','molotov','fogo','coco','explosao','pancada','investida','varredura','carimbo'];
 
+/** Card colisao-entre-herois: a push's unit direction (from the pusher to the pushed), live while tick < until. */
+export interface PushMark extends Point {until:number}
 export interface EnemyState extends Point {
   id:string; kind:string; hp:number; maxHp:number;
   speed:number; damage:number; radius:number; xp:number;
   elite?:boolean; boss?:boolean; spawnTick:number;
   readyTick:number; slowUntil?:number; frozenUntil?:number;
   knock?:Point; phase?:number;
+  /** Card colisao-entre-herois: a mendigo a hero's walk is pushing, while tick < until (see SimPlayer.pushed). */
+  pushed?:PushMark;
   /** Small numeric scratch for behaviors; keep JSON-safe. */
   memory?:Record<string,number>;
   /** The floor (maps city/viaduct.ts): 1 on a viaduct's deck, absent on the ground. */

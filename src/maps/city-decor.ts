@@ -175,7 +175,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     }
   }
 
-  decor.push(...wallLines(W,H,i=>kind[i]==='wall'&&!fixed[i],i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],broken));
+  decor.push(...wallLines(W,H,i=>kind[i]==='wall',i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],broken,i=>!fixed[i]));
 
   // 2. The border band: mountains where they fit whole, boulders here and there.
   const edge=(i:number)=>kind[i]==='edge'&&solid[i]===1;
@@ -303,8 +303,11 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
  * family of the block, intact or broken by the cell's draw. A bit of wall too small for a line (a lone cell or two)
  * gets one piece along its longer side. The wall cells no piece stands on get a `cover` entry (drawn by the line next
  * to them, never by the procedural box), so every wall cell reads as part of its line.
+ * `keep` (default all): the cells this call draws on; the line is always laid over every wall cell and only its entries
+ * wholly on kept cells are returned, so two calls that split the cells between them (the bake off its keep-outs, the
+ * runtime's leftoverWallLines on them) draw the one same line, not two that break where they meet.
  */
-export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:(i:number)=>string,broken:Uint8Array):CityDecor[]{
+export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:(i:number)=>string,broken:Uint8Array,keep:(i:number)=>boolean=()=>true):CityDecor[]{
   const pieces=wallPieces(wallRuns(W,H,(c,r)=>isWall(r*W+c)));
   const covered=new Uint8Array(W*H),out:CityDecor[]=[];
   const add=(p:WallPiece)=>{
@@ -333,7 +336,28 @@ export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:
   }
   for(let i=0;i<W*H;i++)if(isWall(i)&&!covered[i])
     out.push({id:`${familyOf(i)}-reto-intacto`,c:i%W,r:Math.floor(i/W),w:1,h:1,rot:0,cover:true});
-  return out;
+  return out.filter(e=>{for(let y=e.r;y<e.r+e.h;y++)for(let x=e.c;x<e.c+e.w;x++)if(!keep(y*W+x))return false;return true;});
+}
+
+/**
+ * The wall line laid again over walls that lost cells (scripts/becos-cidade.ts openCells: a street widened, a loose
+ * fence taken out; NEW-20261029-ORQ-cercas-nordeste-ligadas): `decor` with its wall entries replaced by wallLines over
+ * the new `isWall`, so what is left of a wall is one line again, not the old pieces with holes where the cut ones were.
+ * A cell keeps the family and the broken draw of the wall entry of `before` (the decor before the cut) on it; the line
+ * is returned only on the cells such an entry stood on (the bake's, off its keep-outs: those stay leftoverWallLines').
+ */
+export function relayWallLines(W:number,H:number,isWall:(i:number)=>boolean,decor:readonly CityDecor[],before:readonly CityDecor[]=decor):CityDecor[]{
+  const familyOf=(d:CityDecor)=>WALL_FAMILIES.find(f=>d.id.startsWith(`${f}-`));
+  const family:(string|undefined)[]=new Array(W*H),broken=new Uint8Array(W*H);
+  for(const d of before){
+    const f=familyOf(d);
+    if(!f)continue;
+    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)family[r*W+c]=f;
+    // Only the cell wallLines reads a piece's draw from (its rect's first): marking every cell a broken piece covers
+    // spread the break one cell per relay (openCells runs it again and again: 21 % broken → 47 %).
+    if(!d.cover&&d.id.endsWith('-quebrado')&&d.c>=0&&d.r>=0&&d.c<W&&d.r<H)broken[d.r*W+d.c]=1;
+  }
+  return [...wallLines(W,H,isWall,i=>family[i]??WALL_FAMILIES[0],broken,i=>family[i]!==undefined),...decor.filter(d=>!familyOf(d))];
 }
 
 /** The big cliff pieces (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */

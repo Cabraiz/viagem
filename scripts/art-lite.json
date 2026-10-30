@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3178,
-  "bytes": 1949167778,
-  "liteBytes": 665819314,
+  "bytes": 1949192920,
+  "liteBytes": 665813536,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -494,28 +494,28 @@
    "shownPsnr": 47.2
   },
   "city/decor/alambrado-reto-intacto/sheet.webp": {
-   "source": "d66190b2e70d40e1017c3c868502b21380cc3db1946640bd7dd6c2b0aa9c06f6",
-   "lite": "6d7c6a276c959ad96563ed48b6b784600a45f62dc070ba621d48382d32ce1dcf",
-   "bytes": 171444,
-   "liteBytes": 66082,
+   "source": "61cf6b33e5a736f8d49c61aaa93284532c476fb3bd3dd56d65d5d22a70a9050e",
+   "lite": "52a4144977cb0d4d6f8dc824620c8d3fa659f63a1e5e3581f6f8529bb996db60",
+   "bytes": 186548,
+   "liteBytes": 65770,
    "liteCell": [
     540,
     228
    ],
-   "psnr": 51.4,
-   "shownPsnr": 51.4
+   "psnr": 51.7,
+   "shownPsnr": 51.7
   },
   "city/decor/alambrado-reto-quebrado/sheet.webp": {
-   "source": "d96bfd40537bfc1f457aa0265e0f90a8bc98106b34e0f55e82c6d472e565b03e",
-   "lite": "a8066d99a1e3e6fb1cf32d30c3067a46a7b13821f551a704ddebea8510bf794e",
-   "bytes": 140618,
-   "liteBytes": 54210,
+   "source": "f44fd8924689578629297d5ac0579897c52264e409eae513318683494d8f7477",
+   "lite": "9aa693902845aa0362dd2d25b03c4b12e426dc98b650b4e8bd3320183f3c15ec",
+   "bytes": 154612,
+   "liteBytes": 53752,
    "liteCell": [
     528,
     192
    ],
-   "psnr": 49.9,
-   "shownPsnr": 49.9
+   "psnr": 50.4,
+   "shownPsnr": 50.4
   },
   "city/decor/alambrado-t-intacto/sheet.webp": {
    "source": "2c8ed6180b3f064b4e490c2e4c587cc6edf3669e145aadf68351aaf5101f4392",
@@ -986,28 +986,28 @@
    "shownPsnr": 43.7
   },
   "city/decor/cerca-madeira-reto-intacto/sheet.webp": {
-   "source": "46f17d862ae72dcdf8863c52ecae5db616d07c376e9330fedac252b502ba0ca7",
-   "lite": "a2421086393cbe92e35899a6bb79a3b66a880a5d265fd119dce00b507f556f84",
-   "bytes": 71692,
-   "liteBytes": 21796,
+   "source": "f3b18e916c735db31b7e36ce60f188455b06ccc268d1e1983469bf1290335e9e",
+   "lite": "2221b2abe344994237c1be6af03a2076a4f4cabf2970d7fb8b9fe7d666da0c6e",
+   "bytes": 71250,
+   "liteBytes": 21162,
    "liteCell": [
     366,
     138
    ],
-   "psnr": 46.9,
-   "shownPsnr": 46.9
+   "psnr": 47.1,
+   "shownPsnr": 47.1
   },
   "city/decor/cerca-madeira-reto-quebrado/sheet.webp": {
-   "source": "490151a38aeb7b409d038ead33f8a28eacb8e1816933a5a1b39a4b581c25be37",
-   "lite": "fcdc675098d3dd37487b4585f83b996c84b41cc8a642b299c62d22829fdebf85",
-   "bytes": 66678,
-   "liteBytes": 21314,
+   "source": "e8ffb2885aa771678a922705c7e538c994cd85c5e6a9f3568f0e02f246ab2e03",
+   "lite": "611db0ef66d5e24d75b24ffab6bfe699e77717a2c6d5a44f029ef35b772d7d6e",
+   "bytes": 66816,
+   "liteBytes": 21000,
    "liteCell": [
     372,
     138
    ],
-   "psnr": 47.2,
-   "shownPsnr": 47.2
+   "psnr": 47.6,
+   "shownPsnr": 47.6
   },
   "city/decor/cerca-madeira-t-intacto/sheet.webp": {
    "source": "15572ac5419334d8c9f6594ba0c4cdabd1b7bee972e83cfd6f8720d77ca94e07",
@@ -1358,28 +1358,28 @@
    "shownPsnr": 48.1
   },
   "city/decor/grade-reto-intacto/sheet.webp": {
-   "source": "ff3b3e37216006bd43837a52b91cda6f4009cf79c53211693a57c7c99cd10317",
-   "lite": "8b000e1d5acc9ca580f2d75430337edd0b86a9f0d6d1fdf2e7487ff0aa7e9a30",
-   "bytes": 131550,
-   "liteBytes": 45292,
+   "source": "0104788166d3439472fa0f4dbaba37ae61bbd44ebb4bdfcdc9328e15d91bba54",
+   "lite": "04ce380477278544eb401947fde53359a9d8af007c720110a67b5edd238d66a7",
+   "bytes": 131270,
+   "liteBytes": 43948,
    "liteCell": [
     468,
     204
    ],
-   "psnr": 48,
-   "shownPsnr": 48
+   "psnr": 48.5,
+   "shownPsnr": 48.5
   },
   "city/decor/grade-reto-quebrado/sheet.webp": {
-   "source": "a10a80d7b16abec8ee8a85672ab6775de18b5d2975fdef5329b714afb07838cb",
-   "lite": "ba1a350d2e8a7e2496dbfb51e9e9cc22a68da4514904398bca4b0dcca1704833",
-   "bytes": 123428,
-   "liteBytes": 43262,
+   "source": "e198cd7f2465a21e05fdcf42d703a2313e4c12659d277fd2bbde90d016f663ff",
+   "lite": "6da201bb7558ee9715a3a16bb7ca6f3cab91283ac2528f2d3a3b7f07d95a3fac",
+   "bytes": 123866,
+   "liteBytes": 42384,
    "liteCell": [
     456,
     192
    ],
-   "psnr": 47.4,
-   "shownPsnr": 47.4
+   "psnr": 47.8,
+   "shownPsnr": 47.8
   },
   "city/decor/grade-t-intacto/sheet.webp": {
    "source": "192400d21edaafe171d6f46c46a7ddfd6107a140e06dfd7f6df60fce97d60df8",
@@ -1766,28 +1766,28 @@
    "shownPsnr": 47
   },
   "city/decor/muro-condominio-reto-intacto/sheet.webp": {
-   "source": "39adbe9da065771a07161078be0d75d56ad996dc6eba11ed371fb5010f7899b6",
-   "lite": "ef8ed401ed3956182974ed23692552bee5ae81d2805d172eb57effcbc332cf5c",
-   "bytes": 170738,
-   "liteBytes": 43632,
+   "source": "a4ff6b6d5ebfca2c262d9066cdc18a416128289b2c678043ae39aa8b5b3d03f1",
+   "lite": "c5d3d865e62a12063f9b4e6db8bf467fccbe800412fb216d669d09f962cd97ed",
+   "bytes": 170160,
+   "liteBytes": 43230,
    "liteCell": [
     624,
     204
    ],
-   "psnr": 48.3,
-   "shownPsnr": 48.3
+   "psnr": 48.4,
+   "shownPsnr": 48.4
   },
   "city/decor/muro-condominio-reto-quebrado/sheet.webp": {
-   "source": "ae69c65c1cd7650ed15be55ceeae0beb6f20f0d4451c9070aa4d6893e07a07d7",
-   "lite": "d524627822fcd14ed62d67344b4aa228adf05e27ba2cdcf65c35ccfdc1182753",
-   "bytes": 155458,
-   "liteBytes": 42914,
+   "source": "b284938335f48cea34268848789ea36de029e66cd07f4a181c55278bfa93b679",
+   "lite": "eb8548dabab7461b1154b128c2c5f9335447c11c0039ea64ba67d5a8597b4fc6",
+   "bytes": 156110,
+   "liteBytes": 42422,
    "liteCell": [
     624,
     204
    ],
-   "psnr": 47.4,
-   "shownPsnr": 47.4
+   "psnr": 47.6,
+   "shownPsnr": 47.6
   },
   "city/decor/muro-condominio-t-intacto/sheet.webp": {
    "source": "4c0f672a50b039fff6b8702d090d1724bca92b49cd29462bee32e8310bfcedae",
@@ -1886,28 +1886,28 @@
    "shownPsnr": 45.7
   },
   "city/decor/muro-pichado-reto-intacto/sheet.webp": {
-   "source": "81c07ba6aa5da66df7ce33f8ae704696e784588ba5291d00989525678ff2de93",
-   "lite": "2f32cb82f61f5b9193fb9571544592b32c90f6dd86e65be332edb6311e559736",
-   "bytes": 171666,
-   "liteBytes": 45130,
+   "source": "8ab1cb7c91174c97a9a095b519a4653af0bf8584d8cfc795bb00bc0dc891c5da",
+   "lite": "8d7623b4741fa731bd221e892f1b6ec933c430345ed708d13cb0fcff5c1e8590",
+   "bytes": 168740,
+   "liteBytes": 43680,
    "liteCell": [
     588,
     192
    ],
-   "psnr": 45.4,
-   "shownPsnr": 45.4
+   "psnr": 45.8,
+   "shownPsnr": 45.8
   },
   "city/decor/muro-pichado-reto-quebrado/sheet.webp": {
-   "source": "5dc314e5c282ffd7311b09b4989a78556027ca3b234ecbc819da8952270cd79b",
-   "lite": "f9439094d3c6052dd09dc3343256134a38fa242a4d49927104a6630c1d88f412",
-   "bytes": 145394,
-   "liteBytes": 41764,
+   "source": "88ed137b942c21fa88524c334b03c357cecf7020c75c2633c2716ecbdadfae8b",
+   "lite": "c90529221296a174042eb3564807ea217b7bc1bc3a9cc6e20222137be4c9b788",
+   "bytes": 144772,
+   "liteBytes": 41714,
    "liteCell": [
     588,
     198
    ],
-   "psnr": 45.8,
-   "shownPsnr": 45.8
+   "psnr": 46.2,
+   "shownPsnr": 46.2
   },
   "city/decor/muro-pichado-t-intacto/sheet.webp": {
    "source": "b325eefcc16cc9637cc26240b7c60de9d84a44c06d7b6ab12634fc33ee12a4ed",
@@ -2666,28 +2666,28 @@
    "shownPsnr": 43.5
   },
   "city/decor/tapume-reto-intacto/sheet.webp": {
-   "source": "b62a79ee8843b9c316f4b2bd58f7633b1f74813275a6841822ba552cf86779f4",
-   "lite": "d3aacb6a12b0c13e1f3361bc7b31882cd9e417ae2b18a04a92b8c57259d855d6",
-   "bytes": 195368,
-   "liteBytes": 47702,
+   "source": "5f41b1aa4aa6874d2542e5109667d509b71e867cc1ce7a46f7675686bd5a3781",
+   "lite": "26d3a6829022adb90c5d9d8f9c5a29481325e5bee99b698a0c3e31fc87c738f1",
+   "bytes": 194588,
+   "liteBytes": 47770,
    "liteCell": [
     612,
     210
    ],
-   "psnr": 45,
-   "shownPsnr": 45
+   "psnr": 45.3,
+   "shownPsnr": 45.3
   },
   "city/decor/tapume-reto-quebrado/sheet.webp": {
-   "source": "3d8e90ae107fb9d7e6b93e3112c80ed6b68913bc9dbf714477cd4a2141fd0734",
-   "lite": "b99a31bb590f3031742ad501ebbd07fefdf707aea33268122f109058bd1bedfe",
-   "bytes": 210850,
-   "liteBytes": 57450,
+   "source": "8890fb1087f3157e95ac4560381654820c51bad19feb0b2c695c1402a4b6cb61",
+   "lite": "42c15accb5b52f45e09a0d7406f2a227230f1655f028211120ee9f8610e6f99a",
+   "bytes": 211294,
+   "liteBytes": 57938,
    "liteCell": [
     618,
     204
    ],
-   "psnr": 43.2,
-   "shownPsnr": 43.2
+   "psnr": 43.6,
+   "shownPsnr": 43.6
   },
   "city/decor/tapume-t-intacto/sheet.webp": {
    "source": "fdf70097b66a91a6782f6e464b3e8e150cf75fac249121dd6dc847245e567adf",

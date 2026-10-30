@@ -26,7 +26,6 @@
     "src/client/render/telegraph-look.ts": 415,
     "src/client/render/textures.ts": 572,
     "src/client/render/towers/tower-rules.ts": 409,
-    "src/client/render/towers/towers.ts": 1116,
     "src/client/sandboxes/sandbox-cidade.ts": 1028,
     "src/client/sandboxes/sandbox-horde.ts": 549,
     "src/client/sandboxes/sandbox-hud.ts": 742,

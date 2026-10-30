@@ -92,9 +92,8 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   const car=()=>sim.objectiveView()!.car,ana=sim.players.get('ana')!,east={x:1,y:0};
   // Ana leans on its west side and walks east; the bots stand around the car (3 to 6 u, where they fight).
   // Asset v4 (mapa-175-com-viaduto): the street east of the car is ~9 u long (a block at x ≈ 92): the car starts 5 u
-  // west, where it stands clear to x ≈ 73, so the 3 s and the second at full crew fit before it. uno-estaciona-fora-da-boca:
-  // the car parks 1.5 u east of the plaza (off the mouths), so 6.5 u back is the same x ≈ 76.5.
-  const start=sim.run.chaveiro!.state.car;start.x-=6.5;
+  // west, where it stands clear to x ≈ 73, so the 3 s and the second at full crew fit before it.
+  const start=sim.run.chaveiro!.state.car;start.x-=5;
   let seq=0;
   const lean=(push:boolean)=>{
     if(push){const c=car();ana.x=c.x-(CAR_RADIUS+.3);ana.y=c.y;}

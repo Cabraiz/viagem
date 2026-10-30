@@ -46,9 +46,7 @@ function rig(players=1,mode?:'ninhos'){
   // A walkable spot ~9 u from the car, and one ~2 u further out (the player stands between the body and nothing else).
   let spot:Point|undefined,out:Point|undefined;
   for(let a=0;a<64&&!out;a++){
-    // From the west (uno-estaciona-fora-da-boca: the car parks 1.5 u east of the plaza, and 9-11 u east of it the city's
-    // flow field bends the hunter off the player): the long avenue.
-    const t=Math.PI+a/64*Math.PI*2,c=Math.cos(t),s=Math.sin(t);
+    const t=a/64*Math.PI*2,c=Math.cos(t),s=Math.sin(t);
     const p={x:car.x+9*c,y:car.y+9*s},q={x:car.x+11*c,y:car.y+11*s};
     if(walkable(p,world.terrain)&&walkable(q,world.terrain)){spot=p;out=q;}
   }

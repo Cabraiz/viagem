@@ -59,12 +59,9 @@ test('the walker misses walkable ground walled off from the Uno (the check can f
   assert.deepEqual(missed([shut]),[shut]);
 });
 
-// NEW-20261030-ORQ-uno-estaciona-fora-da-boca: the start moved off the street mouths to (85.7, 84.9), whence the way down
-// at x ≈ 81.5 is on the road to k13 (1.26× the straight line): a first-minute spot again, under AROUND_DETOUR_MAX.
-test('the k13 of the audit is reached from the Uno, by the way down under the start, within AROUND_DETOUR_MAX', ()=>{
+test('the k13 of the audit is reached from the Uno, by the way down under the start, and is no longer a start spot', ()=>{
   const k13={x:75.55,y:93.5};
-  const at=loot.aroundUno.find(p=>p.x===k13.x&&p.y===k13.y);
-  if(at)assert.ok(at.walk<=AROUND_DETOUR_MAX*Math.hypot(k13.x-start.x,k13.y-start.y),`k13 a start spot at ${at.walk} u on foot`);
+  assert.ok(!loot.aroundUno.some(p=>p.x===k13.x&&p.y===k13.y),'k13 is behind the edge: not a first-minute spot');
   // Where the auditor stood: straight south is the mask's edge.
   for(const x of [71,73,75,77,79])assert.equal(clearSegment({x,y:88.5},{x,y:91.5},city),false,`x ${x}: the edge stops a straight walk`);
   const s=walkTo(start,k13,10);

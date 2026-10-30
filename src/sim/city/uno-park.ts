@@ -49,19 +49,25 @@ export function startBeside(city:CityTerrain,car:Point):Point|undefined{
 /**
  * Whether each of the six slots gets a verde start crate (crates.ts placeNear's rule, greedily): open ground for its
  * body, off every strip (crateInMouth), within NEAR_START_REACH u (NEAR_START_RADII), CRATE_BODY_RADIUS clear of the car,
- * NEAR_START_SPACING from the others and off every hero.
+ * NEAR_START_SPACING from the others and off every hero; in its orders too.
  */
 export function crateRoom(city:CityTerrain,car:Point,slots:readonly Point[]):boolean{
-  const place={x:car.x,y:car.y,heading:0},near:Point[]=[];
-  const fits=(c:Point)=>city.clearDisc(c.x,c.y,RADIUS)&&!crateInMouth(city,c.x,c.y)&&carGap(place,c)>=CRATE_BODY_RADIUS
+  const place={x:car.x,y:car.y,heading:0},n=slots.length;
+  const fits=(c:Point,near:readonly Point[])=>city.clearDisc(c.x,c.y,RADIUS)&&!crateInMouth(city,c.x,c.y)&&carGap(place,c)>=CRATE_BODY_RADIUS
     &&near.every(o=>Math.hypot(o.x-c.x,o.y-c.y)>=NEAR_START_SPACING)&&slots.every(o=>Math.hypot(o.x-c.x,o.y-c.y)>=CRATE_BODY_RADIUS+RADIUS);
-  return slots.every(p=>{
-    for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
-      const a=k*2*Math.PI/NEAR_START_ANGLES,c={x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r};
-      if(fits(c)){near.push(c);return true;}
-    }
-    return false;
-  });
+  const plan=(order:readonly number[])=>{
+    const near:Point[]=[];
+    return order.every(i=>{
+      for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
+        const a=k*2*Math.PI/NEAR_START_ANGLES,c={x:slots[i].x+Math.cos(a)*r,y:slots[i].y+Math.sin(a)*r};
+        if(fits(c,near)){near.push(c);return true;}
+      }
+      return false;
+    });
+  };
+  // placeNear's orders: the list, then each rotation of it both ways (the block's last ones get boxed in by the others).
+  for(let k=0;k<2*n;k++)if(plan(slots.map((_,i)=>k<n?(i+k)%n:(2*n-1-k+n-i)%n)))return true;
+  return false;
 }
 
 const memo=new WeakMap<object,{car:Point;start:Point}|undefined>();
@@ -77,7 +83,8 @@ export function cityUnoPark(city:CityTerrain,carFits:(p:Point)=>boolean):{car:Po
   search:for(let r=0;r<=last+1e-9;r+=step){
     const steps=r?Math.max(8,Math.round(r*16)):1;
     for(let i=0;i<steps;i++){
-      const a=i/steps*Math.PI*2,p={x:Math.round((praca.x+Math.cos(a)*r)*100)/100,y:Math.round((praca.y+Math.sin(a)*r)*100)/100};
+      // The plaza point itself as it is (the car's spot before this card); the rings rounded to the hundredth.
+      const a=i/steps*Math.PI*2,p=!r?{x:praca.x,y:praca.y}:{x:Math.round((praca.x+Math.cos(a)*r)*100)/100,y:Math.round((praca.y+Math.sin(a)*r)*100)/100};
       if(!city.clearDisc(p.x,p.y,UNO_PARK_ROOM)||!carFits(p))continue;
       const start=startBeside(city,p);
       if(start&&crateRoom(city,p,startSlots(start))){found={car:p,start};break search;}

@@ -348,7 +348,7 @@ test('evolution: a free root grows centred on its cell; a larger tier needs free
   const up=grow();
   assert.equal(up.ok,true,JSON.stringify(up));
   assert.deepEqual(d.cell,{c:at.c-1,r:at.r-1});
-  assert.ok(Math.abs(d.x-at.c*FREE_CELL)<1e-9&&Math.abs(d.y-at.r*FREE_CELL)<1e-9,`centred on the 2×2 (${d.x},${d.y})`);
+  assert.deepEqual({x:d.x,y:d.y},{x:at.c*FREE_CELL,y:at.r*FREE_CELL});
   // The Obuseiro's only child is the Gustavão: out of the free build.
   d.kind='obuseiro';d.readyTick=0;
   g.ana.x=d.x;g.ana.y=d.y;

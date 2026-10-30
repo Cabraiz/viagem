@@ -61,7 +61,7 @@ test('explore.ts: in a room the gear opens the menu and leaving asks first',()=>
   assert.match(src,/onLeave:\(\)=>close\(\)/,'the confirmed exit leaves the room (close → net.leave once)');
   assert.match(src,/\$\('\.explore-exit'\)\.hidden=true/,'no exit without the question in a room');
   assert.match(src,/menu\?\.show\('menu'\);settings\.showModal\(\)/,'the gear always opens on the menu');
-  assert.match(src,/net\.fatal===LINK_LOST\?\{action:\{label:BACK_TO_ROOM/);
+  assert.match(src,/exit==='room'\?\{action:\{label:BACK_TO_ROOM/);
 });
 
 test('the menu head says "Partida solo" or how many people are in, never the raw room id (auditoria-ui-menus 15)',()=>{

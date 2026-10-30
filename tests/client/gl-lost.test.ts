@@ -24,9 +24,10 @@ test('with the panel up only the panel shows: the whole layout hides under data-
   const css=readFileSync(new URL('../../src/client/net-fatal.css',import.meta.url),'utf8');
   assert.match(css,/dialog\.explore-shell\[data-fatal=true\] \.explore-layout>:not\(\.net-fatal\)\{visibility:hidden\}/);
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  // The room's window (net.fatal) and the lost GL both mark the shell; "Reconectar" and the GL restore take it off.
-  assert.equal(explore.match(/shell\.dataset\.fatal='true'/g)?.length,2);
-  assert.equal(explore.match(/delete shell\.dataset\.fatal/g)?.length,2);
+  // The room's window (net.fatal), the lost GL and the boot window (partida-que-nao-abre) mark the shell; "Reconectar",
+  // the GL restore and the scene's ready() after a slow cover take it off.
+  assert.equal(explore.match(/shell\.dataset\.fatal='true'/g)?.length,3);
+  assert.equal(explore.match(/delete shell\.dataset\.fatal/g)?.length,3);
 });
 
 test('coop goes back through the room link, solo reloads',()=>{

@@ -3,7 +3,7 @@
  * offers, by kind of failure. explore.ts draws it with showFatal (net-fatal.ts); a second way out is a second button.
  * Pure (no DOM besides the WebGL probe), so the tests read the choices without Phaser.
  */
-import {needsUpdate,REPLACED_MESSAGE} from '../protocol/room.ts';
+import {needsUpdate,REPLACED_MESSAGE} from '../protocol/index.ts';
 
 export const BOOT_TEXT={
   loading:'Preparando a partida…',

@@ -4,6 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {SIM_HZ} from '../../src/contract/types.ts';
 import {ARRIVAL_SECONDS,CLOCK_ADDED_HOLD_S,CLOCK_ADDED_MIN_S,CLOCK_HIT_LABEL,CLOCK_HIT_FIRST_LABEL,ClockHitTracker,ClockStopTracker,ClockTag,arrivalBand} from '../../src/client/hud/chaveiro.ts';
 import {ABRINDO_SECONDS} from '../../src/sim/chaveiro/system.ts';
@@ -88,4 +89,9 @@ test('card relogio-do-chaveiro-com-legenda: the first burst says why ("chaveiro 
   t.step(undefined,later+2*SIM_HZ);t.step(o(280,3),later+3*SIM_HZ);
   const after=t.step(o(282,4),later+4*SIM_HZ)!;
   assert.equal(after.label,CLOCK_HIT_LABEL);assert.equal(after.text,'Uno apanhou: chaveiro +3 s','the title and the screen reader keep the whole sentence');
+});
+
+test('card relogio-do-chaveiro-com-legenda: on a narrow phone the bar keeps "Chaveiro m:ss" and drops the "+N s" (it would burst the bar)',()=>{
+  const css=readFileSync(new URL('../../src/client/hud/chaveiro-relogio.css',import.meta.url),'utf8');
+  assert.match(css,/@media \(max-width:419px\)\{\.rh\[data-hud=fone\] \.rh-camp-relogio-mais\{display:none\}\}/);
 });

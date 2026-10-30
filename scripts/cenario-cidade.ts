@@ -11,7 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAssetData,type CityDecor} from '../src/maps/city-asset.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
-import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
 import {bocaChao,entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
 import {semPropsNasBocas} from './becos-cidade.ts';
@@ -35,7 +35,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...[p.spawnN,p.spawnS,p.spawnL,p.spawnO].map(q=>({...q,r:KEEP.spawn})),
     ...Object.values(p.bocas).map(q=>({...q,r:KEEP.boca})),
     ...asset.loot.map(q=>({...q,r:KEEP.loot})),
-    ...CITY_NEST_POOL.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
+    ...CITY_NEST_SPOTS.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
   ];
   const keepOutRects=[
     ...plan.sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL)),
@@ -44,7 +44,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>({x:(c-1)*asset.unitsPerCell,y:(r-1)*asset.unitsPerCell,w:(w+2)*asset.unitsPerCell,h:(h+2)*asset.unitsPerCell})),
 
     // A nest in a building keeps its whole block (and a margin) for the nest's own art.
-    ...CITY_NEST_POOL.filter(n=>n.block).map(n=>{
+    ...CITY_NEST_SPOTS.filter(n=>n.block).map(n=>{
       const b=asset.blocks.find(x=>x.id===n.block)!.bbox,m=KEEP.nestBlock;
       return {x:b[0]-m,y:b[1]-m,w:b[2]+2*m,h:b[3]+2*m};
     }),

@@ -12,7 +12,7 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityDecor,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
-import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
@@ -122,7 +122,7 @@ export function lugares(a:CityAsset):Lugar[]{
   return [{id:'praça',p:P.praca},{id:'início',p:P.inicio},
     ...Object.entries(P.bocas).map(([k,p])=>({id:`boca ${k}`,p})),
     ...(['spawnN','spawnS','spawnL','spawnO'] as const).map(k=>({id:k,p:P[k]})),
-    ...CITY_NEST_POOL.map(n=>({id:n.id,p:{x:n.x,y:n.y}}))];
+    ...CITY_NEST_SPOTS.map(n=>({id:n.id,p:{x:n.x,y:n.y}}))];
 }
 
 /** The nearest city cell to `p` (a point may sit on a wall cell's edge). */
@@ -188,10 +188,10 @@ export interface Passagem {readonly cells:readonly number[]; readonly from:numbe
 export function passageBan(g:CityGraph):(t:number)=>boolean{
   const {a,m,u}=g,P=a.points;
   const near=(t:number,p:CityPoint,r:number)=>Math.hypot((t%m+.5)*u-p.x,(Math.floor(t/m)+.5)*u-p.y)<r;
-  const nestBlocks=new Set(CITY_NEST_POOL.filter(n=>n.block).map(n=>n.block));
+  const nestBlocks=new Set(CITY_NEST_SPOTS.filter(n=>n.block).map(n=>n.block));
   return (t:number)=>{
     if(near(t,P.praca,PLAZA_KEEP))return true;
-    for(const n of CITY_NEST_POOL)if(near(t,n,NEST_YARD_RADIUS[n.maxSize]+NEST_KEEP))return true;
+    for(const n of CITY_NEST_SPOTS)if(near(t,n,NEST_YARD_RADIUS[n.maxSize]+NEST_KEEP))return true;
     const b=g.blockOf[t];if(b&&nestBlocks.has(b.id))return true;
     // Nor into a safe place (a cell of it or beside it): its one small opening is the point.
     const tx=t%m,ty=(t-tx)/m;

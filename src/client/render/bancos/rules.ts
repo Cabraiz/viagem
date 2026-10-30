@@ -30,8 +30,12 @@ export function notesFromEvents(events:readonly StampedEvent[],lastEventId:numbe
   }
   return out;
 }
-/** The saldo's share of a full ATM, 0..1 (the ring on the ground). */
-export const saldoShare=(b:Pick<BankView,'saldo'>)=>Math.max(0,Math.min(1,b.saldo/BANCO.saldo));
+/**
+ * The saldo's share of a full ATM, 0..1 (the ring on the ground). `full`: what a full one holds (BANCO.saldo). The bicos
+ * never spend it (bico-sem-limite-pix-voando), so a shop's ring is whole in any room, which anel-caixa-por-assento
+ * (whole at bicoSaldo(seats)) was for.
+ */
+export const saldoShare=(b:Pick<BankView,'saldo'>,full:number=BANCO.saldo)=>Math.max(0,Math.min(1,b.saldo/Math.max(1,full)));
 /** Seconds until an empty ATM is full again (0 when it is not empty or has no deadline). */
 /**
  * What each frozen piece of a bank's ground is drawn for (card Q2, NEW-20261021-E5-q2-graphics-assados): the hold ring
@@ -39,9 +43,9 @@ export const saldoShare=(b:Pick<BankView,'saldo'>)=>Math.max(0,Math.min(1,b.sald
  * space, at the camera's contour width `k` (to the hundredth): the renderer re-freezes a piece only when its key changes,
  * and the paying pulse is a scale, not a redraw.
  */
-export function groundKeys(b:Pick<BankView,'saldo'|'state'>,k:number,view:number):{hold:string;ring:string;shadow:string}{
+export function groundKeys(b:Pick<BankView,'saldo'|'state'>,k:number,view:number,full:number=BANCO.saldo):{hold:string;ring:string;shadow:string}{
   const kq=Math.round(k*100);
-  return {hold:`${b.state==='sacando'?1:0}|${kq}`,ring:`${b.state==='bicho'?1:0}|${saldoShare(b)}|${kq}`,shadow:`${view}`};
+  return {hold:`${b.state==='sacando'?1:0}|${kq}`,ring:`${b.state==='bicho'?1:0}|${saldoShare(b,full)}|${kq}`,shadow:`${view}`};
 }
 /** The saldo ring's breathing while a hero is paid (1: still; reduced effects never breathe). */
 export const groundPulse=(b:Pick<BankView,'state'>,now:number,reduced:boolean)=>b.state==='sacando'&&!reduced?1+Math.sin(now*.01)*.04:1;

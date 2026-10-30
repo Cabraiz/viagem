@@ -60,7 +60,7 @@ export class WorkLatch {
 
 export type BicoTagLook='normal'|'bicho'|'vazio'|'turno';
 /**
- * The tag over a shop: "Telemarketing: R$ 2/s" open, "Telemarketing" over "Você no turno · 2 na fila" with a shift (two
+ * The tag over a shop: "Telemarketing: R$ 2/s" open, "Telemarketing" over "Você no turno, 2 na fila" with a shift (two
  * lines: one is wider than a phone's third), "Telemarketing: bicho no caixa!" while a critter robs it; just the name if a
  * room from before closed it. `nameOf`: a player's name ("Você" for the local one).
  */
@@ -69,7 +69,7 @@ export function bicoTag(b:Pick<BankView,'bico'|'state'|'workers'|'fila'>,nameOf:
   if(b.state==='sem-cedulas')return {look:'vazio',text:nome};
   if(b.state==='bicho')return {look:'bicho',text:`${nome}: bicho no caixa!`};
   if(b.workers?.length){
-    const who=b.workers.length===1?`${nameOf(b.workers[0])} no turno`:`${b.workers.length} no turno`,fila=b.fila?` · ${b.fila} na fila`:'';
+    const who=b.workers.length===1?`${nameOf(b.workers[0])} no turno`:`${b.workers.length} no turno`,fila=b.fila?`, ${b.fila} na fila`:'';
     return {look:'turno',text:`${nome}
 ${who}${fila}`};
   }

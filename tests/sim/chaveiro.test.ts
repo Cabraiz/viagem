@@ -30,7 +30,7 @@ import {BOSS_SIEGE_EVERY,BOSS_SIEGE_REACH,createBoss} from '../../src/sim/boss.t
 import {pointAt} from '../../src/sim/chaveiro/route.ts';
 import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS,BUDGET_BASE,BUDGET_PER_HIT,CAR_HIT_UNITS,CAR_LIMIT,CAR_STOP,
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
-  GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
+  GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,CHAVEIRO_CLOCK,clockWait,createChaveiro,planChaveiro,type ChaveiroClockRule,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
 import {NEST_PUSH_NEAR,NEST_PUSH_TEAM,PUSH_BOTS,PUSH_TRIP_SECONDS,botSpeed,objectiveTask} from '../../src/sim/bot-brain.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
@@ -46,7 +46,7 @@ const CAR=placeWall(city);
 /** The seated players whose wallets pay (carteira-e-pix: SimPlayer.grana; assemble passes the run's players). */
 const walletOf=(players:Map<string,SimPlayer>=new Map())=>({seated:()=>seatedPlayers(players)});
 interface Rig {world:SimWorld;sys:ChaveiroSystem;outcomes:string[];bosses:{tick:number;at:Point}[];events:StampedEvent[];step(n?:number):StampedEvent[]}
-function rig(seed=7,extra:{rate?:number}={}):Rig{
+function rig(seed=7,extra:{rate?:number;clock?:ChaveiroClockRule}={}):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain:city,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const outcomes:string[]=[],bosses:{tick:number;at:Point}[]=[],events:StampedEvent[]=[];
@@ -532,4 +532,78 @@ test('chaveiro-time-cai-onda-4: in the intermission the bots push a dead moto on
   assert.equal(objectiveTask(near(rest+1),'b1',bots)?.kind,'push','at the moto, the rest of the push still fits: they stay on it');
   assert.equal(objectiveTask(near(rest+1),'b2',bots)?.kind,'push');
   assert.equal(objectiveTask(near(rest-SIM_HZ),'b1',bots),undefined,'not even the rest fits: back to the car');
+});
+
+// ---------- Card missao-proteger-uno-tempo: the clock (ChaveiroOptions.clock, mode 'ninhos') ----------
+/** A short clock for the rigs: 40 s to the car unlocked (20 s of wait, a 5 s stretch, ABRINDO_SECONDS). */
+const CLOCK:ChaveiroClockRule={...CHAVEIRO_CLOCK,start:40,chegada:5};
+const moving=(r:Rig)=>r.sys.targets().some(t=>t.id==='moto');
+
+test("clock: the game's opens at 5:00 (etaS 300) with no stops; the rig's 40 s wait, ride the last share, unlock (victory)",()=>{
+  const game=rig(7,{clock:CHAVEIRO_CLOCK});game.step(1);
+  assert.equal(game.sys.view(game.world.tick).etaS,300);assert.equal(CHAVEIRO_CLOCK.start,300);
+  assert.deepEqual(game.sys.stops,[],'no dead moto, bump or delivery');
+  const r=rig(7,{clock:CLOCK});r.step(1);
+  assert.equal(r.sys.state.wait,clockWait(CLOCK)-1);
+  assert.ok(Math.abs(r.sys.eta(r.world.tick)-(CLOCK.start-1/SIM_HZ))<1e-9,`${r.sys.eta(r.world.tick)}`);
+  const L=r.sys.route.length;
+  // The wait: he crawls toward the last share (never into it), out of the critters' reach.
+  r.step(clockWait(CLOCK)-2);
+  assert.equal(r.sys.state.wait,1);assert.ok(!moving(r),'waiting: not a target');
+  assert.ok(r.sys.state.moto.s<L*(1-CLOCK.share)+1e-9&&r.sys.state.moto.s>L*(1-CLOCK.share)*.9,`${r.sys.state.moto.s} of ${L}`);
+  r.step(2);assert.equal(r.sys.state.wait,0);assert.ok(moving(r),'riding the last share: a target');
+  let chegou=0;
+  while(r.sys.state.moto.task==='anda'){chegou++;r.step(1);}
+  assert.ok(Math.abs(chegou-ticks(CLOCK.chegada))<=2,`${chegou} ticks for the stretch`);
+  assert.equal(r.sys.state.moto.left,ticks(ABRINDO_SECONDS));
+  assert.ok(ofType(r.events,'moto').some(e=>e.type==='moto'&&e.mode==='chegou'));
+  assert.ok(moving(r),'unlocking: still a target');
+  r.step(ticks(ABRINDO_SECONDS));
+  assert.deepEqual(r.outcomes,['victory']);
+  assert.ok(Math.abs(r.world.tick-ticks(CLOCK.start))<=3,`victory at ${r.world.tick} vs ${ticks(CLOCK.start)}`);
+});
+
+test('clock: each hit unit on the car adds perHit s (elite 3 units, the rate cap counts), the alarm sounds but never stops him',()=>{
+  const r=rig(7,{clock:CLOCK,rate:3});r.step(ticks(1)-r.world.tick%ticks(1));r.world.flush();
+  const w0=r.sys.state.wait!,eta0=r.sys.eta(r.world.tick);
+  r.sys.hitCar(r.world,addEnemy(r.world,'n',CAR));
+  assert.equal(r.sys.state.wait,w0+ticks(CLOCK.perHit));assert.equal(r.sys.state.added,ticks(CLOCK.perHit));
+  assert.ok(Math.abs(r.sys.eta(r.world.tick)-eta0-CLOCK.perHit)<1e-9,'the ETA grows by the same');
+  r.sys.hitCar(r.world,addEnemy(r.world,'el',CAR,{elite:true}));
+  assert.equal(r.sys.state.car.hits,3,'capped at 3 units this second');
+  assert.equal(r.sys.state.added,3*ticks(CLOCK.perHit),'only the units taken add');
+  assert.equal(ofType(r.world.flush(),'alarm').length,1,'the alarm still sounds');
+  const got=r.step(ticks(ALARM_MAX_SECONDS));
+  assert.ok(!got.some(e=>e.type==='moto'&&e.mode==='volta'),'no lap around the block');
+  assert.equal(r.sys.state.moto.mode,'anda');
+  assert.equal(r.sys.state.wait,w0+3*ticks(CLOCK.perHit)-ticks(ALARM_MAX_SECONDS),'the clock ran on');
+});
+
+test('clock: hits on the last stretch add nothing; on the unlocking they put abrindoPerHit back (capped); an enemy on him stops it',()=>{
+  const r=rig(7,{clock:CLOCK});r.step(1);
+  r.sys.state.wait=1;r.step(2);assert.equal(r.sys.state.wait,0);
+  r.sys.hitCar(r.world,addEnemy(r.world,'a',CAR));
+  assert.equal(r.sys.state.wait,0);assert.equal(r.sys.state.added??0,0,'the stretch: no time added');
+  while(r.sys.state.moto.task==='anda')r.step(1);
+  r.step(ticks(3));const left=r.sys.state.moto.left;
+  r.sys.hitCar(r.world,addEnemy(r.world,'b',CAR));
+  assert.equal(r.sys.state.moto.left,left+ticks(CLOCK.abrindoPerHit));
+  assert.equal(r.sys.state.added,ticks(CLOCK.abrindoPerHit));
+  for(let i=0;i<10;i++)r.sys.hitCar(r.world,addEnemy(r.world,`c${i}`,CAR));
+  assert.equal(r.sys.state.moto.left,ticks(ABRINDO_SECONDS),'never more than the whole unlocking');
+  const m=r.sys.moto();addEnemy(r.world,'t',{x:m.x+.5,y:m.y});
+  r.step(1);assert.equal(r.sys.state.moto.mode,'tombo');
+  const down=r.sys.state.moto.left;r.step(ticks(TOMBO_SECONDS)-1);
+  assert.equal(r.sys.state.moto.left,down,'knocked over: the unlocking waits');
+  assert.equal(r.sys.state.moto.task,'abrindo');
+});
+
+test("clock: the car's hit limit is the defeat (the time added has no ceiling of its own)",()=>{
+  const r=rig(7,{clock:CLOCK});r.step(2);
+  const normal=addEnemy(r.world,'n',CAR);
+  while(r.sys.state.car.hits<CAR_LIMIT-1)r.sys.hitCar(r.world,normal);
+  assert.equal(r.sys.state.added,(CAR_LIMIT-1)*ticks(CLOCK.perHit),'every unit added');
+  assert.deepEqual(r.outcomes,[]);
+  r.sys.hitCar(r.world,normal);
+  assert.deepEqual(r.outcomes,['defeat']);assert.equal(r.sys.result(r.world.tick,r.world.round)!.cause,'car');
 });

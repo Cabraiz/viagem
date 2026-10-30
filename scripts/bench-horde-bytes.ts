@@ -15,6 +15,7 @@ import {ACK_EVERY_MS} from '../src/client/net/client.ts';
 import {readFileSync} from 'node:fs';
 import {clientCatalog} from '../src/protocol/map-catalog.ts';
 import {readMapRef} from '../src/protocol/map-select.ts';
+import {HEROI_PADRAO} from './elenco-ativo.ts';
 
 /** join.maps of a current build (D-026): the endless map and the city of this checkout's manifest. */
 const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
@@ -34,7 +35,7 @@ let t=0;
 // The endless map, explicitly: the bytes stay comparable whatever ROOM_DEFAULT_MAP becomes (cidade-10).
 const room=new Room(0,seed,{lab:true,labHorde:horde,map:'infinito'});
 const say=(m:object)=>room.receive(peer,JSON.stringify(m),t);
-room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa do lab',classId:'cidadao-comum',maps});
+room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa do lab',classId:HEROI_PADRAO,maps});
 for(let i=0;i<5;i++)say({t:'bot-add',round:1});
 say({t:'ready',round:1,ready:true});
 for(let i=0;i<20*30&&room.run.snapshot().phase!=='combat';i++){t+=50;room.advance(t);say({t:'ack',seq:lastSeq});}

@@ -1,8 +1,10 @@
 /* The manual combat's inventory (D-051, hud/inventory.ts). Only tokens (src/client/ui/tokens.css) and stickers.
    - .rh-inv: 6 small slots in 3×2, left of the skill (attack) button, bottom-aligned with it: the right thumb reaches
      them, the stick (left) and Dona Cida's button (above the skill) keep their places, the hero (centre) stays clear.
-   - The rarity is the slot's border (verde, azul, roxa, dourada, lendária); the hand's slot is lifted with a Papel
-     ring; a consumable's stack is a number in the corner; the desktop shows the key (1–6) in the other corner.
+   - The rarity is the slot's border, in the world's colour (hud/inventory.ts sets --raridade from arsenal-rules.ts
+     RARITY_TOKEN: verde, azul, roxa, laranja, dourada), and 1–5 Papel dots on a Breu pill on its bottom edge (a sign
+     that is not a colour); the hand's slot is lifted with a Papel ring; a consumable's stack is a number in the
+     corner (the dots then move left of it); the desktop shows the key (1–6) in the other corner.
    - "Trocar" (6 slots full, an item within reach) and the refusal line sit over the slots. */
 .rh .rh-inv{
   --inv-slot:34px;--inv-gap:4px;
@@ -20,18 +22,17 @@
   display:grid;place-content:center;border:3px solid var(--raridade);border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-papel);
   box-shadow:var(--s-1);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   transition:transform .12s ease-out}
-.rh-inv-slot[data-rarity="1"]{--raridade:var(--c-cartolina)}
-.rh-inv-slot[data-rarity="2"]{--raridade:var(--c-gema)}
-.rh-inv-slot[data-rarity="3"]{--raridade:color-mix(in srgb,var(--c-lilas) 55%,var(--c-papel-claro))}
-.rh-inv-slot[data-rarity="4"]{--raridade:var(--c-amarelo)}
-.rh-inv-slot[data-rarity="5"]{--raridade:var(--c-cone)}
 .rh-inv-slot[data-kind=consumable]{--raridade:var(--c-papel);border-style:dashed}
 .rh-inv-slot[data-empty=true]{border:2px dashed var(--c-sombra);background:var(--c-trilho);box-shadow:none;cursor:default}
 .rh-inv-slot[data-hand=true]{transform:translateY(-3px) scale(1.1);box-shadow:0 0 0 3px var(--c-papel),var(--s-2)}
 .rh-inv-ic .ic{width:24px;height:24px;display:block}
-.rh-inv-pilha{position:absolute;right:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 11px/14px var(--f-sistema);text-align:center}
+.rh-inv-pilha{position:absolute;right:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 12px/14px var(--f-sistema);text-align:center}
 .rh-inv-pilha:empty{display:none}
-.rh-inv-tecla{display:none;position:absolute;left:1px;top:-1px;color:var(--c-papel);font:800 10px/1 var(--f-sistema);text-shadow:var(--s-texto)}
+.rh-inv-pips{position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);display:flex;gap:1px;padding:1px 2px;border-radius:var(--r-ficha);background:var(--c-breu);pointer-events:none}
+.rh-inv-pips:empty{display:none}
+.rh-inv-pips i{display:block;width:4px;height:4px;border-radius:50%;background:var(--c-papel)}
+.rh-inv-slot[data-pilha=true] .rh-inv-pips{left:-3px;transform:none}
+.rh-inv-tecla{display:none;position:absolute;left:1px;top:-1px;color:var(--c-papel);font:800 12px/1 var(--f-sistema);text-shadow:var(--s-texto)}
 .rh[data-hud=mesa] .rh-inv-tecla{display:block}
 .rh-inv-slot[data-empty=true] .rh-inv-tecla{opacity:.5}
 /* Holding to drop: the slot sinks and its border goes Cone while the 0.8 s run; dragging lifts it off the bar. */

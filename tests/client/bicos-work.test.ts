@@ -37,7 +37,7 @@ test('bicoTag: gig and pay, the shift with its name and queue, the robbery; no s
   assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me'],saldo:35}),name),{look:'turno',text:`${nome}
 Você no turno`});
   assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me','z'],fila:2,saldo:30}),name),{look:'turno',text:`${nome}
-2 no turno · 2 na fila`});
+2 no turno, 2 na fila`});
   assert.deepEqual(bicoTag(shop('a',{state:'bicho'}),name),{look:'bicho',text:`${nome}: bicho no caixa!`});
   assert.deepEqual(bicoTag(shop('a',{state:'sem-cedulas',saldo:0}),name),{look:'vazio',text:nome});
   assert.equal(bicoRobberyText(shop('a',{bico:'aura-67'})),`Bicho no caixa do ${BICOS['aura-67'].nome}!`);

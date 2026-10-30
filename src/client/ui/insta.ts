@@ -60,7 +60,7 @@ export const INSTA_PERFIS:readonly InstaPerfil[]=Object.freeze([
     chips:chips('Chapéu de palha','Água gelada','Na areia quente'),
     posts:posts('quiosque_do_ze',['Selfie com o isopor. Gelo novinho.','2.214','há 1 hora'],
       ['Areia a 60 graus. O chinelo resiste.','3.870','há 5 horas'],['Vai uma geladinha, aventureiro?','5.402','há 1 dia'])},
-  {id:'aposentado',nome:'APOSENTADO',handle:'@APOSENTADO',letreiro:'Aposentado, experiência não falta',seguidores:'3.104',seguindo:'12',bio:'No meu tempo\no boss era maior.',
+  {id:'aposentado',nome:'APOSENTADO',handle:'@APOSENTADO',letreiro:'Aposentado, experiência não falta',seguidores:'3.104',seguindo:'12',bio:'No meu tempo\no chefão era maior.',
     chips:chips('Colete de pesca','Vara no torno','Contando história'),
     posts:posts('neto_favorito',['Consertei a vara. Ficou melhor que nova.','312','há 2 horas'],
       ['O peixe era DESSE tamanho. Juro.','487','há 6 horas'],['Puxando o chefe do lago. Ele resistiu.','655','há 1 dia'])},
@@ -292,7 +292,7 @@ export function camadaHtml(c:StoryCamada,p:InstaPerfil):string{
   if(c.tipo==='enquete') return `<div class="insta-st insta-st-enquete" style="${lugar}"><p>${esc(c.pergunta)}</p>`+
     `<ol><li><i>A</i>${esc(c.a)}</li><li><i>B</i>${esc(c.b)}</li></ol></div>`;
   if(c.tipo==='pergunta') return `<div class="insta-st insta-st-pergunta" style="${lugar}">`+
-    `<img class="insta-st-avatar" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"><p>${esc(c.pergunta)}</p><span>Digite algo...</span></div>`;
+    `<img class="insta-st-avatar" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"><p>${esc(c.pergunta)}</p><span>Digite algo…</span></div>`;
   if(c.tipo==='hashtag') return `<span class="insta-st insta-st-hashtag" style="${lugar};--st-cor:${corVar(c.cor)}">${esc(c.tag)}</span>`;
   return `<span class="insta-st insta-st-curtidas" style="${lugar}">${LINHA.coracao}<b>${c.n}</b></span>`;
 }

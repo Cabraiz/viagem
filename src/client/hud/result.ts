@@ -211,7 +211,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   // the stats line: a wide screen keeps one row; 390×844 wraps it to a second row and six cards still fit under it.
   const bill=el('span','rh-result-stat rh-result-conta',stats);bill.hidden=true;bill.setAttribute('role','img');
   // The vaquinha (carteira-e-pix): who put how much into the bill, the R$ 0 with its joke; one more ficha, it wraps.
-  const vaquinha=el('span','rh-result-stat rh-result-vaquinha',stats);vaquinha.hidden=true;
+  const vaquinha=el('span','rh-result-stat rh-result-vaquinha',stats);vaquinha.hidden=true;vaquinha.setAttribute('role','img');
 
   // "Momento mais vergonhoso" (VGM-053B): a notice on the condo board, from the server's moment; hidden without one.
   const shame=el('aside','rh-result-shame',root);shame.hidden=true;
@@ -346,14 +346,16 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const sticker=shameChip.source?ctx.critterIcon?.(shameChip.source):undefined;
       if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;mark.replaceChildren(img);}else mark.innerHTML=icon('suor');
       const text=el('span','rh-award-text',chip);
-      const name=el('strong','rh-award-title',text);name.textContent='Momento mais vergonhoso';
+      const name=el('strong','rh-award-title',text);name.textContent='Momento mais vergonhoso';text.append(' ');
       const line=el('small','rh-award-line',text);line.textContent=shameChip.line;
     }
     for(const award of awards){
       const chip=el('li','rh-award',list);
       const mark=el('span','rh-award-emoji',chip);mark.innerHTML=drawSticker(award.icon,{size:32});mark.setAttribute('aria-hidden','true');
       const text=el('span','rh-award-text',chip);
-      const name=el('strong','rh-award-title',text);name.textContent=award.title;
+      // The space is the break between the title and its joke when 3+ cards run them inline (hud.css): with a margin and
+      // no space, "academia" + "Empatou" was one word and ran past the chip (390×844, vices longos).
+      const name=el('strong','rh-award-title',text);name.textContent=award.title;text.append(' ');
       const line=el('small','rh-award-line',text);line.textContent=award.line;
       chip.setAttribute('aria-label',`${award.title}: ${award.line}`);
     }
@@ -435,21 +437,42 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
    * Names in up to two lines (whole name, else whole words with "…"); if the cards would then scroll, one line. Then the
    * shame notice finds its place (it measures the grid too). Only once the screen is laid out.
    */
+  // Whether the cards still scroll, by their layout boxes: scrollHeight counts the entrance animation's translateY(14px)
+  // (fill both, so from the first frame), and the ladder below hid lines six cards had room for (arrumando a sala, 390×844).
+  const scrolls=()=>{
+    let bottom=0;
+    for(const card of grid.children)if(card instanceof HTMLElement&&card.offsetParent)bottom=Math.max(bottom,card.offsetTop+card.offsetHeight);
+    const height=bottom?bottom+(parseFloat(getComputedStyle(grid).paddingBottom)||0):grid.scrollHeight; // no layout: scrollHeight
+    return height>grid.clientHeight+1;
+  };
+  let fitHeight=0;
   const fitCards=()=>{
     if(root.hidden||typeof getComputedStyle!=='function'){fitShame();return;}
     const names=[...grid.querySelectorAll<HTMLElement>('.rh-rcard-name')];
     for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',2);
     fitShame();
-    if(grid.scrollHeight>grid.clientHeight+1){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
+    if(scrolls()){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
     // Last resort (DSG-adesivos-itens: long vice lines like "Empatou em … e perdeu no desempate."): the award jokes go,
     // titles and stickers stay; each chip keeps its whole text in its aria-label.
-    grid.classList.remove('rh-result-tight');root.classList.remove('rh-result-nolost');
-    if(grid.scrollHeight>grid.clientHeight+1)grid.classList.add('rh-result-tight');
-    // Then the defeat's "O que derrubou a turma" line (its cause is in the "Te derrubou" ficha too).
-    if(grid.scrollHeight>grid.clientHeight+1)root.classList.add('rh-result-nolost');
+    const steps=['rh-result-nolost','rh-result-novaca','rh-result-nostats','rh-result-nosub'];
+    grid.classList.remove('rh-result-tight');root.classList.remove(...steps);
+    if(scrolls())grid.classList.add('rh-result-tight');
+    // Then, one at a time while the cards still scroll (BUG-20261023-ORQ-resultado-paisagem-e-125: six players with the
+    // chaveiro's vaquinha, landscape and 125%): the defeat's "O que derrubou a turma" line (its cause is in the "Te
+    // derrubou" ficha too), the vaquinha's R$ 0 jokes (names and values stay, the aria-label keeps them), the closed cards'
+    // numbers (a tap opens the card with all four) and the subtitle.
+    for(const step of steps){if(!scrolls())break;root.classList.add(step);}
+    fitHeight=grid.clientHeight;
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
+  // The text scale (100/125%, <html data-texto>) can change with the result open (the settings): fit again at the new size.
+  const textScale=typeof MutationObserver!=='undefined'?new MutationObserver(onTurn):undefined;
+  textScale?.observe(document.documentElement,{attributes:true,attributeFilter:['data-texto']});
+  // Something outside the grid that grows after the fit (the playtest's "Métricas" chip appended to the titles, dev/ux-metrics)
+  // shrinks its row and the cards scrolled again (844×390, two cards, defeat): fit again when its height is not the fitted one.
+  const gridSize=typeof ResizeObserver!=='undefined'?new ResizeObserver(()=>{if(!root.hidden&&grid.clientHeight!==fitHeight)fitCards();}):undefined;
+  gridSize?.observe(grid);
 
   return {
     el:root,matches,
@@ -471,7 +494,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
         bill.setAttribute('aria-label',conta.aria);
       }
       const vaca=conta?vaquinhaLine(result.objective?.share,id=>{const p=result.players.find(q=>q.id===id);return id===ctx.localId?'Você':p?railName(p.name):'Alguém';}):undefined;
-      vaquinha.hidden=!vaca;vaquinha.textContent=vaca?.text??'';
+      vaquinha.hidden=!vaca;vaquinha.textContent=vaca?'Vaquinha: ':'';
+      // The R$ 0 jokes in their own spans: landscape with 5-6 cards hides them (hud.css), the aria-label keeps them.
+      vaca?.pieces.forEach((piece,i)=>{vaquinha.append(`${i?'; ':''}${piece.who}`);if(piece.joke)el('span','rh-vaca-joke',vaquinha).textContent=`, ${piece.joke}`;});
       if(vaca)vaquinha.setAttribute('aria-label',vaca.aria);else vaquinha.removeAttribute('aria-label');
       seed.textContent=resultSeedText(result);seed.hidden=!seed.textContent;
       const fell=resultCause(ctx.tally.causes,ctx.localId);
@@ -517,6 +542,6 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const before=JSON.stringify(rematchVotes?.votes??[]);rematchVotes=next;syncRematch();
       if(shownResult&&!root.hidden&&JSON.stringify(next?.votes??[])!==before){root.classList.remove('rh-result-in');renderGrid(shownResult.result,shownResult.ctx);}
     },
-    destroy(){landscape?.removeEventListener('change',onTurn);clearTimeout(disarm);root.remove();},
+    destroy(){landscape?.removeEventListener('change',onTurn);textScale?.disconnect();gridSize?.disconnect();clearTimeout(disarm);root.remove();},
   };
 }

@@ -148,18 +148,42 @@ export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name
 export function createAnnouncer():HudPart{
   const root=el('div','rh-marquee');root.setAttribute('aria-live','polite');root.hidden=true;
   const title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
-  let timer:ReturnType<typeof setTimeout>|undefined;
+  // The whole subtitle for screen readers when the line shows less of it (fitSubtitle).
+  const whole=el('span','rh-sr',root);
+  let timer:ReturnType<typeof setTimeout>|undefined,full='';
+  /**
+   * One line and nothing cut (BUG-20261023-ORQ-resultado-paisagem-e-125): the title is always whole; the subtitle shows
+   * whole if it fits beside it, else only the modifier's name (modifierLabel "Nome: descrição"), else it goes. Runs again
+   * when the banner's size changes (text at 125%, a turned phone), starting from the whole text every time.
+   */
+  const fitSubtitle=()=>{
+    if(root.hidden||!full)return;
+    subtitle.textContent=full;subtitle.hidden=false;whole.textContent='';
+    // Two lines at most: a title that needs two lines keeps them and the subtitle goes.
+    const line=parseFloat(getComputedStyle(title).lineHeight)||28,oneLine=title.getBoundingClientRect().height<=line*1.5;
+    const over=()=>subtitle.scrollWidth>subtitle.clientWidth+1;
+    if(oneLine&&!over())return;
+    const name=full.split(/:\s/)[0];
+    if(oneLine&&name!==full){subtitle.textContent=name;if(!over()){whole.textContent=full;return;}}
+    subtitle.hidden=true;whole.textContent=full;
+  };
+  // Next frame (a size change inside the observer's own callback is a "loop" error), and only when the room or the text
+  // size changed: the fit itself resizes the banner.
+  let fitted='';
+  const fitKey=()=>`${root.parentElement?.clientWidth}|${getComputedStyle(title).fontSize}|${full}`;
+  const resized=typeof ResizeObserver==='function'?new ResizeObserver(()=>requestAnimationFrame(()=>{
+    if(fitKey()!==fitted){fitted=fitKey();fitSubtitle();}
+  })):undefined;
+  resized?.observe(root);
   const show=(marquee:Marquee)=>{
     // A notice already in the slot wins (danger over the joke): the round name skips its turn; the chip shows the round.
     if(root.parentElement?.querySelector('.rh-alert:not([hidden])'))return;
     // An open offer window too (design onda 3 B4): the chip already shows the round.
     if(root.closest('.rh')?.querySelector('.rh-offer:not([hidden])'))return;
     // Word joiner after hyphens: "E-mail" must never break into "E-" / "mail" on a narrow phone.
-    title.textContent=marquee.title.replace(/-/g,'-\u2060');subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
+    title.textContent=marquee.title.replace(/-/g,'-\u2060');full=marquee.subtitle??'';subtitle.textContent=full;subtitle.hidden=!full;whole.textContent='';
     root.dataset.tone=marquee.tone;root.hidden=false;
-    // Two lines at most: a title that needs two lines keeps them and the subtitle goes.
-    const line=parseFloat(getComputedStyle(title).lineHeight)||28;
-    if(!subtitle.hidden&&title.getBoundingClientRect().height>line*1.5)subtitle.hidden=true;
+    fitSubtitle();fitted=fitKey();
     root.classList.remove('rh-marquee-in');void root.offsetWidth;root.classList.add('rh-marquee-in');
     clearTimeout(timer);timer=setTimeout(()=>{root.hidden=true;root.classList.remove('rh-marquee-in');},MARQUEE_MS);
   };
@@ -177,5 +201,5 @@ export function createAnnouncer():HudPart{
       const marquee=view.objective?marqueeFor(event,Infinity,'Onda'):marqueeFor(event,view.round?.total);
       if(marquee)show(marquee);
     }
-  },destroy(){clearTimeout(timer);}};
+  },destroy(){clearTimeout(timer);resized?.disconnect();}};
 }

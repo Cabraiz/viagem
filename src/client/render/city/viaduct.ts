@@ -120,12 +120,15 @@ const CAR_RED=0xc0473a,PILE=[0x5b7fa8,0x8f8a7a,0xd6a23c] as const;
  * concrete: the user found the plain concrete flat) the barrier's New Jersey blocks and the slab's edge beam (bands
  * that tile along a side, one block a cell) and a pillar's face (its hazard stripes at the foot). Under WebGL each strip
  * draws its faces as one Mesh of it (as the city's painted ground, city-layer groundMesh); under Canvas, or until it
- * loads, the flat colours stay.
+ * loads, the flat colours stay. The barrier's top (tb-tampa: snowy concrete seen from above, card viaduto-arte) also caps
+ * a pillar.
  */
 export const FACES_KEY='city:viaduct:faces',FACES_URL='/art/city/viaduto/faces.webp';
-/** The atlas (px) and its regions: the road tile, the wall tile, the barrier band, the beam band, the pillar's face. */
+/** The atlas (px) and its regions: the road tile, the wall tile, the barrier band, the beam band, the pillar's face, the
+ * barrier's top (4 segments down it, one a cell, as the barrier band's blocks). */
 export const FACES_SIZE=[1152,768] as const,FACES_ROAD=[0,0,512,768] as const,FACES_CONCRETE=[512,0,512,512] as const,
-  FACES_BARRIER=[512,512,512,128] as const,FACES_BEAM=[512,640,512,128] as const,FACES_PILLAR=[1024,0,128,512] as const;
+  FACES_BARRIER=[512,512,512,128] as const,FACES_BEAM=[512,640,512,128] as const,FACES_PILLAR=[1024,0,128,512] as const,
+  FACES_CAP=[1024,512,128,256] as const;
 /** Cells of road one road tile covers along the road; cells one concrete tile (and one band: 4 blocks) covers along a side (and up). */
 export const ROAD_TILE_CELLS=6,CONCRETE_TILE_CELLS=4;
 /** Texels kept off each region's rim, so linear filtering never reads the region beside it. */
@@ -170,6 +173,21 @@ export function bandST(p:ViaductPiece,side:'n'|'e'|'s'|'w',unit:number,whole=fal
   const st=concreteST(p,side,unit);
   const s=whole?(st[0][0]<=st[1][0]?[0,1]:[1,0]):[st[0][0],st[1][0]];
   return [[s[0],0],[s[1],0],[s[1],1],[s[0],1]];
+}
+
+/**
+ * The barrier top's (s, t) at the 4 footprint corners of a parapet or a pier cap: s across the piece (0..1), t along
+ * its long side as the barrier band's s (CONCRETE_TILE_CELLS cells a tile, shifted inside one tile as concreteST). A
+ * pier cap reads one segment, between its joints.
+ */
+export function capST(p:ViaductPiece,unit:number):[number,number][]{
+  const cs=cornersOf(p),alongY=p.y1-p.y0>=p.x1-p.x0,T=CONCRETE_TILE_CELLS*unit;
+  const across=(c:Pt)=>alongY?(c.x-p.x0)/(p.x1-p.x0):(c.y-p.y0)/(p.y1-p.y0),m=(c:Pt)=>alongY?c.y:c.x;
+  if(p.kind==='cap')return cs.map(c=>{const a=alongY?(c.y-p.y0)/(p.y1-p.y0):(c.x-p.x0)/(p.x1-p.x0);return [across(c),.02+.21*a];});
+  const m0=alongY?p.y0:p.x0,len=(alongY?p.y1:p.x1)-m0;
+  let t0=(m0-Math.floor(m0/T+1e-6)*T)/T;
+  if(t0+len/T>1+1e-6)t0=Math.max(0,1-len/T);
+  return cs.map(c=>[across(c),t0+(m(c)-m0)/T]);
 }
 
 /**
@@ -270,7 +288,7 @@ interface PropArt {prop:ViaductProp;v:CityViaduct;sheet?:ViaductSheet;img?:Phase
 /**
  * The Phaser side: one Graphics per strip (and pillar), redrawn when the view turns, re-sorted every frame (the scene's
  * depth origin moves with the hero). With the faces' atlas in (WebGL), each strip's faces are a Mesh under its
- * Graphics, which then keeps only the outlines and the parapets' snow caps. The pieces of art (viaductProps, the Uno at
+ * Graphics, which then keeps only the outlines (and the cars' boxes until their sheets are in). The pieces of art (viaductProps, the Uno at
  * the start) are images over their strips; the deck's car boxes stay only until their sheets are in.
  * `bodyLift`/`bodyDepth` place a body of floor 1; `under` says the ground at (x, y) is under a deck (the hero there gets
  * its see-through copy, like behind a building).
@@ -493,6 +511,11 @@ export class ViaductLayer {
       }
       if(textured&&(p.kind==='deck'||p.kind==='ramp')){
         quad(p.strip,tops,roadST(p,this.viaductOf(p),this.unit),FACES_ROAD,TINT_TOP);
+        continue;
+      }
+      if(textured&&(p.kind==='parapet'||p.kind==='cap')){
+        quad(p.strip,tops,capST(p,this.unit),FACES_CAP,TINT_TOP);
+        g.lineStyle(1.5,BREU,.7).strokePoints(tops,true);
         continue;
       }
       g.fillStyle(car??(p.kind==='parapet'?CAP:TOP),1).fillPoints(tops,true);

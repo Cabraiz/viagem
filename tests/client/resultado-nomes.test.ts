@@ -17,5 +17,5 @@ test('result card names: a bot\'s number stays when the class name is cut ("Vici
   assert.deepEqual(nameCandidates('Viciado em Bet 2').slice(0,3),['Viciado em Bet 2','Viciado em… 2','Viciado… 2']);
   assert.deepEqual(nameCandidates('CLT 2').slice(0,2),['CLT 2','CL… 2']);
   assert.notEqual(nameCandidates('Viciado em Bet').at(1),nameCandidates('Viciado em Bet 2').at(1));
-  assert.deepEqual(nameCandidates('Mendigo 22').slice(0,2),['Mendigo 22','Mendigo…'],'only one digit is a bot number');
+  assert.deepEqual(nameCandidates('Maromba 22').slice(0,2),['Maromba 22','Maromba…'],'only one digit is a bot number');
 });

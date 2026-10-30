@@ -47,7 +47,7 @@ function advanceToFrame(room:Room,p:TestPeer){
 const near=(a:number,b:number,q=.002)=>Math.abs(a-b)<=q;
 
 test('the protocol 4 feed rebuilds the server run view from the room frames',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana');join(room,b,'Bia','tio-do-churrasco');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   for(let i=0;i<220;i++){step(room);pump(room,feed,a);}
   advanceToFrame(room,a);pump(room,feed,a);
@@ -79,7 +79,7 @@ test('events reach the view once each, in order, also across a reconnection',()=
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const ids:number[]=[];
-  // 45 s: two CLTs (cadeado-so-clt-viciado: a person plays only a released hero) make fewer events than the old mendigos.
+  // 45 s: two CLTs (cadeado-so-clt-viciado: a person plays only a released hero) make fewer events than the old legacy heroes.
   for(let i=0;i<900;i++){step(room);pump(room,feed,a);if(i%7===0)ids.push(...feed.take().events.map(e=>e.eventId));}
   ids.push(...feed.take().events.map(e=>e.eventId));
   assert.ok(ids.length>10,`only ${ids.length} events`);

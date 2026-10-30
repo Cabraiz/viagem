@@ -24,15 +24,15 @@ test('expressions and key format',()=>{
   assert.deepEqual([...FACE_EXPRESSIONS],['normal','ferido','caido','rindo','bravo']);
   assert.equal(FACE_GROUP,'rostos');
   assert.equal(faceKey('cidadao-comum','rindo'),'rosto:cidadao-comum:rindo');
-  assert.equal(faceKey('mendigo','normal'),'rosto:mendigo:normal');
+  assert.equal(faceKey('tio-do-churrasco','normal'),'rosto:tio-do-churrasco:normal');
 });
 
 test('faceUrl: the imported file; a missing expression falls back to normal; null without any face',()=>{
-  load(['cidadao-comum-normal','cidadao-comum-rindo','mendigo-normal','streamer-bravo']);
+  load(['cidadao-comum-normal','cidadao-comum-rindo','tio-do-churrasco-normal','streamer-bravo']);
   assert.equal(faceUrl('cidadao-comum','rindo'),'/art/rostos/cidadao-comum-rindo.webp');
   assert.equal(faceUrl('cidadao-comum'),'/art/rostos/cidadao-comum-normal.webp');
   assert.equal(faceUrl('cidadao-comum','ferido'),'/art/rostos/cidadao-comum-normal.webp');
-  assert.equal(faceUrl('mendigo','caido'),'/art/rostos/mendigo-normal.webp');
+  assert.equal(faceUrl('tio-do-churrasco','caido'),'/art/rostos/tio-do-churrasco-normal.webp');
   assert.equal(faceUrl('motogirl','normal'),null);
   assert.equal(faceUrl('motogirl','rindo'),null);
   // Only a non-normal face: that expression shows, the others have nothing to fall back to.
@@ -41,12 +41,12 @@ test('faceUrl: the imported file; a missing expression falls back to normal; nul
 });
 
 test('faceLoads / queueFaceTextures: only delivered faces of playable classes, under rosto:<id>:<expr>; already-loaded keys skipped',()=>{
-  load(['maromba-normal','maromba-rindo','clt-cansado-normal','mendigo-normal','cidadao-comum-normal','palhaco-normal']);
+  load(['maromba-normal','maromba-rindo','clt-cansado-normal','tio-do-churrasco-normal','cidadao-comum-normal','palhaco-normal']);
   assert.deepEqual(faceLoads(),[
     {key:'rosto:clt-cansado:normal',url:'/art/rostos/clt-cansado-normal.webp'},
     {key:'rosto:maromba:normal',url:'/art/rostos/maromba-normal.webp'},
     {key:'rosto:maromba:rindo',url:'/art/rostos/maromba-rindo.webp'},
-  ],'a legacy hero (the Mendigo, the Cidadão) or a piece outside the class catalog is never loaded');
+  ],'a legacy hero (the Tio do Churrasco, the Cidadão) or a piece outside the class catalog is never loaded');
   const s=scene(['rosto:clt-cansado:normal']);
   assert.equal(queueFaceTextures(s.scene),2);
   assert.deepEqual(s.queued.map(q=>q[0]),['rosto:maromba:normal','rosto:maromba:rindo']);
@@ -57,7 +57,7 @@ test('resolveFaceKey: the loaded key, else the normal key, else null',()=>{
   assert.equal(resolveFaceKey(textures,'cidadao-comum','rindo'),'rosto:cidadao-comum:rindo');
   assert.equal(resolveFaceKey(textures,'cidadao-comum','caido'),'rosto:cidadao-comum:normal');
   assert.equal(resolveFaceKey(textures,'cidadao-comum'),'rosto:cidadao-comum:normal');
-  assert.equal(resolveFaceKey(textures,'mendigo','normal'),null);
+  assert.equal(resolveFaceKey(textures,'tio-do-churrasco','normal'),null);
   assert.equal(resolveFaceKey(textures,'streamer','ferido'),null);
 });
 

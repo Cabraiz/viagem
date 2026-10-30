@@ -1267,7 +1267,7 @@ export class IslandScene extends Phaser.Scene {
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),
-      !!meId&&!!net?.feed.players.get(meId)?.downed&&!net.feed.players.get(meId)!.eliminated);
+      !!meId&&!!net?.feed.players.get(meId)?.downed&&!net.feed.players.get(meId)!.eliminated,meId?net?.feed.players.get(meId):undefined);
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1648,7 +1648,7 @@ export class IslandScene extends Phaser.Scene {
       this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:Math.max(this.cheers.of(player.id)??-Infinity,this.hooks.danceAt?.(player.id)??-Infinity)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras),down);
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras),down,st);
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);

@@ -12,7 +12,7 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {UNITS_PER_TOKEN,tokensOf,tokenProgress} from '../../src/rules/index.ts';
 
-const SEED=4242,BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum']] as const;
+const SEED=4242,BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum']] as const;
 const seat=(sim:Simulation)=>{for(const [id,name,classId] of BOTS)sim.addBot(id,name,classId);return sim;};
 function playTo(round:number){
   const sim=seat(new Simulation(SEED,{world:'infinito'})),bots=new RoomBots();

@@ -31,7 +31,7 @@ test('an imported dir4 with its measured height is the class\'s atlas (URL, heig
   assert.equal(sheetKey('aposentado'),'sprite:aposentado:dir4');
   // 96 world px figure (D-030): the scale CharacterSprites applies is 96 / height.
   assert.equal(Math.round(96/sheet!.height*103),96);
-  assert.equal(sheetKey('mendigo'),'sprite:mendigo','classes without a piece are untouched');
+  assert.equal(sheetKey('tio-do-churrasco'),'sprite:tio-do-churrasco','classes without a piece are untouched');
   setArtIndex(parseArtIndex(undefined));
 });
 

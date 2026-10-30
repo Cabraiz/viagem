@@ -35,13 +35,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Com licença, só vou ali comprar pão.','Eu nem queria estar aqui.','Opa, foi mal, tô passando!','Isso não estava no meu dia.'],
   },
   {
-    classId:'mendigo',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{luck:0.2,growth:0.08,regen:0.2},
-    skill:{name:'Tesouro do Achados',cooldown:20,
-      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto.'},
-    lines:['Isso aqui ainda dá jogo.','Papelão é tecnologia, confia.','Abrigo cinco estrelas, sem taxa de serviço.','Engenharia de reaproveitamento!'],
-  },
-  {
     classId:'viciado-em-bet',role:'Dano',weapon:'boleto',
     classBonus:{luck:0.3,might:0.1,maxHp:-10},
     skill:{name:'Odd Impossível',cooldown:15,

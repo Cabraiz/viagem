@@ -8,7 +8,7 @@ import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {CHECKPOINT_MAX_BYTES} from '../../multiplayer/room.ts';
 import {stateHash} from '../../src/sim/core.ts';
 
-const SEED=4242,BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
+const SEED=4242,BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
 const seat=(sim:Simulation)=>{for(const [id,name,classId] of BOTS)sim.addBot(id,name,classId);return sim;};
 /** Every number that JSON would not keep (Infinity, NaN), with its path: a stored checkpoint must have none. */
 function nonFinite(v:unknown,path='cp'):string[]{
@@ -81,7 +81,7 @@ test('resume refuses junk, another room seed and a seat played with another clas
   for(const value of bad){const f=fresh(),before=f.stateHash();assert.equal(f.resume(value),false,JSON.stringify(value)?.slice(0,80));assert.equal(f.stateHash(),before);}
   const other=seat(new Simulation(SEED+1,{world:'infinito'}));assert.equal(other.resume(cp),false,'another room seed');
   const swapped=new Simulation(SEED,{world:'infinito'});swapped.addBot('bot-1','Robô do Gás','cidadao-comum');
-  assert.equal(swapped.resume(cp),false,'bot-1 played the run as mendigo');
+  assert.equal(swapped.resume(cp),false,'bot-1 played the run as tio-do-churrasco');
 });
 
 test('shape fingerprint: a checkpoint from a build whose fresh run had another shape (extra, renamed or retyped field) is refused; late fields in the data are fine',()=>{

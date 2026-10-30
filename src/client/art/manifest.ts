@@ -68,7 +68,7 @@ let index:ArtIndex=EMPTY;
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
 /** R06 (8 drawn directions) and M16 (5 drawn: S, SW, W, NW, N; E/NE/SE are mirrored, movement128.ts movement16Plan; push: empurrar-uno; pull: puxar-uno-corda). */
-const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build|work|downed)16-(S|SW|W|NW|N|NE|E|SE))$/;
+const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build|work|downed|shoved)16-(S|SW|W|NW|N|NE|E|SE))$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);

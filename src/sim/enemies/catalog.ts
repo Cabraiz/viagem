@@ -3,9 +3,9 @@
  * Stats are base values; createEnemy applies the elite modifier and the director's hp scale.
  */
 import type {Point} from '../../maps/index.ts';
-import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
-import {ticks} from '../../contract/index.ts';
+import {ticks,type EnemyState} from '../../contract/index.ts';
+import {OWN_BEHAVIOR} from './own-behavior.ts';
 import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,enemyFeel,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
@@ -384,12 +384,6 @@ export const LIBERADO_TUNE:Readonly<Record<string,Readonly<{hp:number;damage:num
   mendigo:Object.freeze({hp:1,damage:1}),
   'aberracao-saci':Object.freeze({hp:1,damage:1}),
 });
-/**
- * A roster entry that keeps its own moves under another role's numbers: the sanfoneiro plays and hits with the fole
- * (sanfoneiro.ts, through enemy-ai's brute branch) as a corredor (card saci-chefe-2x, the user 30/10: "ele é um
- * inimigo comum").
- */
-export const OWN_BEHAVIOR:Readonly<Record<string,EnemyDef['behavior']>>=Object.freeze({sanfoneiro:'brute'});
 /**
  * Def of a pack entry: its role's hp (roleHp) and profile on the role's base kind (speed, damage, radius × cell / role cell, xp;
  * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).

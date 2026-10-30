@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3178,
-  "bytes": 1949194442,
-  "liteBytes": 666534628,
+  "files": 3195,
+  "bytes": 1944097736,
+  "liteBytes": 663082964,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -21941,6 +21941,70 @@
    "psnr": 37.8,
    "shownPsnr": 43
   },
+  "enemies/mendigo/shoved-E.webp": {
+   "source": "4aa5839b61938048fa7e4d2a721dc00ba37ec9a4f16375d97905b78fcc3541b8",
+   "lite": "d82e9b484b372749e52fbc1c74fda276391b059f20963bb215c806241a3f815d",
+   "bytes": 403436,
+   "liteBytes": 137416,
+   "psnr": 37.1,
+   "shownPsnr": 41.7
+  },
+  "enemies/mendigo/shoved-N.webp": {
+   "source": "2db2ac7e271da25249c6816b71fa5084a455bf10dcc2a828cdae69c84bd54b07",
+   "lite": "4297486a2150a0aff7f07a458e1dd25b15e7078fded16ab178c1ff04c4dea1a6",
+   "bytes": 373358,
+   "liteBytes": 124730,
+   "psnr": 39,
+   "shownPsnr": 43
+  },
+  "enemies/mendigo/shoved-NE.webp": {
+   "source": "8b0b01ddf2ef92eb9f36ac6571344604b6b8c5c53083c49345e8e58cb8b70266",
+   "lite": "51e0539426291323f353e7af1079602bfca7c42d581f3717e87459434924c62e",
+   "bytes": 286820,
+   "liteBytes": 102918,
+   "psnr": 39.4,
+   "shownPsnr": 43.2
+  },
+  "enemies/mendigo/shoved-NW.webp": {
+   "source": "33f6f93723a9af605924e0dcd8f7890f74c2aecfa92ad6c2203312b5e12b166b",
+   "lite": "cf9066d3ba24efaf94668bdb419debca6873a2e0beae32f8c691b774720dc8c3",
+   "bytes": 281262,
+   "liteBytes": 100904,
+   "psnr": 39.9,
+   "shownPsnr": 44.4
+  },
+  "enemies/mendigo/shoved-S.webp": {
+   "source": "58e63114e528bd79fd22a9d54a53ed41103d945a8dc3f141c68a064846af2022",
+   "lite": "d7aa506b938be1afc964061dcb92f943a2ccfd713998f3dcf8a84177a066b2a9",
+   "bytes": 407684,
+   "liteBytes": 136210,
+   "psnr": 37.1,
+   "shownPsnr": 42.1
+  },
+  "enemies/mendigo/shoved-SE.webp": {
+   "source": "f112f0cfafc7d6faa22c4b876e872310a2f7995717d199f948e9e5ed6bc604a8",
+   "lite": "3f90a7d20187bf6353003371eada9930f3d59aec6a6b2252088ceb56b618371f",
+   "bytes": 379026,
+   "liteBytes": 129976,
+   "psnr": 38.1,
+   "shownPsnr": 42.9
+  },
+  "enemies/mendigo/shoved-SW.webp": {
+   "source": "1e9c82779ac9367a09d700858b6dba4a49fed020ecee42fc3e6120a3aebc2d40",
+   "lite": "ff98893e8222c421e379352d3fe09e54e1d93a996ff8ca0c84e3f6293f83f91c",
+   "bytes": 379228,
+   "liteBytes": 128234,
+   "psnr": 38.2,
+   "shownPsnr": 43
+  },
+  "enemies/mendigo/shoved-W.webp": {
+   "source": "6aa5057e9b7344cd2e0d46b5d1e17ca0b03c676ab300387200a77be9d2ef6ee6",
+   "lite": "39d90efd249131230c7b39b7d71532af4bdec597139da607fa518803179f6b75",
+   "bytes": 402068,
+   "liteBytes": 136704,
+   "psnr": 37.3,
+   "shownPsnr": 42
+  },
   "enemies/mendigo/walk-E.webp": {
    "source": "6ad86a4a9407d3a7bca92aa2707da45586a94437824fbf7c58e296d43efcbcb4",
    "lite": "fa9a04e4cf1942591957989ff14b21bc804606b8b80ab76bafb1d3c04e1f2835",
@@ -28165,6 +28229,46 @@
    "psnr": 40.6,
    "shownPsnr": 43.5
   },
+  "sprites/aposentado.shoved16-n.d0208bd9e23b.webp": {
+   "source": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db",
+   "lite": "324b66923a4dd5ecbe7fd18f303ecc2e89e68a5c2f0e9f0990cf313a01bbcdd3",
+   "bytes": 76722,
+   "liteBytes": 41034,
+   "psnr": 39.2,
+   "shownPsnr": 42
+  },
+  "sprites/aposentado.shoved16-nw.d68e56b03ec1.webp": {
+   "source": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d",
+   "lite": "e9b584cb3fe8ba8af61545d309a72a4f5544616ebc3550d1f08c7b135bf19098",
+   "bytes": 73100,
+   "liteBytes": 38874,
+   "psnr": 38.7,
+   "shownPsnr": 41.9
+  },
+  "sprites/aposentado.shoved16-s.ea95dee4ead5.webp": {
+   "source": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c",
+   "lite": "1e25509d05571ecc80129cf890a4b26cfedd31b2b69c05259df17c4e8d7d3371",
+   "bytes": 76182,
+   "liteBytes": 40406,
+   "psnr": 37.2,
+   "shownPsnr": 41.7
+  },
+  "sprites/aposentado.shoved16-se.cd2a925a664b.webp": {
+   "source": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1",
+   "lite": "be8bb0713a7f710a5ede9e613000c3bc9cae4e3e166c0eb0853d46a105a8afe7",
+   "bytes": 72396,
+   "liteBytes": 39050,
+   "psnr": 37.6,
+   "shownPsnr": 42
+  },
+  "sprites/aposentado.shoved16-w.0bea132d3f82.webp": {
+   "source": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab",
+   "lite": "98f016eeb750178795eef2c52e1881cdaa7ac18346cff47cd492a2d54b8ec9ba",
+   "bytes": 68724,
+   "liteBytes": 37450,
+   "psnr": 38.7,
+   "shownPsnr": 41.9
+  },
   "sprites/aposentado.walk16-n.b25e20405860.webp": {
    "source": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299",
    "lite": "40c37368fc3dc938a57179f083809bbae1a37be9adf64480bdd89cbfdff6802e",
@@ -28716,6 +28820,46 @@
    "liteBytes": 26610,
    "psnr": 41.7,
    "shownPsnr": 44.6
+  },
+  "sprites/clt-cansado.shoved16-n.5b2375e0892b.webp": {
+   "source": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad",
+   "lite": "33702c0987998b9850eead763e0e221e7c3d72264aa8f7c9fefe5247ad351abc",
+   "bytes": 52136,
+   "liteBytes": 30372,
+   "psnr": 43.3,
+   "shownPsnr": 44.4
+  },
+  "sprites/clt-cansado.shoved16-nw.5dbfbb4936c2.webp": {
+   "source": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363",
+   "lite": "9a0b0abd32fb60438702f93b2e4fe4e8cfceda27d53d31d32791e2aac29bf427",
+   "bytes": 53584,
+   "liteBytes": 30368,
+   "psnr": 42,
+   "shownPsnr": 44.5
+  },
+  "sprites/clt-cansado.shoved16-s.bfff487e1e8f.webp": {
+   "source": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76",
+   "lite": "4142abc1593144332d8d12e6906470ea223c82e6df82a3dd0202322719073e86",
+   "bytes": 51474,
+   "liteBytes": 29544,
+   "psnr": 40,
+   "shownPsnr": 43.8
+  },
+  "sprites/clt-cansado.shoved16-se.2df34dae1db1.webp": {
+   "source": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631",
+   "lite": "f96b63a6dadf10d3c4ffafc11f22c3b9bcd71ed9814bd36101971654b25d4d4b",
+   "bytes": 53364,
+   "liteBytes": 30648,
+   "psnr": 39.3,
+   "shownPsnr": 43.6
+  },
+  "sprites/clt-cansado.shoved16-w.03f0ea4a1152.webp": {
+   "source": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5",
+   "lite": "c7da853ef429b3ca5d8a16d3bc91c10a088d28174c18a749a4944ff58f00c753",
+   "bytes": 43946,
+   "liteBytes": 26570,
+   "psnr": 42,
+   "shownPsnr": 45.5
   },
   "sprites/clt-cansado.walk128-e.9af9af8efb4f.webp": {
    "source": "9af9af8efb4f1fd0b1ed17ee24b2f032b21f20ea233a1be0b61b3d6da3032682",
@@ -29869,6 +30013,46 @@
    "psnr": 40.8,
    "shownPsnr": 40
   },
+  "sprites/gato-nada-pra-comer.shoved16-n.001ba72bb494.webp": {
+   "source": "001ba72bb4940248dc5309761ee421e6b829ff05f854b2851b5df803815be46b",
+   "lite": "55a6c15a4197d3b410082d7740dba35d39b8df624855cb39f988e9acaa0b7747",
+   "bytes": 72866,
+   "liteBytes": 37600,
+   "psnr": 40.9,
+   "shownPsnr": 41
+  },
+  "sprites/gato-nada-pra-comer.shoved16-nw.6249d5a7981f.webp": {
+   "source": "6249d5a7981f1e4071abfedb6b30df7d8ee9091ac5583ddeca0511a38c305226",
+   "lite": "491259cc7d1121e24f8e248f37c9fa598e135047c68bafcab6f6097235f1ed89",
+   "bytes": 68166,
+   "liteBytes": 35316,
+   "psnr": 41.3,
+   "shownPsnr": 42.7
+  },
+  "sprites/gato-nada-pra-comer.shoved16-s.2d180540fb73.webp": {
+   "source": "2d180540fb73191fb750c5aba13f329b402692bec360f7833a02ab8e99161fb9",
+   "lite": "2765043154ea7149fd273d13c1e96fa1ca71e3d9d9335de16e91d5a6a3f4d2ec",
+   "bytes": 76234,
+   "liteBytes": 38866,
+   "psnr": 39.6,
+   "shownPsnr": 40.4
+  },
+  "sprites/gato-nada-pra-comer.shoved16-se.0e7d04b422b4.webp": {
+   "source": "0e7d04b422b4a8bf9afde90807caeacf4ef452262dd9a8469e93e0674493f60e",
+   "lite": "ac0a39fc0d30c4806f5311a7dbd3e1a47e29b8b715e1f7d5cf298d6d23946bc2",
+   "bytes": 75528,
+   "liteBytes": 38952,
+   "psnr": 39.4,
+   "shownPsnr": 40.7
+  },
+  "sprites/gato-nada-pra-comer.shoved16-w.06de87039cec.webp": {
+   "source": "06de87039cec0da5a4e6dd9f32c74218498a51b43216f9ccc4bb83c72623e14a",
+   "lite": "61819d1a6368a4b2edef35fb75c7b6ee0af07f67899b8a00e0c6a78253f62a32",
+   "bytes": 64892,
+   "liteBytes": 34488,
+   "psnr": 40.7,
+   "shownPsnr": 41.8
+  },
   "sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
    "source": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac",
    "lite": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
@@ -30397,6 +30581,46 @@
    "psnr": 39.1,
    "shownPsnr": 41.8
   },
+  "sprites/maromba.shoved16-n.604215f06847.webp": {
+   "source": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65",
+   "lite": "febe532fd9e04257e66340d85b08fd1548255ae3efce37ee8bcce55882fdcdcf",
+   "bytes": 86580,
+   "liteBytes": 47080,
+   "psnr": 38,
+   "shownPsnr": 40.3
+  },
+  "sprites/maromba.shoved16-nw.126c839f6d44.webp": {
+   "source": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6",
+   "lite": "57bc935a72fdddfe9ef03ef3afeb49e280ce5847bfe99b2edeeafb28055206ec",
+   "bytes": 79282,
+   "liteBytes": 44088,
+   "psnr": 38.1,
+   "shownPsnr": 40.7
+  },
+  "sprites/maromba.shoved16-s.82e4a05f2f10.webp": {
+   "source": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a",
+   "lite": "6ff518df27a47d1fed159d99ee192846a0e88a0d7eda8b16522f7f8dd27b5971",
+   "bytes": 90456,
+   "liteBytes": 48644,
+   "psnr": 36.7,
+   "shownPsnr": 40.3
+  },
+  "sprites/maromba.shoved16-se.3ef8c9b949f2.webp": {
+   "source": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e",
+   "lite": "af7e0baf1f94e4641d195c3e30f2dfd737090e77c164432680bb28cc2ebb5bc7",
+   "bytes": 80856,
+   "liteBytes": 44662,
+   "psnr": 37.3,
+   "shownPsnr": 41.2
+  },
+  "sprites/maromba.shoved16-w.0e86c7bd2b11.webp": {
+   "source": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3",
+   "lite": "77726cc4157db8ffb8e57b0094616f7f141405a0c23638a82822cb566525d02c",
+   "bytes": 72580,
+   "liteBytes": 40112,
+   "psnr": 38.4,
+   "shownPsnr": 40.6
+  },
   "sprites/maromba.walk128-e.daed1993b619.webp": {
    "source": "daed1993b6196db80b6ebef00b9278e148fcd1ae19d367cbe43adbfb825dd11a",
    "lite": "65c35acb213906c7e770342bf5bf70bfe67714b804f078d20dbc96e4311b4888",
@@ -30548,174 +30772,6 @@
    "liteBytes": 37832,
    "psnr": 37.7,
    "shownPsnr": 41.4
-  },
-  "sprites/mendigo.attack128-e.cb828d6683c9.webp": {
-   "source": "cb828d6683c90f5524c53e143dbba5c97312239add745d514e4ee50db73fa2b5",
-   "lite": "3154439158bb8541806c0e4c21557bbf474bb167cb00c26f3f8ee5f856120dae",
-   "bytes": 494938,
-   "liteBytes": 272660,
-   "psnr": 43.1,
-   "shownPsnr": 45.6
-  },
-  "sprites/mendigo.attack128-n.bbc1172efa42.webp": {
-   "source": "bbc1172efa42b070ca3daabcc7f7e9c350385b6676b382994dd05e816790dab2",
-   "lite": "2fb3a266053d7456c85b17edec150c5b66d3c829216f48bd10fb1b349cd0c9f6",
-   "bytes": 478370,
-   "liteBytes": 268950,
-   "psnr": 43.4,
-   "shownPsnr": 45.4
-  },
-  "sprites/mendigo.attack128-ne.01695a70dbd9.webp": {
-   "source": "01695a70dbd92c24574c665ad915770455f24185539474561ade246514ace7e2",
-   "lite": "f69cfe2352db7302db3cc6a60b960aef4b07825272b85f0e0a2a95c0ea81d016",
-   "bytes": 496468,
-   "liteBytes": 276146,
-   "psnr": 44,
-   "shownPsnr": 46
-  },
-  "sprites/mendigo.attack128-nw.4715ea1d801b.webp": {
-   "source": "4715ea1d801b5c021183aec5c2bd4ae805854529acf993eb8e0f0873e7bee187",
-   "lite": "1988e800d93671f50143cd316e9ddeea53f88866f883f755b9448cc6489d4532",
-   "bytes": 502184,
-   "liteBytes": 278614,
-   "psnr": 43.3,
-   "shownPsnr": 45.7
-  },
-  "sprites/mendigo.attack128-s.062eee182919.webp": {
-   "source": "062eee1829192b638925ed13f75835a5d95e500640f77dd6e3a4fa3ca29ae57a",
-   "lite": "e1023a57a5bce0b2fbbd2ff903fc9556681d08e68cc48132ccefa421d38841f5",
-   "bytes": 534664,
-   "liteBytes": 283742,
-   "psnr": 42.4,
-   "shownPsnr": 45.5
-  },
-  "sprites/mendigo.attack128-se.f1d503d7a4be.webp": {
-   "source": "f1d503d7a4be16d28040250c39318700e07a5d13b81d338d51e4105975d2ffc6",
-   "lite": "79b17e8d72e9e4072910f0d94bb29e90372f8c3dc5c26b1092c035091b56d111",
-   "bytes": 523998,
-   "liteBytes": 286084,
-   "psnr": 42.4,
-   "shownPsnr": 45.2
-  },
-  "sprites/mendigo.attack128-sw.70d81ea77ac7.webp": {
-   "source": "70d81ea77ac75625203939e29dc11eb1832b8b5f3b7eaa1a3fd40ae13ebd68e0",
-   "lite": "d21633e6fc7ae06d1587932a8a1b5defa5a42b4c6bed0f498c9960f959e4520d",
-   "bytes": 570696,
-   "liteBytes": 302270,
-   "psnr": 42.3,
-   "shownPsnr": 45.2
-  },
-  "sprites/mendigo.attack128-w.27fffd7fc687.webp": {
-   "source": "27fffd7fc6879a3053104f008a2cf06d3d1b082c1efeaa6493e7be91fae4adc2",
-   "lite": "bc28643f78b56bf87e70eec911bb1bbe16777edb763bacac8123b8684821e306",
-   "bytes": 534178,
-   "liteBytes": 289312,
-   "psnr": 42.8,
-   "shownPsnr": 45.5
-  },
-  "sprites/mendigo.dance128.12335d584beb.webp": {
-   "source": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8",
-   "lite": "c8de779b15a7786c25e4d88f770cd16b24e403ffdad8f2028a866dc7558c0a2a",
-   "bytes": 731464,
-   "liteBytes": 373066,
-   "psnr": 37.7,
-   "shownPsnr": 42.6
-  },
-  "sprites/mendigo.dir4.webp": {
-   "source": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8",
-   "lite": "807d51f79847f92ee8c693fb3d214331f5f97030114b9652a9f2128a02ba0c5b",
-   "bytes": 915350,
-   "liteBytes": 413388,
-   "psnr": 45,
-   "shownPsnr": 47.5
-  },
-  "sprites/mendigo.dir4c.webp": {
-   "source": "25751c8bd14887b0aa9430140c1e67fe0f3f4130197c7f4515539618b57fe45a",
-   "lite": "82f2fc93f9d46cd907a705e910568aa208e7184b0fc86ace528faef0b0a333ca",
-   "bytes": 892694,
-   "liteBytes": 404794,
-   "psnr": 45,
-   "shownPsnr": 47.5
-  },
-  "sprites/mendigo.idle8.e6a16f6059c8.webp": {
-   "source": "5d69a271afc9c1e8f487dfb6779d7bab0cba59604bb75e8267d6a83d37d96f81",
-   "lite": "8017a531567a027b7b2f92b9b5b0566b287d5d70084b97eb0b0acc33afd5adc1",
-   "bytes": 29832,
-   "liteBytes": 17696,
-   "psnr": 42.8,
-   "shownPsnr": 47.5
-  },
-  "sprites/mendigo.walk128-e.c2d00dbd2636.webp": {
-   "source": "c2d00dbd26367c7b214de164af0df88fe9fb8daf0a9c4ede541268d0e011c7d9",
-   "lite": "ca22e43b8b90f0b0f49b69ba0facd19e8ddfb1b211691bb374b66217e810fc2b",
-   "bytes": 488100,
-   "liteBytes": 272414,
-   "psnr": 43.6,
-   "shownPsnr": 46
-  },
-  "sprites/mendigo.walk128-n.96fea3bfac61.webp": {
-   "source": "96fea3bfac61607d8e67dc19da16412eddf269f6e6121c5572b5971fab86838a",
-   "lite": "c1ae108637e835c52210082dcbe0244f8b401b2cabab9940507a1f6b54df20e8",
-   "bytes": 44090,
-   "liteBytes": 170260,
-   "psnr": 43.2,
-   "shownPsnr": 45.3
-  },
-  "sprites/mendigo.walk128-ne.7ee55652ab85.webp": {
-   "source": "7ee55652ab85d32e35561bf49207068d57e16e6a4e0e49c74906951559a3e50d",
-   "lite": "f162023baff28322edbd1e8fc009f5667553ac40950cf65935d195305dcec27e",
-   "bytes": 427388,
-   "liteBytes": 242300,
-   "psnr": 44.7,
-   "shownPsnr": 46.6
-  },
-  "sprites/mendigo.walk128-nw.a26f2226b6cb.webp": {
-   "source": "a26f2226b6cb2a0196ad1b2fd434cc1c63c2bbae6a56f2299ff35d64d6d909f0",
-   "lite": "d19410473c564458e9f31ebaf57ee3650eedfc0f20409d760cb858e42f872f05",
-   "bytes": 463208,
-   "liteBytes": 256796,
-   "psnr": 44,
-   "shownPsnr": 46.2
-  },
-  "sprites/mendigo.walk128-s.068b648fbed6.webp": {
-   "source": "068b648fbed640381933cdb29782e42e935b871364c9c7378d95d1684ac6db0b",
-   "lite": "5f4734164b58416872f57cbeeedd98dc9e6c4e981ff544a5d57cb13a7b79a38d",
-   "bytes": 36432,
-   "liteBytes": 181162,
-   "psnr": 42.1,
-   "shownPsnr": 45.2
-  },
-  "sprites/mendigo.walk128-se.a54ae5cfe058.webp": {
-   "source": "a54ae5cfe0582461bfe39134e44f27b5017c06367754d881fc2444a90fafa343",
-   "lite": "3cd53644f9aef1cf1446169376fc6cd46d43e0714d9edb3fe0ad0cf52e80f552",
-   "bytes": 511202,
-   "liteBytes": 278764,
-   "psnr": 42.5,
-   "shownPsnr": 45.5
-  },
-  "sprites/mendigo.walk128-sw.4a8e827e6220.webp": {
-   "source": "4a8e827e62201f8f47980536483a2ec78309f5e39cf6775436a034e41b3f46c9",
-   "lite": "77c0701f45490789dac28c85ca740b48cc882686bb0aa36165165340243bc1e3",
-   "bytes": 511434,
-   "liteBytes": 279672,
-   "psnr": 42.6,
-   "shownPsnr": 45.2
-  },
-  "sprites/mendigo.walk128-w.446ed4511d9b.webp": {
-   "source": "446ed4511d9b97590e298c20e2f8870e731f6a53b239a61756369846432b4400",
-   "lite": "37e6403c828bd70b2226f7effcee0ea4d2ec070da515bfb19f6421ac71aac512",
-   "bytes": 489886,
-   "liteBytes": 266896,
-   "psnr": 43.1,
-   "shownPsnr": 45.8
-  },
-  "sprites/mendigo.webp": {
-   "source": "8a73b5f73f5e0fd4df856510f2c5023ab513d803fbd400575d512d7cd9858062",
-   "lite": "5f033b1fcc2f04717f14d626cd09350ed8ccc16074e8a0acb3f5954756854d34",
-   "bytes": 362832,
-   "liteBytes": 160264,
-   "psnr": 41,
-   "shownPsnr": 45.9
   },
   "sprites/merendeira.dance128.02d33efdf5dd.webp": {
    "source": "02d33efdf5ddf88fea80e32ad6ce06765f96a0025ffaef323c7f63fb112fce2b",
@@ -31965,6 +32021,46 @@
    "psnr": 35.6,
    "shownPsnr": 39
   },
+  "sprites/vendedor-praia.shoved16-n.401a94d1d892.webp": {
+   "source": "401a94d1d8929f073cac0167c10b653c37f964f46f01853b61cfbf281ac5359b",
+   "lite": "97b34195d2fbb546ed8b09f113cca6f2ac913fb5d66e33c401e4da659fc702b5",
+   "bytes": 83038,
+   "liteBytes": 47222,
+   "psnr": 35.9,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.shoved16-nw.1132eae5b995.webp": {
+   "source": "1132eae5b995f4e9ea50be9ec5e0383b357d45815ae2c18cc3fb77a8526c3179",
+   "lite": "07f44a061592f104b965b4146109bdfd3b478ead25ab0b148a03a4a5dce7c59f",
+   "bytes": 74432,
+   "liteBytes": 43314,
+   "psnr": 35.7,
+   "shownPsnr": 39.5
+  },
+  "sprites/vendedor-praia.shoved16-s.c9961fdd41a6.webp": {
+   "source": "c9961fdd41a67554db685f3a0e92122e494de9aad1ca4335a93e0f8791777f5a",
+   "lite": "a3670faf100aff91a8dfb114a5cab764d400b488b25f72e5603ffa5915ad7fb7",
+   "bytes": 76178,
+   "liteBytes": 43864,
+   "psnr": 35.6,
+   "shownPsnr": 39.7
+  },
+  "sprites/vendedor-praia.shoved16-se.48c555361e39.webp": {
+   "source": "48c555361e39a962d5d6102f53181f07f14d2abeaf3e89646f66220599e771b7",
+   "lite": "388e5d093ec8758584d7d9496ac5f238c0957a878c1f4cb654d1c043d9943732",
+   "bytes": 70168,
+   "liteBytes": 41832,
+   "psnr": 35.3,
+   "shownPsnr": 39
+  },
+  "sprites/vendedor-praia.shoved16-w.f61d1a74694a.webp": {
+   "source": "f61d1a74694a874943a273f2eec9b80fe47ca6a769e3bf719a33b98dae328e77",
+   "lite": "000c743b2d62e240d6226f546c2eacf1e017b34a7d96fc0ce02c0660c633c83a",
+   "bytes": 66580,
+   "liteBytes": 39562,
+   "psnr": 36.1,
+   "shownPsnr": 40
+  },
   "sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
    "source": "79c664a88da38e3f02734148cce313fdbc7cf4a32aed716d0bc640f96122037a",
    "lite": "ad244caa80e94b0b6e524a677a0b8d51cc166af8d00e7ab7742e1eb6beaacacd",
@@ -32468,6 +32564,46 @@
    "liteBytes": 32638,
    "psnr": 39.7,
    "shownPsnr": 41.4
+  },
+  "sprites/viciado-em-bet.shoved16-n.b523f5dcec0d.webp": {
+   "source": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9",
+   "lite": "00c125b842010c9829d228522cc169c565df9e692b8106b2c854bc9803363aae",
+   "bytes": 53506,
+   "liteBytes": 32426,
+   "psnr": 41,
+   "shownPsnr": 41.5
+  },
+  "sprites/viciado-em-bet.shoved16-nw.2665aeb3c712.webp": {
+   "source": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f",
+   "lite": "e74bf5e0cbc4fb6d1b38374e05c0f9dd5ad148477c57a6abade0c43bd4e3b6a2",
+   "bytes": 56658,
+   "liteBytes": 31988,
+   "psnr": 39.1,
+   "shownPsnr": 41.4
+  },
+  "sprites/viciado-em-bet.shoved16-s.a5ffcef2891f.webp": {
+   "source": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26",
+   "lite": "74971443bf9d5a874ed3e5098df961c0999af2a6862738133e23f9ce798ba579",
+   "bytes": 56146,
+   "liteBytes": 31824,
+   "psnr": 38.5,
+   "shownPsnr": 42
+  },
+  "sprites/viciado-em-bet.shoved16-se.94291ccc3c98.webp": {
+   "source": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025",
+   "lite": "b71a2e4947604a54f138c75f950e6d8c9b6a854a45738466e63a82edeac4da35",
+   "bytes": 54332,
+   "liteBytes": 31072,
+   "psnr": 38.9,
+   "shownPsnr": 41.9
+  },
+  "sprites/viciado-em-bet.shoved16-w.26e8faceed35.webp": {
+   "source": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452",
+   "lite": "8a96f686e1d0045b5065603c1ecaa1d4883852d87899e9c4881f99e9000ebd54",
+   "bytes": 49714,
+   "liteBytes": 29266,
+   "psnr": 39.8,
+   "shownPsnr": 42.2
   },
   "sprites/viciado-em-bet.walk128-e.af6573c0b904.webp": {
    "source": "af6573c0b9041cc898d02daa1364f9833be9bf0db64ab67e882440db0858e65b",

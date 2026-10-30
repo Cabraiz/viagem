@@ -23,9 +23,9 @@ function assertCovers(classId:string){
   assert.ok(f.left+side>=100-1e-3&&f.top+side>=100-1e-3,`${classId}: image ends at or after the circle`);
 }
 
-test('FACE_CROP: one entry per class (all 29), sorted by id, every value a sane crop',()=>{
+test('FACE_CROP: one entry per class (all 28), sorted by id, every value a sane crop',()=>{
   const ids=classes.map(c=>c.id);
-  assert.equal(ids.length,29);
+  assert.equal(ids.length,28);
   assert.deepEqual(Object.keys(FACE_CROP).sort(),[...ids].sort(),'same ids as src/rules/classes.ts');
   assert.deepEqual(Object.keys(FACE_CROP),[...Object.keys(FACE_CROP)].sort(),'the table is kept sorted by id');
   for(const id of ids){
@@ -80,7 +80,7 @@ test('faceCrop / faceFrame: clamp so the crop never leaves the image; unknown id
 });
 
 test('faceVars / varsText: the custom properties ui/face.css reads',()=>{
-  const v=faceVars('mendigo'),f=faceFrame('mendigo');
+  const v=faceVars('tio-do-churrasco'),f=faceFrame('tio-do-churrasco');
   assert.deepEqual(Object.keys(v),['--face-z','--face-x','--face-y']);
   assert.equal(v['--face-z'],String(f.zoom));assert.equal(v['--face-x'],`${f.left}%`);assert.equal(v['--face-y'],`${f.top}%`);
   assert.equal(varsText(v),`--face-z:${f.zoom};--face-x:${f.left}%;--face-y:${f.top}%`);
@@ -116,20 +116,20 @@ test('faceExpression: every state and the documented priority',()=>{
   assert.equal(faceExpression({hp:10,maxHp:100,outcome:'victory'}),'rindo');
   assert.equal(faceExpression({hp:10,maxHp:100,emote:'kkkk'}),'rindo','laughing beats hurt');
   assert.deepEqual([...FACE_EXPRESSIONS],['normal','ferido','caido','rindo','bravo']);
-  assert.equal(faceKey('mendigo','rindo'),'rosto:mendigo:rindo');
+  assert.equal(faceKey('tio-do-churrasco','rindo'),'rosto:tio-do-churrasco:rindo');
 });
 
 test('importedFaceUrl / faceSource: exact expression, else the class normal, else the portrait crop',()=>{
-  const have=new Set(['mendigo-normal','mendigo-rindo','streamer-bravo']);
+  const have=new Set(['tio-do-churrasco-normal','tio-do-churrasco-rindo','streamer-bravo']);
   const exact:ExactFace=(id,expr)=>have.has(`${id}-${expr}`)?`/art/rostos/${id}-${expr}.webp`:null;
-  assert.equal(importedFaceUrl('mendigo','rindo',exact),'/art/rostos/mendigo-rindo.webp');
-  assert.equal(importedFaceUrl('mendigo','caido',exact),'/art/rostos/mendigo-normal.webp','missing expression: the normal face');
+  assert.equal(importedFaceUrl('tio-do-churrasco','rindo',exact),'/art/rostos/tio-do-churrasco-rindo.webp');
+  assert.equal(importedFaceUrl('tio-do-churrasco','caido',exact),'/art/rostos/tio-do-churrasco-normal.webp','missing expression: the normal face');
   assert.equal(importedFaceUrl('streamer','bravo',exact),'/art/rostos/streamer-bravo.webp');
   assert.equal(importedFaceUrl('streamer','ferido',exact),null,'no normal either: null');
   assert.equal(importedFaceUrl('pedreiro','normal',exact),null);
 
-  const art=faceSource('mendigo',{expression:'caido',exact});
-  assert.deepEqual(art,{src:'/art/rostos/mendigo-normal.webp',frame:{...FULL_FRAME},art:true,expression:'caido'},'an imported face fills the circle');
+  const art=faceSource('tio-do-churrasco',{expression:'caido',exact});
+  assert.deepEqual(art,{src:'/art/rostos/tio-do-churrasco-normal.webp',frame:{...FULL_FRAME},art:true,expression:'caido'},'an imported face fills the circle');
   const crop=faceSource('pedreiro',{expression:'ferido',exact});
   assert.deepEqual(crop,{src:'/art/portraits/pedreiro-thumb.webp',frame:faceFrame('pedreiro'),art:false,expression:'ferido'});
   assert.equal(faceSource('pedreiro',{portrait:id=>`/x/${id}.webp`}).src,'/x/pedreiro.webp','the HUD hands its own portrait URL');
@@ -153,36 +153,36 @@ test('faceSource px: the 768 portrait when the thumb crop would upscale past 1.2
   const edge=faceCrop('maromba').size*256*1.2/3;
   assert.equal(needsLargePortrait('maromba',Math.floor(edge)),false);
   assert.equal(needsLargePortrait('maromba',Math.ceil(edge+.01)),true);
-  assert.equal(faceSource('mendigo').src,'/art/portraits/mendigo-thumb.webp','no px: the thumb');
-  assert.equal(faceSource('mendigo',{px:64,portraitLarge:id=>`/big/${id}.webp`}).src,'/big/mendigo.webp');
+  assert.equal(faceSource('tio-do-churrasco').src,'/art/portraits/tio-do-churrasco-thumb.webp','no px: the thumb');
+  assert.equal(faceSource('tio-do-churrasco',{px:64,portraitLarge:id=>`/big/${id}.webp`}).src,'/big/tio-do-churrasco.webp');
   assert.equal(portrait768('motogirl'),'/art/portraits/motogirl-768.webp');
   // An imported face is used whatever the size.
-  assert.equal(faceSource('mendigo',{px:64,exact:()=>'/art/rostos/mendigo-normal.webp'}).src,'/art/rostos/mendigo-normal.webp');
+  assert.equal(faceSource('tio-do-churrasco',{px:64,exact:()=>'/art/rostos/tio-do-churrasco-normal.webp'}).src,'/art/rostos/tio-do-churrasco-normal.webp');
 });
 
 test('manifestFace: reads group rostos `<id>-<expr>` from the art manifest',()=>{
   const index:ArtIndex={version:2,groups:{rostos:{output:'public/art/rostos',pieces:{
-    'mendigo-normal':{kind:'face',files:{sheet:{file:'mendigo-normal.webp',cell:[256,256]}}},
+    'tio-do-churrasco-normal':{kind:'face',files:{sheet:{file:'tio-do-churrasco-normal.webp',cell:[256,256]}}},
   }}}};
   setArtIndex(index);
   try{
-    assert.equal(manifestFace('mendigo','normal'),'/art/rostos/mendigo-normal.webp');
-    assert.equal(manifestFace('mendigo','bravo'),null);
-    assert.equal(importedFaceUrl('mendigo','bravo'),'/art/rostos/mendigo-normal.webp');
-    assert.equal(faceSource('mendigo',{expression:'bravo'}).art,true);
+    assert.equal(manifestFace('tio-do-churrasco','normal'),'/art/rostos/tio-do-churrasco-normal.webp');
+    assert.equal(manifestFace('tio-do-churrasco','bravo'),null);
+    assert.equal(importedFaceUrl('tio-do-churrasco','bravo'),'/art/rostos/tio-do-churrasco-normal.webp');
+    assert.equal(faceSource('tio-do-churrasco',{expression:'bravo'}).art,true);
     assert.equal(faceSource('streamer').art,false);
   }finally{setArtIndex({version:2,groups:{}});}
 });
 
 test('faceHtml: circle + img with the crop vars, empty circle for an unknown class, escaped',()=>{
-  const html=faceHtml('mendigo',{className:'coop-wait-face',tag:'i'});
-  assert.match(html,/^<i class="face coop-wait-face" data-face="normal" data-art="false" style="--face-z:[\d.]+;--face-x:-[\d.]+%;--face-y:[\d.-]+%" aria-hidden="true"><img class="face-img" alt="" decoding="async" draggable="false" src="\/art\/portraits\/mendigo-thumb\.webp"><\/i>$/);
+  const html=faceHtml('tio-do-churrasco',{className:'coop-wait-face',tag:'i'});
+  assert.match(html,/^<i class="face coop-wait-face" data-face="normal" data-art="false" style="--face-z:[\d.]+;--face-x:-[\d.]+%;--face-y:[\d.-]+%" aria-hidden="true"><img class="face-img" alt="" decoding="async" draggable="false" src="\/art\/portraits\/tio-do-churrasco-thumb\.webp"><\/i>$/);
   assert.equal(faceHtml(undefined,{className:'x'}),'<span class="face x" aria-hidden="true"></span>');
-  assert.match(faceHtml('mendigo',{src:'/a"b.webp'}),/src="\/a&quot;b\.webp"/);
-  assert.match(faceHtml('mendigo',{alt:'Mendigo'}),/alt="Mendigo"/);
-  assert.doesNotMatch(faceHtml('mendigo',{alt:'Mendigo'}),/aria-hidden/);
+  assert.match(faceHtml('tio-do-churrasco',{src:'/a"b.webp'}),/src="\/a&quot;b\.webp"/);
+  assert.match(faceHtml('tio-do-churrasco',{alt:'Tio do Churrasco'}),/alt="Tio do Churrasco"/);
+  assert.doesNotMatch(faceHtml('tio-do-churrasco',{alt:'Tio do Churrasco'}),/aria-hidden/);
   const expr:FaceExpression='caido';
-  assert.match(faceHtml('mendigo',{expression:expr}),/data-face="caido"/);
+  assert.match(faceHtml('tio-do-churrasco',{expression:expr}),/data-face="caido"/);
 });
 
 test('portraitClass: the class id of a portrait URL (edge arrows get a URL only)',()=>{
@@ -190,7 +190,7 @@ test('portraitClass: the class id of a portrait URL (edge arrows get a URL only)
   assert.equal(portraitClass('/art/portraits/merendeira.webp'),'merendeira');
   assert.equal(portraitClass('/art/portraits/merendeira-768.webp'),'merendeira');
   assert.equal(portraitClass('https://x.test/art/portraits/streamer-thumb.webp?v=2'),'streamer');
-  assert.equal(portraitClass('/art/lite/sprites/mendigo.webp'),undefined);
+  assert.equal(portraitClass('/art/lite/sprites/tio-do-churrasco.webp'),undefined);
   assert.equal(portraitClass(undefined),undefined);
 });
 

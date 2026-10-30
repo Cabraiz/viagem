@@ -72,8 +72,8 @@ export function compositionLine(members:readonly {classId?:string}[]){
 /** The class's short name under a chip's name ("CLT"); empty until the class is known. */
 export const memberClassName=(classId:string|undefined)=>classId?getClass(classId)?.name??'':'';
 /**
- * A chip's name as HTML. A numbered name ("Mendigo 2", a bot named after its class) keeps its number in sight: only
- * the words before it end in reticências in a narrow cell, so "Mendigo 2" and "Mendigo 3" never both read "Mendig…".
+ * A chip's name as HTML. A numbered name ("Aposentado 2", a bot named after its class) keeps its number in sight: only
+ * the words before it end in reticências in a narrow cell, so "Aposentado 2" and "Aposentado 3" never both read "Aposent…".
  */
 export function chipNameHtml(name:string){
   const m=/^(.+) (\d)$/.exec(name);

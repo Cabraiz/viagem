@@ -13,7 +13,7 @@ import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off), like the other replay tests.
 setRosterOnlyWithArt(false);
 
-const CLASSES=['cidadao-comum','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira','mendigo'];
+const CLASSES=['cidadao-comum','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira','tio-do-churrasco'];
 
 /**
  * A scripted Simulation run with every input path of main: legacy steps (attack true, skills, tap targets), 10 Hz

@@ -110,7 +110,9 @@ test('real manifest, endless map: no city art; a class with no sheet adds nothin
 
 test("real manifest: the own hero's walk clips (8 directions) close P0, after the ground; its attack opens P1; teammates' are not listed",()=>{
   real();
-  const self=ids.find(id=>heroMotionUrls(id).length)!,mate=ids.find(id=>id!==self&&heroMotionUrls(id).length)!;
+  // The first hero with walk and attack only, 8 facings each (the M16 five ship 5 facings, the CLT breathes on idle16 too);
+  // the Mendigo hero until he was deleted (30/10).
+  const self=ids.find(id=>heroMotionUrls(id).length===16)!,mate=ids.find(id=>id!==self&&heroMotionUrls(id).length)!;
   assert.ok(self&&mate,'the manifest has heroes with detailed clips');
   const motion=heroMotionUrls(self);
   assert.equal(motion.length,16,'walk and attack, 8 directions each');

@@ -30,7 +30,7 @@ Coordenadas em pixels **contando de 0 a partir do canto de cima à esquerda da c
 
 | Classe: coluna dos pés (direita) |
 |---|
-| aposentado 104; astrologa 98; caca-promocao 100; **cidadao-comum 109**; **clt-cansado 113**; coach 100; concurseira 97; **conspiracionista 84**; faxineira 101; feirante 93; **gambiarreiro 77**; **gamer-mobile 75**; goleira 94; mae-pet 96; maromba 87; mendigo 92; merendeira 93; motogirl 97; **pagodeiro 83**; **passageira 84**; pedreiro 101; porteiro 89; rainha-bateria 93; rei-arraia 92; rei-pastel 93; roqueira 88; salva-vidas 84; sensei 96; streamer 96; tecnico-ti 87; tia-festa 96; **tio-do-churrasco 67**; universitario 105; vendedor-praia 88; viciado-em-bet 100; vizinha-fofoqueira 93 |
+| aposentado 104; astrologa 98; caca-promocao 100; **cidadao-comum 109**; **clt-cansado 113**; coach 100; concurseira 97; **conspiracionista 84**; faxineira 101; feirante 93; **gambiarreiro 77**; **gamer-mobile 75**; goleira 94; mae-pet 96; maromba 87; merendeira 93; motogirl 97; **pagodeiro 83**; **passageira 84**; pedreiro 101; porteiro 89; rainha-bateria 93; rei-arraia 92; rei-pastel 93; roqueira 88; salva-vidas 84; sensei 96; streamer 96; tecnico-ti 87; tia-festa 96; **tio-do-churrasco 67**; universitario 105; vendedor-praia 88; viciado-em-bet 100; vizinha-fofoqueira 93 |
 
 As 8 em negrito têm os pés fora de 96 ± 12 na folha atual. **Não recentralize**: desenhe as 4 direções com os pés na coluna da tabela (± 12), e a esquerda na espelhada. O importador já confere contra essa coluna.
 

@@ -22,7 +22,7 @@ import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
-import {gameEnemyArt} from './mendigo.ts';
+import {forgetEnemyShoved,gameEnemyArt,onPushEnemyFile,queueEnemyShoved,queueSheets} from './mendigo.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -238,11 +238,11 @@ export function artLoads():ArtLoad[]{
  * costume layers (the nests' card draws them).
  */
 export const unusedEnemyFile=(name:string)=>/^(elite\/([a-z0-9]+-)?)?(sleep|wake)$/.test(name);
-/** Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
-export function enemyPieceLoads(id:string):ArtLoad[]{
+/** Every page of every drawn file of enemy art `id`; [] without its piece. 'round' leaves out onPushEnemyFile's. */
+export function enemyPieceLoads(id:string,which:'round'|'push'|'all'='round'):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
-    if(unusedEnemyFile(name))continue;
+    if(unusedEnemyFile(name)||which!=='all'&&onPushEnemyFile(name)!==(which==='push'))continue;
     // An elite layer that is its base's own file (mendigo.ts: the elite keeps the loop) loads nothing: drawing the same
     // sheet over itself shows nothing new, and a second texture would double its video memory.
     if(name.startsWith('elite/')&&piece.files[name.slice(6)]===file)continue;
@@ -305,22 +305,16 @@ export function queueEnemyArt(scene:Phaser.Scene,requested:string):boolean{
   let seen=asked.get(scene);if(!seen){seen=new Set();asked.set(scene,seen);}
   if(seen.has(id))return false;
   seen.add(id);
-  let queued=false;
-  for(const l of enemyPieceLoads(id)){
-    if(scene.textures.exists(l.key))continue;
-    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
-  }
-  if(queued&&!scene.load.isLoading())scene.load.start();
-  return queued;
+  return queueSheets(scene,enemyPieceLoads(id));
 }
 /**
  * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
  * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
  */
 export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
-  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);forgetEnemyShoved(scene,id);
   let removed=false;
-  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  for(const l of enemyPieceLoads(id,'all'))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
   return removed;
 }
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
@@ -532,16 +526,11 @@ export const DEFAULT_HEIGHT=.9;
 /**
  * One art's own height × the hero's, over its role's: the aberração-saci 1.4× the hero as drawn on screen (card
  * saci-elite-no-jogo, the user: "E as proporções"), so its 1.4 folds out the enemies' ENEMY_DRAW_SCALE over the heroes'
- * HERO_DRAW_SCALE (else it stands 2× the hero); a mini-chefe's 2 would make the one-legged saci a giant. Card
- * saci-chefe-2x (the user, 30/10: "O saci é o boss do jogo então ponha o saci 2x"): the chefão now, 2× that, 2.8;
- * his body (rules SACI_BOSS.size) and so his shadow grow with it.
+ * HERO_DRAW_SCALE. Card saci-chefe-2x (the user, 30/10: "ponha o saci 2x"): the chefão now, 2.8, body (SACI_BOSS.size) too.
  */
 export const SACI_ON_SCREEN=2.8;
 export const ART_HEIGHT:Readonly<Record<string,number>>={'aberracao-saci':SACI_ON_SCREEN*HERO_DRAW_SCALE/ENEMY_DRAW_SCALE};
-/**
- * The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it),
- * unless he has his own size (rules SCALED_WAVE_BOSS_IDS: not the saci, whose ART_HEIGHT is already his).
- */
+/** The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; SCALED_WAVE_BOSS_IDS only). */
 let waveBossDraw:number=WAVE_BOSS.drawScale;
 /** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
 export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
@@ -672,9 +661,9 @@ export function pieceAction(piece:ArtPiece,action:string):string|undefined{
 }
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
-  // A hit never starts while another action plays, and the same action already playing is not restarted (but a
-  // swing that comes back near its end, SWING_RESTART).
-  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
+  // A hit never starts while another action plays (nothing over a shoved), and the same action already playing is not
+  // restarted (but a swing that comes back near its end, SWING_RESTART).
+  if(s.action!==undefined&&now<s.end&&(action==='hit'||s.action==='shoved'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
   const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
   if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
   const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
@@ -690,7 +679,7 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 }
 
 // ---------- Phaser side: per-enemy state, kept off the actor so layers.ts changes stay tiny ----------
-interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
+interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;pushedOn?:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
@@ -808,7 +797,7 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
   const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
   return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number;pushed?:{x:number;y:number}},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??gameEnemyArt(ENEMY_ART_ID[actor.kind]),piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -816,12 +805,17 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // An elite-only figure (ownElite) is its own elite: no elite layer to wait for, its own height.
   const elite=actor.elite&&!ownElite(piece);
   const s=stateOf(image),loop=loopAnim(piece,moving,elite,actor.bossPhase,actor.act);
-  if(moving||s.row<0)s.row=facingRow(dx,dy,view,s.row);
+  // Card anim-ser-empurrado: a new push (actor.pushed, pusher → it) loads its shoved (the first drops) and plays it once,
+  // facing the pusher, holding that row while it plays (the push walks it backwards).
+  const pushed=actor.pushed,push=pushed&&!s.pushedOn;s.pushedOn=!!pushed;
+  if(push&&piece.files.shoved)queueEnemyShoved(image.scene,id,enemyPieceLoads(id,'push'));
+  if(push&&loop&&startAction(s,piece,'shoved',now))s.row=facingRow(-pushed.x,-pushed.y,view,s.row);const shoved=s.action==='shoved'&&now<s.end;
+  if(!shoved&&(moving||s.row<0))s.row=facingRow(dx,dy,view,s.row);
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined;
-  if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
+  if(!shoved&&ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
   // The action's own clock: drawn time since it started (slower for a stretched swing, SWING_FILL).
   const acted=(now-s.at)*(s.pace??1);
   let frame=action?enemyFrame(id,piece,action,s.row,acted,base,true):undefined;

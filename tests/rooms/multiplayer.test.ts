@@ -73,7 +73,7 @@ test('prediction replay produces same state after delayed acknowledgement',()=>{
   const replay=reconcile(p,inputs.filter(i=>i.seq>p.ack));assert.deepEqual(replay,predicted);
 });
 test('every kill rewards each active player once and never spectators',()=>{
-  const s=new Simulation(),p=s.add('p','Tester','cidadao-comum'),q=s.add('q','Ally','mendigo'),watcher=s.add('w','Watcher','cidadao-comum');
+  const s=new Simulation(),p=s.add('p','Tester','cidadao-comum'),q=s.add('q','Ally','tio-do-churrasco'),watcher=s.add('w','Watcher','cidadao-comum');
   watcher.spectator=true;s.resetRun();
   const enemy=createEnemy(s.world,'bebado',{x:p.x+8,y:p.y});
   assert.equal(s.world.damageEnemy(enemy.id,1e6,p.id),true);s.step();
@@ -82,7 +82,7 @@ test('every kill rewards each active player once and never spectators',()=>{
   assert.equal(p.score,10);assert.equal(q.score,10);
 });
 test('delta can reconstruct full state and removes departed players',()=>{
-  const s=new Simulation();s.add('a','A','cidadao-comum');s.add('b','B','mendigo');s.resetRun();const before=s.snapshot();s.remove('b');s.input('a',{seq:1,x:1,y:0,attack:false});s.step();const after=s.snapshot(),patch=delta(before,after);
+  const s=new Simulation();s.add('a','A','cidadao-comum');s.add('b','B','tio-do-churrasco');s.resetRun();const before=s.snapshot();s.remove('b');s.input('a',{seq:1,x:1,y:0,attack:false});s.step();const after=s.snapshot(),patch=delta(before,after);
   const players=new Map(before.players.map(p=>[p[0],p]));for(const p of patch.players)players.set(p[0],p);for(const id of patch.removed)players.delete(id);
   assert.deepEqual([...players.values()],after.players);assert.ok(JSON.stringify(patch).length<JSON.stringify(after).length+100);
 });

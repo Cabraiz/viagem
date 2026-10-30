@@ -5,6 +5,8 @@
 import {isEnemyKind,type EnemyKind} from './keys.ts';
 import {entryLines,fallbackAccent,isRosterId} from '../../rules/index.ts';
 import {hashPhase} from './motion.ts';
+import {artPiece} from '../art/manifest.ts';
+import {MENDIGO,keepsOwnArt} from '../art/mendigo.ts';
 
 export const GENERIC_LINES:readonly string[]=['PAGO!','VIROU SAUDADE!','JÁ ERA!','FOI-SE!','PARTIU!'];
 export const DEATH_LINES:Record<EnemyKind,readonly string[]>={
@@ -12,7 +14,7 @@ export const DEATH_LINES:Record<EnemyKind,readonly string[]>={
   'anao-molotov':['CABUM!','PEGOU FOGO, BICHO!','CACHAÇA FLAMBADA!','FLAMBOU A BARBA!','EXPLODIU A CINTA!'],
   pombos:['CRUU!','PENA PRA TODO LADO!','VOOU... PRO CHÃO!','PRU-PRU... PLAFT!','FIM DO MIOLO!'],
   'tio-pave':['MORREU RINDO!','ENGASGOU NA PIADA!','PAVÊ OU PA COMÊ?','TIO NO GELO!','SOBREMESA!'],
-  agiota:['NOME LIMPO!','JUROS ZERADOS!','CALOTE!','QUITADO, PORRA!','VIROU PAPEL!'],
+  agiota:['NOME LIMPO!','JUROS ZERADOS!','CALOTE!','QUITADO!','VIROU PAPEL!'],
   chefe:['CONDOMÍNIO PAGO!','ATA ENCERRADA!','DESPEJADO!','ASSEMBLEIA CANCELADA!','SÍNDICO DEPOSTO!'],
   // Elenco P1 (humor-reviewed).
   coach:['CHUVA DE POST-IT!','PALESTRA ENCERRADA!','SAIU DA ZONA DE VIDA!','CASE DE FRACASSO!','FEEDBACK RECEBIDO!','TROPEÇOU NO SLOGAN!'],
@@ -40,8 +42,17 @@ export const KIND_STYLES:Record<EnemyKind,KindStyle>={
   influencer:{fill:'#fff0f7',stroke:'#b0246a',tint:0xffc4e0},
 };
 
-/** Death pops of a kind: the nine's own, a roster entry's pop (P0) or its role's pops, else GENERIC_LINES. */
-export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:entryLines(kind)?.pops??GENERIC_LINES;
+/**
+ * The pop follows the body on screen, like the name (enemy-name-rules): a plain enemy drawn as the mendigo pops the
+ * mendigo's lines, never the legacy kind's (auditoria-textos-30-10 §4, R1); the saci has its own.
+ */
+export const MENDIGO_POPS:readonly string[]=['SORRISÃO APAGADO!','FOI-SE O SORRISO!','DESMONTOU!','JÁ ERA!','PARTIU!'];
+export const SACI_POPS:readonly string[]=['SUMIU NO REDEMOINHO!','SÓ SOBROU O CACHIMBO!','PULOU FORA!'];
+/** Its own death pops, as before the mendigo: the nine's own, a roster entry's pop (P0) or its role's pops, else GENERIC_LINES. */
+const ownDeathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:entryLines(kind)?.pops??GENERIC_LINES;
+/** Death pops of a kind: the saci's, the mendigo's for a body drawn as the mendigo, else its own. */
+export const deathLines=(kind:string):readonly string[]=>kind.includes('saci')?SACI_POPS
+  :!keepsOwnArt(kind)&&artPiece('inimigos',MENDIGO)?MENDIGO_POPS:ownDeathLines(kind);
 export function deathLine(kind:string,id:string){
   const lines=deathLines(kind);return lines[Math.floor(hashPhase(id)*lines.length)%lines.length];
 }

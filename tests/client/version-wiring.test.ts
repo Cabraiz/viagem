@@ -104,12 +104,12 @@ function page(state:{doc:DocLike}){
   return {session,reloads,shown,watch,tick:(ms:number)=>{now+=ms;}};
 }
 
-test('menu: a lobby chunk 404 reloads once and comes back to the lobby, without "Não foi possível abrir as salas."',async()=>{
+test('menu: a lobby chunk 404 reloads once and comes back to the lobby, without "As salas não abriram. Tenta de novo."',async()=>{
   const state={doc:doc()},p=page(state);
   let message='';
   // main.ts openCoop: Vite fires vite:preloadError (→ watch.chunkFailed) before the import rejects into the catch.
   try{await opening({view:'lobby'},async()=>{p.watch.chunkFailed(CHROME_404);throw CHROME_404;});}
-  catch(e){if(!chunkFailed(e))message='Não foi possível abrir as salas.';}
+  catch(e){if(!chunkFailed(e))message='As salas não abriram. Tenta de novo.';}
   assert.equal(message,'');
   assert.equal(p.reloads.length,1,'one reload (the catch asking again is idempotent)');
   assert.equal(p.reloads[0].view,'lobby');
@@ -188,9 +188,9 @@ test('main.ts: watch and notice in the entry chunk, every lazy-import catch asks
   assert.match(main,/void versionWatch\.check\(\);/);
   assert.match(main,/startPullToRefresh\(\{doc:document,win:window,inMatch:\(\)=>inMatchOf\(document\),refresh:\(\)=>updateNow\(\)\}\)/);
   // The two old messages only when it was not a stale chunk.
-  assert.match(main,/if\(!chunkFailed\(e\)\)\{?text\('explore-error','Não foi possível abrir as salas\.'\)/);
-  assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível carregar a ilha\. Tente novamente\.'\)/);
-  assert.equal(main.match(/Não foi possível abrir as salas\./g)?.length,1);
+  assert.match(main,/if\(!chunkFailed\(e\)\)\{?text\('explore-error','As salas não abriram\. Tenta de novo\.'\)/);
+  assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','A ilha não carregou\. Tenta de novo\.'\)/);
+  assert.equal(main.match(/As salas não abriram\. Tenta de novo\./g)?.length,1);
   // The lobby import runs with the lobby as the place to come back to.
   assert.match(main,/opening\(intent,async\(\)=>\{const \{openLobby\}=await import\('\.\/client\/lobby\.ts'\)/);
   // Resume: read once at startup; the lobby reopens, and joins the room by itself.

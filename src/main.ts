@@ -430,7 +430,7 @@ const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
 // BORA! with no name (auditoria-ui-menus 9): the menu's own warning, not the browser's balloon (its look changes from
 // browser to browser): the field turns red, says it in its placeholder and shakes once; the live region reads it.
-const NAME_MISSING='Escolha um nome primeiro!',namePlaceholder=nameInput.placeholder;
+const NAME_MISSING='Escolhe um nome primeiro!',namePlaceholder=nameInput.placeholder;
 const nameMissing=(on:boolean)=>{
   nameInput.classList.remove('nome-faltando');nameInput.placeholder=on?NAME_MISSING:namePlaceholder;
   if(on){void nameInput.offsetWidth;nameInput.classList.add('nome-faltando');nameInput.setAttribute('aria-invalid','true');text('announcement',NAME_MISSING);}
@@ -501,7 +501,7 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
   try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
   catch(e){
-    if(!chunkFailed(e)){text('explore-error','Não foi possível abrir as salas.');if(!dialog.open){showChosen();dialog.showModal();}}
+    if(!chunkFailed(e)){text('explore-error','As salas não abriram. Tenta de novo.');if(!dialog.open){showChosen();dialog.showModal();}}
     return false;
   }
   finally{coopButton.disabled=false;}
@@ -561,7 +561,7 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
     try {
       const {openExploration}=await import('./client/explore.ts');
       dialog.close();await openExploration(selected,nickname.trim());
-    } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
+    } catch(e) {if(!chunkFailed(e))text('explore-error','A ilha não carregou. Tenta de novo.');}
     finally {button.disabled=false;}
     return;
   }

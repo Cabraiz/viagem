@@ -15,7 +15,7 @@ export const confirmText=(etapa:MenuEtapa,convite=false)=>convite?INVITE_TEXT:CO
 
 /** What the game is, in one line under the hero's name (menu-diz-o-jogo-e-convite #2): the first visit knows what it
  *  is choosing for. "até 5 amigos" is a room's MAX_PLAYERS less the player (tests/client/menu-diz-o-jogo.test.ts). */
-export const MENU_OQUE='Proteja o Uno das criaturas da cidade, round a round. Sozinho ou com até 5 amigos.';
+export const MENU_OQUE='Protege o Uno dos bichos da cidade, rodada a rodada. Sozinho ou com até 5 amigos.';
 
 // HTMLElement.hidden is boolean | 'until-found'; this module only writes booleans.
 type Hideable={hidden:boolean|string};

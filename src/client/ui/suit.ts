@@ -24,5 +24,5 @@ export const ROLE_LINE:Readonly<Record<SuitRole,string>>=Object.freeze({
   'Linha de frente':'Aguenta pancada e segura a turma.',
   Dano:'Bate mais forte, aguenta menos.',
   Suporte:'Cura e ajuda a turma.',
-  Controle:'Segura e atrapalha as criaturas.',
+  Controle:'Segura e atrapalha os bichos.',
 });

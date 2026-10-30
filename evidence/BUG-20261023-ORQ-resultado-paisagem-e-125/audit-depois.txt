@@ -1,0 +1,822 @@
+FALHA 390x844 100% hud oferta do round, 6p, 4 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% hud oferta de nível no intervalo, 1p, 3 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% hud oferta de nível no intervalo, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+ok    390x844 100% hud combate com 2 níveis no chip, 6p
+FALHA 390x844 100% hud combate, painel compacto aberto, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+FALHA 390x844 100% hud intervalo com 2 caídos (o último do time)
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% hud combate, faixa aberta com 2 caídos
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 390x844 100% hud oferta de coxinha
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+ok    390x844 100% hud combate, 6p
+ok    390x844 100% hud caído, 6p
+ok    390x844 100% hud chefe, 6p
+ok    390x844 100% hud resultado, 6p
+ok    390x844 100% hud resultado, 1p
+ok    390x844 100% hud resultado do dono, 6p, nomes longos
+ok    390x844 100% hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)
+ok    390x844 100% hud resultado do dono, 6p, derrota, nomes longos
+ok    390x844 100% hud resultado do dono, 6p, derrota, conta e vaquinha
+ok    390x844 100% hud resultado, 6p, conta paga e vaquinha
+ok    390x844 100% hud resultado do dono, 6p, derrota, vices longos (empates)
+ok    390x844 100% hud resultado, 6p, vices longos (empates)
+ok    390x844 100% hud resultado do dono, 2p
+ok    390x844 100% hud resultado do dono, 2p, derrota, Métricas (dev)
+ok    390x844 100% hud resultado do dono, 1p, Métricas (dev)
+ok    390x844 100% hud setas na borda e minimapa (bordas), 6p
+FALHA 390x844 100% hud setas na borda, vista 2
+   - sem seta: chefe
+FALHA 390x844 100% soma: minimapa + base + setas + forja aberta
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    390x844 100% soma: minimapa + base + setas + corneta
+FALHA 390x844 100% soma: minimapa + base + setas + oferta do round
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% janela: forja aberta + caídos e chefe fora da tela
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 390x844 100% janela: oferta de nível no intervalo + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% janela: painel de nível aberto em combate + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+ok    390x844 100% janela: kill-cam + caídos e chefe fora
+FALHA 390x844 100% hud forja no acampamento, 6p
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    390x844 100% hud corneta longe da base, 6p
+ok    390x844 100% hud muralha baixa no round, 6p
+ok    390x844 100% hud faixa do apagão, 6p
+ok    390x844 100% hud kill-cam do último bicho, 6p
+ok    390x844 100% dica andar (6p)
+ok    390x844 100% dica XP (6p)
+ok    390x844 100% dica chip (6p, 2 níveis)
+ok    390x844 100% dica resgatar (6p, 1 caído)
+ok    390x844 100% dica coleta (intervalo, 6p)
+ok    390x844 100% dica andar + setas e minimapa
+ok    390x844 100% emotes abertos
+ok    390x844 100% balões
+FALHA 390x844 100% hud oferta, 4 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 100% hud oferta, 3 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 100% hud combate, painel compacto, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 100% hud carimbo LEVEI no intervalo
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 100% hud carimbo LEVEI em combate
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+ok    390x844 100% hud resultado, 6p, nomes longos
+ok    390x844 100% hud resultado do dono arrumando a sala, 6p, 2 bots
+FALHA 390x844 100% janela: balão "Gira no intervalo" com forja aberta
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+FALHA 390x844 100% janela: balão "Gira no intervalo" com painel de nível aberta
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+ok    390x844 100% janela: balão "Gira no intervalo" com combate (round) aberta
+ok    390x844 100% janela: balão "Gira no intervalo" com muralha baixa aberta
+ok    390x844 100% "Gira no intervalo" na vaga de anúncio, combate
+ok    390x844 100% "Gira no intervalo" na vaga de anúncio, dica andar na vaga
+ok    390x844 100% "Gira no intervalo" na vaga de anúncio, muralha baixa
+ok    390x844 100% hud combate, 6p, nomes longos
+ok    390x844 100% hud caído, 6p, nomes longos
+ok    390x844 100% hud setas na borda, nomes longos
+ok    390x844 100% hud combate no PC (coluna), 6p, nomes longos
+ok    390x844 100% hud caído no PC (coluna), 6p, nomes longos
+ok    390x844 100% lobby
+ok    390x844 100% botão de habilidade
+ok    390x844 100% botão de habilidade, recarga
+ok    390x844 100% botão de habilidade, nota
+FALHA 390x844 125% hud oferta do round, 6p, 4 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% hud oferta de nível no intervalo, 1p, 3 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% hud oferta de nível no intervalo, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+ok    390x844 125% hud combate com 2 níveis no chip, 6p
+FALHA 390x844 125% hud combate, painel compacto aberto, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+FALHA 390x844 125% hud intervalo com 2 caídos (o último do time)
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% hud combate, faixa aberta com 2 caídos
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 390x844 125% hud oferta de coxinha
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+ok    390x844 125% hud combate, 6p
+ok    390x844 125% hud caído, 6p
+ok    390x844 125% hud chefe, 6p
+ok    390x844 125% hud resultado, 6p
+ok    390x844 125% hud resultado, 1p
+ok    390x844 125% hud resultado do dono, 6p, nomes longos
+ok    390x844 125% hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)
+ok    390x844 125% hud resultado do dono, 6p, derrota, nomes longos
+ok    390x844 125% hud resultado do dono, 6p, derrota, conta e vaquinha
+ok    390x844 125% hud resultado, 6p, conta paga e vaquinha
+ok    390x844 125% hud resultado do dono, 6p, derrota, vices longos (empates)
+ok    390x844 125% hud resultado, 6p, vices longos (empates)
+ok    390x844 125% hud resultado do dono, 2p
+ok    390x844 125% hud resultado do dono, 2p, derrota, Métricas (dev)
+ok    390x844 125% hud resultado do dono, 1p, Métricas (dev)
+ok    390x844 125% hud setas na borda e minimapa (bordas), 6p
+FALHA 390x844 125% hud setas na borda, vista 2
+   - sem seta: chefe
+FALHA 390x844 125% soma: minimapa + base + setas + forja aberta
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 155x21)
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    390x844 125% soma: minimapa + base + setas + corneta
+FALHA 390x844 125% soma: minimapa + base + setas + oferta do round
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% janela: forja aberta + caídos e chefe fora da tela
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 155x21)
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 390x844 125% janela: oferta de nível no intervalo + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% janela: painel de nível aberto em combate + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+ok    390x844 125% janela: kill-cam + caídos e chefe fora
+FALHA 390x844 125% hud forja no acampamento, 6p
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 155x21)
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    390x844 125% hud corneta longe da base, 6p
+ok    390x844 125% hud muralha baixa no round, 6p
+ok    390x844 125% hud faixa do apagão, 6p
+ok    390x844 125% hud kill-cam do último bicho, 6p
+ok    390x844 125% dica andar (6p)
+ok    390x844 125% dica XP (6p)
+ok    390x844 125% dica chip (6p, 2 níveis)
+ok    390x844 125% dica resgatar (6p, 1 caído)
+ok    390x844 125% dica coleta (intervalo, 6p)
+ok    390x844 125% dica andar + setas e minimapa
+ok    390x844 125% emotes abertos
+ok    390x844 125% balões
+FALHA 390x844 125% hud oferta, 4 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 125% hud oferta, 3 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 125% hud combate, painel compacto, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 390x844 125% hud carimbo LEVEI no intervalo
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - janela do intervalo com 100% da altura (> 32%)
+FALHA 390x844 125% hud carimbo LEVEI em combate
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+ok    390x844 125% hud resultado, 6p, nomes longos
+ok    390x844 125% hud resultado do dono arrumando a sala, 6p, 2 bots
+FALHA 390x844 125% janela: balão "Gira no intervalo" com forja aberta
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 155x21)
+   - alvo de toque 354x40: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 354x40: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 354x40: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+FALHA 390x844 125% janela: balão "Gira no intervalo" com painel de nível aberta
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+ok    390x844 125% janela: balão "Gira no intervalo" com combate (round) aberta
+ok    390x844 125% janela: balão "Gira no intervalo" com muralha baixa aberta
+ok    390x844 125% "Gira no intervalo" na vaga de anúncio, combate
+ok    390x844 125% "Gira no intervalo" na vaga de anúncio, dica andar na vaga
+ok    390x844 125% "Gira no intervalo" na vaga de anúncio, muralha baixa
+ok    390x844 125% hud combate, 6p, nomes longos
+ok    390x844 125% hud caído, 6p, nomes longos
+ok    390x844 125% hud setas na borda, nomes longos
+ok    390x844 125% hud combate no PC (coluna), 6p, nomes longos
+ok    390x844 125% hud caído no PC (coluna), 6p, nomes longos
+ok    390x844 125% lobby
+ok    390x844 125% botão de habilidade
+ok    390x844 125% botão de habilidade, recarga
+ok    390x844 125% botão de habilidade, nota
+FALHA 844x390 100% hud oferta do round, 6p, 4 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+FALHA 844x390 100% hud oferta de nível no intervalo, 1p, 3 cartas
+   - texto de 12.6923px (< 13): rh-card-rarity: "Comum"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12.6923px (< 13): rh-card-rarity: "Épica"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12.6923px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+FALHA 844x390 100% hud oferta de nível no intervalo, 6p
+   - texto de 12.6923px (< 13): rh-card-rarity: "Comum"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12.6923px (< 13): rh-card-rarity: "Épica"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12.6923px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+ok    844x390 100% hud combate com 2 níveis no chip, 6p
+FALHA 844x390 100% hud combate, painel compacto aberto, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+FALHA 844x390 100% hud intervalo com 2 caídos (o último do time)
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 844x390 100% hud combate, faixa aberta com 2 caídos
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 844x390 100% hud oferta de coxinha
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+ok    844x390 100% hud combate, 6p
+ok    844x390 100% hud caído, 6p
+ok    844x390 100% hud chefe, 6p
+ok    844x390 100% hud resultado, 6p
+ok    844x390 100% hud resultado, 1p
+ok    844x390 100% hud resultado do dono, 6p, nomes longos
+ok    844x390 100% hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)
+ok    844x390 100% hud resultado do dono, 6p, derrota, nomes longos
+ok    844x390 100% hud resultado do dono, 6p, derrota, conta e vaquinha
+ok    844x390 100% hud resultado, 6p, conta paga e vaquinha
+ok    844x390 100% hud resultado do dono, 6p, derrota, vices longos (empates)
+ok    844x390 100% hud resultado, 6p, vices longos (empates)
+ok    844x390 100% hud resultado do dono, 2p
+ok    844x390 100% hud resultado do dono, 2p, derrota, Métricas (dev)
+ok    844x390 100% hud resultado do dono, 1p, Métricas (dev)
+FALHA 844x390 100% hud setas na borda e minimapa (bordas), 6p
+   - sem seta: chefe
+FALHA 844x390 100% hud setas na borda, vista 2
+   - sem seta: chefe
+FALHA 844x390 100% soma: minimapa + base + setas + forja aberta
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 100% soma: minimapa + base + setas + corneta
+   - sem seta: chefe
+FALHA 844x390 100% soma: minimapa + base + setas + oferta do round
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12.1402px (< 13): rh-card-rarity: "Épica"
+   - texto de 12.1402px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12.1402px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 100% janela: forja aberta + caídos e chefe fora da tela
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 100% janela: oferta de nível no intervalo + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 100% janela: painel de nível aberto em combate + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 100% janela: kill-cam + caídos e chefe fora
+   - sem seta: chefe
+FALHA 844x390 100% hud forja no acampamento, 6p
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    844x390 100% hud corneta longe da base, 6p
+ok    844x390 100% hud muralha baixa no round, 6p
+ok    844x390 100% hud faixa do apagão, 6p
+ok    844x390 100% hud kill-cam do último bicho, 6p
+ok    844x390 100% dica andar (6p)
+ok    844x390 100% dica XP (6p)
+ok    844x390 100% dica chip (6p, 2 níveis)
+ok    844x390 100% dica resgatar (6p, 1 caído)
+ok    844x390 100% dica coleta (intervalo, 6p)
+FALHA 844x390 100% dica andar + setas e minimapa
+   - sem seta: chefe
+ok    844x390 100% emotes abertos
+ok    844x390 100% balões
+FALHA 844x390 100% hud oferta, 4 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 100% hud oferta, 3 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 100% hud combate, painel compacto, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 100% hud carimbo LEVEI no intervalo
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - alvo de toque 62x24: rh-offer-later: "Depois"
+FALHA 844x390 100% hud carimbo LEVEI em combate
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+ok    844x390 100% hud resultado, 6p, nomes longos
+ok    844x390 100% hud resultado do dono arrumando a sala, 6p, 2 bots
+FALHA 844x390 100% janela: balão "Gira no intervalo" com forja aberta
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 100% janela: balão "Gira no intervalo" com painel de nível aberta
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 100% janela: balão "Gira no intervalo" com combate (round) aberta
+   - fichas do topo se cruzam: explore-camera-hint × rh-minimap
+   - sem seta: chefe
+FALHA 844x390 100% janela: balão "Gira no intervalo" com muralha baixa aberta
+   - fichas do topo se cruzam: explore-camera-hint × rh-minimap
+   - sem seta: chefe
+ok    844x390 100% "Gira no intervalo" na vaga de anúncio, combate
+ok    844x390 100% "Gira no intervalo" na vaga de anúncio, dica andar na vaga
+ok    844x390 100% "Gira no intervalo" na vaga de anúncio, muralha baixa
+ok    844x390 100% hud combate, 6p, nomes longos
+ok    844x390 100% hud caído, 6p, nomes longos
+FALHA 844x390 100% hud setas na borda, nomes longos
+   - sem seta: chefe
+ok    844x390 100% hud combate no PC (coluna), 6p, nomes longos
+ok    844x390 100% hud caído no PC (coluna), 6p, nomes longos
+ok    844x390 100% lobby
+ok    844x390 100% botão de habilidade
+ok    844x390 100% botão de habilidade, recarga
+ok    844x390 100% botão de habilidade, nota
+FALHA 844x390 125% hud oferta do round, 6p, 4 cartas
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+FALHA 844x390 125% hud oferta de nível no intervalo, 1p, 3 cartas
+   - texto de 12.6923px (< 13): rh-card-rarity: "Comum"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12.6923px (< 13): rh-card-rarity: "Épica"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12.6923px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+FALHA 844x390 125% hud oferta de nível no intervalo, 6p
+   - texto de 12.6923px (< 13): rh-card-rarity: "Comum"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12.6923px (< 13): rh-card-rarity: "Épica"
+   - texto de 12.6923px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12.6923px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+ok    844x390 125% hud combate com 2 níveis no chip, 6p
+FALHA 844x390 125% hud combate, painel compacto aberto, 6p
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+FALHA 844x390 125% hud intervalo com 2 caídos (o último do time)
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 844x390 125% hud combate, faixa aberta com 2 caídos
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "13 sZé"
+   - oferta cobre aliado caído: rh-member: "17 sKaique"
+   - aviso de queda atrás da oferta: rh-alert: "Zé do Pix e Kaique Mil Grau "
+FALHA 844x390 125% hud oferta de coxinha
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+ok    844x390 125% hud combate, 6p
+ok    844x390 125% hud caído, 6p
+ok    844x390 125% hud chefe, 6p
+ok    844x390 125% hud resultado, 6p
+ok    844x390 125% hud resultado, 1p
+ok    844x390 125% hud resultado do dono, 6p, nomes longos
+ok    844x390 125% hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)
+ok    844x390 125% hud resultado do dono, 6p, derrota, nomes longos
+ok    844x390 125% hud resultado do dono, 6p, derrota, conta e vaquinha
+ok    844x390 125% hud resultado, 6p, conta paga e vaquinha
+ok    844x390 125% hud resultado do dono, 6p, derrota, vices longos (empates)
+ok    844x390 125% hud resultado, 6p, vices longos (empates)
+ok    844x390 125% hud resultado do dono, 2p
+ok    844x390 125% hud resultado do dono, 2p, derrota, Métricas (dev)
+ok    844x390 125% hud resultado do dono, 1p, Métricas (dev)
+FALHA 844x390 125% hud setas na borda e minimapa (bordas), 6p
+   - sem seta: chefe
+FALHA 844x390 125% hud setas na borda, vista 2
+   - sem seta: chefe
+FALHA 844x390 125% soma: minimapa + base + setas + forja aberta
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 135x21)
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 125% soma: minimapa + base + setas + corneta
+   - sem seta: chefe
+FALHA 844x390 125% soma: minimapa + base + setas + oferta do round
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 125% janela: forja aberta + caídos e chefe fora da tela
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 135x21)
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 125% janela: oferta de nível no intervalo + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 125% janela: painel de nível aberto em combate + caídos e chefe fora
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 125% janela: kill-cam + caídos e chefe fora
+   - sem seta: chefe
+FALHA 844x390 125% hud forja no acampamento, 6p
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 135x21)
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+ok    844x390 125% hud corneta longe da base, 6p
+ok    844x390 125% hud muralha baixa no round, 6p
+ok    844x390 125% hud faixa do apagão, 6p
+ok    844x390 125% hud kill-cam do último bicho, 6p
+ok    844x390 125% dica andar (6p)
+ok    844x390 125% dica XP (6p)
+ok    844x390 125% dica chip (6p, 2 níveis)
+ok    844x390 125% dica resgatar (6p, 1 caído)
+ok    844x390 125% dica coleta (intervalo, 6p)
+FALHA 844x390 125% dica andar + setas e minimapa
+   - sem seta: chefe
+ok    844x390 125% emotes abertos
+ok    844x390 125% balões
+FALHA 844x390 125% hud oferta, 4 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 125% hud oferta, 3 cartas, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 125% hud combate, painel compacto, textos mais longos
+   - cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')
+FALHA 844x390 125% hud carimbo LEVEI no intervalo
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 3"
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Persegue o bicho mais perto."
+   - alvo de toque 73x24: rh-offer-later: "Depois"
+FALHA 844x390 125% hud carimbo LEVEI em combate
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+ok    844x390 125% hud resultado, 6p, nomes longos
+ok    844x390 125% hud resultado do dono arrumando a sala, 6p, 2 bots
+FALHA 844x390 125% janela: balão "Gira no intervalo" com forja aberta
+   - reticência: rh-forge-name: "Torre de Chinelo da Vó"
+   - overflow escondendo texto: rh-forge-name: "Torre de Chinelo da Vó" (164x22 > 135x21)
+   - alvo de toque 335x42: rh-forge-tag: "Massa Corrida e Fé+25%R$ 10L"
+   - alvo de toque 335x41: rh-forge-tag: "Gambiarra+1 nívelR$ 45LEVEI"
+   - alvo de toque 335x42: rh-forge-tag rh-forge-blocked: "Torre de Chinelo da Vó45 sR$"
+   - sem seta: chefe
+FALHA 844x390 125% janela: balão "Gira no intervalo" com painel de nível aberta
+   - texto de 12px (< 13): rh-card-rarity: "Nova"
+   - texto de 12px (< 13): rh-card-level: "Nív. 1"
+   - texto de 12px (< 13): rh-card-value: "Atravessa uma fila de bichos"
+   - texto de 12px (< 13): rh-card-rarity: "Comum"
+   - texto de 12px (< 13): rh-card-level: "Nív. 2"
+   - texto de 12px (< 13): rh-card-rarity: "Épica"
+   - texto de 12px (< 13): rh-card-level: "Nív. 6"
+   - texto de 12px (< 13): rh-card-value: "Empurra bichos e bloqueia ti"
+   - oferta cobre aliado caído: rh-member: "14 sZé"
+   - oferta cobre aliado caído: rh-member: "6 sSeu"
+   - sem seta: caido
+   - sem seta: chefe
+FALHA 844x390 125% janela: balão "Gira no intervalo" com combate (round) aberta
+   - fichas do topo se cruzam: explore-camera-hint × rh-minimap
+   - sem seta: chefe
+FALHA 844x390 125% janela: balão "Gira no intervalo" com muralha baixa aberta
+   - fichas do topo se cruzam: explore-camera-hint × rh-minimap
+   - sem seta: chefe
+ok    844x390 125% "Gira no intervalo" na vaga de anúncio, combate
+ok    844x390 125% "Gira no intervalo" na vaga de anúncio, dica andar na vaga
+ok    844x390 125% "Gira no intervalo" na vaga de anúncio, muralha baixa
+ok    844x390 125% hud combate, 6p, nomes longos
+ok    844x390 125% hud caído, 6p, nomes longos
+FALHA 844x390 125% hud setas na borda, nomes longos
+   - sem seta: chefe
+ok    844x390 125% hud combate no PC (coluna), 6p, nomes longos
+ok    844x390 125% hud caído no PC (coluna), 6p, nomes longos
+ok    844x390 125% lobby
+ok    844x390 125% botão de habilidade
+ok    844x390 125% botão de habilidade, recarga
+ok    844x390 125% botão de habilidade, nota
+
+98 cena(s) com problema em 272

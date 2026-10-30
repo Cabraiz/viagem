@@ -41,7 +41,7 @@ test('the three new kinds are known kinds with idle, acting and elite texture ke
 });
 
 test('procedural textures: drawn for both poses, sized apart from the current cast (phone-size silhouettes)',()=>{
-  const textures=source('src/client/render/textures.ts');
+  const textures=['enemies','index'].map(f=>source(`src/client/render/textures/${f}.ts`)).join('\n');
   for(const [kind,fn] of [['coach','drawCoach'],['motoboy','drawMotoboy'],['influencer','drawInfluencer']]){
     assert.match(textures,new RegExp(`function ${fn}\\(g:G,act=false\\)`),`${fn} draws an acting pose`);
     assert.match(textures,new RegExp(`${kind}:${fn}`),`${kind} is in DRAW`);

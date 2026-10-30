@@ -1,0 +1,71 @@
+diff --git a/scripts/bench-city-run.ts b/scripts/bench-city-run.ts
+index 40b00e5e..3a949932 100644
+--- a/scripts/bench-city-run.ts
++++ b/scripts/bench-city-run.ts
+@@ -213,7 +213,7 @@ export interface RunRecord {
+   /** D-051 (--mode ninhos): see NestRecord. Absent in round runs and older JSON files. */
+   nests?:NestRecord;
+   /** Enemies of the run (both modes): most alive at once, distinct bodies, alive at each minute mark, new ones per minute. */
+-  enemies?:{max:number;seen:number;alivePerMinute:number[];newPerMinute:number[]};
++  enemies?:{max:number;seen:number;kinds?:Record<string,number>;alivePerMinute:number[];newPerMinute:number[]};
+   /**
+    * Banks (bancos-e-veiculos), from the bank-* events: `grana` R$ the heroes withdrew (bank-cash by 'hero') in
+    * `withdraws` notes, `share` = grana / grana.earned (null when nothing was earned), the critters' `enemyWithdraws`
+@@ -474,7 +474,7 @@ export interface NestRecord {
+   sleepers:{total:number;asleep:number;awake:number;dead:number};
+   neverWoke:number;maxEnemies:number;stuck:number;stuckAt:{id:string;kind:string;x:number;y:number}[];
+   /** Card monstros-espalhados: the waves (count, summed shares: map recruits, nest-born, outside; map kills counted). */
+-  waves?:{n:number;map:number;nests:number;outside:number;kills:number};
++  waves?:{n:number;map:number;nests:number;outside:number;kills:number;downed?:number[];eliminated?:number[]};
+   /**
+    * bot-3p-longe-do-carro: the bots in the first FAR_CAR_S s (sampled every s): each bot's farthest distance from the car
+    * (u), the bot-seconds spent farther than FAR_CAR_U, the bot's mode in those seconds, and `pulled`: distinct enemies
+@@ -986,11 +986,11 @@ export function playRun(o:RunOptions):RunRecord{
+   };
+ 
+   // D-051: the nests and the stuck bodies (see NestRecord).
+-  const waves={n:0,map:0,nests:0,outside:0,kills:0};let lastWave=-1;
++  const waves={n:0,map:0,nests:0,outside:0,kills:0};let lastWave=-1;const waveDowned:number[]=[],waveElim:number[]=[];
+   const nestSeen=new Map<string,{hit:number|null;down:number|null}>(),samples=new Map<string,{x:number;y:number;tick:number}>(),stuck=new Map<string,{id:string;kind:string;x:number;y:number}>();
+   let maxEnemies=0;
+   const farBots={maxU:[] as number[],farS:0,farModes:{} as Record<string,number>},pulledIds=new Set<string>();
+-  const seenEnemies=new Set<string>(),alivePerMinute:number[]=[],newPerMinute:number[]=[];
++  const seenEnemies=new Set<string>(),seenKinds:Record<string,number>={},alivePerMinute:number[]=[],newPerMinute:number[]=[];
+   const trackNests=(tick:number)=>{
+     // Both modes: how many enemies are alive at each minute mark and how many new ones came in that minute.
+     const minute=Math.floor(tick/(60*HZ));
+@@ -1001,7 +1001,7 @@ export function playRun(o:RunOptions):RunRecord{
+       console.error(`t${tick/HZ}s car ${car?.hits}/${car?.limit} alive ${es.length} near5 ${es.filter(e=>at(e)<5).length} siege ${es.filter(e=>e.memory?.siege===1).length} lvl ${JSON.stringify((sim.world.team as {level?:number}).level)} `+
+         [...sim.players.values()].map(p=>`${p.id}@${at(p)}u hp${Math.round(p.hp)} ${driver.room.modes.get(p.id)??'-'} w${JSON.stringify((p as unknown as {build:{weapons:{id:string;level:number}[]}}).build.weapons.map(w=>w.id+w.level))}`).join(' '));
+     }
+-    for(const id of sim.world.enemies.keys())if(!seenEnemies.has(id)){seenEnemies.add(id);newPerMinute[minute]=(newPerMinute[minute]??0)+1;}
++    for(const [id,en] of sim.world.enemies)if(!seenEnemies.has(id)){seenEnemies.add(id);seenKinds[en.kind]=(seenKinds[en.kind]??0)+1;newPerMinute[minute]=(newPerMinute[minute]??0)+1;}
+     if(tick%(60*HZ)===0)alivePerMinute[minute]=sim.world.enemies.size;
+     maxEnemies=Math.max(maxEnemies,sim.world.enemies.size);
+     const ns=sim.run.nests?.state;if(!ns)return;
+@@ -1060,6 +1060,7 @@ export function playRun(o:RunOptions):RunRecord{
+       countBankEvent(banks,e);
+       countVehicleEvent(vehicles,riders,e);
+       if(e.type==='levelup')levelS.push(r2(tick/HZ));
++      if(e.type==='downed')waveDowned[waves.n]=(waveDowned[waves.n]??0)+1;else if(e.type==='eliminated')waveElim[waves.n]=(waveElim[waves.n]??0)+1;
+       if(e.type==='moto'){
+         const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
+         if(e.mode==='entrega'){const left=sim.run.chaveiro?.state.moto.left??0;if(left>CLEAN_DELIVERY_TICKS)deliveries.dirty++;else deliveries.clean++;}
+@@ -1137,7 +1138,7 @@ export function playRun(o:RunOptions):RunRecord{
+     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries,
+       ...(sim.run.chaveiro?.state.added!==undefined?{addedS:r2(sim.run.chaveiro.state.added/HZ)}:{})}}:{}),
+     ...(sim.run.nests?{nests:nestSummary()}:{}),
+-    enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
++    enemies:{max:maxEnemies,seen:seenEnemies.size,kinds:{...seenKinds},alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
+     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
+     vehicles,
+     levels:levelS,
+@@ -1150,7 +1151,7 @@ export function playRun(o:RunOptions):RunRecord{
+     const neverWoke=ns.nests.filter(n=>!n.hit&&sono!==undefined&&sono.asleepIn(n.id)===sono.bodiesOf(n.id).length).length;
+     return {list,destroyed:list.filter(x=>x.downS!==null).length,groups:list.reduce((a,x)=>a+x.groups,0),
+       sleepers:{total:life.length,asleep:count(1),awake:count(2),dead:count(0)},neverWoke,maxEnemies,stuck:stuck.size,stuckAt:[...stuck.values()].slice(0,10),
+-      ...(ns.log?{waves:{...waves}}:{}),...(sim.run.chaveiro?{bots:{...farBots,pulled:pulledIds.size}}:{})};
++      ...(ns.log?{waves:{...waves,downed:Array.from({length:waves.n+1},(_,i)=>waveDowned[i]??0),eliminated:Array.from({length:waves.n+1},(_,i)=>waveElim[i]??0)}}:{}),...(sim.run.chaveiro?{bots:{...farBots,pulled:pulledIds.size}}:{})};
+   }
+   function towerSummary(){
+     const list=st().defenses?.list??[],final:Record<string,number>={};

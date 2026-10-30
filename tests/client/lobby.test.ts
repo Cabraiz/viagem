@@ -171,9 +171,9 @@ test('solo (solo-sem-sala-de-espera): a loading line, the 3-2-1 on the cover, th
   for(const phase of [undefined,'lobby','countdown'])assert.equal(coverUp(true,phase,true),true,String(phase));
   for(const phase of ['combat','result'])assert.equal(coverUp(true,phase,true),false,phase);
   assert.equal(coverUp(false,'combat',true),true);
-  // The texts: the city's cover outside the island; the share line has no drunk; solo hides the room's parts.
+  // The texts: one cover line for every match (match-boot.ts); the share line has no drunk; solo hides the room's parts.
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.match(explore,/net\?'Arrumando a cidade…':'Arrumando a ilha pra visita…'/);
+  assert.match(explore,/\$\{BOOT_TEXT\.loading\}/);
   const lobby=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
   assert.match(lobby,/A cidade não espera\./);assert.doesNotMatch(lobby,/bêbado não espera/);
   assert.match(lobby,/openExploration\(hero,nick,joined,\{solo:true\}\)/);

@@ -140,3 +140,23 @@ export function estreitaBoca(a:CityAsset,e:CityPoint|CityBoca,p:{c:number;r:numb
   }
   return false;
 }
+
+/**
+ * The ground of the entrances (NEW-20261030-ORQ-bocas-sem-muro-pedra-decor, the user: a poste, a cacamba, a ruin in a
+ * mouth reads as a wall): the walkable map cells (r × cells.w + c) that overlap the free strip of any entrance, every
+ * width. No scenery stands on them (scripts/cenario-cidade.ts chaoLivreNasBocas). Memoised per asset.
+ */
+export function bocaChao(a:CityAsset):ReadonlySet<number>{
+  const had=chaoMemo.get(a);
+  if(had)return had;
+  const C=a.unitsPerCell,{w,h}=a.cells,walk=walker(a),out=new Set<number>(),eps=1e-6;
+  for(const e of cityEntradas(a)){
+    const f=bocaFaixa(a,e);
+    for(let r=Math.max(0,Math.floor(f.y/C));r<Math.min(h,Math.ceil((f.y+f.h)/C));r++)
+      for(let c=Math.max(0,Math.floor(f.x/C));c<Math.min(w,Math.ceil((f.x+f.w)/C));c++)
+        if(c*C<f.x+f.w-eps&&(c+1)*C>f.x+eps&&r*C<f.y+f.h-eps&&(r+1)*C>f.y+eps&&walk(c,r))out.add(r*w+c);
+  }
+  chaoMemo.set(a,out);
+  return out;
+}
+const chaoMemo=new WeakMap<object,ReadonlySet<number>>();

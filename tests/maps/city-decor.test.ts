@@ -35,7 +35,7 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,8);
+  assert.equal(asset.version,9);
   // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city).
   assert.ok(asset.decor.length>2500,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
@@ -114,7 +114,8 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
 
 test('poles keep their spacing; every place with life at least once, apart on open ground',()=>{
   const poles=asset.decor.filter(d=>isPole(d.id));
-  assert.ok(poles.length>300,`${poles.length} poles`);
+  // v9 (bocas-sem-muro-pedra-decor) took the 218 on an entrance's ground (maps/bocas-chao-livre.test.ts).
+  assert.ok(poles.length>120,`${poles.length} poles`);
   for(let i=0;i<poles.length;i++)for(let j=i+1;j<poles.length;j++)
     assert.ok(Math.max(Math.abs(poles[i].c-poles[j].c),Math.abs(poles[i].r-poles[j].r))>=POLE_SPACING);
   const lugares=asset.decor.filter(d=>isLugar(d.id));
@@ -133,7 +134,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,7);
+  assert.equal(b.decor.length,0);assert.equal(b.version,8);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);

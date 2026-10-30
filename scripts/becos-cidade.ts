@@ -16,6 +16,7 @@ import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
+import {naBoca} from '../src/maps/city/entradas.ts';
 import {CAR_BODY_R,CAR_RADIUS} from '../src/contract/index.ts';
 import {BIG_ROCKS,LINK,bigCliffRocks,lineShape} from '../src/maps/city-decor.ts';
 
@@ -287,6 +288,22 @@ const bboxOf=(rects:readonly CityRect[]):CityRect=>{
  */
 export const PROP_REMOVED='removido';
 const removed=(p:CityProp):CityProp=>({...p,kind:PROP_REMOVED,solid:false});
+
+/**
+ * NEW-20261030-ORQ-bocas-sem-muro-pedra-decor: the props (junk, ruins) on the ground of an entrance's free strip, of any
+ * width (maps/city/entradas.ts naBoca), go as PROP_REMOVED. None is solid there (sim/entradas-livres.test.ts), so the
+ * grid stays as it is. Changes `data`, returns the indices taken.
+ */
+export function semPropsNasBocas(data:CityAssetData):number[]{
+  const d=decodeCityAsset(encodeCityAsset(data));
+  if(!d.ok)throw new Error(d.error);
+  const a=d.asset,taken:number[]=[];
+  data.props=data.props.map((p,i)=>{
+    if(p.kind===PROP_REMOVED||!a.walkableAt(p.x,p.y)||!naBoca(a,{x:p.x-p.r,y:p.y-p.r,w:2*p.r,h:2*p.r}))return p;
+    taken.push(i);return removed(p);
+  });
+  return taken;
+}
 
 /**
  * The corners of `cells` set to a ramp between the corners of the `ground` cells around them: each free corner the mean

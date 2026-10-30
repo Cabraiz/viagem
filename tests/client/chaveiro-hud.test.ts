@@ -32,7 +32,7 @@ test('the chaveiro clock: whole seconds as m:ss, never negative',()=>{
   assert.equal(etaClock(Number.NaN),'0:00');
   assert.equal(reais(120),'R$ 120');
   assert.equal(reais(-5),'R$ 0');
-  assert.deepEqual(chaveiroClock({etaS:588,moto:{x:0,y:0,mode:'anda'}}),{clock:'9:48',seconds:588,aria:'Chaveiro chega em 9:48',held:false});
+  assert.deepEqual(chaveiroClock({etaS:588,moto:{x:0,y:0,mode:'anda'}}),{clock:'Chaveiro 9:48',seconds:588,aria:'Chaveiro chega em 9:48',held:false});
   assert.match(chaveiroClock({etaS:12,moto:{x:0,y:0,mode:'abrindo'}}).aria,/abrindo o carro: 0:12/);
 });
 
@@ -55,7 +55,7 @@ test('the round chip: "Onda N" plus his clock while the objective runs, "Round N
   assert.equal(plain?.chaveiro,undefined);
   const live=roundInfo(withObjective(objective()));
   assert.equal(live?.label,'Onda 3');
-  assert.equal(live?.chaveiro?.clock,'9:48');
+  assert.equal(live?.chaveiro?.clock,'Chaveiro 9:48');
   // The detail (critters left) stays.
   assert.equal(live?.detail,plain?.detail);
   // Past round 10 the waves go on: never "Onda 12/10".
@@ -67,7 +67,7 @@ test('the round chip: "Onda N" plus his clock while the objective runs, "Round N
   // The interval keeps its countdown, with the clock.
   const prep=roundInfo({...withObjective(objective()),round:{...withObjective().round!,phase:'prepare',phaseEndsTick:withObjective().tick+60}});
   assert.equal(prep?.phase,'prepare');
-  assert.equal(prep?.chaveiro?.clock,'9:48');
+  assert.equal(prep?.chaveiro?.clock,'Chaveiro 9:48');
 });
 
 test('D-051 nests: the nests of the room (kind "ninho", a fallen one too) mark the mode; the chip keeps the clock and drops "Onda N"',()=>{
@@ -79,7 +79,7 @@ test('D-051 nests: the nests of the room (kind "ninho", a fallen one too) mark t
   assert.equal(nestsMode(nests),true);
   const chip=roundInfo(nests);
   assert.equal(chip?.nests,true);
-  assert.equal(chip?.chaveiro?.clock,'9:48');
+  assert.equal(chip?.chaveiro?.clock,'Chaveiro 9:48');
   // All nests down: still the nests mode (a fallen one stays in the view).
   assert.equal(nestsMode({...rounds,structures:[nest('destruido',0)]} as RunView),true);
   // Other structures are not nests.

@@ -8,11 +8,11 @@
  * `bicos=1` (card bancos-viram-bicos): the three in a row across the screen, a shop's width apart (the pixel-art
  * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
  * With it `turno=0` (etapa 4): the middle one open, the hero in its ring (the button says Trabalhar); `turno=1`: the hero
- * ('voce') inside its shift (gone through the door, the button "No turno", the tag "Você no turno").
- * `assentos=1..6` (card anel-caixa-por-assento): the room's seats; an open shop holds bicoSaldo(seats), its ring whole.
+ * ('voce') inside its shift (gone through the door, the button "No turno", the tag "Você no turno"), paid a note every
+ * BICO.nota/BICO.porSegundo s (the PIX around the hero, render/bancos/pix.ts).
  */
 import {SIM_HZ,type BankName,type BankState,type BankView,type BicoId,type EnemyView} from '../../contract/index.ts';
-import {BANCO,bicoSaldo} from '../../rules/index.ts';
+import {BANCO,BICO} from '../../rules/index.ts';
 /** Each bank's gig here: one shop front each (24/7, call center, Compro Ouro). */
 const SANDBOX_BICO:Record<BankName,BicoId>={posto:'entregador','pao-duro':'telemarketing',juros:'compro-ouro'};
 
@@ -35,9 +35,6 @@ export interface FakeBanks {
   enemies:EnemyView[];
 }
 
-/** `assentos=` (1..6, default 1): the seats the sandbox's room stands for. */
-export const sandboxSeats=(params:URLSearchParams)=>Math.max(1,Math.min(6,Number(params.get('assentos'))|0||1));
-
 export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
   const all=STATES[params.get('banco')??''],row=params.get('bicos')==='1';
   const turno=row?params.get('turno'):null;
@@ -52,11 +49,13 @@ export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
       const tick=Math.round(now/1000*SIM_HZ);
       const banks=states.map((state,i):BankView=>{
         const base={id:`banco-${i}`,...at[i],name:names[i],state,bico:SANDBOX_BICO[names[i]]};
-        if(state==='sacando'&&turno==='1'&&i===1)return {...base,workers:['voce'],saldo:32};
+        // On the shift a note (BICO.nota) every BICO.nota/BICO.porSegundo s: the saldo steps down and starts over, so the
+        // renderer (no events here) sees a hero note and pops its "+R$ 5" in the PIX around the hero.
+        if(state==='sacando'&&turno==='1'&&i===1)return {...base,workers:['voce'],saldo:32-BANCO.nota*(Math.floor(now/(BICO.nota/BICO.porSegundo*1000))%14)};
         if(state==='sacando')return {...base,saldo:30-BANCO.nota*(Math.floor(now/(BANCO.saqueS*1000))%14)};
         if(state==='bicho')return {...base,saldo:18-BANCO.nota*(Math.floor(now/(BANCO.bichoSaqueS*1000))%8)};
         if(state==='sem-cedulas')return {...base,saldo:0,until:tick+130*SIM_HZ};
-        return {...base,saldo:bicoSaldo(sandboxSeats(params))};
+        return {...base,saldo:BANCO.saldo};
       });
       return {banks,tick};
     },

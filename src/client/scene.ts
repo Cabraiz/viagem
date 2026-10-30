@@ -1385,7 +1385,7 @@ export class IslandScene extends Phaser.Scene {
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
     if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position,
-      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},seats:()=>this.hooks.net?.players.size??1});
+      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},playerAt:id=>{const net=this.hooks.net;return id===net?.id?this.position:net?.players.get(id);}});
     this.banks?.push(view.banks,view.tick,view.events);
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);

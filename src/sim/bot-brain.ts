@@ -61,6 +61,7 @@ import {BASE_STATS,BOT_WALK_MULT,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
+import {peril,perilAhead} from './bot-peril.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
@@ -192,8 +193,7 @@ export const TURN_HOLD=8,TURN_BACK_COS=-.4;
  * kiting), so two pulls in a tug of war (the leash against a lure, a circle against a repel) no longer swap every 400 ms.
  */
 export const TURN_CALM=20;
-/** A critter this close (u, its centre), a shot heading in or a telegraph lets the bot turn back at once. */
-export const PERIL_R=1.4;
+export {PERIL_R} from './bot-peril.ts';
 /**
  * (a) Arrival: a bot that reached a place (an ATM's ring, the dead moto, a fallen friend, a crate) holds it until it is
  * ARRIVE_SLACK u past its stand, and there only a peril moves it: the repel of a critter at DANGER pushed it out of the
@@ -1266,17 +1266,21 @@ function finish(decision:Decision,input:BrainInput):Decision{
 }
 /** Modes that walk to a place: a turn back held by TURN_HOLD stands there instead of going on. */
 const ARRIVING=new Set<Decision['mode']>(['bank','rescue','push','loot','clear','home','gather','forge','build','veiculo','carro']);
-/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril. */
-function holdHeading(decision:Decision,input:BrainInput):Decision{
+/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril ahead. */
+export function holdHeading(decision:Decision,input:BrainInput):Decision{
   const {memory,view,at}=input,tick=view.tick,d=decision.direction,h=memory.heading;
   const turn=h?d.x*h.x+d.y*h.y:1,back=!!h&&turn<TURN_BACK_COS;
   const soon=tick-(memory.headingTick??-Infinity)<TURN_HOLD||tick-(memory.turnBackTick??-Infinity)<TURN_CALM;
   const calm=decision.mode!=='dodge'&&!peril(view,at);
   // A bot that stood still stands TURN_HOLD (walk, stand, walk each think was the same tique, legs only).
   if(calm&&memory.standTick!==undefined&&tick-memory.standTick<TURN_HOLD){decision.direction={x:0,y:0};return decision;}
-  if(back&&soon&&calm){
+  // In peril a kiting bot still turns back at once for a critter ahead, but not into another one within PERIL_R (a
+  // walk to a place in peril turns at once, as before: standing there by the critter lost papeis-inimigo's run in round 6):
+  // a critter behind (the heading already goes away from it) or one each way held nothing in the crowd at the car
+  // (fence map, seed 1: 28 half-turns 200 ms after the last in 120 s, the repel flipping over the bot every think).
+  const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
+  if(back&&soon&&(calm||kiting&&decision.mode!=='dodge'&&!(peril(view,at,h)&&!perilAhead(view,at,d)))){
     // Kiting (a critter within DANGER) goes on the way it went; anything else stands.
-    const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
     if(kiting)decision.direction=clearPath(at,h!,onFloor(input.terrain,at.andar),h);
     else{decision.direction={x:0,y:0};memory.standTick=tick;}
     return decision;
@@ -1286,15 +1290,6 @@ function holdHeading(decision:Decision,input:BrainInput):Decision{
   if(!h||turn<0)memory.headingTick=tick;
   memory.heading={x:d.x,y:d.y};
   return decision;
-}
-function peril(view:RunView,at:Point){
-  if(view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<PERIL_R*(e.boss?1.8:e.elite?1.3:1)))return true;
-  if(view.telegraphs.some(t=>telegraphHits(t,at,.4)))return true;
-  return view.projectiles.some(s=>{
-    if(!s.hostile)return false;
-    const rx=at.x-s.x,ry=at.y-s.y,speed=Math.hypot(s.vx,s.vy);
-    return Math.hypot(rx,ry)<4&&speed>1e-3&&rx*s.vx+ry*s.vy>0;
-  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------

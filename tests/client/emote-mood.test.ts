@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import {BALLOON_MS,EMOTE_PLAYER_MAX,parseEmote} from '../../src/client/fun/emotes.ts';
 import {MoodBoard} from '../../src/client/hud/moods.ts';
 import {faceExpression} from '../../src/client/ui/face-crop.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 const src=(path:string)=>readFileSync(new URL(`../../${path}`,import.meta.url),'utf8');
 
@@ -63,7 +64,7 @@ test('faceExpression with the board: KKKK is rindo, caído still wins, and it ex
 });
 
 test('wiring: the HUD feeds the strip, the strip marks the ring and the CSS shows the laugh sticker',()=>{
-  const team=src('src/client/hud/team.ts'),hud=src('src/client/hud/hud.ts'),explore=src('src/client/explore.ts'),css=src('src/client/hud/hud.css');
+  const team=src('src/client/hud/team.ts'),hud=src('src/client/hud/hud.ts'),explore=src('src/client/explore.ts'),css=HUD_CSS;
   assert.match(team,/emote:ctx\.mood\?\.\(player\.id\)/);
   assert.match(team,/put\(n,'mood',expression==='rindo'\?'rindo':'',v=>\{if\(v\)n\.ring\.dataset\.mood=v;else delete n\.ring\.dataset\.mood;\}\)/);
   assert.match(team,/el\('span','rh-member-mood',item\);mood\.innerHTML=icon\('risada'\)/);

@@ -14,6 +14,8 @@
 //
 //   node scripts/proporcao.mjs [--ids viciado-em-bet] [--json out.json] [--sheet out-dir]
 //
+// The enemies drawn in M16 sheets outside the sprite manifest (the mendigo, scripts/inimigos-m16.mjs) are measured too.
+//
 // Without arguments: the table for every class with an M16 rest pose or a run. --sheet writes, per direction, rest × walk × run
 // side by side at the same scale (the game's), for the eye.
 import {createRequire} from 'node:module';
@@ -43,9 +45,14 @@ const CELL=96,SOLID=128;
 let sharpLib;
 const sharp=()=>sharpLib??=require('sharp');
 
-/** The sheet's cells as soft alpha (0..1), CELL × CELL each, in reading order. */
-export async function cells(file,frames){
-  const {data,info}=await sharp()(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+/**
+ * The sheet's cells as soft alpha (0..1), CELL × CELL each, in reading order. A sheet drawn in `src` px cells (the
+ * mendigo's 192, scripts/inimigos-m16.mjs) is scaled to CELL first, as the meter's tolerances are counted at 96.
+ */
+export async function cells(file,frames,src=CELL){
+  const img=sharp()(file).ensureAlpha();
+  if(src!==CELL)img.resize(Math.round((await sharp()(file).metadata()).width*CELL/src),null,{kernel:'lanczos3'});
+  const {data,info}=await img.raw().toBuffer({resolveWithObject:true});
   const cell=CELL,cols=Math.round(info.width/cell),out=[];
   for(let i=0;i<frames;i++){
     const x0=(i%cols)*cell,y0=Math.floor(i/cols)*cell,a=new Float32Array(cell*cell);
@@ -183,11 +190,11 @@ export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>O
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
  * (96/height per clip). Returns rows {dir, clip, frame, stance, head, headIou, height, torso, area} and per-clip summaries.
  */
-export async function measureClass(manifest,id,dir=SPRITES){
+export async function measureClass(manifest,id,dir=manifest.pieces?.[id]?.dir??SPRITES){
   const files=clipsOf(manifest,id),out={id,dirs:{}};
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
-    const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
+    const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1,idle.cell?.[0]),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
     // A breathing rest (card parado-respiracao-herois) stands up to ~4 % taller as it breathes in: the reference is its
     // lowest pose, breathed out, the pose the actions are drawn from (a held rest: all its poses are that one).
     const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
@@ -196,7 +203,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     for(const motion of ['idle','walk','run','push','pull','hurt','build','work']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
-      const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
+      const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames,clip.cell?.[0]),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
       const rows=frames.map((a,i)=>{
         const sh=shapes[i],head=headScale(rest0,r0,a,sh);
         const stance=motion!=='run'||!clip.phase||clip.phase.v[i].some(v=>v!==0);
@@ -278,7 +285,20 @@ export const PULL_MIN_HEIGHT=.78;
  * half a stride + mirror (the cooler box put back on his left hip), they change legs, but no 8-pose window of the image
  * tool's cycles ends where the mirror starts: the seam stays ~2× (the jump where the legs swap).
  */
-export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
+export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4,
+  // The mendigo's walk (card NEW-20261029-ORQ-mendigo-andar-poses, ORQ 29/10: fix by remount what remount fixes, the rest
+  // goes to card NEW-20261030-ORQ-mendigo-andar-regerar). S and N hold poses (the image tool drew the same pose 2-3 times),
+  // so the median step is small: the seam (S 0.084, N 0.145) is no bigger than the largest inner step (0.102, 0.169).
+  // E's last row is another drawing (dropping 0-2 frames still leaves ≥ 1.46×). Evidence: viagem-board/evidence/
+  // NEW-20261029-ORQ-mendigo-andar-poses/status.md.
+  'mendigo walk16-S':1.5,'mendigo walk16-N':3.2,'mendigo walk16-E':1.8});
+/**
+ * Clips whose head the template cannot read at all (every frame), checked by another measure instead. The mendigo's walk
+ * NW and NE (card NEW-20261029-ORQ-mendigo-andar-poses): the hood seen from behind at a diagonal reads 0.77-0.91 on a
+ * head the rest's size (the blue hood's box, medir-capuz.py: NW 62 / 61 px wide, NE 79 / 79, rest / walk); the template
+ * reads even the rest's own NW poses at 0.68-1.0. The height is still gated.
+ */
+export const HEAD_UNREAD_CLIPS=Object.freeze(['mendigo walk16-NW','mendigo walk16-NE']);
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
@@ -291,6 +311,7 @@ export function verdict(m,keys=GATED){
       if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys){
+      if(key==='head'&&HEAD_UNREAD_CLIPS.includes(`${m.id} ${motion}16-${d}`))continue;
       const seated=motion==='build'?BUILD_SEATED_MIN_HEIGHT[m.id]:undefined;
       const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:key==='height'&&seated!==undefined?1-seated:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
@@ -314,22 +335,22 @@ export function table(m){
 
 /** Rest, walk frame 0 and every run frame side by side at the game's scale (4×, nearest), one PNG per direction. */
 /** The lowest opaque row (alpha > 128) over the cells `frames` of a sheet. */
-async function feetRow(file,frames,cols){
-  const a=await cells(file,Math.max(...frames)+1);
+async function feetRow(file,frames,src){
+  const a=await cells(file,Math.max(...frames)+1,src);
   return Math.max(...frames.map(f=>shape(a[f]).bot+1));
 }
-export async function sheet(manifest,id,outDir,dir=SPRITES){
+export async function sheet(manifest,id,outDir,dir=manifest.pieces?.[id]?.dir??SPRITES){
   const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
     const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...['run','push','pull'].flatMap(m=>Array.from({length:files[`${m}16-${d}`]?.frames??0},(_,i)=>[m,i]))].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
     const comps=[];
     for(let k=0;k<list.length;k++){
-      const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);
-      const buf=await sharp()(path.join(dir,clip.file)).extract({left:(i%cols)*CELL,top:Math.floor(i/cols)*CELL,width:CELL,height:CELL}).resize(size,size,{kernel:'nearest'}).png().toBuffer();
+      const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height),src=clip.cell?.[0]??CELL;
+      const buf=await sharp()(path.join(dir,clip.file)).extract({left:(i%cols)*src,top:Math.floor(i/cols)*src,width:src,height:src}).resize(size,size,{kernel:src===CELL?'nearest':'lanczos3'}).png().toBuffer();
       // same feet line: the clip's feet row (its lowest opaque row; a run's lowest over its poses, as hero-feet.mjs) on
       // the slot's 0.875 (an R06 rest stands above its anchor row)
-      const feet=(feetOf[clip.file]??=await feetRow(path.join(dir,clip.file),motion==='idle'?[i]:Array.from({length:clip.frames},(_,f)=>f),cols));
+      const feet=(feetOf[clip.file]??=await feetRow(path.join(dir,clip.file),motion==='idle'?[i]:Array.from({length:clip.frames},(_,f)=>f),clip.cell?.[0]));
       const slot=S,left=(k%6)*slot+Math.round((slot-size)/2),top=Math.floor(k/6)*slot+Math.round(slot*.875-feet*size/CELL);
       comps.push({input:buf,left:Math.max(0,left),top:Math.max(0,top)});
     }
@@ -340,7 +361,8 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const arg=k=>{const i=process.argv.indexOf(k);return i>0?process.argv[i+1]:undefined;};
-  const manifest=JSON.parse(fs.readFileSync(path.join(SPRITES,'manifest.json'),'utf8'));
+  const {withEnemies}=await import('./inimigos-m16.mjs');
+  const manifest=withEnemies(JSON.parse(fs.readFileSync(path.join(SPRITES,'manifest.json'),'utf8')));
   const ids=arg('--ids')?.split(',')??measuredClasses(manifest);
   const all=[];
   for(const id of ids){

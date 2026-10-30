@@ -8,11 +8,16 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {BUILD_SEATED_MIN_HEIGHT,GATED,HEAD_UNREAD_FRAMES,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,SEAM_MAX_BY_CLIP,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {BUILD_SEATED_MIN_HEIGHT,GATED,HEAD_UNREAD_CLIPS,HEAD_UNREAD_FRAMES,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,SEAM_MAX_BY_CLIP,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
-const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
+// @ts-expect-error plain ESM script without types
+import {withEnemies} from '../../scripts/inimigos-m16.mjs';
+
+// The heroes' manifest plus the enemies drawn in M16 sheets (the mendigo, card NEW-20261029-ORQ-mendigo-andar-poses).
+const manifest=withEnemies(JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8')));
 const sharp=createRequire(import.meta.url)('sharp');
 const classes:string[]=measuredClasses(manifest);
+assert.ok(classes.includes('mendigo'),'the mendigo walks: its walk is measured against its idle16');
 assert.ok(classes.includes('clt-cansado'),'the CLT runs (corrida-clt): its run is measured against its idle8');
 /**
  * Walks drawn before this gate (movimento16-espelho, 21/10) that miss it. The walk only shows with HERO_GAIT.run off: the
@@ -52,7 +57,7 @@ for(const id of classes)test(`${id}: every run pose at the rest pose's head (±$
   assert.deepEqual(walk,[...KNOWN_WALK[id]??[]],`${id} walk16 (KNOWN_WALK):\n${walk.join('\n')}`);
   for(const [d,e] of Object.entries(m.dirs) as [string,{clips:Record<string,{frames:{headIou:number}[]}>}][])
     for(const [motion,c] of Object.entries(e.clips))if(motion!=='idle')
-      assert.ok(c.frames.every((f,i)=>f.headIou>.8||(HEAD_UNREAD_FRAMES as Record<string,number[]>)[`${id} ${motion}16-${d}`]?.includes(i)),`${id} ${motion}16-${d}: the head fit holds (IoU > 0.8)`);
+      if(!HEAD_UNREAD_CLIPS.includes(`${id} ${motion}16-${d}`))assert.ok(c.frames.every((f,i)=>f.headIou>.8||(HEAD_UNREAD_FRAMES as Record<string,number[]>)[`${id} ${motion}16-${d}`]?.includes(i)),`${id} ${motion}16-${d}: the head fit holds (IoU > 0.8)`);
   assert.deepEqual(GATED,['head','height']);
 });
 
@@ -99,6 +104,13 @@ test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gat
 });
 
 // Card BUG-20261025-ORQ-vendedor-push-pull-sn: a seam over SEAM_MAX only for these clips, with the reason in proporcao.mjs.
-test('loop seams accepted over SEAM_MAX: only the vendedor push N and pull S (the leg change, half a stride + mirror)',()=>{
-  assert.deepEqual(SEAM_MAX_BY_CLIP,{'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
+test('loop seams accepted over SEAM_MAX: the vendedor push N and pull S (the leg change), the mendigo walk S/N/E (held poses, regerar)',()=>{
+  assert.deepEqual(SEAM_MAX_BY_CLIP,{'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4,
+    'mendigo walk16-S':1.5,'mendigo walk16-N':3.2,'mendigo walk16-E':1.8});
+});
+// Card NEW-20261029-ORQ-mendigo-andar-poses: the head left to another measure (medir-capuz.py) only for these clips.
+test('clips whose head the template cannot read: only the mendigo walk NW and NE, the height still gated',()=>{
+  assert.deepEqual(HEAD_UNREAD_CLIPS,['mendigo walk16-NW','mendigo walk16-NE']);
+  const c={scale:1,frames:[],head:.77,height:1.1,torso:1,area:1};
+  assert.deepEqual(verdict({id:'mendigo',dirs:{NE:{rest:{},restKey:'idle16',clips:{walk:c}}}}),['mendigo walk16-NE height 1.1 (±4%)']);
 });

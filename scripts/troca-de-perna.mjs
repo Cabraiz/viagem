@@ -9,6 +9,7 @@
 // checked by eye on their marked sources and listed by file (the name carries the bytes' hash) in troca-de-perna.json.
 //
 //   node scripts/troca-de-perna.mjs [--ids viciado-em-bet,clt-cansado]     the S/N table of every looping gait
+//                                                                          (the mendigo's too: scripts/inimigos-m16.mjs)
 import {createRequire} from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -84,7 +85,7 @@ export function gaitClips(manifest,ids){
     for(const [key,f] of Object.entries(piece.files??{})){
       const m=GAIT.exec(key);if(!m||f.loop===false)continue;
       const page=f.pages?.[0],cell=f.cell?.[0];if(!page||!cell)continue;
-      out.push({id,key,motion:m[1],direction:m[2],file:page.file,frames:f.frames,cell,pivotX:f.pivotX??cell/2});
+      out.push({id,key,motion:m[1],direction:m[2],file:page.file,frames:f.frames,cell,pivotX:f.pivotX??cell/2,dir:piece.dir??SPRITES});
     }
   }
   return out;
@@ -93,7 +94,7 @@ export function gaitClips(manifest,ids){
 /** Measures one clip: the S/N mirror test (side and diagonal: undefined, they go by the reviewed list). */
 export async function measureClip(clip){
   if(clip.direction!=='S'&&clip.direction!=='N')return undefined;
-  const fr=await frames(path.join(SPRITES,clip.file),clip.frames,clip.cell),legs=LEGS_BY_CLASS[clip.id]??LEGS;
+  const fr=await frames(path.join(clip.dir??SPRITES,clip.file),clip.frames,clip.cell),legs=LEGS_BY_CLASS[clip.id]??LEGS;
   // Half a pixel either way (card auditoria-troca-perna): a 2nd half made by mirroring the 1st across the cell (the S/N
   // push and pull, "meia passada + espelho") turns about column 47.5, which round(2·48 − x) never hits (0.93 → 0).
   return [0,-.5,.5].map(o=>mirrorTest(fr,clip.cell,clip.pivotX+o,legs)).reduce((a,b)=>b.ratio<a.ratio?b:a);
@@ -128,6 +129,8 @@ export function evenFlights(phase){
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const i=process.argv.indexOf('--ids'),ids=i>0?process.argv[i+1].split(','):undefined;
   const manifest=JSON.parse(fs.readFileSync(path.join(SPRITES,'manifest.json'),'utf8'));
+  // the enemies drawn in M16 sheets outside the manifest (the mendigo) join the S/N table; --fase rewrites the manifest only
+  const {withEnemies}=await import('./inimigos-m16.mjs'),gaits=withEnemies(manifest);
   // --fase: rewrites the run16 phase tables whose poses without a planted foot do not share the stride evenly.
   if(process.argv.includes('--fase')){
     const {GROUPS}=await import('./art-v2/spec.mjs'),{writeIndex}=await import('./art-v2/convert.mjs');let fixed=0;
@@ -139,7 +142,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
 `);await writeIndex({personagens:GROUPS.personagens},{outRoot:ROOT});}
     process.exit(0);
   }
-  for(const clip of gaitClips(manifest,ids)){
+  for(const clip of gaitClips(gaits,ids)){
     const m=await measureClip(clip);if(!m)continue;
     console.log(`${clip.id} ${clip.key}`.padEnd(34),'same',String(m.same).padStart(7),'mirror',String(m.mirror).padStart(7),'ratio',String(m.ratio).padStart(5),m.ratio<=MIRROR_MAX?'alterna':'NÃO alterna');
   }

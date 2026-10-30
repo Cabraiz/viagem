@@ -7,7 +7,11 @@ import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
 import {FLIGHT_SPREAD_MAX,LEGS_BY_CLASS,MIRROR_MAX,evenFlights,flightSpread,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
 
-const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
+// @ts-expect-error plain ESM script without types
+import {withEnemies} from '../../scripts/inimigos-m16.mjs';
+
+// The heroes' manifest plus the enemies drawn in M16 sheets (the mendigo, card NEW-20261029-ORQ-mendigo-andar-poses).
+const manifest=withEnemies(JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8')));
 /**
  * Side and diagonal sheets checked by eye on their marked sources (no 2D test): file → verdict and proof. The side view
  * (W, mirrored to E) changes legs too: no more 'perfil' (user, 23/10: "trocar com looping", card
@@ -18,11 +22,14 @@ const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFile
  * S/N gaits that keep one leg in front, drawn before this gate. None is shown in a run: the heroes that run (viciado,
  * CLT) show run16; the walks are the bots' (R06, card of the bots) and the heroes' walk with HERO_GAIT.run off. A
  * fixed one leaves the list (the test asks for that), a new one fails. The ten bots' walk128-S/N left it on 27/10 (card
- * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror).
+ * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror). The mendigo's walk16-S/N (the image
+ * tool's cycle: pose i+8 repeats pose i, N limps with the feet side by side half the cycle) goes to card
+ * NEW-20261030-ORQ-mendigo-andar-regerar (half a stride + mirror, the dummy for the sides).
  */
 const KNOWN_SN=new Set([
   'clt-cansado walk128-N','clt-cansado walk128-S','maromba walk128-N','maromba walk128-S',
   'viciado-em-bet walk128-N','viciado-em-bet walk128-S','viciado-em-bet walk16-N','viciado-em-bet walk16-S',
+  'mendigo walk16-N','mendigo walk16-S',
 ]);
 
 /** Two legs (left 2 px wide, right 4 px wide) under a body, the front one longer: a 24 px cell, pivot at 12. */

@@ -163,15 +163,15 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   assert.ok(Math.abs(pc.x-(ox+953*s))<1e-9&&Math.abs(pc.y-23*s)<1e-9&&Math.abs(pc.h-1058*s)<1e-9);
   assert.equal(placeCutout({w:0,h:0},STADIUM.wide,cut),undefined);
   // celular-deitado-foto (the user, 23/10): every landscape screen, the PC and the phone on its side, shows his picture;
-  // only the phone held upright keeps the dance. The dance is held while he stands.
+  // menu-sem-danca: no screen dances on the menu, the hero stands still (the dance is only in the match).
   assert.equal(CUTOUT_QUERY,'(orientation: landscape)');
   assert.equal(PC_QUERY,'(orientation: landscape) and (min-height: 521px)');
   assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`)&&css.includes(`@media ${PC_QUERY} {`),'the CSS and main.ts agree on what a PC is');
   assert.ok(css.includes(`@media (max-height: ${SHORT_MAX_H}px) and (orientation: landscape) {`),'the phone on its side: columnRight measures its column');
   assert.match(main,/const cut=cutoutScreen\.matches\?cutoutOf\(selected\.id\):undefined;/);
-  assert.match(main,/if\(spot&&!cutoutHold\) cutoutHold=menuDance\.hold\(\);/);
+  assert.doesNotMatch(main,/menuDance|cutoutHold|dance-pending/);
   // selecao-mobile-instagram: the phone upright shows the profile instead of the portrait (tests/client/insta.test.ts).
-  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n[^\n]*\n\s*if\(instaScreen\.matches\) renderInsta\(\); else showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
+  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n[^\n]*\n\s*if\(instaScreen\.matches\) renderInsta\(\); else showPortrait\(selected,announce\);/,'the cutout before the portrait: no portrait downloaded for nothing');
   assert.ok(css.includes('.estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }'));
   // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
@@ -332,9 +332,9 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\)" \/>/);
-  // No landscape screen preloads the plain stadium (the bleed shows there) nor the dance (his picture shows there).
+  // No landscape screen preloads the plain stadium (the bleed shows there); no screen preloads a menu dance (menu-sem-danca).
   for(const m of html.matchAll(/<link rel="preload" href="\/art\/ui-extra\/estadio-(?:1920|1280)\.webp"[^>]*media="([^"]*)"/g))assert.ok(!m[1].includes('landscape')&&!m[1].includes('max-height'),m[1]);
-  assert.ok(html.includes("matchMedia('(orientation: landscape)').matches||"),'the dance preload skips landscape');
+  assert.ok(!html.includes('/menu/danca'),'no menu dance preload');
 });
 
 test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 9% under the top (menu-folga-topo), his feet on the bar',()=>{

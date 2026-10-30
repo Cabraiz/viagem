@@ -9,7 +9,7 @@
  *   how much into the bill, carteira-e-pix: ObjectiveResult.share).
  * Every number comes from the room's view (protocol 15); nothing here decides the game.
  */
-import {CIDA_ITEMS,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView,type VaquinhaShare} from '../../contract/index.ts';
+import {CIDA_ITEMS,SIM_HZ,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView,type VaquinhaShare} from '../../contract/index.ts';
 
 /** Dona Cida sells within this many units of the moto (mirrors the sim's CIDA_REACH; tests/client/chaveiro-hud pins it). */
 export const CIDA_REACH_U=3;
@@ -86,6 +86,98 @@ export class MotoReason {
     return {drop:!!was&&!!MOTO_REASONS[was]&&!MOTO_ACTIONS[was]};
   }
   reset(){this.mode=undefined;}
+}
+
+/**
+ * Card chaveiro-chegou-e-relogio (auditoria fim-de-partida, item 3): the clock "lies" when the moto stops (it falls
+ * 10–40 s per real minute and nobody knows why). While he is stopped, the clock wears the stop's colour and says how
+ * much the stop has added so far ("Moto tombou: +4 s"). Only the HUD: the ETA is the room's, untouched.
+ */
+export const CLOCK_STOPS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
+  tombo:'Moto tombou',morta:'Moto morta',lombada:'Lombada',volta:'Deu a volta',entrega:'Entregando',
+});
+/** The added time shows once it reaches this (s): the ETA comes in whole seconds, one is rounding noise. */
+export const CLOCK_ADDED_MIN_S=2;
+/** After he rides again, the last "+N s" stays this long (s) so it can be read. */
+export const CLOCK_ADDED_HOLD_S=3;
+export interface ClockStop {mode:MotoMode;label:string;text:string;added:number;urgent:boolean}
+/**
+ * The time a stop adds: from the tick he stopped, the clock should have fallen one second per second; what it did not
+ * fall (or rose) is the stop's. Fed every view with the moto's mode, the ETA and the tick; undefined: nothing to say.
+ */
+export class ClockStopTracker {
+  private start?:{mode:MotoMode;etaS:number;tick:number};
+  private shown?:ClockStop;private until=-1;
+  step(mode:MotoMode|undefined,etaS:number,tick:number):ClockStop|undefined{
+    const label=mode&&CLOCK_STOPS[mode];
+    if(!label||!mode){
+      this.start=undefined;
+      if(mode===undefined||mode==='abrindo'){this.shown=undefined;return undefined;}
+      return this.shown&&tick<=this.until?this.shown:(this.shown=undefined);
+    }
+    if(this.start?.mode!==mode||tick<this.start.tick)this.start={mode,etaS,tick};
+    const added=Math.floor(etaS-(this.start.etaS-(tick-this.start.tick)/SIM_HZ));
+    if(added>=CLOCK_ADDED_MIN_S){
+      this.shown={mode,label,text:`${label}: +${added} s`,added,urgent:reasonUrgent(mode)};
+      this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
+    }
+    return this.shown&&(this.shown.mode===mode||tick<=this.until)?this.shown:undefined;
+  }
+  reset(){this.start=this.shown=undefined;this.until=-1;}
+}
+
+/** Card missao-proteger-uno-tempo: the clock's say when an enemy's hit on the Uno pushed the unlocking back. */
+export const CLOCK_HIT_LABEL='Batida no Uno';
+/**
+ * Each hit on the Uno adds time to the run's clock (the sim's CHAVEIRO_CLOCK): the clock says how much ("Batida no
+ * Uno: +3 s"). A burst of hits within CLOCK_ADDED_HOLD_S adds into one number, from the clock before its first hit.
+ * Fed every view with the mode, the ETA, the tick and the car's hits; a stop mode is ClockStopTracker's, not this.
+ */
+export class ClockHitTracker {
+  private last?:{etaS:number;tick:number;hits:number};
+  private base?:{etaS:number;tick:number};
+  private shown?:ClockStop;private until=-1;
+  step(mode:MotoMode|undefined,etaS:number,tick:number,hits:number):ClockStop|undefined{
+    const last=this.last;this.last={etaS,tick,hits};
+    if(!last||tick<last.tick||!mode||CLOCK_STOPS[mode]){this.base=this.shown=undefined;return undefined;}
+    if(hits>last.hits){
+      if(!this.base||tick>this.until)this.base={etaS:last.etaS,tick:last.tick};
+      const added=Math.round(etaS-(this.base.etaS-(tick-this.base.tick)/SIM_HZ));
+      if(added>=1){
+        this.shown={mode,label:CLOCK_HIT_LABEL,text:`${CLOCK_HIT_LABEL}: +${added} s`,added,urgent:true};
+        this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
+      }
+    }
+    return this.shown&&tick<=this.until?this.shown:(this.shown=this.base=undefined);
+  }
+  reset(){this.last=this.base=this.shown=undefined;this.until=-1;}
+}
+/**
+ * What the clock says next to it, from both trackers: a stop's "+N s" first, else a hit's on the Uno. Fed every view
+ * with the live objective (undefined: none, ended, or held by the chefão: nothing, and both start over).
+ * The round chip (topbar.ts) and the phone's bar clock (camp.ts) each keep one.
+ */
+export class ClockTag {
+  private stops=new ClockStopTracker();private hits=new ClockHitTracker();
+  step(objective:Pick<ObjectiveView,'moto'|'etaS'|'car'>|undefined,tick:number):ClockStop|undefined{
+    if(!objective){this.stops.reset();this.hits.reset();return undefined;}
+    const stopped=this.stops.step(objective.moto.mode,objective.etaS,tick),hit=this.hits.step(objective.moto.mode,objective.etaS,tick,objective.car.hits);
+    return stopped||hit||undefined;
+  }
+}
+
+/**
+ * Card chaveiro-chegou-e-relogio (item 4): "chegou" is a moment. While he opens the car ('abrindo', ABRINDO_SECONDS in
+ * the sim) a big band says so with the seconds left and a bar filling up; victory comes when it is full.
+ */
+export const ARRIVAL_SECONDS=15;
+export interface ArrivalBand {title:string;hold:string;seconds:number;fraction:number;aria:string}
+export function arrivalBand(objective:Pick<ObjectiveView,'etaS'|'moto'>|undefined):ArrivalBand|undefined{
+  if(objective?.moto.mode!=='abrindo')return undefined;
+  const seconds=Math.max(0,Math.min(ARRIVAL_SECONDS,Math.ceil(Number.isFinite(objective.etaS)?objective.etaS:0)));
+  const fraction=Math.max(0,Math.min(1,1-objective.etaS/ARRIVAL_SECONDS));
+  return {title:'O chaveiro chegou!',hold:`Segurem ${seconds} s`,seconds,fraction:Number.isFinite(fraction)?fraction:0,
+    aria:`O chaveiro chegou! Segurem o carro mais ${seconds} segundos`};
 }
 
 /** The car's bar of the base ficha (in place of the wall's life): hits it still takes over the limit. */

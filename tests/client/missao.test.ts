@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SIM_HZ} from '../../src/contract/index.ts';
-import {DARK_PRESS,DEFEND_LATE_S,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,ORDER_GAP_S,RETURN_SECONDS,TOWERS_MAX_S,UNO_LEAVE_U,UNO_NEAR_U,missionFacts} from '../../src/client/hud/missao.ts';
+import {DARK_PRESS,DEFEND_LATE_S,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,ORDER_GAP_S,ROTATE_S,RETURN_SECONDS,TOWERS_MAX_S,UNO_LEAVE_U,UNO_NEAR_U,missionFacts} from '../../src/client/hud/missao.ts';
 import {MOTO_ACTIONS} from '../../src/client/hud/chaveiro.ts';
 import {missionKeys,nestKey,nestTarget,shownTargets} from '../../src/client/hud/arrows.ts';
 
@@ -146,13 +146,13 @@ test('the moto stopped for the team: a verb and the moto\'s arrow; the reason ro
   for(const text of Object.values(MOTO_ACTIONS))assert.ok(text!.length<=31,text);
 });
 
-test('the nests mode out of a window: "Derrube os ninhos (5)" with the nearest nest\'s arrow; none standing, no line',()=>{
+test('the nests mode out of a window: "Opcional: derrube ninhos (5)" (calm) with the nearest nest\'s arrow; none standing, no line',()=>{
   const m=new MissionTracker(),nearest={id:'ninho-3',x:4,y:5};
   const out=m.step({tick:START,towerKit:false,playing:true,facts:{nests:{alive:5,nearest}}});
-  assert.deepEqual(out.line,{key:'ninhos',text:'Derrube os ninhos (5)',big:true,urgent:false});
+  assert.deepEqual(out.line,{key:'ninhos',text:'Opcional: derrube ninhos (5)',big:false,urgent:false});
   assert.deepEqual(out.arrow,{kind:'ninho',...nearest});
   assert.equal(out.pointUno,false);
-  assert.equal(m.step({tick:START+s(5),towerKit:false,playing:true,facts:{nests:{alive:4,nearest}}}).line?.text,'Derrube os ninhos (4)');
+  assert.equal(m.step({tick:START+s(5),towerKit:false,playing:true,facts:{nests:{alive:4,nearest}}}).line?.text,'Opcional: derrube ninhos (4)');
   assert.equal(m.step({tick:START+s(6),towerKit:false,playing:true,facts:{nests:{alive:0}}}).line,undefined);
   // The moto outranks the nests, once the gap opens (the nests line holds until then).
   assert.equal(m.step({tick:START+s(7),towerKit:false,playing:true,facts:{nests:{alive:3},moto:'morta'}}).line?.key,'ninhos');
@@ -194,7 +194,7 @@ test('the gap: the nests count changing is the same order (no new band, the gap 
   const m=new MissionTracker(),at=(tick:number,alive:number)=>m.step({tick,towerKit:false,playing:true,facts:{nests:{alive}}});
   at(START,5);
   const four=at(START+s(6),4);
-  assert.equal(four.line?.text,'Derrube os ninhos (4)');assert.equal(four.line?.big,false);
+  assert.equal(four.line?.text,'Opcional: derrube ninhos (4)');assert.equal(four.line?.big,false);
   assert.equal(m.orderAge(START+s(6)),s(6));
 });
 
@@ -246,4 +246,21 @@ test('the first 3 minutes solo: from seven orders to one every 30 s at most',()=
   for(let i=1;i<lines.length;i++)assert.ok(lines[i]!.t-lines[i-1]!.t>=ORDER_GAP_S,JSON.stringify(lines));
   assert.equal(lines[0]!.text,MISSION_TEXT.minerva);
   if(process.env.LINHA_DO_TEMPO)console.log(JSON.stringify(lines));
+});
+
+// Card missao-proteger-uno-tempo (the user 29/10: the nests are NOT needed to win).
+test("the objective: 'Proteja o Uno até o chaveiro' (calm, the Uno's arrow), in turns with the optional nests",()=>{
+  const m=new MissionTracker(),at=(tick:number,facts:Facts)=>m.step({tick,towerKit:false,playing:true,facts});
+  const turn=s(ROTATE_S),t0=2*turn;
+  const first=at(t0,{moto:'anda',nests:{alive:5,nearest:{id:'n1',x:1,y:1}}});
+  assert.deepEqual(first.line,{key:'proteja',text:'Proteja o Uno até o chaveiro',big:false,urgent:false});
+  assert.deepEqual(first.arrow,{kind:'uno',urgent:false});
+  const nests=at(t0+turn,{moto:'anda',nests:{alive:5,nearest:{id:'n1',x:1,y:1}}});
+  assert.equal(nests.line?.text,'Opcional: derrube ninhos (5)');assert.equal(nests.line?.big,false);assert.equal(nests.arrow?.kind,'ninho');
+  assert.equal(at(t0+2*turn,{moto:'anda',nests:{alive:4}}).line?.key,'proteja');
+  // No nest standing: the Uno's line only.
+  assert.equal(at(t0+3*turn,{moto:'anda',nests:{alive:0}}).line?.key,'proteja');
+  // The moto stopped for the team still outranks it (the gap open).
+  assert.equal(at(t0+4*turn,{moto:'tombo',nests:{alive:4}}).line?.key,'moto');
+  assert.ok(MISSION_TEXT.proteja.length<=31);
 });

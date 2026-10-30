@@ -9,7 +9,7 @@ import {
   DICT,FrameDecoder,FrameEncoder,FrameError,dictIndexWire,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
-import {KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
+import {ELITE_ONLY,KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
 setRosterOnlyWithArt(false);
@@ -699,8 +699,9 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
   assert.ok(ROTATION_CAST.length>=90&&new Set(ROTATION_CAST).size>=10,'a varied rotation horde');
   assert.ok(ROTATION_CAST.every(k=>DICT.includes(k)));
   // Representative: a rotation draws P1/P2 only when a role runs out of P0 entries, which no rotation does today, so a
-  // run's kinds always travel as dictionary bytes (the P1/P2 ids inline only appear in sandboxes).
-  for(let seed=0;seed<200;seed++)for(const id of rotationIds(drawRotation(new Rng(seed))))assert.ok(DICT.includes(id),`seed ${seed}: ${id}`);
+  // run's kinds always travel as dictionary bytes (the P1/P2 ids inline only appear in sandboxes). The one exception is
+  // the elite-only aberração (ELITE_ONLY, P1): a single round-5 elite inline costs its id's bytes once per full frame.
+  for(let seed=0;seed<200;seed++)for(const id of rotationIds(drawRotation(new Rng(seed))))assert.ok(DICT.includes(id)||ELITE_ONLY.includes(id),`seed ${seed}: ${id}`);
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const [together,apart,legacy]=[
     withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
@@ -727,13 +728,13 @@ test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 
   assert.equal(DICT.indexOf('tiro'),96);
   // The P0 pack entries come in roster order right after 'tiro'; the nine legacy kinds were in the DICT already.
   const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0').map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
-  assert.equal(ROSTER.filter(e=>!e.legacy).length,164);assert.equal(p0.length,64);
+  assert.equal(ROSTER.filter(e=>!e.legacy&&e.pack<=4).length,164);assert.equal(p0.length,64);
   assert.deepEqual(DICT.slice(97,161),p0);
   // The new strings are unique, in the whole DICT too ('heal' is the one protocol-6 duplicate, never a roster id).
   for(const s of DICT.slice(96,161))assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   for(const e of ROSTER)if(e.priority==='P0')assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
   for(const e of ROSTER)assert.equal(DICT.includes(e.id),e.priority==='P0',`${e.id} (${e.priority})`);
-  assert.equal(inline.length,100,'the 71 P1 and 29 P2 ids travel inline');
+  assert.equal(inline.length,101,'the 71 P1 and 29 P2 pack ids and the elite-only saci (P1, extra) travel inline');
   // One byte where it travels (enemy kind, kill and downed events) and the generic shot as a projectile source.
   const frame=(kind:string,source='boleto')=>{
     const v=busyWorld(new Rng(2),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;v.projectiles=[{...v.projectiles[0],source}];

@@ -15,6 +15,7 @@ import {writeFile} from 'node:fs/promises';
 import {FrameDecoder,PROTOCOL_VERSION} from '../src/protocol/protocol4.ts';
 import {clientCatalog} from '../src/protocol/map-catalog.ts';
 import {isMapId,readMapRef} from '../src/protocol/map-select.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 const argv=process.argv.slice(2),mapAt=argv.indexOf('--map'),wantMap=mapAt>=0?argv[mapAt+1]:undefined;
 if(mapAt>=0&&!isMapId(wantMap))throw new Error(`--map takes infinito or cidade-nevada, not ${wantMap}.`);
 const args=argv.filter((a,i)=>a!=='--lab'&&!(mapAt>=0&&(i===mapAt||i===mapAt+1))),labMode=argv.includes('--lab');
@@ -30,7 +31,7 @@ async function create(){const r=await fetch(`${endpoint}/rooms`,{method:'POST',h
 function connect(code,name,token){
   const url=new URL(`/room/${code}`,endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
   const p={ws:new WebSocket(url,{origin}),dec:new FrameDecoder(),players:new Map(),enemies:new Map(),bytes:0,seq:0,code,decodeErrors:0,results:[],offersAnswers:0,notices:[]};peers.push(p);
-  p.ws.on('open',()=>p.ws.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION,name,classId:'cidadao-comum',maps,...(token?{token}:{})})));
+  p.ws.on('open',()=>p.ws.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION,name,classId:PERSONAGEM_PADRAO,maps,...(token?{token}:{})})));
   p.ws.on('error',e=>{p.error=e.message;});p.ws.on('close',(code)=>{p.closed=code;});
   p.ws.on('message',(data,binary)=>{
     p.bytes+=data.length;
@@ -69,12 +70,12 @@ try{
     await until(()=>group.every(p=>p.players.size===6),'six on the new map');
     checks.push(`the owner switched the room to ${wantMap}, all six got the same {t:"map"}`);
   }
-  // The class kit's max hp as the room said it right after the welcome (cidadao-comum: 110), before any forged input.
+  // The class kit's max hp as the room said it right after the welcome (the default released hero's), before any forged input.
   const startMaxHp=group[0].players.get(group[0].id).maxHp;assert.ok(startMaxHp>0);
   assert.ok(group[0].world?.signature);for(const p of group)assert.deepEqual(p.world,group[0].world);checks.push('all six receive identical world descriptor (seed, versions, signature)');
   const seventh=connect(code,'Seventh');await until(()=>seventh.error,'seventh rejected');assert.match(seventh.error,/cheia/);checks.push('seventh player rejected');
   const old=new WebSocket(Object.assign(new URL(`/room/${code}`,endpoint),{protocol:endpoint.startsWith('https')?'wss:':'ws:'}),{origin});
-  const oldAnswer=await new Promise(resolve=>{old.on('open',()=>old.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION-1,name:'Velho',classId:'cidadao-comum'})));old.on('message',(d,b)=>{if(!b)resolve(JSON.parse(d));});old.on('close',c=>resolve({closed:c}));});
+  const oldAnswer=await new Promise(resolve=>{old.on('open',()=>old.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION-1,name:'Velho',classId:PERSONAGEM_PADRAO})));old.on('message',(d,b)=>{if(!b)resolve(JSON.parse(d));});old.on('close',c=>resolve({closed:c}));});
   assert.equal(oldAnswer.t,'error');checks.push(`a protocol ${PROTOCOL_VERSION-1} tab is refused with a readable message`);
   const isolated=connect(await create(),'Separate');await until(()=>isolated.id&&isolated.players.size===1,'isolated joined');assert.equal(group[0].players.has(isolated.id),false);checks.push('separate room isolated');
   for(const p of group)p.ws.send(JSON.stringify({t:'ready',round:p.run.round,ready:true}));

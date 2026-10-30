@@ -115,7 +115,7 @@ test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map
 }));
 
 test('the time to explore (inicio-no-uno-caixas-120): a wave over (no besieger up) opens NEST_PACE.explore s, at least waveMin s after it left, and the next wave leaves at its end; a wave never holds it past waveCap',()=>rawPace(()=>{
-  assert.deepEqual([NEST_PACE.explore,NEST_PACE.waveMin,NEST_PACE.waveCap],[120,20,150]);
+  assert.deepEqual([NEST_PACE.explore,NEST_PACE.waveMin,NEST_PACE.waveCap],[30,20,150]);
   const r=rig();
   r.world.step();
   const first=r.nests.state.nextWave!;
@@ -364,6 +364,8 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   const spot=a.sys.nests!.bossSpot()!;
   assert.ok(spot);
   const m=a.sys.chaveiro!.state.moto;m.stop=a.sys.chaveiro!.stops.length;m.task='anda';m.s=a.sys.chaveiro!.route.length-.01;
+  // missao-proteger-uno-tempo: the clock ran out too (mode 'ninhos' waits on it before the last stretch).
+  a.sys.chaveiro!.state.wait=0;
   stepRun(a,3);
   const boss=[...a.world.enemies.values()].find(e=>e.boss);
   assert.ok(boss,'called');
@@ -372,7 +374,7 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   assert.equal(off.sys.nests,undefined);assert.equal('ninhos' in off.sys.state(),false);
 });
 
-test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
+test('the minuto de Minerva: for 30 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
   const saved=NEST_PACE.minerva;NEST_PACE.minerva=MINERVA_S;
   try{
     const a=assembled(11,new Map());
@@ -380,8 +382,8 @@ test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and 
     addPlayer(a.world,'far',{x:car.x+1.5,y:car.y});
     stepRun(a);
     const nests=a.sys.nests!,sono=a.sys.sono()!,start=nests.state.startTick!;
-    assert.equal(MINERVA_S,120,'inicio-no-uno-caixas-120');
-    assert.equal(nests.state.minervaUntil,start+ticks(120));
+    assert.equal(MINERVA_S,30,'missao-proteger-uno-tempo');
+    assert.equal(nests.state.minervaUntil,start+ticks(30));
     assert.ok(nests.state.nextWave!>=nests.state.minervaUntil!+ticks(NEST_PACE.first[0]),'the first wave counts from its end');
     // A hero 3 u from a sleeper (inside WAKE_SIGHT, outside MINERVA_REACH): it sleeps on.
     const loose=sono.bodies.find(b=>b.nest===undefined&&b.band!==undefined)!;

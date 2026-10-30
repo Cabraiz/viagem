@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,enemyArtShadow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -30,7 +30,7 @@ import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
-import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
+import {castContact,castSheetShadow,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
 import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
@@ -941,11 +941,15 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
+    // An art with its own cast shadow (horde-art.ts enemyArtShadow: the saci's sheet) lays that frame instead, with no
+    // contact shadow: the artist's shadow already meets the foot.
+    const sheet=enemyArtShadow(a.image);
+    if(sheet)castSheetShadow(a.sil,a.image,sheet,q.x+dx,q.y-lift,true);
+    else castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;
-    a.contactW=flying?0:contactWidth(feet,a.asleep,feet?Math.abs(a.image.frame.width*a.image.scaleX):0,kindW);
+    a.contactW=flying||sheet?0:contactWidth(feet,a.asleep,feet?Math.abs(a.image.frame.width*a.image.scaleX):0,kindW);
     castContact(a.contact,a.image,q.x,q.y,a.contactW,true);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);

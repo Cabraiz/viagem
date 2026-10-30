@@ -94,6 +94,8 @@ export function hitPop(ms:number,reduced:boolean):{rise:number;alpha:number}|und
   const t=ms/HIT_POP_MS;
   return {rise:reduced?0:28*(1-(1-t)*(1-t)),alpha:t<.6?1:1-(t-.6)/.4};
 }
+/** A hit pop's text: the hits ("-1") and, when they added to the clock, the seconds ("-1 +3 s"). */
+export const hitPopText=(amount:number,seconds=0)=>`-${Math.max(1,Math.round(amount))}${seconds>=1?` +${Math.round(seconds)} s`:''}`;
 /** Whether the car shows its hit flash at `ms` after the last hit (never with reduced effects: no blinking). */
 export const hitFlash=(ms:number|undefined,reduced:boolean)=>!reduced&&ms!==undefined&&ms>=0&&ms<HIT_FLASH_MS;
 /** The share of hits the car still takes (1 untouched, 0 wrecked). */

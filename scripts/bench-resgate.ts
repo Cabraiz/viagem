@@ -15,6 +15,7 @@ import {walkable,worldBase} from '../src/maps/world.ts';
 import {readFileSync} from 'node:fs';
 import {clientCatalog} from '../src/protocol/map-catalog.ts';
 import {readMapRef} from '../src/protocol/map-select.ts';
+import {HEROI_PADRAO} from './elenco-ativo.ts';
 
 /** join.maps of a current build (D-026): the endless map and the city of this checkout's manifest. */
 const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
@@ -31,7 +32,7 @@ function run(seed:number,policy:Policy){
   for(let i=0;i<6;i++){
     const messages:any[]=[];
     const peer={messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};
-    room.connect(peer,now);room.receive(peer,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:`Bot ${i}`,classId:'cidadao-comum',maps}),now);
+    room.connect(peer,now);room.receive(peer,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:`Bot ${i}`,classId:HEROI_PADRAO,maps}),now);
     bots.push({peer,id:messages.find(m=>m.t==='welcome').id,seq:0,until:0});
   }
   const send=(b:Bot,m:object)=>room.receive(b.peer,JSON.stringify(m),now);

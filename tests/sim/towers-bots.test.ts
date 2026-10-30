@@ -239,9 +239,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(6,3,6);
+  const a=cityRun(2,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 6, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 2, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -265,11 +265,13 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line. Seed 6 since so-3-inimigos (only the mendigo horde in the
   // rotation): seeds 1, 2, 3, 6, 7, 8, 9, 13, 16 of 1–16 start the B line.
   // Seed 6 still with colisao-entre-herois (the heroes solid to each other): seeds 2, 3, 6, 7, 9, 11, 12, 16 of 1–16 start the B line.
+  // Seed 2 since bico-sem-limite-pix-voando (the bico without a cap, the PIX flying to the forger): seeds 2, 11, 12, 16
+  // of 1–16 start the B line; with colisao-entre-herois, seeds 1, 2, 5, 13.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(6,3,6);
+  const b=cityRun(2,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });

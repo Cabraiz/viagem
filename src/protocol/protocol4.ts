@@ -132,9 +132,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the heroes' collision (card NEW-20261030-ORQ-colisao-entre-herois): `pushing` and
  * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
  * refuse the masks.
+ * 43 given by the integration queue (tools/fila.mjs, lote 20261030-101356) to: NEW-20261030-ORQ-colisao-entre-herois.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=42;
+export const PROTOCOL_VERSION=43;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

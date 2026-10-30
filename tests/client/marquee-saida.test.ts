@@ -7,10 +7,10 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {MARQUEE_MS} from '../../src/client/hud/zones.ts';
+import {HUD_CSS} from './hud-css.ts';
 
-const CSS=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
+const CSS=HUD_CSS.replace(/\/\*[\s\S]*?\*\//g,'');
 
 type Box={left:number,top:number,right:number,bottom:number};
 type Frame={at:number,opacity:number,transform:string};

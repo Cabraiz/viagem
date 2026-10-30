@@ -11,7 +11,8 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {bocaFaixa,cityEntradas} from '../../src/maps/index.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {cityLoot} from '../../src/sim/stonewards/loot.ts';
-import {BANK_SPACING,RING_CLEAR,SHOP_MOUTH_REACH,lojasForaDasBocas,lotInMouth,planBanks,ringCandidates,shopCandidates} from '../../src/sim/bancos/system.ts';
+import {BANK_SPACING,RING_CLEAR,planBanks,ringCandidates} from '../../src/sim/bancos/system.ts';
+import {SHOP_MOUTH_REACH,lojasForaDasBocas,lotInMouth,shopCandidates} from '../../src/sim/bancos/fora-das-bocas.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
 import {BICO} from '../../src/rules/bicos.ts';
 
@@ -62,9 +63,10 @@ test('200 seeds: 0 shop lots on a strip, 3 shops a run, not crowded, near the ca
     nearest+=Math.min(...d);dist+=d.reduce((s,x)=>s+x,0);
   }
   assert.equal(lots,600);
-  // The bench (card: within ±15 % of before). E2 30/10, 200 seeds: the nearest shop 18.62 u on average before, 18.58
-  // after; the three shops' mean 20.97 → 21.01 u (a sector with no ring spot left takes another sector's, planBanks).
+  // The bench (card: within ±15 % of before). E2 30/10, 200 seeds, the map of main c45f9426 (mouths BOCA_RECUO: the ring
+  // keeps spots off them in two directions only): the nearest shop 18.97 u on average before, 18.59 after; the three
+  // shops' mean 21.46 → 23.23 u (the sectors' start turns to give two of them a ring spot, planBanks).
   const mean=dist/600;
-  assert.ok(nearest/200>=18.62*.85&&nearest/200<=18.62*1.15,`the nearest shop stays near the car: ${(nearest/200).toFixed(2)} u on average`);
-  assert.ok(mean>=20.97*.85&&mean<=20.97*1.15,`the shops stay near the car: ${mean.toFixed(2)} u on average`);
+  assert.ok(nearest/200>=18.97*.85&&nearest/200<=18.97*1.15,`the nearest shop stays near the car: ${(nearest/200).toFixed(2)} u on average`);
+  assert.ok(mean>=21.46*.85&&mean<=21.46*1.15,`the shops stay near the car: ${mean.toFixed(2)} u on average`);
 });

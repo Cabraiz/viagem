@@ -96,7 +96,7 @@ test('createRoom: an answer from the server (4xx, 429, 5xx) is not retried: the 
     assert.equal(calls.length,1);assert.equal(notices,0);
   }
   const {fetcher}=scripted(new Response('<html>',{status:502}));
-  await assert.rejects(createRoom('https://x',{},{fetcher}),/Não foi possível criar a sala/);
+  await assert.rejects(createRoom('https://x',{},{fetcher}),/Não deu pra criar a sala/);
 });
 
 test("device: one random id per device, kept in localStorage, in the Worker's format; storage off keeps one per page",()=>{

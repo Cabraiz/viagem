@@ -33,8 +33,29 @@ export function inviteCode(search:string){
   return undefined;
 }
 
+/** Longest inviter name the menu shows (the rooms' own NAME_MAX, client/ui/nick.ts). */
+export const INVITER_MAX=20;
+/** A name from a link: no control characters, spaces tidied, at most INVITER_MAX characters (never half an emoji). */
+const linkName=(raw:string)=>Array.from(raw.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g,'').replace(/\s+/g,' ').trim()).slice(0,INVITER_MAX).join('').trim();
+
 /**
- * Invite link: `?sala=` opens the room straight away (a saved hero joins by itself; a new player makes one first).
+ * Who sent the invite (menu-diz-o-jogo-e-convite): the `&de=` the link carries, cleaned, or undefined. Only text: the
+ * menu writes it with textContent.
+ */
+export function inviterName(search:string){
+  let p:URLSearchParams;
+  try{p=new URLSearchParams(search);}catch{return undefined;}
+  return linkName(p.get('de')??'')||undefined;
+}
+
+// The nickname of whoever shares from this tab (main.ts setInviter, when the lobby opens): the link says who called.
+let inviter='';
+export function setInviter(name:string){inviter=linkName(name);}
+
+/**
+ * Invite link: `?sala=` opens the room straight away (a saved hero joins by itself; a new player makes one first), and
+ * `&de=` says who called (setInviter; the friend's menu reads it with inviterName).
  * `extra`: more query (`&dev=1&g=…` when this tab chose "medir a turma" in the playtest, dev/ux-flag.ts inviteQuery).
  */
-export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?sala=${encodeURIComponent(code)}${extra}`;
+export const shareLink=(origin:string,code:string,extra='')=>
+  `${origin.replace(/\/+$/,'')}/?sala=${encodeURIComponent(code)}${inviter?`&de=${encodeURIComponent(inviter)}`:''}${extra}`;

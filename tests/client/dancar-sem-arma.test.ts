@@ -47,5 +47,5 @@ test('carregou and the crate note wait for the island on screen, not the loading
   const skill=readFileSync(new URL('../../src/client/hud/skill.ts',import.meta.url),'utf8');
   assert.match(skill,/if\(this\.unarmed&&this\.visible&&!this\.hinted\)/);
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.match(explore,/ready:\(\)=>\{sceneReady=true;if\(skill\)skill\.visible=true;/);
+  assert.match(explore,/ready:\(\)=>\{sceneReady=true;clearTimeout\(coverSlow\);if\(bootShown===SLOW_COVER\)hideBoot\(\);if\(skill\)skill\.visible=true;/);
 });

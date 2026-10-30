@@ -12,11 +12,10 @@
  *    per third of the map (three 120° sectors around the car, their start angle drawn), BANCO.distCarro..distCarroMax from the car,
  *    and BANCO.desvio[0]..[1] from the anchor: the moto's route (anchor.route, chaveiro) or the plaza (anchor.plaza,
  *    wall mode). In each sector a spot where the whole shop fits (candidate.lot: a BICO.lote disc clear; ringCandidates
- *    marks it) comes first; with none, the desvio rule drops, then the sector (a ring spot of any sector), then the car
- *    rule (a band as wide as the ring from the sector's nearest spot, then anywhere in it). Shops stay BANK_SPACING apart while the candidates allow. Ids
- *    'banco-1'.., names BANK_IDS in sector order.
- *  - shopCandidates(city, car, crates): what a run hands planBanks, the ring and the loot points with none whose lot
- *    is in a street mouth (lojasForaDasBocas, card NEW-20261030-ORQ-lojas-bico-fora-das-bocas).
+ *    marks it) comes first; with none, the desvio rule drops, then the car rule (a band as wide as the ring from the
+ *    sector's nearest spot), then the sector (a ring spot of any sector), then anywhere in it. The drawn start angle
+ *    turns to give as many sectors a ring spot as the map allows. Shops stay BANK_SPACING apart while the candidates
+ *    allow. Ids 'banco-1'.., names BANK_IDS in sector order. The candidates of a run: fora-das-bocas.ts shopCandidates.
  *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)},
  *    work?(id)}: work is a player's Trabalhar this tick (assemble.ts: the input, held and standing still; undefined
  *    with no input this tick).
@@ -39,29 +38,29 @@
  *    isPrime(e) reads it (EnemyView.prime). The lure is enemies/ai.ts baitEnemy (memory baitX, baitY, baitUntil).
  *
  * Rules (a tick):
- *  - 'sem-cedulas' (closed): nothing until `until`; then another gig (nextBico), saldo = BICO.saldo, 'aberto', event
- *    bank-refill.
+ *  - No limit (NEW-20261029-ORQ-bico-sem-limite-pix-voando): nothing spends the saldo (it stays BANCO.saldo, which the
+ *    view carries for clients from before) and no shop closes. A row restored 'sem-cedulas' (a checkpoint from before)
+ *    opens at once with another gig (nextBico), event bank-refill.
  *  - The shift: a worker stays while standing, within holdR and work is not false (moving or letting go: event bico
  *    'saiu'); a standing hero within holdR with work true clocks in (event bico 'entrou') unless banned or working
  *    another shop. Workers are invulnerable through the next tick (core damagePlayer skips them) and do not fire.
  *  - With workers it is 'sacando': fila = live critters within filaR (not the boss, not a retreater). At
  *    BICO.filaExpulsa the manager throws them out (event bico 'expulso', slowed BICO.expulsoS, banned BICO.banidoS).
  *    Else each worker earns bicoPay(bico, workers, fila) a tick (thousandths of R$: porSegundo alone, dupla each when
- *    shared, × (1 − filaCorte × fila)); every BICO.nota earned pays min(nota, saldo) into their wallet (carteira-e-pix),
+ *    shared, × (1 − filaCorte × fila)); every BICO.nota earned pays a note into their wallet (carteira-e-pix),
  *    event bank-cash by 'hero', and lures every critter within iscaR (not the boss, not a retreater) to the bank for
  *    iscaS (baitEnemy).
  *  - No worker but a standing hero within holdR: 'aberto', nobody draws ("tem gente").
  *  - No hero within holdR and a live critter within bichoR (not the boss, not a retreater): 'bicho', drawer = it (kept
- *    while it stays in reach, else the nearest); every bichoSaqueS it withdraws min(nota, saldo) (the money goes
+ *    while it stays in reach, else the nearest); every bichoSaqueS it withdraws BANCO.nota (the money goes
  *    nowhere: it keeps it, bankTake), event bank-cash by 'enemy'. At primeCada withdrawn (once: a Prime stays one, it
  *    never grows again) maxHp and hp × primeVida, prime, event bank-prime.
  *  - Nobody: 'aberto', the count starts over.
- *  - saldo 0 after a note: 'sem-cedulas' until now + recargaS, the shift out (bico 'saiu'), event bank-empty.
  * Deterministic: the placement stream is forked from the seed, the step reads ctx (players and enemies in their order).
  */
-import {bocaFaixa,cityEntradas,type CityTerrain,type Point,type Rect} from '../../maps/index.ts';
+import type {Point} from '../../maps/index.ts';
 import {BANK_IDS,BICO_IDS,Rng,SIM_HZ,ticks,type BankName,type BankState,type BankView,type BicoId,type EnemyState,type SimPlayer} from '../../contract/index.ts';
-import {BANCO,BICO,BICOS,bicoSaldo} from '../../rules/index.ts';
+import {BANCO,BICO,BICOS} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {baitEnemy} from '../enemies/ai.ts';
@@ -112,7 +111,7 @@ export interface BanksSystem {
   working(playerId:string):string|undefined;
 }
 
-const TAU=Math.PI*2;
+export const TAU=Math.PI*2;
 /**
  * A crate whose point is this close (u) to a bank is not in the run: a hero working it (within its radius + the gather
  * reach, stonewards/resources.ts GATHER_REACH 0.9, CRATE_RADIUS 0.35) would stand within holdR of the bank.
@@ -146,86 +145,26 @@ export function ringCandidates(car:Point,clear:(x:number,y:number,r:number)=>boo
   return out;
 }
 
-/**
- * Shops off the street mouths (NEW-20261030-ORQ-lojas-bico-fora-das-bocas; E2 30/10: 594 of 600 shops in 200 seeds had
- * their lot on an entrance's free strip, maps/city/entradas.ts bocaFaixa; not solid, but a whole building in the mouth).
- * A candidate whose lot (the BICO.lote disc the shop stands in, any turn) overlaps a strip moves to the nearest spot where
- * a hero fits (RING_CLEAR) and the whole lot is off every strip: rings SHOP_MOUTH_STEP u apart out to SHOP_MOUTH_REACH u,
- * SHOP_MOUTH_ANGLES each, SHOP_SPACING u from the other candidates when it can (else the nearest at all). It keeps its
- * order and crate id; a ring spot's `lot` is measured again. None found, it is dropped. Same method as the crates
- * (sim/crates.ts foraDasBocas).
- */
-export const SHOP_MOUTH_REACH=24,SHOP_MOUTH_STEP=.5,SHOP_MOUTH_ANGLES=48,SHOP_SPACING=4;
-/** Grid cell (u) of the strips' lookup: each cell lists the strips a lot centred in it may touch. */
-const STRIP_CELL=4;
-interface StripGrid {cells:Map<number,Rect[]>}
-const stripsMemo=new WeakMap<object,StripGrid>();
-const cellKey=(i:number,j:number)=>i*65536+j;
-function stripGrid(city:CityTerrain):StripGrid{
-  const a=city.asset,R=BICO.lote;
-  let g=stripsMemo.get(a);
-  if(g)return g;
-  g={cells:new Map()};
-  for(const f of cityEntradas(a).map(e=>bocaFaixa(a,e))){
-    for(let i=Math.floor((f.x-R)/STRIP_CELL);i<=Math.floor((f.x+f.w+R)/STRIP_CELL);i++)
-      for(let j=Math.floor((f.y-R)/STRIP_CELL);j<=Math.floor((f.y+f.h+R)/STRIP_CELL);j++){
-        const k=cellKey(i,j),list=g.cells.get(k);
-        if(list)list.push(f);else g.cells.set(k,[f]);
-      }
-  }
-  stripsMemo.set(a,g);
-  return g;
-}
-/** Whether a shop's lot (a BICO.lote disc) at (x, y) overlaps an entrance's free strip. */
-export function lotInMouth(city:CityTerrain,x:number,y:number):boolean{
-  const list=stripGrid(city).cells.get(cellKey(Math.floor(x/STRIP_CELL),Math.floor(y/STRIP_CELL)));
-  return !!list&&list.some(f=>Math.hypot(x-Math.max(f.x,Math.min(x,f.x+f.w)),y-Math.max(f.y,Math.min(y,f.y+f.h)))<BICO.lote);
-}
-/**
- * The bank candidates with every lot in a mouth's strip moved out of it (see SHOP_MOUTH_REACH); the others as they were.
- * A moved loot point is no longer that crate's place (no id: the crate stays in the run, CRATE_CLEAR still applies).
- */
-export function lojasForaDasBocas(city:CityTerrain,candidates:readonly BankCandidate[]):BankCandidate[]{
-  const out:BankCandidate[]=[],taken=candidates.filter(p=>!lotInMouth(city,p.x,p.y));
-  for(const p of candidates){
-    if(!lotInMouth(city,p.x,p.y)){out.push(p);continue;}
-    let near:Point|undefined;
-    search:for(let n=1;n*SHOP_MOUTH_STEP<=SHOP_MOUTH_REACH;n++)for(let k=0;k<SHOP_MOUTH_ANGLES;k++){
-      const r=n*SHOP_MOUTH_STEP,a=k*TAU/SHOP_MOUTH_ANGLES;
-      const x=Math.round((p.x+Math.cos(a)*r)*100)/100,y=Math.round((p.y+Math.sin(a)*r)*100)/100;
-      if(lotInMouth(city,x,y)||!city.clearDisc(x,y,RING_CLEAR))continue;
-      near??={x,y};
-      if(taken.some(q=>Math.hypot(q.x-x,q.y-y)<SHOP_SPACING))continue;
-      near={x,y};break search;
-    }
-    if(!near)continue;
-    const moved:BankCandidate=city.clearDisc(near.x,near.y,BICO.lote)?{x:near.x,y:near.y,lot:true}:{x:near.x,y:near.y};
-    out.push(moved);taken.push(moved);
-  }
-  return out;
-}
-
-const candidatesMemo=new WeakMap<object,Map<string,readonly BankCandidate[]>>();
-/**
- * What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points (`crates`, cityLoot
- * nodes) as a fallback, all off the mouths (lojasForaDasBocas). The same city, car and crates give the same list (memo).
- */
-export function shopCandidates(city:CityTerrain,car:Point,crates:readonly BankCandidate[]):readonly BankCandidate[]{
-  let memo=candidatesMemo.get(city.asset);
-  if(!memo)candidatesMemo.set(city.asset,memo=new Map());
-  const key=`${car.x},${car.y}|${crates.map(c=>`${c.id}@${c.x},${c.y}`).join(';')}`;
-  let out=memo.get(key);
-  if(!out)memo.set(key,out=lojasForaDasBocas(city,[...ringCandidates(car,(x,y,r)=>city.clearDisc(x,y,r)),...crates]));
-  return out;
-}
+/** Step (radians) of the sectors' start angle when it turns to give more sectors a ring spot (planBanks). */
+const SECTOR_TURN=Math.PI/180;
 /** Two shops' points stay this far apart (u: two lots side by side) while the candidates allow it. */
 export const BANK_SPACING=2*BICO.lote;
 /** The run's banks: a pure function of the seed, the candidates, the car and the anchor (see the module doc). */
 export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Point,anchor:BankAnchor):BankPlace[]{
   const rng=new Rng(seed>>>0).fork('bancos'),count=Math.max(0,Math.min(BANCO.count,BANK_IDS.length));
-  const offset=rng.range(0,TAU),width=TAU/Math.max(1,count);
-  const sectorOf=(p:Point)=>{const a=((Math.atan2(p.y-car.y,p.x-car.x)-offset)%TAU+TAU)%TAU;return Math.min(count-1,Math.floor(a/width));};
-  const fromCar=(p:Point)=>Math.hypot(p.x-car.x,p.y-car.y);
+  const width=TAU/Math.max(1,count),fromCar=(p:Point)=>Math.hypot(p.x-car.x,p.y-car.y);
+  let offset=rng.range(0,TAU);
+  const sectorAt=(p:Point,off:number)=>{const a=((Math.atan2(p.y-car.y,p.x-car.x)-off)%TAU+TAU)%TAU;return Math.min(count-1,Math.floor(a/width));};
+  const sectorOf=(p:Point)=>sectorAt(p,offset);
+  // The mouths leave few ring spots (lojasForaDasBocas): the drawn start angle turns on, by SECTOR_TURN steps, to the
+  // first that gives as many sectors a ring spot as any start can (a sector with none sends its shop far from the car).
+  // A map with ring spots all around keeps the drawn angle.
+  const ringed=candidates.filter(p=>fromCar(p)>=BANCO.distCarro&&fromCar(p)<=BANCO.distCarroMax);
+  const covered=(off:number)=>new Set(ringed.map(p=>sectorAt(p,off))).size;
+  const steps=Math.ceil(TAU/SECTOR_TURN);
+  let best=covered(offset);
+  for(let k=1;k<steps&&best<count;k++)best=Math.max(best,covered(offset+k*SECTOR_TURN));
+  for(let k=0;k<steps;k++)if(covered(offset+k*SECTOR_TURN)===best){offset=(offset+k*SECTOR_TURN)%TAU;break;}
   const fromAnchor=(p:Point)=>'route' in anchor?distanceToPolyline(p,anchor.route):Math.hypot(p.x-anchor.plaza.x,p.y-anchor.plaza.y);
   const [lo,hi]=BANCO.desvio;
   const taken=new Set<number>(),out:BankPlace[]=[];
@@ -236,9 +175,8 @@ export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Po
     const pool=apart.length?apart:free;
     const inSector=pool.filter(c=>sectorOf(c.p)===k);
     const ring=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
-    // No ring spot in the sector (the mouths take most of the ring, lojasForaDasBocas): a ring spot of another sector
-    // first (a far shop sends the bots on long trips in the prepare phase), then a band as wide as the ring from the
-    // sector's nearest spot.
+    // No ring spot in the sector (the mouths take most of the ring, lojasForaDasBocas): a band as wide as the ring from
+    // the sector's nearest spot (one per third stays), then a ring spot of another sector.
     const anyRing=pool.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
     const outer=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),nearest=Math.min(...outer.map(c=>fromCar(c.p)));
     const tiers=[
@@ -247,8 +185,8 @@ export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Po
       ring.filter(c=>c.p.lot),
       ring.filter(c=>fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
       ring,
-      anyRing,
       outer.filter(c=>fromCar(c.p)<=nearest+BANCO.distCarroMax-BANCO.distCarro),
+      anyRing,
       outer,
       inSector,
       pool,
@@ -275,10 +213,10 @@ export function nextBico(seed:number,bank:number,opened:number,now:BicoId,others
 
 export function createBanksState(places:readonly BankPlace[],seed=0):BanksState{
   const bicos=firstBicos(seed,places.length);
-  return {list:places.map((_,i)=>({saldo:BICO.saldo,state:'aberto' as BankState,until:0,clock:0,held:0 as const,bico:bicos[i],opened:0})),paid:0,taken:0,primes:0};
+  return {list:places.map((_,i)=>({saldo:BANCO.saldo,state:'aberto' as BankState,until:0,clock:0,held:0 as const,bico:bicos[i],opened:0})),paid:0,taken:0,primes:0};
 }
 
-const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
+const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS);
 const EXPULSO=ticks(BICO.expulsoS),BANIDO=ticks(BICO.banidoS),NOTA_MIL=BICO.nota*1000;
 /** A worker's pay this tick, in thousandths of R$: alone or shared, cut by the queue (rules/bicos.ts). */
 export function bicoPay(bico:BicoId,workers:number,fila:number){
@@ -295,15 +233,6 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
   {const first=firstBicos(options.seed,places.length);state.list.forEach((row,i)=>{if(row.bico===undefined){row.bico=first[i];row.opened=0;}});}
   const near:EnemyState[]=[];
 
-  function note(ctx:SimContext,i:number,amount:number){
-    const row=state.list[i];
-    row.saldo-=amount;
-    if(row.saldo>0)return;
-    row.saldo=0;row.state='sem-cedulas';row.until=ctx.tick+RECARGA;row.clock=0;row.held=0;delete row.drawer;
-    for(const id of row.workers??[])ctx.emit({type:'bico',bank:places[i].id,player:id,what:'saiu'});
-    delete row.workers;delete row.earn;
-    ctx.emit({type:'bank-empty',bank:places[i].id,until:row.until});
-  }
   /** Bicos: who stays in the shift (Trabalhar not let go, standing, in the ring) and who clocks in now. */
   function shift(ctx:SimContext,i:number){
     const b=places[i],row=state.list[i],keep:string[]=[];
@@ -356,14 +285,12 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
   function stepBank(ctx:SimContext,i:number){
     const b=places[i],row=state.list[i];
     if(row.state==='sem-cedulas'){
-      if(ctx.tick<row.until)return;
       row.opened++;
       row.bico=nextBico(options.seed,i,row.opened,row.bico,state.list.filter(r=>r!==row).map(r=>r.bico));
-      row.saldo=BICO.saldo;row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
+      row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
       ctx.emit({type:'bank-refill',bank:b.id});
     }
-    // The shift by seat (bicoSaldo): a team's shop holds less; one who joins mid-shift trims what is left.
-    row.saldo=Math.min(row.saldo,bicoSaldo(ctx.players.size));
+    row.saldo=BANCO.saldo;
     delete row.fila;
     const workers=shift(ctx,i);
     if(workers.length){
@@ -377,13 +304,11 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
       const pay=bicoPay(row.bico,workers.length,queue),earn=row.earn??={};
       for(const id of workers){
         earn[id]=(earn[id]??0)+pay;
-        if(earn[id]<NOTA_MIL||row.state!=='sacando')continue;
+        if(earn[id]<NOTA_MIL)continue;
         earn[id]-=NOTA_MIL;
-        const amount=Math.min(BICO.nota,row.saldo);
-        options.wallet.add(amount,ctx.players.get(id)!);state.paid+=amount;
-        ctx.emit({type:'bank-cash',bank:b.id,amount,by:'hero'});
+        options.wallet.add(BICO.nota,ctx.players.get(id)!);state.paid+=BICO.nota;
+        ctx.emit({type:'bank-cash',bank:b.id,amount:BICO.nota,by:'hero'});
         lure(ctx,b);
-        note(ctx,i,amount);
       }
       return;
     }
@@ -397,14 +322,13 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
     row.state='bicho';
     if(++row.clock<BICHO_SAQUE)return;
     row.clock=0;
-    const amount=Math.min(BANCO.nota,row.saldo),rich=drawer as EnemyState&BankEnemy;
+    const amount=BANCO.nota,rich=drawer as EnemyState&BankEnemy;
     rich.bankTake=(rich.bankTake??0)+amount;state.taken+=amount;
     ctx.emit({type:'bank-cash',bank:b.id,amount,by:'enemy',enemy:drawer.id});
     if(!rich.prime&&rich.bankTake>=BANCO.primeCada){
       rich.prime=true;drawer.maxHp*=BANCO.primeVida;drawer.hp*=BANCO.primeVida;state.primes++;
       ctx.emit({type:'bank-prime',bank:b.id,enemy:drawer.id});
     }
-    note(ctx,i,amount);
   }
 
   return {

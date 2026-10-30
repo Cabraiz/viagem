@@ -26,7 +26,8 @@ const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
 const PX_PER_UNIT=42*2,PROP_BOTTOM=8,PAD=4;
 /** The faces' atlas and its regions (px, [x, y, w, h]: viaduct.ts FACES_*). */
 export const FACES_SIZE=[1152,768],FACES_ROAD=[0,0,512,768],FACES_CONCRETE=[512,0,512,512],FACES_BARRIER=[512,512,512,128],
-  FACES_BEAM=[512,640,512,128],FACES_PILLAR=[1024,0,128,512];
+  FACES_BEAM=[512,640,512,128],FACES_PILLAR=[1024,0,128,512],
+  FACES_CAP=[1024,512,128,256];
 /** Texels a band's crossfade takes at its ends (of its width), so it tiles along. */
 const SEAM=.06;
 
@@ -123,7 +124,7 @@ async function main(){
     console.error(`${piece.id}: ${fw}×${fh}, ×${scale.toFixed(3)}, ${Math.round(sheet.length/1024)} KB`);
   }
   // The faces' atlas (render/city/viaduct.ts FACES_*): the deck's road (top-down, the road along v, tiling along it),
-  // the ramp's wall (tiling both ways), the barrier's and the beam's bands (tiling along), a pillar's face.
+  // the ramp's wall (tiling both ways), the barrier's and the beam's bands (tiling along), a pillar's face, the barrier's top (tiling down).
   const fill=(file,r)=>sharp(file).resize(r[2],r[3],{fit:'fill',kernel:'lanczos3'}).png().toBuffer();
   const pillarBox=await artBox(sharp,join(SRC,'tb-pilar.png'));
   const parts=[
@@ -132,6 +133,8 @@ async function main(){
     [await band(sharp,join(SRC,'tb-mureta.png'),FACES_BARRIER),FACES_BARRIER],
     [await band(sharp,join(SRC,'tb-viga.png'),FACES_BEAM),FACES_BEAM],
     [await sharp(join(SRC,'tb-pilar.png')).extract(pillarBox).resize(FACES_PILLAR[2],FACES_PILLAR[3],{fit:'fill',kernel:'lanczos3'}).png().toBuffer(),FACES_PILLAR],
+    // The barrier's top seen from above (tb-tampa, 4 segments along): a band turned to run down its region.
+    [await sharp(await band(sharp,join(SRC,'tb-tampa.png'),[0,0,FACES_CAP[3],FACES_CAP[2]])).rotate(90).png().toBuffer(),FACES_CAP],
   ];
   const faces=await sharp({create:{width:FACES_SIZE[0],height:FACES_SIZE[1],channels:4,background:{r:0,g:0,b:0,alpha:0}}})
     .composite(parts.map(([input,r])=>({input,left:r[0],top:r[1]}))).webp({quality:88,effort:6}).toBuffer();

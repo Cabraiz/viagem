@@ -9,6 +9,7 @@ import {
   RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,leftoverWallLines,
 } from '../../src/client/render/city/from-maps.ts';
 import {CITY_MAP_SCALE} from '../../src/rules/index.ts';
+import {WALL_FAMILIES,wallLines} from '../../src/maps/city-decor.ts';
 
 const decoded=decodeCityAsset(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'));
 if(!decoded.ok)throw new Error(decoded.error);
@@ -227,8 +228,9 @@ test('props: kinds mapped, radius clamped, ids stable, none inside a block',()=>
     assert.equal(coverOf[Math.floor(q.y/CELL)*W+Math.floor(q.x/CELL)],-1,`${q.id} inside a block`);
     kinds.add(q.kind);
   }
-  // Asset v4: ~1/3 of the ground, the stacks dedup'd (PROP_DEDUP): ~30 drawn (was > 50 on the 1.7× city).
-  assert.ok(city.props.length>25,`${city.props.length} props`);
+  // Asset v4: ~1/3 of the ground, the stacks dedup'd (PROP_DEDUP): ~30 drawn (was > 50 on the 1.7× city); v9 took the
+  // ones on the entrances' ground (bocas-sem-muro-pedra-decor): 16 left.
+  assert.ok(city.props.length>12,`${city.props.length} props`);
   for(const k of ['crate','barrel','bench','lamp'])assert.ok(kinds.has(k),`generic props spread over ${k}`);
 });
 
@@ -281,4 +283,36 @@ test('trocar-procedurais-por-arte: every wall cell of Cidade Nevada stands under
   assert.ok(extra.length>0,'the plaza keep-out left wall cells for the render to line');
   assert.ok(extra.every(e=>/-reto-intacto$/.test(e.id)),'the families\' straight intact pieces');
   assert.deepEqual(leftoverWallLines({...maps,decor:[]}),[],'a map without scenery keeps its walls as they are');
+});
+
+/**
+ * NEW-20261029-ORQ-cercas-nordeste-ligadas ("soltas, não se conectam… como se alguém colocasse outro na frente e outra
+ * atrás"): the fences the game draws (the bake plus leftoverWallLines) are the one line maps/city-decor.ts wallLines
+ * lays over every wall cell, not two lines broken where the keep-outs start; only on wall cells (a fence closes no
+ * street or entrance); no two side by side closer than 1 u.
+ */
+test('cercas-nordeste-ligadas: the drawn fences are one line over every wall cell, only on wall cells, never parallel under 1 u', ()=>{
+  const W=maps.cells.w,H=maps.cells.h,unit=maps.unitsPerCell,block:(string|undefined)[]=new Array(W*H);
+  for(const b of maps.blocks)for(const [x,y,w,h] of b.rects)
+    for(let r=Math.max(0,Math.round(y/unit));r<Math.min(H,Math.round((y+h)/unit));r++)for(let c=Math.max(0,Math.round(x/unit));c<Math.min(W,Math.round((x+w)/unit));c++)block[r*W+c]=b.kind==='wall'?b.id:undefined;
+  const isFence=(id:string)=>WALL_FAMILIES.some(f=>id.startsWith(`${f}-`));
+  const drawn=[...maps.decor,...leftoverWallLines(maps)].filter(d=>isFence(d.id)&&!d.cover);
+  const at=(d:{c:number;r:number;w:number;h:number;rot:number})=>`${d.c},${d.r},${d.w}x${d.h},${d.rot}`;
+  const line=wallLines(W,H,i=>block[i]!==undefined,()=>'x',new Uint8Array(W*H)).filter(d=>!d.cover).map(at);
+  const lineSet=new Set(line),drawnAt=drawn.map(at);
+  for(const d of drawn){
+    assert.ok(lineSet.has(at(d)),`${d.id} at ${at(d)} is off the single line`);
+    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)assert.ok(block[r*W+c]!==undefined,`${d.id} on ${c},${r}, not a wall cell`);
+  }
+  assert.equal(new Set(drawnAt).size,drawnAt.length,'no piece drawn twice');
+  // Only the pieces under other scenery (a viaduct's span) are missing from the line.
+  assert.ok(drawn.length>=line.length*.97,`${drawn.length} of ${line.length} pieces of the line drawn`);
+  // Parallel pieces (same axis, spans overlapping) closer than 1 u.
+  const seg=drawn.map(d=>{const cx=d.c+d.w/2,cy=d.r+d.h/2,h=d.rot===90;return {h,k:h?cy:cx,a:(h?cx:cy)-.5,b:(h?cx:cy)+.5,id:`${d.id}@${d.c},${d.r}`};});
+  const close:string[]=[];
+  for(let i=0;i<seg.length;i++)for(let j=i+1;j<seg.length;j++){
+    const p=seg[i],q=seg[j],dk=Math.abs(p.k-q.k);
+    if(p.h===q.h&&dk>0&&dk*unit<1&&Math.min(p.b,q.b)-Math.max(p.a,q.a)>0)close.push(`${p.id} ~ ${q.id}`);
+  }
+  assert.deepEqual(close,[],'parallel fences under 1 u');
 });

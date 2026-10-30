@@ -16,10 +16,11 @@ import {barClock} from '../../src/client/hud/camp.ts';
 import {SIM_HZ,type RunView} from '../../src/contract/index.ts';
 import {auditBoxes,crosses,bottom,right,EDGE_COLUMN,HERO_MARGIN,MIN_PLAY_SIDE,THUMB_GAP,type AuditBox,type Rect} from '../../src/client/hud/zones.ts';
 import {NAME_TAP_MS} from '../../src/client/hud/team.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 type Decl={selector:string;prop:string;value:string};
 const read=(file:string)=>declarations(readFileSync(new URL(`../../${file}`,import.meta.url),'utf8')) as Decl[];
-const FONE_CSS=read('src/client/hud/fone.css'),HUD=read('src/client/hud/hud.css'),EXPLORE=read('src/client/explore.css'),CAMP=read('src/client/hud/camp.css');
+const FONE_CSS=read('src/client/hud/fone.css'),HUD=declarations(HUD_CSS) as Decl[],EXPLORE=read('src/client/explore.css'),CAMP=read('src/client/hud/camp.css');
 const value=(decls:Decl[],selector:string,prop:string)=>{
   const found=decls.filter(d=>d.selector===selector&&d.prop===prop).at(-1);
   assert.ok(found,`${selector} { ${prop} }`);return found.value;
@@ -171,7 +172,7 @@ test("review 3–4: the bar's clock — the intermission countdown (urgent at 5 
   const late=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*4}));
   assert.equal(late?.urgent,true,'≤ 5 s: urgent, like the round chip');
   const moto=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12},{ended:false,etaS:532,moto:{mode:'anda'} as never}));
-  assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:undefined,text:'8:52'},"the chaveiro's clock wins, no moto before it (topo-sem-icone)");
+  assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:undefined,text:'Chaveiro 8:52'},"the chaveiro's clock wins, no moto before it (topo-sem-icone)");
   assert.match(moto!.aria,/Chaveiro chega em 8:52/);
   // D-051 nests (ninhos-rounds-fora): the clock plus the nests still standing, and no intermission countdown at all.
   const nest=(hp:number)=>({id:`n${hp}`,kind:'ninho',x:0,y:0,hp,maxHp:40,phase:hp?'dormindo':'destruido'});

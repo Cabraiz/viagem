@@ -109,6 +109,14 @@ const NEST_OFF:Readonly<Record<string,string>>={
 };
 const ALL_SPOTS=POOL_ROWS.map(([kind,x,y,maxSize,block],i):NestSpot=>
   Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})}));
+/** Where the map (v8) laid the yards before entradas-livres-de-tudo moved them: the asset is built around these.
+ *  ninho-03's yard is where it is drawn since v10 (bocas-chao-aberto: the cuts beside the old yard moved a mouth onto it). */
+const MAP_YARD:Readonly<Record<string,readonly [number,number]>>={
+  'ninho-06':[100.7,52.9],'ninho-09':[124.5,147.9],'ninho-11':[42.5,147.5],
+};
+/** Every spot as the map scripts keep it (becos-cidade, cenario-cidade): the ones out of the draw too, at the yard the
+ *  map laid. Moving a nest or taking it out of the draw must not change the committed asset (mapa-175). */
+export const CITY_NEST_SPOTS:readonly NestSpot[]=Object.freeze(ALL_SPOTS.map(s=>MAP_YARD[s.id]?Object.freeze({...s,x:MAP_YARD[s.id][0],y:MAP_YARD[s.id][1]}):s));
 /** The spots a seed may draw. */
 export const CITY_NEST_POOL:readonly NestSpot[]=Object.freeze(ALL_SPOTS.filter(s=>!NEST_OFF[s.id]));
 /** The spots out of the draw (NEST_OFF), each with its reason. */

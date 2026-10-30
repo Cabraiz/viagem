@@ -48,6 +48,18 @@ export class TowerAtlas {
     const f={key:page.texture.key,frame:name,w,h};this.s.frames.set(name,f);
     return f;
   }
+  /**
+   * Paints a known frame over again (the delivered art replacing its procedural bake): its cell is cleared and
+   * `draw(ctx,x,y,w,h)` paints into it on the page's canvas; the next `flush` uploads it. False if `name` is unknown.
+   */
+  repaint(name:string,draw:(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number)=>void):boolean{
+    const f=this.s.frames.get(name),page=f&&this.s.pages.find(p=>p.texture.key===f.key);
+    const cut=page?.texture.get(name);if(!page||!cut)return false;
+    const ctx=page.texture.getContext(),{cutX:x,cutY:y}=cut,{w,h}=f;
+    ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.clearRect(x,y,w,h);draw(ctx,x,y,w,h);ctx.restore();
+    page.dirty.push({x,y,w,h});this.s.dirty.add(page);
+    return true;
+  }
   /** Uploads the pages baked into since the last call (once per frame, after the bakes). */
   flush(){
     if(!this.s.dirty.size)return;

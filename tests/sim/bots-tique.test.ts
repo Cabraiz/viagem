@@ -67,10 +67,11 @@ test('the user\'s tique: three room bots in the nests turn back under 0.25 times
 
 // Card missao-proteger-uno-tempo: the first wave now comes at 35-45 s, so the 120 s hold a fight. Kiting turns back on
 // purpose (0.28 a second, 99 turns), but the tique, the swap every think (3 in 4 within 200 ms before), stays out: 2 in 99.
-// Seed 4 since lojas-bico-fora-das-bocas (30/10): the shops moved and seed 1 went 0 → 15 of 118 quick; one seed's run is
-// chaotic (E2, seeds 1-20: 140 of 1997 quick before, 148 of 2019 after, 7 % both; seed 4 2 of 97).
+// One seed's fight is chaotic (bico-sem-limite-pix-voando, same bots: seed 1 went 2/99 → 17/123 while seeds 1–8 held
+// 55/795 → 53/783 and main's seed 5 alone gives 15/120), so seeds 1–4 are summed: 22/415 on main, 30/441 with it.
 test('in the first wave (the NEST_PACE default) the turn-backs are kiting, not the 200 ms swap',()=>{
-  const {back,quick}=tique(undefined,4);
+  let back=0,quick=0;
+  for(const seed of [1,2,3,4]){const t=tique(undefined,seed);back+=t.back;quick+=t.quick;}
   assert.ok(back>0,'the first wave reaches the bots inside the 120 s');
   assert.ok(quick/back<.1,`turn-backs within 200 ms of the last: ${quick} of ${back}`);
 });

@@ -2,6 +2,7 @@
 // the asset with its `decor` list and the cells the new places with life take off the walkable grid, as a new version
 // (manifest).
 //   node --experimental-strip-types scripts/cenario-cidade.ts [--seed N] [--check]
+//   node --experimental-strip-types scripts/cenario-cidade.ts --bocas   (only chaoLivreNasBocas, on the asset as it is)
 // Re-running first undoes the previous run (undecorate), so the result depends only on the seed.
 // --check: only verify that public/ holds exactly what this script writes, write nothing.
 import {readFileSync,writeFileSync} from 'node:fs';
@@ -10,9 +11,10 @@ import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAssetData,type CityDecor} from '../src/maps/city-asset.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
-import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
-import {entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {bocaChao,cityEntradas,entradasEstreitas,estreitaBoca,faixaCelulas} from '../src/maps/city/entradas.ts';
+import {semPropsNasBocas} from './becos-cidade.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -21,8 +23,11 @@ export const DECOR_SEED=20261016;
 /** Keep-out radii (u): the base and plaza, the start, the spawns and mouths, the nests' yards (+ margin), loot. */
 export const KEEP={praca:22,inicio:10,spawn:8,boca:6,yard:3,loot:1.5,nestBlock:1.5} as const;
 
-/** The asset with the scenery placed on `base` (an asset without decor). Returns the JSON text. */
-export function decorate(baseText:string,seed=DECOR_SEED):string{
+/**
+ * The asset with the scenery placed on `base` (an asset without decor). Returns the JSON text. `avoid`: more cells no
+ * place with life on open ground stands on (scripts/compactar-cidade.ts: the strips of the opened map).
+ */
+export function decorate(baseText:string,seed=DECOR_SEED,avoid:Iterable<number>=[]):string{
   const decoded=decodeCityAsset(baseText);
   if(!decoded.ok)throw new Error(decoded.error);
   const asset=decoded.asset;
@@ -33,7 +38,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...[p.spawnN,p.spawnS,p.spawnL,p.spawnO].map(q=>({...q,r:KEEP.spawn})),
     ...Object.values(p.bocas).map(q=>({...q,r:KEEP.boca})),
     ...asset.loot.map(q=>({...q,r:KEEP.loot})),
-    ...CITY_NEST_POOL.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
+    ...CITY_NEST_SPOTS.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
   ];
   const keepOutRects=[
     ...plan.sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL)),
@@ -42,12 +47,15 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>({x:(c-1)*asset.unitsPerCell,y:(r-1)*asset.unitsPerCell,w:(w+2)*asset.unitsPerCell,h:(h+2)*asset.unitsPerCell})),
 
     // A nest in a building keeps its whole block (and a margin) for the nest's own art.
-    ...CITY_NEST_POOL.filter(n=>n.block).map(n=>{
+    ...CITY_NEST_SPOTS.filter(n=>n.block).map(n=>{
       const b=asset.blocks.find(x=>x.id===n.block)!.bbox,m=KEEP.nestBlock;
       return {x:b[0]-m,y:b[1]-m,w:b[2]+2*m,h:b[3]+2*m};
     }),
   ];
-  const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects});
+  // bocas-chao-aberto: no place with life on open ground in an entrance's strip (it would narrow the mouth, and the
+  // opening would take it). The base's strips and `avoid`: the opening moves a mouth and widens its strip.
+  const lugarAvoid=new Set([...cityEntradas(asset,true).flatMap(e=>faixaCelulas(asset,e)),...avoid]);
+  const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects,lugarAvoid});
   const data=cityAssetToData(asset),sw=asset.samples.w;
   for(const [c,r] of blocked)for(let j=0;j<SAMPLES_PER_CELL;j++)for(let i=0;i<SAMPLES_PER_CELL;i++)data.walkable[(r*SAMPLES_PER_CELL+j)*sw+c*SAMPLES_PER_CELL+i]=0;
   // Nothing of the ground's scenery under or beside a viaduct (deck and ramp, a cell around): a lamp, a wire or a car
@@ -80,6 +88,27 @@ export function semDecorNasBocas(data:CityAssetData):CityDecor[]{
 }
 
 /**
+ * NEW-20261030-ORQ-bocas-sem-muro-pedra-decor (the user, 30/10: "obstáculos em entradas são horríveis", a poste, a
+ * cacamba or a ruin standing in a mouth): no scenery on the ground of an entrance, of any width (maps/city/entradas.ts
+ * bocaChao): every drawn piece with a cell there goes (postes and sidewalk objects: the walls and cliffs stand on solid
+ * cells only), and the props there go as PROP_REMOVED (becos-cidade.ts semPropsNasBocas). Nothing there is solid, so
+ * the walkable grid stays as it is. Changes `data`, returns what it took.
+ */
+export function chaoLivreNasBocas(data:CityAssetData):{decor:CityDecor[];props:number[]}{
+  const d=decodeCityAsset(encodeCityAsset(data));
+  if(!d.ok)throw new Error(d.error);
+  const a=d.asset,W=a.cells.w,chao=bocaChao(a);
+  const onIt=(q:CityDecor)=>{
+    if(q.cover)return false;
+    for(let r=q.r;r<q.r+q.h;r++)for(let c=q.c;c<q.c+q.w;c++)if(chao.has(r*W+c))return true;
+    return false;
+  };
+  const decor=(data.decor??[]).filter(onIt);
+  data.decor=(data.decor??[]).filter(q=>!onIt(q));
+  return {decor,props:semPropsNasBocas(data)};
+}
+
+/**
  * The asset as it was before decorate: no decor, and the cells the open-ground places took walkable again (decorate
  * blocks no other cell: a place on a block stands on cells that were never walkable).
  */
@@ -98,7 +127,19 @@ export function undecorate(text:string):string{
   return encodeCityAsset(data);
 }
 
-if(process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/cenario-cidade.ts')){
+const isMain=process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/cenario-cidade.ts');
+if(isMain&&args.includes('--bocas')){
+  const now=decodeCityAsset(readFileSync(JSON_PATH,'utf8'));
+  if(!now.ok)throw new Error(now.error);
+  const data=cityAssetToData(now.asset),taken=chaoLivreNasBocas(data);data.version++;
+  const out=encodeCityAsset(data),hash=createHash('sha256').update(out).digest('hex'),bytes=Buffer.byteLength(out);
+  writeFileSync(JSON_PATH,out);
+  writeFileSync(MANIFEST_PATH,JSON.stringify({id:now.asset.id,version:data.version,hash,bytes},null,2)+'\n');
+  const byKind=new Map<string,number>();
+  for(const q of taken.decor){const k=q.id.replace(/-\d$/,'');byKind.set(k,(byKind.get(k)??0)+1);}
+  console.log(`written: version ${data.version}, ${taken.decor.length} pieces and ${taken.props.length} props off the entrances, ${bytes} bytes, ${hash}`);
+  console.log([...byKind].sort((x,y)=>y[1]-x[1]).map(([k,n])=>`${k} ${n}`).join(', '));
+}else if(isMain){
   const now=readFileSync(JSON_PATH,'utf8');
   const out=decorate(undecorate(now),Number(flag('--seed')??DECOR_SEED));
   const decoded=decodeCityAsset(out);

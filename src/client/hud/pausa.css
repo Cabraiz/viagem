@@ -14,6 +14,8 @@
 .rh-pausa-prazo{align-self:stretch;min-width:160px;height:6px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);overflow:hidden}
 .rh-pausa-prazo-fill{display:block;height:100%;transform-origin:left;background:var(--c-papel);transition:transform .25s linear}
 .rh-pausa-linha{font:700 var(--t-13)/1.25 var(--f-sistema);text-wrap:balance}
+/* Solo (levelup-sem-arma-e-solo): no line, no empty row under the bar. */
+.rh-pausa-linha:empty{display:none}
 .rh-pausa[data-urgente]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel),var(--s-2);text-shadow:none}
 .rh-pausa[data-urgente] .rh-pausa-titulo{animation:rh-pulse .3s ease-in-out 4 alternate}
 .rh-pausa[data-urgente] .rh-pausa-prazo-fill{background:var(--c-breu)}

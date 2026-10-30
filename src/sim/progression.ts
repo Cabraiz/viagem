@@ -21,7 +21,7 @@ import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimPlayer,
 import type {SimContext,SimSystem} from './context.ts';
 import type {Point} from '../maps/index.ts';
 import {isLand} from '../maps/index.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,needsWeapon,rollChoices} from '../rules/index.ts';
 import type {ItemCatalog} from '../rules/index.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
@@ -111,6 +111,11 @@ export interface ProgressionOptions {
   payGrana?(ctx:SimContext,amount:number,owner?:string):void;
   /** D-051 mode 'ninhos': the first level's cost follows the match's heroes (FIRST_LEVEL_XP). */
   firstLevelByHeroes?:boolean;
+  /**
+   * D-051 manual combat: whether the player has a weapon (sim/inventory.ts). One without gets no weapon card
+   * (rules/passives.ts needsWeapon; levelup-sem-arma-e-solo). Absent: every card can roll.
+   */
+  armed?(player:SimPlayer):boolean;
 }
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
@@ -177,6 +182,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let rng:Rng|undefined;
   const rngOf=(ctx:SimContext)=>rng??=state.rngState!==undefined?new Rng(state.rngState):options.seed!==undefined?new Rng(options.seed).fork('progression'):ctx.rng.fork('progression');
   const saveRng=()=>{if(rng)state.rngState=rng.state;};
+  const roll=(ctx:SimContext,player:SimPlayer)=>
+    rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx),options.armed&&!options.armed(player)?needsWeapon:undefined);
   // Never drawn from: openChest forks `chest:<id>` from it, so chest rolls ignore every other draw in the tick.
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
@@ -303,7 +310,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     // Old head clock only: a queued offer never shows a deadline before the one ahead of it has run out.
     const last=queue[queue.length-1];
     if(last&&clocked(ctx)&&!isHeldOffer(last))deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
-    const choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    const choices=roll(ctx,player);
     saveRng();
     const offer:LevelOffer={id,playerId:player.id,source,level,choices,deadlineTick,defaultIndex:defaultIndexFor(player.build,choices)};
     queue.push(offer);
@@ -422,7 +429,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     if(charges(playerId)[1]<=0)return {ok:false,reason:'no-charge'};
     const left=spend(playerId,1),player=found.player,head=found.head;
     head.id=head.id.split(REROLL)[0]+REROLL+(ctx.tick*1000+(OFFER_REROLLS-left));
-    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.choices=roll(ctx,player);
     head.defaultIndex=defaultIndexFor(player.build,head.choices);
     saveRng();
     ctx.emit({type:'offer',player:player.id,offer:head.id});
@@ -470,7 +477,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     if(head.choices.every(choice=>isEligible(catalog,player.build,choice)))return;
     // New id so a pick sent against the old cards is refused instead of applying a different item.
     head.id=head.id.split(REROLL)[0]+REROLL+ctx.tick;
-    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.choices=roll(ctx,player);
     head.defaultIndex=defaultIndexFor(player.build,head.choices);
     saveRng();
     ctx.emit({type:'offer',player:player.id,offer:head.id});

@@ -21,6 +21,7 @@ import {CUE_TARGET,CUT_TOLERANCE,FOOT_GAP,FADE_MAX,cueClear,cueLayout,cutRoom,hi
 import {AUTO_NOTE,LANDSCAPE_QUERY,LATER_LABEL,TAKE_ALL_LABEL,isAllNew} from '../../src/client/hud/offer.ts';
 import {MIN_PLAY_SIDE,computeZones,crosses,type ZoneInput} from '../../src/client/hud/zones.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 /** A column of `heights` tags `gap` apart, starting `pad` px under the list's top, scrolled by `scroll`. */
 function column(heights:readonly number[],gap:number,pad=6,scroll=0):Span[]{
@@ -90,7 +91,7 @@ test('fixture offer-new is the production "Tudo novo!" window: three Nv 1 tags w
 });
 
 // ---------- The compact window (BUG-20261013-ORQ-oferta-e-dicas-menores), from hud.css itself ----------
-const CSS=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8');
+const CSS=HUD_CSS;
 const OFFER_TS=readFileSync(new URL('../../src/client/hud/offer.ts',import.meta.url),'utf8');
 type Decl={selector:string;prop:string;value:string;line:number};
 const DECLS=declarations(CSS) as Decl[];

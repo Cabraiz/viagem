@@ -12,7 +12,6 @@ export const BANK_COLORS=Object.freeze({
   slab:0x9a968e,body:0x8d8f99,bodyDark:0x6f7180,keypad:0x3a3344,slot:0x2b2533,snow:0xf2f4f6,pole:0x5d5a66,
   screen:Object.freeze({azul:0x3c6fa8,verde:0x4f9a5b,vermelho:0xc0443a,apagado:0x2b2533} as Record<ScreenLook,number>),
   sign:Object.freeze({'pao-duro':0xe0b84a,juros:0x8a63b8,posto:0xd9763a} as Record<BankName,number>),
-  note:0x7fc28a,
 });
 const C=BANK_COLORS;
 const m=(x:number,y:number,z:number,l:number,w:number,h:number,color:number,extra?:Partial<Box>):Box=>({x:x*M,y:y*M,z:z*M,l:l*M,w:w*M,h:h*M,color,...extra});

@@ -78,7 +78,7 @@ export const CHAVEIRO_LINES={
     ['cida','Brigadeiro de panela. A panela também era do chão.'],
     ['cida','Paçoca prensada. Prensada na minha bolsa.'],
     ['cida','Cocada dura. Serve de doce ou de arma.'],
-    ['cida','Aceito Grana, PIX e promessa. Promessa com juros.'],
+    ['cida','Aceito Grana, Pix e promessa. Promessa com juros.'],
     ['cida','Leva dois, que o segundo sai mais caro.'],
   ],
   sale:[
@@ -112,7 +112,7 @@ export const CHAVEIRO_LINES={
   empurra:[
     ['tio','Empurra com jeito, que a lataria é original.'],
     ['tio','Pode empurrar. O freio de mão é decorativo.'],
-    ['chaveiro','Empurrando o carro? Aí o orçamento é outro.'],
+    ['chaveiro','Empurrando o Uno? Aí o orçamento é outro.'],
     ['tio','Três dias ligado e agora vai no braço. Progresso.'],
     ['cida','Empurra pra cá, que aqui tem freguês.'],
   ],
@@ -125,7 +125,7 @@ export const CHAVEIRO_LINES={
   ],
   chegou:[
     ['chaveiro','Cheguei! A visita técnica é cinquenta, viu?'],
-    ['chaveiro','Cadê o carro? Ah, esse amontoado aí?'],
+    ['chaveiro','Cadê o Uno? Ah, esse amontoado aí?'],
     ['cida','Chegamos. Ele demorou, eu faturei.'],
     ['chaveiro','Dez minutos é modo de dizer. Foi modo de fazer.'],
   ],
@@ -149,7 +149,7 @@ export const CHAVEIRO_LINES={
   ],
   'perda-total':[
     ['tio','Perda total. Pelo menos a chave tá livre agora.'],
-    ['chaveiro','O carro desmanchou. Mas a visita eu cobro igual.'],
+    ['chaveiro','O Uno desmanchou. Mas a visita eu cobro igual.'],
     ['chaveiro','Não tem mais porta pra abrir. Serviço feito?'],
     ['chaveiro','Virou peça. Eu conheço um cara que compra.'],
   ],

@@ -20,7 +20,7 @@ import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CITY_GROUND_DEPTH,CityLayer,OUTSIDE_CITY,VIADUCT_PROP_IDS,ViaductLayer,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
-import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
+import {ART_BUDGET,CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -771,6 +771,7 @@ export class IslandScene extends Phaser.Scene {
       this.cityHeld=false;this.releaseBackground();
       if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
     }
+    this.cityStream?.tick(performance.now());
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
     const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
@@ -1103,6 +1104,7 @@ export class IslandScene extends Phaser.Scene {
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
+    this.horde?.setEnemyCap(profile.enemyCap); // Q3 fatia 4 (E2): teto de bichos desenhados por nível (150/300/3000)
   }
   /**
    * Phaser's frame gate (the game starts with fps.limit 60), changed live: the economy profile, or one frame every
@@ -1383,7 +1385,7 @@ export class IslandScene extends Phaser.Scene {
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
     if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position,
-      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},seats:()=>this.hooks.net?.players.size??1});
+      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},playerAt:id=>{const net=this.hooks.net;return id===net?.id?this.position:net?.players.get(id);}});
     this.banks?.push(view.banks,view.tick,view.events);
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
@@ -1860,6 +1862,9 @@ export class IslandScene extends Phaser.Scene {
       if(placed.has(s.key))sheets.set(s.key,s);
       else if(s.key.startsWith('city:live:ninho-')){sheets.set(s.key,s);nests.push(s.key);}
     }
+    // Q3 fatia 3 (art-stream.ts ART_BUDGET): what is over the quality level's budget leaves the GPU, never what a live
+    // chunk draws, the viaduct's props (ViaductLayer keeps them) nor the nests (placed by the room, no chunk).
+    const pinned=new Set(VIADUCT_PROP_IDS.map(id=>plan.decor[id]?.key).filter((k):k is string=>!!k));
     const stream=this.cityStream=new CityArtStream({
       missing:()=>[...city.missingArt(this.cityCamera(),this.view),...nests.filter(k=>!this.textures.exists(k)).map(key=>({key,px:1}))]
         .sort((a,b)=>a.px-b.px),
@@ -1879,6 +1884,17 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
         return true;
       },
+      resident:()=>{
+        const art=city.chunkArt(),inUse=new Set(city.liveChunks().flatMap(c=>art.get(c)??[]));
+        return city.artDistance(this.cityCamera(),this.view)
+          .filter(({key})=>sheets.has(key)&&!pinned.has(key)&&!key.startsWith('city:live:ninho-')&&this.textures.exists(key))
+          .map(({key,px})=>{const src=this.textures.get(key).source[0];return {key,px,bytes:(src?.width??0)*(src?.height??0)*4,inUse:inUse.has(key)};});
+      },
+      evict:key=>{
+        const img:unknown=this.textures.get(key).getSourceImage();this.textures.remove(key);
+        if(typeof ImageBitmap!=='undefined'&&img instanceof ImageBitmap)img.close();
+      },
+      budget:()=>ART_BUDGET[this.quality],
     });
     const done=(key:string,ok:boolean)=>{if(this.city!==city||!sheets.has(key))return;if(ok)city.artArrived(key);stream.settled(key,ok);};
     const complete=(key:string)=>done(key,true),failed=(file:Phaser.Loader.File)=>done(file.key,false);

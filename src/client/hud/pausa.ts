@@ -124,6 +124,18 @@ export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[]
   return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title,line,localWaiting,onlyLocal,waiting,level:pause.level,cards:mine,solo};
 }
 
+/**
+ * The first pause's hint (primeira-melhoria-sem-pressa): what to do and what "Rolar de novo" does, by the input kind
+ * (RunHud data-hud). In the pause's box, not under the button: the offer window is offer.ts's.
+ */
+export const PAUSE_HINT_TOUCH='Toque numa carta · Rolar de novo troca as cartas',PAUSE_HINT_MOUSE='Clique numa carta · Rolar de novo troca as cartas';
+/**
+ * The hint under the pause's line: only in the run's first pause (a new player meets the cards there, auditoria
+ * primeira-partida-30-10 item 6) and only while this phone still has a card to pick. Empty otherwise.
+ */
+export const pauseHint=(view:PauseView|undefined,first:boolean,touch:boolean)=>
+  view&&first&&view.localWaiting?touch?PAUSE_HINT_TOUCH:PAUSE_HINT_MOUSE:'';
+
 /** A teammate's mark on the strip while a pause lasts. */
 export type PickMark='escolheu'|'pensando';
 /**
@@ -242,10 +254,17 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo pra escolher');
   track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
   const line=el(doc,'span','rh-pausa-linha',box);
+  // The first pause's hint, a second line in the line's voice (empty: hidden by .rh-pausa-linha:empty).
+  const hint=el(doc,'span','rh-pausa-linha rh-pausa-dica',box);
   const live=el(doc,'span','rh-sr');live.setAttribute('aria-live','polite');
   const clock=new PauseClock(),now=()=>host.now?.()??performance.now();
   let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='',cards=1;
   let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',placedAt=-Infinity,pending=false;
+  /**
+   * The run's first pause: its level, kept until the run ends (rh-ended: the rematch's run starts over) or the team's
+   * level drops below it (a new run in the same HUD). Undefined: no pause seen yet in this run.
+   */
+  let firstLevel:number|undefined,teamLevel=0;
   const render=(view:PauseView|undefined)=>{
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
@@ -255,6 +274,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
     // The text node changes in place (dom-put putTextData): a new node each second made Chrome check the page's :has()
     // rules up to <html> and restyle the whole document, which the place's read then paid for (BUG-20261025-ORQ-levelup-pausa-mede-1s).
     putTextData(title,view.title);putTextData(line,view.line);
+    putTextData(hint,pauseHint(view,view.level===firstLevel,host.root.dataset.hud!=='mesa'));
     // Laranja Cone with a pulse at ≤ 3 s, never by colour alone (the seconds say it too).
     if(('urgente' in box.dataset)!==view.urgent){if(view.urgent)box.dataset.urgente='';else delete box.dataset.urgente;}
     const scale=`scaleX(${view.fraction.toFixed(3)})`;
@@ -270,7 +290,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
    * the boxes made the browser recalculate style and layout there (50–130 ms on a 4× phone, card levelup-pausa-mede-1s).
    */
   const place=(view:PauseView)=>{
-    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
+    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${hint.textContent}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
     const t=now();
     if(key===placed&&Math.abs(t-placedAt)<PAUSE_PLACE_MS)return;
     placed=key;placedAt=t;
@@ -300,7 +320,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const stop=()=>{if(timer!==undefined){clearInterval(timer);timer=undefined;}};
   const paint=()=>{
     const ended=host.root.classList.contains('rh-ended');
-    if(ended)stop();
+    if(ended){stop();firstLevel=undefined;}
     const view=ended?undefined:clock.view(roster,localId,now(),cards);
     render(view);
     if(view)place(view);
@@ -309,6 +329,9 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
     if(destroyed)return;
     roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;cards=view.offers?.length??1;
     const pause=validPause(ctx.pause);
+    teamLevel=view.team?.level??teamLevel;
+    if(firstLevel!==undefined&&teamLevel<firstLevel)firstLevel=undefined;
+    if(pause&&firstLevel===undefined&&!host.root.classList.contains('rh-ended'))firstLevel=pause.level;
     clock.sync(pause,now());
     if(pause&&timer===undefined&&!host.root.classList.contains('rh-ended'))timer=setInterval(paint,PAUSE_TICK_MS);
     if(!pause)stop();

@@ -23,9 +23,9 @@
   "alterna": true,
   "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-NW-run-G-r3p, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
  },
- "gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+ "gato-nada-pra-comer.run16-w.73ceb3122d8b.webp": {
   "alterna": true,
-  "prova": "evidence NEW-20261022-ORQ-gato-personagem-completo: f2/gerar/W-run-t8/ciclo-zoom.png (MARK=2: pantufa vermelha = esquerda, ciano = direita): poses 0-3 e 12-15 a ciano à frente, 4-11 a vermelha; conferido a olho pelo E2 na integração animacoes-juntas"
+  "prova": "evidence BUG-20261030-ORQ-gato-anda-sem-trocar-pe: a folha antiga (W-run-t8) era a mesma tesoura com as cores do marcador trocadas (as pantufas de perto à frente em 0 e 8). Pernas recompostas (compor.py, pantufa de longe escurecida) + limpeza do Codex (limpar/W-L1), esticar 0.18 e giro de 8 (emenda 0,72x); prova/run16-W-pernas-0-8.png: pose 0 a pantufa de longe (escura) à frente, pose 8 a de perto (branca) por cima; fase com voo igual (evenFlights)"
  },
  "gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
   "alterna": true,

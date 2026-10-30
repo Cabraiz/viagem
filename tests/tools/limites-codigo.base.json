@@ -46,7 +46,6 @@
     "src/sim/city/avenues.ts": 663,
     "src/sim/city/grid.ts": 517,
     "src/sim/crates.ts": 859,
-    "src/sim/director.ts": 1267,
     "src/sim/enemies/ai.ts": 969,
     "src/sim/enemies/catalog.ts": 466,
     "src/sim/ninhos/ninhos.ts": 519,

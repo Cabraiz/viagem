@@ -122,7 +122,7 @@ import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {PushShifts,pullDirection,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
-import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
+import {fakeBanks,sandboxSeats,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {workShop,workingIn} from '../hud/bicos.ts';
@@ -526,7 +526,7 @@ class CitySandbox extends Phaser.Scene {
    */
   private mountBanks(){
     const fake=fakeBanks(params,this.at),projector=this.cityProjector();
-    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id});
+    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id,seats:()=>sandboxSeats(params)});
     let horde:HordeRenderer|undefined;
     if(this.decoded&&fake.enemies.length){
       const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;

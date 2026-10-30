@@ -104,7 +104,7 @@ export function createMinerva():MinervaPart{
       if(key===drawn)return;
       drawn=key;
       // Nothing written on screen: the label is for screen readers only.
-      root.setAttribute('aria-label',v.phase==='clock'?`${v.seconds} segundos até os monstros acordarem`:'Os monstros acordaram');
+      root.setAttribute('aria-label',v.phase==='clock'?`${v.seconds} segundos até os bichos acordarem`:'Os bichos acordaram');
     },
   };
 }

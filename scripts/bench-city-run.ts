@@ -102,7 +102,7 @@ import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
 import {OPEN_SECONDS} from '../src/sim/crates.ts';
 import {CRATE_STAND} from '../src/sim/bot-loot.ts';
-import {DEFENSES,FREE_PIECE_DEFS,RECIPES,ROOT_DEFENSE,TOWER_TOKENS,UNITS_PER_TOKEN,classes,getClass,priceOf,returnTicks,type RecipeId} from '../src/rules/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,RECIPES,PERSONAGENS_LIBERADOS,ROOT_DEFENSE,TOWER_TOKENS,UNITS_PER_TOKEN,getClass,priceOf,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import {BOT_WALK_MULT} from '../src/contract/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
@@ -858,12 +858,13 @@ function injectAssemble(sim:Simulation,cityBalance:unknown){
 // One run
 // ---------------------------------------------------------------------------------------------------------------
 
-/** Fixed varied rotation of real class ids (every sixth of the roster, from the first). */
+/** Fixed varied rotation of real class ids (every count-th of the list, from the first). */
 export function classRotation(ids:readonly string[],count=6):string[]{
   const step=Math.max(1,Math.floor(ids.length/count));
   return Array.from({length:count},(_,i)=>ids[(i*step)%ids.length]);
 }
-const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
+/** The 6 released heroes (card ferramentas-so-elenco-ativo; was every sixth of the whole roster, legacy included). */
+const CLASS_ROTATION=classRotation(PERSONAGENS_LIBERADOS);
 
 export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */

@@ -6,8 +6,12 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {importArtV2,parseArgs} from '../../scripts/import-art-v2.mjs';
 import {GROUPS} from '../../scripts/art-v2/spec.mjs';
-import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {menuDancePlan,danceFrameAt,danceCell} from '../../src/client/ui/menu-dance.ts';
+// menu-sem-danca: the menu player (menu-dance.ts) is gone; the importer stays, so the cell of a frame is read from its pages.
+function danceCell(entry:any,frame:number){
+  const pageIndex=entry.pages.findIndex((p:any)=>frame>=p.firstFrame&&frame<p.firstFrame+p.frameCount);if(pageIndex<0) return undefined;
+  const page=entry.pages[pageIndex],i=frame-page.firstFrame;
+  return {pageIndex,x:i%page.columns*entry.cell[0],y:Math.floor(i/page.columns)*entry.cell[1]};
+}
 
 sharp.cache(false);sharp.concurrency(1);
 const modern={cell:[768,512],columns:8,rows:16,frames:128,anchor:[.5,.9],fps:128/36,loop:true};
@@ -30,7 +34,7 @@ async function temporary(fn:(dir:string)=>Promise<void>){
   const dir=mkdtempSync(path.join(tmpdir(),'viagem-menu-dance-'));
   try{await fn(dir);}finally{rmSync(dir,{recursive:true,force:true});}
 }
-for(const frames of [128,64,32,16])test(`dance import ${frames===128?'grid128':`legacy${frames}`} reflows below4096 and preserves every frame through the client plan`,async()=>temporary(async dir=>{
+for(const frames of [128,64,32,16])test(`dance import ${frames===128?'grid128':`legacy${frames}`} reflows below4096 and preserves every frame through its pages`,async()=>temporary(async dir=>{
   const input=path.join(dir,'input'),outRoot=path.join(dir,'out');await source(input,frames);
   const result=await importArtV2({input,outRoot,groups:{menu:GROUPS.menu},write:true});
   const record=result.pieces.find((p:any)=>p.id==='aposentado');
@@ -38,31 +42,27 @@ for(const frames of [128,64,32,16])test(`dance import ${frames===128?'grid128':`
   const index=JSON.parse(readFileSync(path.join(outRoot,'public/art/manifest.json'),'utf8'));
   const entry=index.groups.menu.pieces.aposentado.files.dance;
   assert.equal(entry.frames,frames);assert.equal(entry.fps,fpsFor(frames));assert.equal(entry.loop,true);
-  setArtIndex(parseArtIndex(index));const plan=menuDancePlan('aposentado')!;assert.ok(plan);
-  const frameMs=1000/fpsFor(frames);
-  assert.deepEqual(Array.from({length:frames},(_,frame)=>danceFrameAt(plan,frame*frameMs)),Array.from({length:frames},(_,frame)=>frame));
-  assert.equal(danceFrameAt(plan,frames*frameMs),0);
+  assert.equal(entry.pages.reduce((n:number,p:any)=>n+p.frameCount,0),frames);
   if(frames>=64){
     const pages=frames===128?[[5,8,0,40],[5,8,40,40],[5,8,80,40],[5,2,120,8]]:[[5,8,0,40],[5,5,40,24]];
     assert.deepEqual(entry.pages.map((p:any)=>[p.columns,p.rows,p.firstFrame,p.frameCount]),pages);
-    assert.deepEqual(danceCell(plan,39),{pageIndex:0,x:3072,y:3584});
-    assert.deepEqual(danceCell(plan,40),{pageIndex:1,x:0,y:0});
+    assert.deepEqual(danceCell(entry,39),{pageIndex:0,x:3072,y:3584});
+    assert.deepEqual(danceCell(entry,40),{pageIndex:1,x:0,y:0});
     if(frames===128){
-      assert.deepEqual(danceCell(plan,80),{pageIndex:2,x:0,y:0});
-      assert.deepEqual(danceCell(plan,120),{pageIndex:3,x:0,y:0});
-      assert.deepEqual(danceCell(plan,127),{pageIndex:3,x:1536,y:512});
-    }else assert.deepEqual(danceCell(plan,63),{pageIndex:1,x:2304,y:2048});
+      assert.deepEqual(danceCell(entry,80),{pageIndex:2,x:0,y:0});
+      assert.deepEqual(danceCell(entry,120),{pageIndex:3,x:0,y:0});
+      assert.deepEqual(danceCell(entry,127),{pageIndex:3,x:1536,y:512});
+    }else assert.deepEqual(danceCell(entry,63),{pageIndex:1,x:2304,y:2048});
   }
   for(const page of entry.pages){
     const file=path.join(outRoot,GROUPS.menu.output,page.file),meta=await sharp(file).metadata();
     assert.ok(meta.width!<=4096&&meta.height!<=4096);assert.equal(meta.hasAlpha,true);
     const {data,info}=await sharp(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});
     for(let frame=page.firstFrame;frame<page.firstFrame+page.frameCount;frame++){
-      const cell=danceCell(plan,frame)!,offset=((cell.y+40)*info.width+cell.x+40)*info.channels;
+      const cell=danceCell(entry,frame)!,offset=((cell.y+40)*info.width+cell.x+40)*info.channels;
       assert.deepEqual([...data.subarray(offset,offset+3)],rgb(frame),`frame${frame}`);
     }
   }
-  setArtIndex(parseArtIndex(undefined));
 }));
 
 test('a selected menu import preserves unrelated index groups even when their disk manifest differs',async()=>temporary(async dir=>{

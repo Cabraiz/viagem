@@ -19,6 +19,7 @@ import {placeWall} from '../src/sim/stonewards/wall.ts';
 import {blockDisc,pieceRectOf,type PieceState} from '../src/sim/towers/free-build.ts';
 import {BARRICADA_CELLS} from '../src/rules/index.ts';
 import {TRALHA_OWNER} from '../src/sim/towers/tralha.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const cityText=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -109,7 +110,7 @@ let shutTotal=0,squares=0,midStreet=0;
 const lastPieces:PieceState[][]=[];
 for(let seed=1;seed<=seeds;seed++){
   const s=new Simulation(seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
-  s.add('p0','P0','cidadao-comum');s.resetRun();s.step(1000);
+  s.add('p0','P0',PERSONAGEM_PADRAO);s.resetRun();s.step(1000);
   const pieces=((s.run.stonewards.state as unknown as {defenses?:{pieces?:PieceState[]}}).defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER);
   lastPieces.push(pieces);
   const W=base.slice();

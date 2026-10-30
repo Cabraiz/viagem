@@ -18,7 +18,7 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
-import {BANCO} from '../../../rules/index.ts';
+import {BANCO,bicoSaldo} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
@@ -43,7 +43,9 @@ const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined;
   /** Bicos: a player's name on the shop's tag ("Você" for the local one); absent: "1 no turno". */
-  nameOf?:(id:string)=>string}
+  nameOf?:(id:string)=>string;
+  /** The room's seats (bots count): the saldo ring is whole at bicoSaldo(seats); absent: the solo's shift. */
+  seats?:()=>number}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
@@ -284,7 +286,7 @@ export class BankRenderer {
    * piece is drawn once in the bank's local space and frozen (TriBand); per frame it only moves and the saldo ring scales.
    */
   private drawGround(b:BankView,d:BankDraw,k:number,shadow=true){
-    const g=d.ground,keys=groundKeys(b,k,this.options.projector.view),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
+    const full=bicoSaldo(this.options.seats?.()??1),g=d.ground,keys=groundKeys(b,k,this.options.projector.view,full),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
     if(g.keys.hold!==keys.hold||!g.hold){
       g.keys.hold=keys.hold;g.hold?.destroy();
       const hold=BANCO.holdR*42,paying=b.state==='sacando';
@@ -292,7 +294,7 @@ export class BankRenderer {
     }
     if(g.keys.ring!==keys.ring||!g.ring){
       g.keys.ring=keys.ring;g.ring?.destroy();
-      const r=1.25*M*42,share=saldoShare(b),color=b.state==='bicho'?c.cone:c.cartolina;
+      const r=1.25*M*42,share=saldoShare(b,full),color=b.state==='bicho'?c.cone:c.cartolina;
       g.ring=TriBand.make(this.scene,gr=>{
         gr.lineStyle(7*k,c.breu,.55).strokeEllipse(0,0,r*2,r);
         if(share<=0)return;

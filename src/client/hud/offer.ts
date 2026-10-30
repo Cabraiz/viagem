@@ -40,7 +40,7 @@ const jokes:Record<OfferSource,readonly string[]>={
   ],
   round:[
     'Promoção relâmpago de poder',
-    'Brinde do síndico por sobreviver',
+    'Brinde da casa por sobreviver',
     'Leva um, os bichos pagam o outro',
     'Carta válida só neste intervalo',
   ],

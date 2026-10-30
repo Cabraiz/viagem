@@ -84,7 +84,9 @@ test('texts: the manual combat speaks of the attack button and of Space, never o
     assert.equal(coopNotice(kind,false),INPUT_TEXTS[kind].coopNotice);
     assert.equal(coopNotice(kind,true),MANUAL_NOTICE[kind]);assert.doesNotMatch(coopNotice(kind,true),/sozinha/);
     const lines=controlsHintLines('lobby',kind,true);
-    assert.equal(lines[1],MANUAL_HINT[kind]);assert.doesNotMatch(lines.join(' '),/sozinha/);
+    // levelup-sem-arma-e-solo: one line (the second is hidden for size), short enough for the 280 px etiqueta, walk and attack.
+    assert.deepEqual(lines,[MANUAL_HINT[kind]]);assert.doesNotMatch(lines.join(' '),/sozinha/);
+    assert.ok(MANUAL_HINT[kind].length<=36,MANUAL_HINT[kind]);assert.match(MANUAL_HINT[kind],/andar.*atacar|andar.*bater/i);
     assert.deepEqual(controlsHintLines('countdown',kind,true),controlsHintLines('countdown',kind));
   }
   assert.match(coopNotice('mouse',true),/Espaço/);

@@ -68,7 +68,7 @@
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,carGap,ticks} from '../contract/index.ts';
-import {RADIUS,walkable,type CarPlace,type TerrainField} from '../maps/index.ts';
+import {RADIUS,bocaFaixa,cityEntradas,walkable,type CarPlace,type CityTerrain,type TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
@@ -122,6 +122,8 @@ export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS
 /** A hero's heading follows his walk with this weight a tick (about a second's memory at 20 Hz). */
 const HEADING_KEEP=.9;
 /** Item 2: the near start crate sits at most NEAR_START_REACH u from its hero (tried at NEAR_START_RADII, NEAR_START_ANGLES around). */
+/** placeNear's passes: [room for the crate's body, a mouth's strip allowed]. */
+const NEAR_PASSES:readonly (readonly [boolean,boolean])[]=[[true,false],[false,false],[true,true],[false,true]];
 export const NEAR_START_REACH=3,NEAR_START_RADII:readonly number[]=[2.5,2.25,2.75,2,3],NEAR_START_ANGLES=32;
 /** Item 2: near crates keep this far apart (their bodies, CRATE_BODY_RADIUS 1.5, may touch; a hero still tells them apart). */
 export const NEAR_START_SPACING=2;
@@ -446,9 +448,53 @@ export function heroReach(terrain:TerrainField|undefined,from:readonly Point[]):
   };
 }
 
+/**
+ * Crates off the street mouths (NEW-20261030-ORQ-bocas-sem-loot-e-caixas; auditoria-bocas 30/10: 75 of the 104 loot
+ * points touch an entrance's free strip, maps/city/entradas.ts bocaFaixa, so 11-15 of a run's 18 crates stood in one).
+ * A crate body (CRATE_BODY_RADIUS) overlapping a strip moves to the nearest clear spot outside every strip: rings
+ * MOUTH_STEP u apart out to MOUTH_REACH u, MOUTH_ANGLES each, MOUTH_SPACING u from the other spots when it can. The spot keeps its
+ * index (the cap needs every point: the 29 outside are fewer than six players' 36); none found, it stays.
+ */
+export const MOUTH_REACH=24,MOUTH_STEP=.5,MOUTH_ANGLES=48,MOUTH_SPACING=4;
+const stripsMemo=new WeakMap<object,readonly {x:number;y:number;w:number;h:number}[]>();
+/** Whether a crate body at (x, y) overlaps an entrance's free strip. */
+export function crateInMouth(city:CityTerrain,x:number,y:number):boolean{
+  const a=city.asset,R=CRATE_BODY_RADIUS;
+  let strips=stripsMemo.get(a);
+  if(!strips)stripsMemo.set(a,strips=cityEntradas(a).map(e=>bocaFaixa(a,e)));
+  return strips.some(f=>x-R<f.x+f.w&&f.x<x+R&&y-R<f.y+f.h&&f.y<y+R);
+}
+/** The points with every crate in a mouth's strip moved out of it (see MOUTH_REACH); the others as they were. */
+export function foraDasBocas<T extends Point>(city:CityTerrain,points:readonly T[],spacing=MOUTH_SPACING):T[]{
+  const out=points.map(p=>({...p})),taken=out.filter(p=>!crateInMouth(city,p.x,p.y));
+  for(const p of out){
+    if(!crateInMouth(city,p.x,p.y))continue;
+    // The nearest spot MOUTH_SPACING from the others, else the nearest at all (a crowded corner: crates may stand close).
+    let near:Point|undefined;
+    search:for(let n=1;n*MOUTH_STEP<=MOUTH_REACH;n++)for(let k=0;k<MOUTH_ANGLES;k++){
+      const r=n*MOUTH_STEP,a=k*2*Math.PI/MOUTH_ANGLES;
+      const x=Math.round((p.x+Math.cos(a)*r)*100)/100,y=Math.round((p.y+Math.sin(a)*r)*100)/100;
+      if(crateInMouth(city,x,y)||!city.clearDisc(x,y,CRATE_BODY_RADIUS))continue;
+      near??={x,y};
+      if(taken.some(q=>Math.hypot(q.x-x,q.y-y)<spacing))continue;
+      near={x,y};break search;
+    }
+    if(near){p.x=near.x;p.y=near.y;taken.push(p);}
+  }
+  return out;
+}
+
 export function createCrates(options:CratesOptions):Crates{
-  const {seed,points,startPoints=[],hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN}=options;
+  const {seed,hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN}=options;
   const state=options.state??createCratesState(seed);
+  // The city's spots off the street mouths (foraDasBocas), moved once the terrain is known (the first step).
+  let points=options.points,startPoints=options.startPoints??[],offMouths=false;
+  function moveOffMouths(ctx:SimContext){
+    if(offMouths)return;
+    offMouths=true;
+    const city=cityTerrainOf(ctx.terrain);
+    if(city){points=foraDasBocas(city,points);startPoints=foraDasBocas(city,startPoints,0);}
+  }
   // Distance tier of each point: thirds of the points sorted by walk time (ties: map order), 0 near .. 2 far.
   const tierOf:number[]=new Array(points.length).fill(0);
   points.map((p,i)=>({s:p.seconds,i})).sort((a,b)=>a.s-b.s||a.i-b.i).forEach(({i},rank)=>{tierOf[i]=Math.min(2,Math.floor(rank*3/points.length));});
@@ -543,7 +589,8 @@ export function createCrates(options:CratesOptions):Crates{
 
   /**
    * Item 2: a verde start crate NEAR_START_REACH u from each hero (START_PLAYERS_MAX at most): open ground for its body
-   * (else for a hero, the second pass), reached on foot, NEAR_START_SPACING from the other near crates and never on a
+   * (else for a hero, the second pass), off the street mouths (crateInMouth) unless the hero spawned with none free
+   * within reach (the last passes), reached on foot, NEAR_START_SPACING from the other near crates and never on a
    * hero nor on the Uno's body (the heroes spawn beside it, six of them in a tight block); and every hero's start grace.
    * Heroes in list order, else in another (a rotation, either way) when that leaves one without: the block's last ones
    * get boxed in by the others' crates. Returns how many crates it placed. Outside the city any spot counts.
@@ -553,7 +600,7 @@ export function createCrates(options:CratesOptions):Crates{
     const end=ctx.tick+ticks(START_GRACE_S),grace=state.grace??={};
     for(const p of heroes){grace[p.id]=end;p.invulnerableUntil=Math.max(p.invulnerableUntil??0,end);}
     // Outside the city (no mask) any spot counts, like heroReach.
-    const fits=(at:Point,body:boolean,near:readonly Point[])=>(!city||city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS))
+    const fits=(at:Point,body:boolean,mouth:boolean,near:readonly Point[])=>(!city||(city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS)&&(mouth||!crateInMouth(city,at.x,at.y))))
       &&(!car||carGap(car,at)>=(body?CRATE_BODY_RADIUS:RADIUS))
       &&reachable(ctx,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
       &&heroes.every(o=>Math.hypot(o.x-at.x,o.y-at.y)>=CRATE_BODY_RADIUS+RADIUS);
@@ -562,10 +609,10 @@ export function createCrates(options:CratesOptions):Crates{
       const near:Point[]=[];
       for(const i of order){
         const p=owners[i];
-        search:for(const body of [true,false])for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
+        search:for(const [body,mouth] of NEAR_PASSES)for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
           const a=a0[i]+k*2*Math.PI/NEAR_START_ANGLES;
           const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
-          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,near)){near.push(c);break search;}
+          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,mouth,near)){near.push(c);break search;}
         }
       }
       return near;
@@ -613,8 +660,9 @@ export function createCrates(options:CratesOptions):Crates{
         ||(speed>1e-3&&(waiting.x-p.x)*t.hx+(waiting.y-p.y)*t.hy<0)))delete t.waiting;
       if(t.waiting||!options.trailSpot||t.placed>=TRAIL_MAX||t.passed.length>=due||speed<1e-3||!canOpen(p))continue;
       const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
-      const at=options.trailSpot(p,heading,ahead,rng);
-      if(!at||!reachable(ctx,at)||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
+      const spot=options.trailSpot(p,heading,ahead,rng),city=cityTerrainOf(ctx.terrain);
+      const at=spot&&city&&crateInMouth(city,spot.x,spot.y)?foraDasBocas(city,[spot])[0]:spot;
+      if(!at||(city&&crateInMouth(city,at.x,at.y))||!reachable(ctx,at)||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
       let rarity:Rarity=t.placed++%2?2:1;
       while(rarity<GOLD_RARITY&&state.took?.[p.id]?.includes(rarity))rarity=rarity+1 as Rarity;
       t.waiting=addCrate(ctx,at,{rarity,origin:'dropped',start:true},state.last?.[p.id]).id;
@@ -787,6 +835,7 @@ export function createCrates(options:CratesOptions):Crates{
     state,
     step(ctx){
       const rng=new Rng(0);rng.state=state.rng;
+      moveOffMouths(ctx);
       if(!state.placed)placeInitial(ctx,rng);
       sync(ctx,rng);
       respawn(ctx,rng);

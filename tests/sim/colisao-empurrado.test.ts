@@ -60,6 +60,7 @@ const near=(got:Point|undefined,want:Point,msg:string)=>{
 
 test('only the mendigo is pushed: the saci and the sanfoneiro are solid and never move',()=>{
   assert.equal(shovedEnemy('bebado'),true,'a plain enemy (drawn as the mendigo)');
+  assert.equal(shovedEnemy('mendigo'),true,'the mendigo (so-3-inimigos: the common enemy)');
   assert.equal(shovedEnemy('aberracao-saci'),false,'the saci');
   assert.equal(shovedEnemy('sanfoneiro'),false,'the sanfoneiro');
   assert.equal(shovedEnemy('bebado',true),false,'any boss');

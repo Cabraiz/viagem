@@ -104,7 +104,7 @@ test('the seat survives the mobile grace (held through the run while someone pla
   room.disconnect(held,t);
   for(const end=t+GRACE_MS+1000;t<end;t+=50){say(room,b,{t:'ack',seq:0},t);room.advance(t);}
   const late=peer();join(room,late,'Ana',t,ana.token);
-  assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Sua sessão expirou. Entre novamente.');
+  assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Você ficou fora mais de 2 minutos e sua vaga foi liberada. Entra de novo pela sala.');
 });
 
 test('restart of the room before any checkpoint (round 1): the roster comes back from storage, the run is lost honestly, each player hears it once',()=>{

@@ -220,8 +220,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  */
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 // Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
+// Re-recorded for modificadores-so-elenco-ativo (29/10): the 7 modifiers naming hidden enemies left the draw, so seeds draw other themes.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'174e9e00d4fd6de4','tutorial seed 8 r4':'3dc4d3cc617be16c','plain seed 21 r10':'e90551f1a18407a9',
+  'tutorial seed 3 r4':'7b836303eaadc2b2','tutorial seed 8 r4':'9a17088db044d4cc','plain seed 21 r10':'38432c5aef56c1a7',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -240,11 +241,11 @@ test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and outpu
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
-  // Seed 8 (was 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
-  // modifier (its hpMult) can differ between the two runs; on seed 8 rounds 2-4 draw the same theme in both.
-  const base=cityRun(8,4,true);
+  // Seed 2 (was 8 before modificadores-so-elenco-ativo, 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
+  // modifier (its hpMult) can differ between the two runs; on seed 2 rounds 2-4 draw the same theme in both.
+  const base=cityRun(2,4,true);
   const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
-  const tuned=cityRun(8,4,true,{cityBalance:knobs});
+  const tuned=cityRun(2,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
   assert.ok(r1(base.bodies).length>0,'the tutorial spawned');

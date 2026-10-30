@@ -1,7 +1,7 @@
 // The phone dropped the game's WebGL context (out of GPU memory; auditoria-erros-cliente E1): the canvas goes black
 // with no word. Phaser keeps the context restorable (it calls preventDefault on the loss); this only tells the player
 // what happened and gives a way back. A restore before the tap takes the panel down again.
-export const GL_LOST_TEXT='A tela do jogo apagou (o celular ficou sem memória). Toque em Voltar pra partida.';
+export const GL_LOST_TEXT='A tela do jogo apagou (o celular ficou sem memória). Toca em Voltar pra partida.';
 export const GL_LOST_BUTTON='Voltar pra partida';
 
 /** Calls lost/restored on the canvas's context events; returns the unsubscribe. */

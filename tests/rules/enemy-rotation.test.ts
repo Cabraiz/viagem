@@ -13,6 +13,9 @@ import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
 import {ELITE_EVERY,ELITE_ONLY,ENEMY_ART_IDS,MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
   drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
+import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
+// The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
+setRosterOnlyLiberados(false);
 
 // The whole roster (ROSTER_ONLY_WITH_ART off): the rotation's design; the art-only draw is tests/rules/enemy-art-ids.test.ts.
 const FULL={onlyWithArt:false};

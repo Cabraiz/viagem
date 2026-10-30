@@ -9,6 +9,12 @@
  * on the boss or an elite lands with chefe-acerto, the rescued hero gets up ('levantar' with the 'ufa'), a danger warning
  * (horde about to spawn, an attack telegraphed) thumps low from its side of the screen, and a barricade, the wall or the
  * Uno breaking lands a heavy golpe. The 'wave' event the audit asked for (item 20) is never emitted by the sim.
+ * NEW-20261030-ORQ-sons-nos-eventos (auditoria-sons-30-10, the new recipes): a bicho's hit on me and a melee wind-up
+ * near me ('pancada', 'investida', 'varredura') are 'bicho-ataque', the saci's hit whistles ('saci-assobio'), the
+ * sanfoneiro's playing is 'sanfona' from his side, the chaveiro's arrival is 'chaveiro-chega', my PIX (sent or got)
+ * a short 'caca-niquel' (the gema already rings for every cédula and climbs the combo) and a magnet the 'ima'.
+ * bicho-ataque and the PIX are capped per second (RateGate). Legacy hazards keep the old warning; legacy kinds never
+ * whistle.
  */
 import {CAR_ID,type SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
@@ -85,10 +91,20 @@ export const WARN_SPAWN_RATE=.7,WARN_ATTACK_RATE=.85;
 export const WARN_MS=1200,WARN_RANGE=20,WARN_FALLOFF=8;
 /** How far to the side a warning at the screen's edge sounds (footsteps' ALLY_PAN). */
 export const WARN_PAN=.6;
+/** A short caca-niquel: a PIX sent or received (higher and quieter than the golden weapon's jackpot). */
+export const PIX_CUE={id:'caca-niquel',rate:1.6,gain:.5} as const;
+/** The telegraph kinds of a melee wind-up (the brute's and the sanfoneiro's slam, the charge, the sweep). */
+export const MELEE_TELEGRAPHS:ReadonlySet<string>=new Set(['pancada','investida','varredura']);
+/** The saci's roster kind (ELITE_ONLY): his hit whistles instead of the bicho's. */
+export const SACI_KIND='aberracao-saci';
+/** At most this many per second, whatever the crowd (playEvents' RateGate). */
+export const PER_SECOND:Readonly<Partial<Record<SoundId,number>>>={'bicho-ataque':4,'caca-niquel':3};
 /** A structure whose hp 0 is a break (a tower's hp 0 is its end of life, the tralha has its own thwack). */
 const breaks=(id:string)=>id.startsWith('barricada')||id==='muralha'||id===CAR_ID;
 
 interface Point {x:number;y:number}
+/** An enemy the client sees (the feed's EnemyView). */
+interface SeenEnemy extends Point {kind:string;boss?:boolean}
 /** What the room's view knows besides the events (hud/rescue.ts); every part optional. */
 export interface EventWorld {
   /** The local hero, for a warning's distance. */
@@ -97,16 +113,36 @@ export interface EventWorld {
   side?:(p:Point)=>number;
   /** The boss by enemy id (the damage event has no kind). */
   boss?:(enemy:string)=>boolean;
-  /** A telegraph's place by id (view.telegraphs); undefined: not in this client's view. */
-  telegraph?:(id:string)=>Point|undefined;
+  /** A telegraph's place (and kind) by id (view.telegraphs); undefined: not in this client's view. */
+  telegraph?:(id:string)=>(Point&{kind?:string})|undefined;
+  /** An enemy by id (the feed); undefined: gone or not in this client's view. */
+  enemy?:(id:string)=>SeenEnemy|undefined;
 }
 /** The danger warning's level and side at `at`, or undefined when too far or out of view. */
 export function warnCue(rate:number,at:Point|undefined,world?:EventWorld):EventCue|undefined{
-  if(!at)return world?.telegraph?undefined:{id:'chefe-passo',rate};
+  return placed({id:'chefe-passo',rate},at,!!world?.telegraph,world);
+}
+/**
+ * `cue` from `at`: quieter with the distance to the hero and from its side, none past WARN_RANGE. No place: the plain
+ * cue, or none when the world could have placed it (`known`) and did not (out of this client's view).
+ */
+export function placed(cue:EventCue,at:Point|undefined,known:boolean,world?:EventWorld):EventCue|undefined{
+  if(!at)return known?undefined:cue;
   const d=world?.hero?Math.hypot(at.x-world.hero.x,at.y-world.hero.y):0;
   if(d>WARN_RANGE)return undefined;
   const pan=(world?.side?.(at)??0)*WARN_PAN;
-  return {id:'chefe-passo',rate,gain:1/(1+d/WARN_FALLOFF),...(pan?{pan}:{})};
+  return {...cue,gain:(cue.gain??1)/(1+d/WARN_FALLOFF),...(pan?{pan}:{})};
+}
+/** At most `perSecond` in any second (a crowd's hits, a burst of PIX). */
+export class RateGate {
+  private times:number[]=[];
+  readonly perSecond:number;
+  constructor(perSecond:number){this.perSecond=perSecond;}
+  open(now:number){
+    this.times=this.times.filter(at=>now-at<1000);
+    if(this.times.length>=this.perSecond)return false;
+    this.times.push(now);return true;
+  }
 }
 /** One warning per WARN_MS, for the whole match (spawns, telegraphs). */
 export class WarnGate {
@@ -129,7 +165,12 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
   const mine=(id:string|undefined)=>localPlayer!==undefined&&id===localPlayer;
   switch(event.type){
     case 'damage':{
-      if(mine(event.target))return {id:'dano-heroi'};
+      if(mine(event.target)){
+        // An enemy's hit (his body, his slam, his charge): the bicho's attack, or the saci's whistle.
+        const by=event.source!==undefined?world?.enemy?.(event.source):undefined;
+        if(!by||by.boss)return {id:'dano-heroi'};
+        return {id:'dano-heroi',with:{id:by.kind===SACI_KIND?'saci-assobio':'bicho-ataque'}};
+      }
       if(!mine(event.source))return undefined;
       // The boss or an elite takes the heavy hit; a slash lands with a thwack; a shot with the critter's splat.
       const id:SoundId=elite?.(event.target)||world?.boss?.(event.target)?'chefe-acerto'
@@ -145,7 +186,14 @@ export function cueForEvent(event:SimEvent,localPlayer?:string,elite?:(enemy:str
       if(mine(event.player))return {id:'ufa',with:GET_UP_CUE};
       return mine(event.by)?{id:'resgate'}:{id:'resgate',gain:TEAM_RESCUE_GAIN};
     case 'spawn-warning':return warnCue(WARN_SPAWN_RATE,event,world);
-    case 'telegraph':return warnCue(WARN_ATTACK_RATE,world?.telegraph?.(event.telegraph),world);
+    case 'telegraph':{
+      const at=world?.telegraph?.(event.telegraph);
+      if(at?.kind&&MELEE_TELEGRAPHS.has(at.kind))return placed({id:'bicho-ataque'},at,true,world);
+      return warnCue(WARN_ATTACK_RATE,at,world);
+    }
+    // The sanfoneiro starts playing: the fole from his side (his warning and his stop are seen, not heard).
+    case 'sanfona':return event.what==='toca'?placed({id:'sanfona'},world?.enemy?.(event.enemy),!!world?.enemy,world):undefined;
+    case 'pix':return mine(event.from)||mine(event.to)?{...PIX_CUE}:undefined;
     case 'structure':if(event.hp===0&&breaks(event.id))return {...BREAK_CUE};break;
   }
   const id=soundForEvent(event,localPlayer);return id?{id}:undefined;
@@ -158,6 +206,8 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'fire':return mine(event.player)?weaponSound(event.weapon):undefined;
     case 'pickup':
       if(!mine(event.player))return undefined;
+      // The magnet (protocol4's DICT keeps it; the sim has emitted none since D-054): its own take, never the gema.
+      if((event.kind as string)==='magnet')return 'ima';
       switch(event.kind){
         case 'chest':return chestSound(event.value);
         case 'heal':return 'coxinha';
@@ -184,6 +234,9 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'spawn-warning':case 'telegraph':return 'chefe-passo';
     // The intermission's end ("Fim do recreio!", sim/stonewards): the Uno honks (card som-alarme-gema-e-chefe).
     case 'horn':return 'buzina';
+    // The chaveiro arrives (sim/chaveiro/system.ts): everyone hears it.
+    case 'moto':return event.mode==='chegou'?'chaveiro-chega':undefined;
+    case 'sanfona':case 'pix':return cueForEvent(event,localPlayer)?.id;
     // 'prepare' also opens the run (before round 1) and shares a tick with 'end', so only 'end' gets the ta-dá.
     case 'round':return event.phase==='wave'?'round-inicio':event.phase==='end'?'round-fim':undefined;
     default:return undefined;
@@ -194,8 +247,11 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
 export const GEMS=new GemCombo();
 /** The match's danger warnings, one per WARN_MS. */
 export const WARNINGS=new WarnGate();
-/** The gem combo, the warnings' gate and their clock (ms); tests pass their own. */
-export interface GemClock {gems:GemCombo;warn?:WarnGate;now:()=>number}
+/** The match's per-second caps (PER_SECOND). */
+export const rateGates=()=>Object.fromEntries(Object.entries(PER_SECOND).map(([id,n])=>[id,new RateGate(n!)])) as Partial<Record<SoundId,RateGate>>;
+export const RATES=rateGates();
+/** The gem combo, the warnings' gate, the per-second caps and their clock (ms); tests pass their own. */
+export interface GemClock {gems:GemCombo;warn?:WarnGate;rates?:Partial<Record<SoundId,RateGate>>;now:()=>number}
 type Play=(id:SoundId,opts?:{gain?:number;rate?:number;pan?:number})=>boolean;
 
 /**
@@ -203,7 +259,8 @@ type Play=(id:SoundId,opts?:{gain?:number;rate?:number;pan?:number})=>boolean;
  * `heard`: an event whose sound already played on the client (a cédula caught on screen, render/cedula-catch.ts).
  * `elite`: an elite enemy by id (cueForEvent).
  * Each of my gems climbs the combo's pitch (recipes.ts GemCombo); a heard one already did.
- * `world`: the hero, the screen's sides, the boss and the telegraphs (EventWorld); a danger warning passes `clock.warn`.
+ * `world`: the hero, the screen's sides, the boss, the telegraphs and the enemies (EventWorld); a danger warning passes
+ * `clock.warn`, a capped sound (PER_SECOND) its `clock.rates` gate (the hit under it still plays).
  */
 export function playEvents(audio:{play:Play},events:Iterable<SimEvent>,localPlayer?:string,
   heard?:(event:SimEvent)=>boolean,elite?:(enemy:string)=>boolean,clock:GemClock={gems:GEMS,now:()=>performance.now()},world?:EventWorld):number{
@@ -212,9 +269,10 @@ export function playEvents(audio:{play:Play},events:Iterable<SimEvent>,localPlay
     const cue=cueForEvent(event,localPlayer,elite,world);
     if(!cue||heard?.(event))continue;
     if(cue.id==='gema')cue.rate=clock.gems.next(clock.now());
-    if((event.type==='spawn-warning'||event.type==='telegraph')&&!(clock.warn??WARNINGS).open(clock.now()))continue;
+    if(cue.id==='chefe-passo'&&!(clock.warn??WARNINGS).open(clock.now()))continue;
     for(let c:EventCue|undefined=cue;c;c=c.with){
       const {id,with:_,...opts}=c;
+      if((clock.rates??RATES)[id]?.open(clock.now())===false)continue;
       if(audio.play(id,opts))played++;
     }
   }

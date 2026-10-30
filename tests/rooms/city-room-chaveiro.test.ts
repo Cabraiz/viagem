@@ -109,11 +109,15 @@ test('ACCEPTANCE (D-047): a city room with three bots and a person plays the cha
   assert.ok(end.etaS<start.etaS,`ETA ${start.etaS} → ${end.etaS}`);
   assert.ok(Math.hypot(end.moto.x-start.route[0].x,end.moto.y-start.route[0].y)>1,'the moto left the entrance');
   // The phone's frames carry the objective (protocol 15): decoded in order, the last view has it with the route.
-  const dec=new FrameDecoder();let last:ObjectiveView|undefined;
-  for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective)last=r.view.objective;}
+  const dec=new FrameDecoder();let last:ObjectiveView|undefined,live:ObjectiveView|undefined;
+  for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective){last=r.view.objective;if(!last.ended)live=last;}}
   assert.ok(last,'frames carry the objective');
   assert.equal(last!.route.length,start.route.length,'the static route came through');
-  assert.ok(Math.abs(last!.etaS-end.etaS)<=2,`the phone's ETA ${last!.etaS} vs ${end.etaS}`);
+  // A finished run: the last frame before the end shows the bill's ETA (the ended view after a defeat reads 0, and the
+  // client ignores an ended objective's ETA: music.ts, hud/chaveiro.ts).
+  const lastEta=state.phase==='result'&&state.objective?state.objective.eta:end.etaS;
+  const shown=state.phase==='result'?live:last;
+  assert.ok(shown&&Math.abs(shown.etaS-lastEta)<=2,`the phone's ETA ${shown?.etaS} vs ${lastEta}`);
   // A finished run carries the bill.
   if(state.phase==='result'){
     assert.ok(state.objective,'the result carries the objective');

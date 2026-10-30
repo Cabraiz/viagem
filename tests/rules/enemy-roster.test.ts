@@ -1,6 +1,6 @@
 /**
- * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 174 (the nine hand-tuned kinds, the 164 pack entries and the
- * extra aberração-saci, NEW-20261029-ORQ-saci-elite-no-jogo) and
+ * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 175 (the nine hand-tuned kinds, the 164 pack entries and the
+ * extra aberração-saci, NEW-20261029-ORQ-saci-elite-no-jogo, and mendigo, NEW-20261029-ORQ-so-3-inimigos) and
  * the 13 role profiles, as data.
  *  - the import is deterministic and complete: the committed file is what scripts/import-roster.mjs writes from the board
  *    packs (when the board is next to the repo) and has every pack row: 164 entries, 41 per pack, ids unique, roles valid
@@ -29,16 +29,16 @@ test('import: the committed roster is what scripts/import-roster.mjs writes from
   for(let run=0;run<2;run++){
     const r:{status:number|null;stdout:string;stderr:string}=spawnSync(process.execPath,[join(repo,'scripts','import-roster.mjs'),'--check',board],{encoding:'utf8'});
     assert.equal(r.status,0,`run ${run}: ${r.stderr}${r.stdout}`);
-    assert.match(r.stdout,/enemy-roster\.ts is current \(174 entries\)/);
+    assert.match(r.stdout,/enemy-roster\.ts is current \(175 entries\)/);
   }
 });
 
-test('complete: 174 entries (the nine + 164 from 4 packs of 41 + 1 extra), unique ids, valid roles, cells and priorities, 64 P0',()=>{
-  assert.equal(ROSTER.length,174);assert.equal(packs.length,164);
-  assert.deepEqual(extra.map(e=>[e.id,e.role,e.priority]),[['aberracao-saci','mini-chefe','P1']],'the extra entries: the saci elite');
+test('complete: 175 entries (the nine + 164 from 4 packs of 41 + 2 extra), unique ids, valid roles, cells and priorities, 64 P0',()=>{
+  assert.equal(ROSTER.length,175);assert.equal(packs.length,164);
+  assert.deepEqual(extra.map(e=>[e.id,e.role,e.priority]),[['aberracao-saci','mini-chefe','P1'],['mendigo','corredor','P1']],'the extra entries: the saci elite and the mendigo (só 3 inimigos)');
   assert.deepEqual(ROSTER.slice(0,9).map(e=>e.id),[...LEGACY_KINDS],'the nine come first, as LEGACY_KINDS');
   for(const pack of [1,2,3,4])assert.equal(packs.filter(e=>e.pack===pack).length,41,`pack ${pack}`);
-  assert.equal(new Set(ROSTER_IDS).size,174,'ids unique');
+  assert.equal(new Set(ROSTER_IDS).size,175,'ids unique');
   assert.equal(p0.length,64);
   for(const e of ROSTER){
     assert.match(e.id,/^[a-z0-9]+(-[a-z0-9]+)*$/,e.id);

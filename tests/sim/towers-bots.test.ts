@@ -239,9 +239,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(4,3,6);
+  const a=cityRun(6,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 4, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 6, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -262,13 +262,14 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // Seed 3 since map v7 (uno-atravessa-tralha: the loose fences out, the narrow ways widened for the Uno's body)
   // met bots-resgatam: seeds 3, 4, 8, 12, 14, 15, 16 of 1–16 start the B line. Seed 4 since levelup-espalhado (levels 2/3
   // cheaper, the first cards earlier): seeds 1, 2, 4, 5, 8, 10, 13, 15, 16 of 1–16 start the B line. Seed 5 since levelup-espalhado met
-  // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line.
-  // Seed 4 since colisao-entre-herois (the heroes solid to each other): seeds 4, 7, 12, 14, 15 of 1–16 start the B line.
+  // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line. Seed 6 since so-3-inimigos (only the mendigo horde in the
+  // rotation): seeds 1, 2, 3, 6, 7, 8, 9, 13, 16 of 1–16 start the B line.
+  // Seed 6 still with colisao-entre-herois (the heroes solid to each other): seeds 2, 3, 6, 7, 9, 11, 12, 16 of 1–16 start the B line.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(4,3,6);
+  const b=cityRun(6,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });
@@ -369,7 +370,8 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
   assert.ok(c.forges.every(f=>f.needed||f.after>=f.keep+f.reserve),'no forge buy under it');
   assert.ok(c.orders.every(o=>!o.endsWith('→ grana')&&!o.endsWith('→ balance')),'no order refused for money');
   // bot-solo-gasta-grana: alone the bill's share was more than the bot ever earned, so it never evolved; now it does.
-  const solo=cityRun(4,1,6,'chaveiro'),soloSpends=solo.grana.filter(g=>g.spent>0);
+  // To round 7 (so-3-inimigos): with the mendigo alone, seed 4 has the solo bot's first evolutions in round 7 (seeds 1-3, 5, 6: by round 6).
+  const solo=cityRun(4,1,7,'chaveiro'),soloSpends=solo.grana.filter(g=>g.spent>0);
   console.log(`[D-048 chaveiro] 1 bot, seed 4, to round ${solo.sim.world.round.index}: ${soloSpends.length} Grana orders (${soloSpends.map(g=>`${g.before}-${g.spent} keep ${g.keep}`).join(', ')}), `+
     `${solo.forges.length} forge buys, Grana at the end ${solo.sim.teamGrana()}`);
   assert.ok(soloSpends.length>0,'a bot alone spends its Grana');

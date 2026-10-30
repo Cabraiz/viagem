@@ -115,7 +115,7 @@ const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=2000;
 /**
  * 3g-rede-sem-teleporte: in a match the room holds the seat for the whole run while anyone is still playing (the hero
  * plays on its own meanwhile), so the client keeps knocking that long (the room's lifetime, D-043: 50 min) instead of RETRY_WINDOW_MS;
- * the room says when the seat is really gone ('Sua sessão expirou').
+ * the room says when the seat is really gone (SEAT_EXPIRED: 'sua vaga foi liberada').
  */
 export const RUN_RETRY_WINDOW_MS=50*60_000;
 /** A page reloaded with a saved token (mid-match, or Wi-Fi → 4G) tries this many times before giving up the first join. */
@@ -161,6 +161,8 @@ export const CITY_RETRY_WAIT_MS=6000;
  * Terminal drop in a match (the retry window ran out, the seat token is gone): the HUD shows it with "Voltar pra sala",
  * which opens the room's invite link (NEW-20261009-UX-menu-e-conexao); a reload would land on the start screen.
  */
+/** Shown when the first connection never got in (lobby status line, or the fatal panel after a reload with a seat). */
+export const JOIN_FAILED='Não deu pra entrar na sala. Confere a internet e tenta de novo.';
 export const LINK_LOST='Conexão indisponível. Toca em Voltar pra sala pra entrar de novo.';
 /** Lobby status while that join waits for the city's manifest. */
 export const CITY_RETRY_STATUS='A sala está na Cidade Nevada. Buscando o mapa…';
@@ -569,7 +571,7 @@ export class CoopClient {
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
         if(this.initialized)this.fatal=LINK_LOST;
-        this.onStatus(this.fatal??'Conexão indisponível. Volte aos heróis e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
+        this.onStatus(this.fatal??JOIN_FAILED);this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
       const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;

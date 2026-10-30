@@ -41,7 +41,7 @@ test('names are cut like the banner and the chinelo lines cycle in a fixed order
   assert.equal(chineloLine(0),CHINELO_LINES[0]);
   assert.equal(chineloLine(CHINELO_LINES.length+1),CHINELO_LINES[1]);
   assert.equal(chineloLine(-1),CHINELO_LINES.at(-1));
-  assert.equal(LEAVE_TEXT,'Voltar ao lobby');
+  assert.equal(LEAVE_TEXT,'Voltar pra sala');
 });
 
 test('the torcida never reaches the room: the bar holds no network handle and sends nothing', ()=>{

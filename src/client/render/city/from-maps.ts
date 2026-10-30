@@ -136,22 +136,21 @@ const COVER_NONE=0,COVER_PLAIN=1,COVER_RUBBLE=2,COVER_EDGE=3;
 const hashText=(s:string)=>{let h=0x811c9dc5;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),0x01000193);return h>>>0;};
 /**
  * Lines for the wall cells of a decorated map that no scenery piece stands on or covers (maps/city-decor.ts leaves the
- * keep-outs bare: the plaza's disc, the build sites, the nest blocks), on those cells only: maps/city-decor.ts wallLines,
- * the family of each cell's block (the one its other cells wear), intact. Nothing on a map without scenery.
+ * keep-outs bare: the plaza's disc, the build sites, the nest blocks), on those cells only: maps/city-decor.ts wallLines
+ * over every wall cell, as the bake laid it (the last block over a cell is its kind), keeping the entries on those
+ * cells, so this part joins the baked part as one line; the family of each cell's block, intact. Nothing on a map
+ * without scenery.
  */
 export function leftoverWallLines(asset:MapsCityAsset):MapsCityAsset['decor']{
   if(!asset.decor.length)return [];
   const W=asset.cells.w,H=asset.cells.h,unit=asset.unitsPerCell,taken=new Uint8Array(W*H),block:(string|undefined)[]=new Array(W*H);
   for(const d of asset.decor)for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)taken[r*W+c]=1;
-  for(const b of asset.blocks){
-    if(b.kind!=='wall')continue;
-    for(const [x,y,w,h] of b.rects){
-      const c0=Math.max(0,Math.round(x/unit)),r0=Math.max(0,Math.round(y/unit)),c1=Math.min(W,Math.round((x+w)/unit)),r1=Math.min(H,Math.round((y+h)/unit));
-      for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)if(!taken[r*W+c])block[r*W+c]=b.id;
-    }
+  for(const b of asset.blocks)for(const [x,y,w,h] of b.rects){
+    const c0=Math.max(0,Math.round(x/unit)),r0=Math.max(0,Math.round(y/unit)),c1=Math.min(W,Math.round((x+w)/unit)),r1=Math.min(H,Math.round((y+h)/unit));
+    for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)block[r*W+c]=b.kind==='wall'?b.id:undefined;
   }
-  if(!block.some(Boolean))return [];
-  return wallLines(W,H,i=>block[i]!==undefined,i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],new Uint8Array(W*H));
+  if(!block.some((b,i)=>b!==undefined&&!taken[i]))return [];
+  return wallLines(W,H,i=>block[i]!==undefined,i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],new Uint8Array(W*H),i=>!taken[i]);
 }
 
 export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):CityAsset{

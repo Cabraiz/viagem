@@ -6561,6 +6561,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "clt-cansado.shoved16-n.5b2375e0892b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 23,
+            "top": 26,
+            "right": 85,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-n.5b2375e0892b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad"
+            }
+          ],
+          "sha256": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad"
+        },
+        "shoved16-NW": {
+          "file": "clt-cansado.shoved16-nw.5dbfbb4936c2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 23,
+            "right": 80,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-nw.5dbfbb4936c2.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363"
+            }
+          ],
+          "sha256": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363"
+        },
+        "shoved16-S": {
+          "file": "clt-cansado.shoved16-s.bfff487e1e8f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 12,
+            "top": 30,
+            "right": 70,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-s.bfff487e1e8f.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76"
+            }
+          ],
+          "sha256": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76"
+        },
+        "shoved16-SE": {
+          "file": "clt-cansado.shoved16-se.2df34dae1db1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 28,
+            "right": 80,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-se.2df34dae1db1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631"
+            }
+          ],
+          "sha256": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631"
+        },
+        "shoved16-W": {
+          "file": "clt-cansado.shoved16-w.03f0ea4a1152.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 24,
+            "top": 30,
+            "right": 76,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-w.03f0ea4a1152.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5"
+            }
+          ],
+          "sha256": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5"
+        },
         "walk128-E": {
           "file": "clt-cansado.walk128-e.9af9af8efb4f.webp",
           "cell": [
@@ -7022,7 +7202,7 @@
           "sha256": "f2c9a88bb0874c4330ba27e2d182dc1a8bd3fce2408d49936d3b063c97b7355f"
         }
       },
-      "sha256": "f0a5f8ddb35ef110e40f3e34617a99d4f8e20ab3dc3966c000a54f3c167b43a9"
+      "sha256": "af385313ac6b47e5d20e9b1740a79af33689ac6ebda1a5c8e440f6be314a790b"
     },
     "coach": {
       "kind": "dir8",

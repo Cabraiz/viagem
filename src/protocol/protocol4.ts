@@ -125,6 +125,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
  * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
  * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
+ * Next (the queue numbers it) since only the 3 enemies (card NEW-20261029-ORQ-so-3-inimigos): 'mendigo', the common
+ * enemy of every round (a P1 roster extra), at the DICT's last one-byte index (253); an older decoder would read it as
+ * the DICT_EXTENDED escape.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=41;
@@ -221,6 +224,10 @@ export const DICT:readonly string[]=[
   // the last one-byte index, whatever comes after it travels through DICT_EXTENDED, two bytes up to index 381.
   'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
   'entrou','saiu','expulso',
+  // Só 3 inimigos (card NEW-20261029-ORQ-so-3-inimigos): the mendigo is every round's bodies (rules/inimigos-liberados.ts);
+  // inline (0xFF + 1 + 7 bytes on every enemy) its horde went over D-042's 32 500 B/s, so it takes index 253, the last
+  // one-byte index. The other P1/P2 roster ids (the saci elite included: one per run) stay inline.
+  'mendigo',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 /**

@@ -1229,7 +1229,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     bossMinionKinds(){
       const r=state.rotation;if(!r||!roundRoster(r,ROUND_COUNT).short)return undefined;
       const kinds=[...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]];
-      return kinds.length?kinds:undefined;
+      // None of them (liberated only, rules/inimigos-liberados.ts): the run's corredores (the mendigo), not the legacy list.
+      return kinds.length?kinds:r.roles.corredor?.length?r.roles.corredor:undefined;
     },
     minionKinds(){
       if(!state.rotation)return undefined;

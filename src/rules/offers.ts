@@ -45,11 +45,15 @@ export function isEligible(catalog:ItemCatalog,build:PlayerBuild,choice:OfferCho
   return choice.itemId===HEAL_CHOICE||nextLevel(catalog,build,choice.itemId)===choice.level;
 }
 
-/** Up to 3 distinct choices, a 4th with probability 1 - 1/luck; a full build gets the coxinha. */
-export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rng:Rng):OfferChoice[]{
+/**
+ * Up to 3 distinct choices, a 4th with probability 1 - 1/luck; a full build gets the coxinha. `skip`: items never
+ * offered this time (a hero with no weapon yet skips the weapon's cards, rules/passives.ts needsWeapon).
+ */
+export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rng:Rng,skip?:(itemId:string)=>boolean):OfferChoice[]{
   const want=BASE_CHOICES+(rng.chance(1-1/Math.max(1,luck))?1:0);
   const candidates:OfferChoice[]=[];
   for(const def of catalog.all()){
+    if(skip?.(def.id))continue;
     const level=nextLevel(catalog,build,def.id);
     if(level!==undefined)candidates.push({itemId:def.id,level});
   }

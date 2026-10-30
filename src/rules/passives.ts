@@ -20,6 +20,13 @@ export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','ocul
  */
 export const MANUAL_PASSIVE_IDS=['pente','estilingue','defumador','arruda','tampa-de-panela'] as const;
 export const AUTO_PASSIVE_IDS=PASSIVE_IDS.filter(id=>!(MANUAL_PASSIVE_IDS as readonly string[]).includes(id));
+/**
+ * NEW-20261029-ORQ-levelup-sem-arma-e-solo: the cards that only change the weapon in the hand (its reload, area, damage,
+ * projectiles and their speed). A manual-combat hero with no weapon yet is never offered them (sim/progression.ts
+ * `armed`): life, speed, luck, the cashback, the Defumador's smoke, regeneration and armour serve with empty hands.
+ */
+export const WEAPON_PASSIVE_IDS:readonly PassiveId[]=['cafe-forte','megafone','oculos','pente','estilingue'];
+export const needsWeapon=(id:string)=>(WEAPON_PASSIVE_IDS as readonly string[]).includes(id);
 export type PassiveId=typeof PASSIVE_IDS[number];
 
 export interface PassiveDef extends ItemDef {

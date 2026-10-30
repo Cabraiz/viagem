@@ -91,9 +91,17 @@ export function numberedName(className:string,k:number){
   }
   return `${[...words.join(' ')].slice(0,BOT_NAME_MAX-num.length).join('')}${num}`;
 }
-/** Name and class of the n-th bot of a room: any class (seed pick), named after it (botName). */
-export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>){
-  const classId=classIds[(botHash(seed,n)>>>8)%classIds.length];
+/**
+ * Name and class of the n-th bot of a room: a seed pick among the classes least seated (`bots`: the classes the room's
+ * bots play; `people`: the people's, which weigh less: a bot takes a person's class before another bot's), named after
+ * it (botName). Auditoria 30-10 item 8: a solo room with 3 bots seated "Aposentado" and "Aposentado 2" with 5 bot
+ * classes free; a bot class repeats only once every one is taken.
+ */
+export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>,
+  bots:readonly string[]=[],people:readonly string[]=[]){
+  const weight=(id:string)=>2*bots.filter(c=>c===id).length+people.filter(c=>c===id).length;
+  const least=Math.min(...classIds.map(weight)),free=classIds.filter(id=>weight(id)===least);
+  const classId=free[(botHash(seed,n)>>>8)%free.length];
   return {name:botName(getClass(classId)?.name??BOT_FALLBACK_NAME,taken),classId};
 }
 

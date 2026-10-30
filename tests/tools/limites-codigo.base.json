@@ -1,0 +1,73 @@
+{
+  "limite": 400,
+  "grandes": {
+    "src/client/art/horde-art.ts": 958,
+    "src/client/audio/engine.ts": 464,
+    "src/client/audio/music.ts": 416,
+    "src/client/dev/ux-metrics.ts": 568,
+    "src/client/explore.ts": 939,
+    "src/client/framing.ts": 401,
+    "src/client/hud/camp.ts": 472,
+    "src/client/hud/edges.ts": 526,
+    "src/client/hud/hud.css": 938,
+    "src/client/hud/hud.ts": 744,
+    "src/client/hud/offer.ts": 442,
+    "src/client/hud/result.ts": 568,
+    "src/client/lobby.ts": 699,
+    "src/client/net/client.ts": 1036,
+    "src/client/render/arsenal-fx.ts": 562,
+    "src/client/render/chaveiro/renderer.ts": 662,
+    "src/client/render/city/art-plan.ts": 499,
+    "src/client/render/city/city-layer.ts": 946,
+    "src/client/render/city/decor.ts": 519,
+    "src/client/render/city/viaduct.ts": 569,
+    "src/client/render/layers.ts": 1518,
+    "src/client/render/stonewards.ts": 587,
+    "src/client/render/telegraph-look.ts": 415,
+    "src/client/render/textures.ts": 572,
+    "src/client/render/towers/tower-rules.ts": 409,
+    "src/client/render/towers/towers.ts": 1116,
+    "src/client/sandboxes/sandbox-cidade.ts": 1028,
+    "src/client/sandboxes/sandbox-horde.ts": 549,
+    "src/client/sandboxes/sandbox-hud.ts": 742,
+    "src/client/scene.ts": 2119,
+    "src/client/sprites/character-sprites.ts": 442,
+    "src/client/sprites/hero-feet-data.ts": 458,
+    "src/main.ts": 600,
+    "src/maps/city-asset.ts": 546,
+    "src/maps/terrain/chunks.ts": 442,
+    "src/protocol/protocol4.ts": 1521,
+    "src/rules/waves.ts": 486,
+    "src/sim/assemble.ts": 643,
+    "src/sim/boss.ts": 503,
+    "src/sim/bot-brain.ts": 1528,
+    "src/sim/chaveiro/system.ts": 671,
+    "src/sim/city/avenues.ts": 663,
+    "src/sim/city/grid.ts": 517,
+    "src/sim/crates.ts": 859,
+    "src/sim/director.ts": 1267,
+    "src/sim/enemies/ai.ts": 969,
+    "src/sim/enemies/catalog.ts": 466,
+    "src/sim/ninhos/ninhos.ts": 519,
+    "src/sim/ninhos/sono.ts": 615,
+    "src/sim/progression.ts": 488,
+    "src/sim/stonewards/system.ts": 411,
+    "src/sim/towers/system.ts": 486,
+    "src/sim/weapons/system.ts": 441
+  },
+  "ciclos": [
+    [
+      "src/client/art/manifest.ts",
+      "src/client/art/mendigo.ts"
+    ],
+    [
+      "src/sim/enemies/ai.ts",
+      "src/sim/enemies/sanfoneiro.ts"
+    ],
+    [
+      "src/sim/projectiles.ts",
+      "src/sim/weapons/mine.ts",
+      "src/sim/weapons/ricochet.ts"
+    ]
+  ]
+}

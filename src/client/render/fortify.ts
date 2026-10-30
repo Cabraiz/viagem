@@ -14,6 +14,8 @@
  * Card NEW-20261022-ORQ-trocar-procedurais-por-arte: with the muro-bloco sheets loaded a segment wears the painted
  * cinder-block wall (muralha.ts MURO_SHEETS: straight pieces along its run, pillars at ends and corners) and its band
  * only holds the life bar; the Papel block stays only while the sheets are missing or loading.
+ * Card NEW-20261029-ORQ-muro-fortificacao-arte: a fallen segment is the city's painted rubble (predios entulho-1x1-*,
+ * the variant and its turn seeded by the cell), one build cell wide at the cell's front corner; nothing while it loads.
  */
 import Phaser from 'phaser';
 import type {RunView,StructureView} from '../../contract/index.ts';
@@ -28,6 +30,10 @@ import {MURO_SHEETS,MuralhaLayer,TRALHA_SHEETS} from './muralha.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {HEIGHT_PX} from './city/projection.ts';
 import {UsableGlow,WallGlow} from './usable-glow.ts';
+import {artIndex} from '../art/manifest.ts';
+import {ART_CELL,cityTexture} from './city/art-plan.ts';
+import {ART_SCALE,buildingFrame} from './city/materials.ts';
+import {hashCell} from './muralha-rules.ts';
 
 /** Wall segment height (u) when whole; each damage stage takes a share off. */
 const WALL_H=.95;
@@ -46,6 +52,9 @@ const HAND_Z=.62,BUMPER_Z=.38;
 /** The loop at the free rope's end (u, its half width on the ground). */
 const ROPE_LOOP=.16;
 const GHOST_ID='fantasma-barricada',EMPTY:ReadonlySet<string>=new Set();
+/** A fallen segment's rubble: the city's 1x1 rubble pieces (predios), the city layer's own texture keys. */
+const RUBBLE_IDS=['entulho-1x1-1','entulho-1x1-2','entulho-1x1-3'] as const;
+const rubbleKey=(id:string)=>`city:rubble:1x1/${id}`;
 
 export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number;
   /** Where a player is now (the scene's smoothed actor), or undefined when not drawn. */
@@ -62,6 +71,8 @@ export interface GhostInput {piece:string;c:number;r:number;rot?:number;w?:numbe
 
 export class FortifyRenderer {
   private walls=new Map<string,{band:TriBand;key:string}>();
+  /** The fallen segments' rubble images, by wall id. */
+  private rubble=new Map<string,Phaser.GameObjects.Image>();
   /** The painted cinder-block wall the segments wear once its sheets are loaded. */
   private muro:MuralhaLayer;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on the painted wall segments (built and repaired by the player). */
@@ -102,6 +113,7 @@ export class FortifyRenderer {
     if(!this.options.reduced)for(const id of hpDropped(this.lastHp,this.wallViews))this.flashUntil.set(id,this.now+HIT_FLASH_MS);
     this.lastHp=new Map(this.wallViews.map(s=>[s.id,s.hp]));
     for(const [id,w] of this.walls)if(!this.lastHp.has(id)){w.band.destroy();this.walls.delete(id);this.flashUntil.delete(id);}
+    for(const [id,img] of this.rubble)if(!this.wallViews.some(s=>s.id===id&&s.hp<=0)){img.destroy();this.rubble.delete(id);}
     this.muro.prune(new Set(this.lastHp.keys()));this.muro.setSquares(this.wallViews);
     const car=objectiveOf(view)?.car as {x:number;y:number;rope?:string}|undefined;
     this.car=car&&{x:car.x,y:car.y,rope:car.rope};
@@ -122,7 +134,8 @@ export class FortifyRenderer {
   }
 
   destroy(){
-    for(const w of this.walls.values())w.band.destroy();this.walls.clear();this.muro.destroy();this.ghostWall.destroy();this.glow.destroy();
+    for(const w of this.walls.values())w.band.destroy();this.walls.clear();
+    for(const img of this.rubble.values())img.destroy();this.rubble.clear();this.muro.destroy();this.ghostWall.destroy();this.glow.destroy();
     this.ghostG.destroy();this.hintG.destroy();this.ropeG.destroy();
   }
 
@@ -148,6 +161,7 @@ export class FortifyRenderer {
     const ratio=s.maxHp>0?s.hp/s.maxHp:0,down=s.hp<=0,stage=damageStage(ratio,down),cell=this.options.cell;
     const flash=(this.flashUntil.get(s.id)??0)>this.now,view=this.options.projector.view;
     const bar=wallBar(s.hp,s.maxHp),showBar=!down&&bar.fraction<1,depth=this.options.projector.depth(s.x,s.y);
+    if(down){this.walls.get(s.id)?.band.destroy();this.walls.delete(s.id);this.drawRubble(s,depth);return;}
     // The painted wall when its sheets are loaded ([] when down: nothing), the band then holds only the bar over it.
     const art=this.muro.draw(s,depth);
     if(art&&!down)this.wallGlow.add(s.id,this.muro.groupOf(s),art);
@@ -173,9 +187,7 @@ export class FortifyRenderer {
     if(w?.key!==key){
       w?.band.destroy();
       const worn=mix(this.c.papel,this.c.breu,.22),color=flash?mix(this.c.papel,0xffffff,.6):stage>=2?worn:this.c.papel;
-      const faces=this.look(`muro|${stage}|${flash?1:0}|${view}`,()=>down
-        ?[{x:-.2*cell,y:.1*cell,z:0,l:.35*cell,w:.3*cell,h:.18,color:this.c.papel},{x:.2*cell,y:-.15*cell,z:0,l:.3*cell,w:.35*cell,h:.14,color:mix(this.c.papel,this.c.breu,.22)}]
-        :[{x:0,y:0,z:0,l:.96*cell,w:.96*cell,h:WALL_H*(1-.18*stage),color}]);
+      const faces=this.look(`muro|${stage}|${flash?1:0}|${view}`,()=>[{x:0,y:0,z:0,l:.96*cell,w:.96*cell,h:WALL_H*(1-.18*stage),color}]);
       // Drawn in the segment's local space (its projected centre at 0,0), then frozen.
       const band=TriBand.make(this.scene,g=>{
         this.fillAt(g,0,0,faces,k);
@@ -188,6 +200,30 @@ export class FortifyRenderer {
     }
     const p=this.options.projector.project(s.x,s.y,this.q);
     w!.band.setPosition(p.x,p.y).setDepth(depth);
+  }
+
+  /** A fallen segment: its rubble art at the cell's front corner (loaded on first need, nothing until then). */
+  private drawRubble(s:StructureView,depth:number){
+    const c=s.c??Math.floor(s.x/this.options.cell),r=s.r??Math.floor(s.y/this.options.cell);
+    const id=RUBBLE_IDS[hashCell(c,r)%RUBBLE_IDS.length],key=rubbleKey(id),tex=this.scene.textures;
+    const predios=artIndex().groups.predios,f=predios?.pieces[id]?.files.sheet;
+    if(!predios||!f?.file)return;
+    const cell=this.options.cell,sheet=cityTexture(predios,f,1/ART_SCALE*cell/ART_CELL);
+    if(!tex.exists(key)){
+      const load=this.scene.load;
+      // The loader skips a key already queued or loading (the city layer may have asked for it too).
+      load.spritesheet(key,sheet.url,{frameWidth:sheet.frameWidth,frameHeight:sheet.frameHeight});
+      if(!load.isLoading())load.start();
+      return;
+    }
+    let img=this.rubble.get(s.id);
+    if(!img){img=this.scene.add.image(0,0,key).setName('obra-muro-entulho');this.rubble.set(s.id,img);}
+    // The cell's front corner on screen (the art's pivot, as the city's 1x1 pieces stand).
+    const rect=cellRect(c,r,1,1,cell),proj=this.options.projector;
+    let fx=0,fy=-Infinity;
+    for(const [x,y] of [[rect.x0,rect.y0],[rect.x1,rect.y0],[rect.x1,rect.y1],[rect.x0,rect.y1]]){const p=proj.project(x,y,this.q);if(p.y>fy){fx=p.x;fy=p.y;}}
+    const frame=buildingFrame(proj.view,hashCell(c,r,1),4),originY=f.anchor?.[1]??1-16/f.cell[1];
+    img.setFrame(frame).setOrigin(.5,originY).setScale(sheet.scale).setPosition(fx,fy).setDepth(depth);
   }
 
   private drawGhost(k:number){

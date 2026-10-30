@@ -17,10 +17,13 @@
  *   and then the theme fades back in (2 s); the run ends, both fade out (2 s). Mute or a hidden tab pause both
  *   elements; they resume where wanted. Never throws; a play() refused by the autoplay policy waits for a gesture.
  * - The menu's track (menu-music.ts) is a MusicTrack too; its download is abortable (cancelLoad) so it yields to the match.
+ * - NEW-20261030-ORQ-sons-nos-eventos: the run's end plays a stinger with the fade ('vitoria' or 'derrota', the engine's
+ *   effects, so it sounds even with the music files off), once per run.
  */
 import type {RunView} from '../../contract/index.ts';
 import {UNLOCK_EVENTS} from './engine.ts';
 import {busQuiet,type BusSettings} from './settings.ts';
+import type {SoundId} from './types.ts';
 
 export interface TrackSpec {webm:string;m4a:string;
   /** Gain under the music bus at full fade (times the "Música" volume). */
@@ -46,8 +49,13 @@ export const THEME_IN_S=2;
 export const END_OUT_S=2;
 
 export type MusicState='idle'|'loading'|'ready'|'playing'|'stopping';
-/** What the music needs from a view: how far the match is, whether the boss is alive and whether the run is over. */
-export interface MusicCue {round?:number;etaS?:number;boss:boolean;ended?:boolean}
+/**
+ * What the music needs from a view: how far the match is, whether the boss is alive, whether the run is over and,
+ * when the view says it, how (the stinger).
+ */
+export interface MusicCue {round?:number;etaS?:number;boss:boolean;ended?:boolean;outcome?:'victory'|'defeat'}
+/** The run's end: its stinger, played once with the fade. */
+export const STINGER:Readonly<Record<'victory'|'defeat',SoundId>>={victory:'vitoria',defeat:'derrota'};
 
 /** The file of `track` this browser should stream, or null when it plays neither. */
 export function pickMusicSource(canPlay:(type:string)=>string,track:{webm:string;m4a:string}=BOSS_TRACK):string|null{
@@ -63,7 +71,7 @@ export function shouldLoad(cue:MusicCue):boolean{
 export function musicCue(view:RunView,ended:boolean):MusicCue{
   const objective=view.objective,over=ended||!!objective?.ended;
   return {round:view.round?.index??view.wave?.index,etaS:objective&&!objective.ended?objective.etaS:undefined,
-    boss:!over&&view.enemies.some(enemy=>enemy.boss&&enemy.hp>0),ended:over};
+    boss:!over&&view.enemies.some(enemy=>enemy.boss&&enemy.hp>0),ended:over,...(objective?.ended?{outcome:objective.ended}:{})};
 }
 
 export interface MusicElement {
@@ -77,6 +85,8 @@ export interface MusicEngine {
   readonly settings:{music:BusSettings};
   onChange(listener:()=>void):()=>void;
   attachUnlock(target:EventTarget):()=>void;
+  /** An effect (the end's stinger); absent: no stinger. */
+  play?(id:SoundId,opts?:{gain?:number;rate?:number;pan?:number}):boolean;
 }
 export interface MusicOptions {
   engine:MusicEngine;
@@ -339,6 +349,8 @@ export class GameMusic {
   private started=false;
   private loadTimer:unknown;
   private disposed=false;
+  /** This run's stinger already played (a new run's first live cue clears it). */
+  private stung=false;
   private detachers:(()=>void)[]=[];
   private readonly offChange:()=>void;
 
@@ -368,7 +380,9 @@ export class GameMusic {
 
   /** Every match view (the HUD only gets them once the match is on), and the run's end. */
   update(cue:MusicCue){
-    if(this.disposed||!this.enabled)return;
+    if(this.disposed)return;
+    this.sting(cue);
+    if(!this.enabled)return;
     if(!this.started){
       this.started=true;
       this.loadTimer=this.host.setTimer(()=>{this.loadTimer=undefined;this.theme.load();},THEME_LOAD_DELAY_MS);
@@ -388,6 +402,14 @@ export class GameMusic {
     this.offChange();
     if(this.loadTimer!==undefined){this.host.clearTimer(this.loadTimer);this.loadTimer=undefined;}
     this.boss.dispose();this.theme.dispose();
+  }
+
+  /** The end's stinger once per run: on the first ended cue that says how (the result screen's own cue does not). */
+  private sting(cue:MusicCue){
+    if(!cue.ended){this.stung=false;return;}
+    if(this.stung||!cue.outcome)return;
+    this.stung=true;
+    this.host.engine.play?.(STINGER[cue.outcome]);
   }
 
   private follow(){this.boss.follow();this.theme.follow();}

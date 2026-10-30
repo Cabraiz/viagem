@@ -235,3 +235,13 @@ test('falas: the Tio speaks from a fixed point beside the car, off its body and 
   }
   assert.deepEqual(tioSpot(car,2,0),tioSpot(car,2));
 });
+
+test("falas: the glossário 29/10 names: Pix (never PIX), and the team's car is the Uno in the lines that name it",()=>{
+  for(const {event,text} of ALL){
+    assert.doesNotMatch(text,/PIX/,`${event}: ${text}`);
+    assert.doesNotMatch(text,/carro/i,`${event}: ${text}`);
+  }
+  const texts=new Set(ALL.map(l=>l.text));
+  for(const line of ['Aceito Grana, Pix e promessa. Promessa com juros.','Empurrando o Uno? Aí o orçamento é outro.',
+    'Cadê o Uno? Ah, esse amontoado aí?','O Uno desmanchou. Mas a visita eu cobro igual.'])assert.ok(texts.has(line),line);
+});

@@ -476,7 +476,9 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both again for heroi-empurra-inimigos (heroes and critters solid to each other; were ilha 251d5c145e1bf470,
 // infinito dba3b8b9445b3997).
 // Both again for vida-inimigos-estilo-clash: role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'f2cdd64acf0330fc',infinito:'9d8dabc1887c3e50'};
+// Both again for colisao-entre-herois (the heroes solid to each other: b's sweep passes 0.32 u from a, inside HERO_GAP;
+// were ilha f2cdd64acf0330fc, infinito 9d8dabc1887c3e50).
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'0c5beba18278c238',infinito:'a13a025aa294b33e'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

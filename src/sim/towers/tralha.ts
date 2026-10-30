@@ -10,7 +10,7 @@
  * - Off the entrances (NEW-20261029-ORQ-sem-tralha-nas-entradas, the user 29/10: "eu falei para remover essas tralhas da
  *   entradas, elas perdem a graça"): no square within TRALHA_ENTRADA_RAIO of an entrance (entradas: the mouth of every
  *   street, gate or passage between blocks where it opens into wider ground; NEW-20261030-ORQ-entradas-livres-de-tudo,
- *   the user 30/10: "obstáculos em entradas são horríveis": of any width, the square kept off the free strip down the middle of the mouth, bocaFaixa), besides the plaza, its mouths and the spawns.
+ *   the user 30/10: "obstáculos em entradas são horríveis": of any width, the square kept off the free strip down the middle of the mouth, bocaFaixa, run TRALHA_ENTRADA_FUNDO u into the street), besides the plaza, its mouths and the spawns.
  *   Fewer squares left two of them free to shut a spawn between them, so each square also keeps the car reaching, over the
  *   whole map, every plaza, mouth and spawn it reached bare (carReach).
  * - Out of the Uno's way (NEW-20261025-ORQ-uno-caminho-caixas-vender, the user 25/10: "esses entulhos e essa barreira só
@@ -46,6 +46,8 @@ export const TRALHA_CAR_MARGIN=1;
 export const TRALHA_POINT_KEEP=6;
 /** No square this close (u) to the free strip of an entrance (entradas, any width: maps/city/entradas.ts bocaFaixa). */
 export const TRALHA_ENTRADA_RAIO=0;
+/** ...and the strip runs this much (u) further into the street (ORQ 30/10, the print: a row across the street 5 u in still shut the mouth). */
+export const TRALHA_ENTRADA_FUNDO=4;
 /** The map's entrances (maps/city/entradas.ts), memoised per asset. */
 export const entradas=(city:CityTerrain):readonly Point[]=>cityEntradas(city.asset);
 /** How far (build cells, Chebyshev) from its point on the line car → spawn a row may start. */
@@ -194,7 +196,7 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
     const rect=pieceRect(cell,w,h);
     if(gap(rect,car)<keep)return false;
     if(keepOff.some(q=>gap(rect,q)<TRALHA_POINT_KEEP))return false;
-    if(naBoca(city.asset,rect,TRALHA_ENTRADA_RAIO))return false;
+    if(naBoca(city.asset,rect,TRALHA_ENTRADA_RAIO,TRALHA_ENTRADA_FUNDO))return false;
     if(pieces.some(p=>rectsOverlap(pieceRectOf(p),rect)))return false;
     for(const n of world.nests??[])if(gap(rect,n)<CAR_NEST_KEEP_OUT)return false;
     if(!againstWall(city,rect))return false;

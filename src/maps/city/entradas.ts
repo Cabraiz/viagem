@@ -90,10 +90,10 @@ export function bocaZona(a:CityAsset,e:CityBoca):Rect{
  * any width (ORQ 30/10: "a largura INTEIRA fica livre", the user twice about any obstacle at an entrance).
  */
 export const bocaFaixa=(a:CityAsset,e:CityBoca):Rect=>bocaZona(a,e);
-/** Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance. */
-export function naBoca(a:CityAsset,r:Rect,folga=0):boolean{
+/** Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance (the strip run `fundo` u further into the street). */
+export function naBoca(a:CityAsset,r:Rect,folga=0,fundo=0):boolean{
   for(const e of cityEntradas(a)){
-    const z=bocaFaixa(a,e);
+    const f=bocaFaixa(a,e),z={x:f.x-(e.ox>0?fundo:0),y:f.y-(e.oy>0?fundo:0),w:f.w+(e.ox?fundo:0),h:f.h+(e.oy?fundo:0)};
     if(r.x-folga<z.x+z.w&&z.x<r.x+r.w+folga&&r.y-folga<z.y+z.h&&z.y<r.y+r.h+folga)return true;
   }
   return false;

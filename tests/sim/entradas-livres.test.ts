@@ -3,8 +3,8 @@
  * by the north avenue: "obstáculos em entradas são horríveis"). An entrance is the mouth of any street, avenue, square
  * or gate, of any width; its whole width stays free a cell each way (maps/city/entradas.ts bocaFaixa):
  *  1. the mouths of every width are found (wide ones too, the print's included) and each strip spans the whole mouth;
- *  2. per match (seeds 1–8, the real Cidade Nevada): no square of the map's tralha nor of a feirinha's barracas in a
- *     strip, and no drawn art (nestArte) of a terreno nest on one (validateNestPlan agrees);
+ *  2. per match (seeds 1–8, the real Cidade Nevada): no square of the map's tralha (nor TRALHA_ENTRADA_FUNDO u into the
+ *     street: the print's row across the street 5 u in) nor of a feirinha's barracas in a strip, and no drawn art (nestArte) of a terreno nest on one (validateNestPlan agrees);
  *  3. the art of every nest a seed may draw (the whole active pool, at its biggest size) and the map's solid props on
  *     the ground stay off the strips, no exception; the spots out of the draw (CITY_NEST_OFF) say why.
  * D-031: results only.
@@ -18,7 +18,7 @@ import {bocaFaixa,cityEntradas,naBoca} from '../../src/maps/city/entradas.ts';
 import {cityAsField} from '../../src/maps/index.ts';
 import {CITY_NEST_OFF,CITY_NEST_POOL,cityNestPlan,nestArte,validateNestPlan} from '../../src/maps/nests.ts';
 import {pieceRectOf,type PieceState} from '../../src/sim/towers/free-build.ts';
-import {TRALHA_OWNER} from '../../src/sim/towers/tralha.ts';
+import {TRALHA_ENTRADA_FUNDO,TRALHA_OWNER} from '../../src/sim/towers/tralha.ts';
 import {FEIRA_OWNER} from '../../src/sim/towers/barracas.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
@@ -49,7 +49,7 @@ test('per match (seeds 1–8): no tralha, no barraca and no terreno nest in an e
     const tralha=pieces.filter(p=>p.owner===TRALHA_OWNER),feira=pieces.filter(p=>p.owner===FEIRA_OWNER);
     assert.ok(tralha.length>=3,`seed ${seed}: ${tralha.length} squares of tralha`);
     assert.ok(feira.length>=3,`seed ${seed}: ${feira.length} barracas`);
-    for(const p of [...tralha,...feira])assert.ok(!naBoca(a,pieceRectOf(p)),`seed ${seed}: ${p.owner} ${p.id} at (${p.x.toFixed(1)},${p.y.toFixed(1)}) in an entrance`);
+    for(const p of [...tralha,...feira])assert.ok(!naBoca(a,pieceRectOf(p),0,p.owner===TRALHA_OWNER?TRALHA_ENTRADA_FUNDO:0),`seed ${seed}: ${p.owner} ${p.id} at (${p.x.toFixed(1)},${p.y.toFixed(1)}) in an entrance`);
     const plan=cityNestPlan(city,seed);
     for(const n of plan.nests)if(n.kind==='terreno')assert.ok(!naBoca(a,nestArte(C,n,n.size)),`seed ${seed}: nest ${n.id} at (${n.x},${n.y}) in an entrance`);
     assert.deepEqual(validateNestPlan(plan,city).filter(p=>p.reason.includes('boca')),[],`seed ${seed}`);

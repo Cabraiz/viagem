@@ -1,0 +1,32 @@
+{
+  "limite": 6,
+  "pastas": {
+    "src": 9,
+    "src/client": 37,
+    "src/client/art": 11,
+    "src/client/audio": 13,
+    "src/client/dev": 9,
+    "src/client/hud": 81,
+    "src/client/hud/city": 12,
+    "src/client/net": 10,
+    "src/client/render": 72,
+    "src/client/render/bancos": 7,
+    "src/client/render/chaveiro": 15,
+    "src/client/render/city": 22,
+    "src/client/render/towers": 11,
+    "src/client/sandboxes": 15,
+    "src/client/sprites": 15,
+    "src/client/ui": 38,
+    "src/contract": 10,
+    "src/maps": 16,
+    "src/maps/city-asset": 7,
+    "src/protocol": 7,
+    "src/rules": 37,
+    "src/sim": 39,
+    "src/sim/city": 7,
+    "src/sim/director": 8,
+    "src/sim/stonewards": 7,
+    "src/sim/towers": 7,
+    "src/sim/weapons": 9
+  }
+}

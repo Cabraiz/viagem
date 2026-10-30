@@ -34,3 +34,8 @@ test('coop goes back through the room link, solo reloads',()=>{
   assert.equal(glLostTarget('ABCD','&convite=1'),'/?room=ABCD&convite=1#personagem');
   assert.equal(glLostTarget(undefined,''),undefined);
 });
+
+test("the panel speaks the game's informal Portuguese (glossário 29/10: Toca, not Toque)",()=>{
+  assert.equal(GL_LOST_TEXT,'A tela do jogo apagou (o celular ficou sem memória). Toca em Voltar pra partida.');
+  assert.doesNotMatch(GL_LOST_TEXT,/Toque/);
+});

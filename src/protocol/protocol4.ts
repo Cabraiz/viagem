@@ -125,6 +125,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
  * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
  * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
+ * Next (the queue numbers it) since the heroes' collision (card NEW-20261030-ORQ-colisao-entre-herois): `pushing` and
+ * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
+ * refuse the masks.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=41;
@@ -468,6 +471,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     moveSpeed:c(optional(milli)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
     andar:c(optional(deckFlag)),
+    // colisao-entre-herois: "empurrando" / "empurrado" with the push's direction (the animation's), while it lasts.
+    pushing:c(slipDir),pushed:c(slipDir),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -481,6 +486,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     andar:c(optional(deckFlag)),
     // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
     radius:c(optional(milli)),
+    // colisao-entre-herois: a mendigo a hero is pushing ("empurrado"), the push's direction.
+    pushed:c(slipDir),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),

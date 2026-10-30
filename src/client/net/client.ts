@@ -2,10 +2,10 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint,type HeroBody} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {BuildRot,CombatMode,EnemyView,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,EnemyView,PixResult,PlayerRunView,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import {AttackPredictor} from './attack-predict.ts';
@@ -13,7 +13,7 @@ import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
-import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts';
+import {MARK_ID,ROOT_DEFENSE,parseMark,shovedEnemy,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,RemoteClock,remoteAt,tickTime} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
@@ -75,6 +75,30 @@ export function nearBodies(enemies:readonly EnemyView[],at:{x:number;y:number},o
     if(e.elite)b.elite=true;else delete b.elite;
     if(e.boss)b.boss=true;else delete b.boss;
     if(e.andar===1)b.andar=1;else delete b.andar;
+    // Card colisao-entre-herois: only the mendigo gives way (rules shovedEnemy, as the room's enemyHeroShare).
+    if(shovedEnemy(e.kind,e.boss))delete b.fixed;else b.fixed=true;
+    n++;
+  }
+  out.length=n;
+  return out;
+}
+/** Card colisao-entre-herois: the fastest per-tick walk a copy of a teammate keeps between frames (a ride, u/tick). */
+const HERO_COPY_STEP=.5;
+/**
+ * Card colisao-entre-herois: copies of the other heroes on their feet near `at` (the room's standingHero as the phone
+ * sees it: online, not watching, downed, out or at 0 hp), into `out` (reused objects). `before` (the last frame's
+ * players, `ticks` ago) gives each its walk per tick, so the replay walks the copies on as the room's steps do.
+ */
+export function nearHeroes(players:readonly PlayerRunView[],self:string,at:{x:number;y:number},before?:ReadonlyMap<string,{x:number;y:number}>,ticks=1,out:HeroBody[]=[]):HeroBody[]{
+  let n=0;
+  for(const p of players as readonly PlayerWireView[]){
+    if(p.id===self||!p.online||p.spectator||p.downed||p.eliminated||!(p.hp>0)||p.x===undefined||p.y===undefined)continue;
+    if(Math.abs(p.x-at.x)>BODY_COPY_REACH||Math.abs(p.y-at.y)>BODY_COPY_REACH)continue;
+    const h=out[n]??(out[n]={x:0,y:0});
+    h.x=p.x;h.y=p.y;
+    if(p.andar===1)h.andar=1;else delete h.andar;
+    const b=before?.get(p.id),vx=b&&ticks>0?(p.x-b.x)/ticks:0,vy=b&&ticks>0?(p.y-b.y)/ticks:0;
+    if(Math.hypot(vx,vy)<=HERO_COPY_STEP){h.vx=vx;h.vy=vy;}else{h.vx=0;h.vy=0;}
     n++;
   }
   out.length=n;
@@ -244,6 +268,8 @@ export class CoopClient {
    * predicted steps push them as the room does (maps bodies.ts), so walking into a crowd does not snap back.
    */
   private bodies:Body[]=[];
+  /** Card colisao-entre-herois: copies of the other heroes on their feet near this one (nearHeroes), soft as in the room. */
+  private heroes:HeroBody[]=[];
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
   /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
@@ -864,7 +890,9 @@ export class CoopClient {
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
       this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);
       this.bodies=nearBodies(view.enemies,self,this.bodies);
-      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
+      const last=this.samples.at(-1),gap=last?view.tick-last.tick:0;
+      this.heroes=nearHeroes(view.players,this.id,self,gap>0&&gap<=5?last?.players:undefined,gap,this.heroes);
+      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies,heroes:this.heroes}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -912,7 +940,7 @@ export class CoopClient {
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim,work);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies,this.heroes);}
     this.flushInput();
   }
   /**

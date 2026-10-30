@@ -1,7 +1,7 @@
 /**
  * Enemy-AI tick benchmark per world (NEW-20261012-ORQ-cidade-02-terreno-motor): "bench do tick com 300 bichos na cidade
- * <= o atual". Same horde as the tests/sim/sim-enemies.test.ts bench (120 bebado, 90 pombos, 45 tio-pave, 45 agiota,
- * 6 players), stepped by the real SimWorld (src/sim/core.ts) with the production SpatialHash and only EnemyAi registered,
+ * <= o atual". 300 enemies of the active cast (scripts/elenco-ativo.ts ROTA_INIMIGOS, card ferramentas-so-elenco-ativo;
+ * was the tests/sim/sim-enemies.test.ts horde of 120 bebado, 90 pombos, 45 tio-pave, 45 agiota), 6 players, stepped by the real SimWorld (src/sim/core.ts) with the production SpatialHash and only EnemyAi registered,
  * on three terrains:
  *  - endless: new TerrainField(seed,{world:'infinito'}), the current default room world;
  *  - island:  new TerrainField(DEFAULT_SEED), reference;
@@ -32,6 +32,7 @@ import {clearSegment,maskSurface,walkable,worldBase,type Point} from '../src/map
 import {DEFAULT_SEED,TerrainField} from '../src/maps/terrain/field.ts';
 import {decodeCityAsset} from '../src/maps/city-asset.ts';
 import {CityTerrain,cityAsField} from '../src/maps/city/terrain.ts';
+import {ROTA_INIMIGOS,inimigoAt} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const WARMUP=50,MEASURE=200,ENEMIES=300,PLAYERS=6,SEED=14,SPAWN_SEED=1414;
@@ -44,7 +45,7 @@ type Stats={avg:number;median:number;p95:number;max:number;min:number};
 interface Layout {players:Point[];spawns:Point[];anchor:Point;candidates:number}
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
-const kindAt=(i:number):EnemyKind=>i<120?'bebado':i<210?'pombos':i<255?'tio-pave':'agiota';
+const kindAt=(i:number):EnemyKind=>inimigoAt(i);
 
 function stats(times:number[]):Stats{
   const s=[...times].sort((a,b)=>a-b),n=s.length,q=(p:number)=>s[Math.min(n-1,Math.floor(p*n))];
@@ -247,7 +248,7 @@ function main(){
   const city=report.city as {aiStepMs:Stats},endless=report.endless as {aiStepMs:Stats};
   const summary={
     card:'NEW-20261012-ORQ-cidade-02-terreno-motor',
-    bench:'enemy-ai tick, 300 enemies (120 bebado, 90 pombos, 45 tio-pave, 45 agiota), 6 players, SimWorld + SpatialHash',
+    bench:`enemy-ai tick, 300 enemies (rotation ${ROTA_INIMIGOS.join(',')}), 6 players, SimWorld + SpatialHash`,
     warmupTicks:WARMUP,measuredTicks:MEASURE,seed:SEED,spawnSeed:SPAWN_SEED,
     node:process.version,cpu:os.cpus()[0]?.model??'unknown',platform:`${process.platform}-${process.arch}`,date:new Date().toISOString(),
     worlds:report,

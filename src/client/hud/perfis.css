@@ -95,3 +95,35 @@
 
 
 @media (prefers-reduced-motion:reduce){.rh-perfil-slot,.rh-perfil,.rh-perfil-match,.rh-matches{transition:none}.rh-matches.rh-matches-pulo{animation:none}}
+
+/* The phone's tarot card (perfil-vira-livro-de-contos, the user's Rider-Waite foil refs): the ChatGPT frame (1024x1536
+   drawn, 420 px webp) over the enemy's photo; the boxes are the frame's measured window (x 6-94 %, y 6.2-74.5 %),
+   numeral cartouche (y 1.8-5.3 %) and name band (x 6-94 %, y 77-92.8 %). Only the name, Cinzel capitals like 'THE SUN.' (written in caps by perfis.ts).
+   The foil (ChatGPT, 256 px tile) is one oversized layer that slides once (transform + opacity: no reflow on the phone). */
+.rh[data-hud=fone] .rh-perfil-slot.rh-perfil-slot-tarot{--perfil-w:min(46vw,180px)}
+.rh-perfil.rh-tarot{aspect-ratio:2/3;padding:0;border-radius:var(--r-carta);background:var(--tarot-preto);box-shadow:var(--tarot-sombra);
+  overflow:hidden;isolation:isolate;cursor:pointer}
+.rh-tarot-foto{position:absolute;left:6%;width:88%;top:6.2%;height:68.4%;background:var(--tarot-janela)}
+.rh-tarot-foto img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.rh-tarot-moldura{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rh-tarot-num{position:absolute;left:0;right:0;top:3.6%;transform:translateY(-50%);text-align:center;font:700 5cqw/1 var(--f-tarot);color:var(--tarot-ouro)}
+.rh-tarot-nome{position:absolute;left:9%;right:9%;top:77.6%;height:14.6%;margin:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;font:700 max(12px,8cqw)/1.04 var(--f-tarot);color:var(--tarot-tinta);text-wrap:balance;overflow:hidden}
+.rh-tarot-nome-longo{font-size:max(12px,6.3cqw)}
+.rh-tarot-foil{position:absolute;left:-60%;top:-60%;width:220%;height:220%;background:url(/art/perfis/foil.webp) 0 0/80% auto;
+  mix-blend-mode:screen;opacity:.12;pointer-events:none;animation:rh-tarot-foil 3s ease-in-out both}
+@keyframes rh-tarot-foil{0%{transform:none;opacity:.12}50%{opacity:.4}100%{transform:translate(30%,20%);opacity:.12}}
+@media (prefers-reduced-motion:reduce){.rh-tarot-foil{animation:none}}
+
+/* The desktop's pop-up book (option 15): the ChatGPT book (600x346) at the bottom of a 600x500 box; the cut-out stands
+   on the page between the two paper streets (feet at 63 % of the book) and rises once from the fold (transform only).
+   The name sits in the book's measured cartouche (x 17-88 %, y 69-90 % of the book). */
+.rh-perfil-slot.rh-perfil-slot-pop{--perfil-w:clamp(220px,min(24vw,46vh),300px)}
+.rh-perfil.rh-pop{aspect-ratio:6/5;padding:0;border-radius:0;background:none;box-shadow:none;cursor:pointer}
+.rh-pop-livro{position:absolute;left:0;bottom:0;width:100%;height:69.2%;pointer-events:none}
+.rh-pop-figura{position:absolute;left:50%;bottom:25.6%;height:68%;width:auto;translate:-50% 0;transform-origin:50% 100%;pointer-events:none;
+  animation:rh-pop-sobe .55s cubic-bezier(.2,1.4,.4,1) .12s both}
+@keyframes rh-pop-sobe{0%{transform:perspective(500px) rotateX(82deg) scaleY(.2)}100%{transform:none}}
+.rh-pop-nome{position:absolute;left:19%;right:14%;bottom:7%;height:13.5%;margin:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;font:700 max(12px,6cqw)/1 var(--f-tarot);color:var(--tarot-tinta);overflow:hidden}
+@media (prefers-reduced-motion:reduce){.rh-pop-figura{animation:none}}

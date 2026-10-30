@@ -52,7 +52,9 @@ const byRarity=(base:WeaponLevel,top:4|5=4):WeaponLevel[]=>RARITIES.slice(0,top)
 const describe=(intro:string)=>(level:number)=>`${intro} (${RARITY_NAME[(isRarity(level)?level:1) as Rarity]})`;
 const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{verde:WeaponLevel;intro:string}):ArsenalWeapon=>{
   const {verde,intro,...rest}=def,top=def.minRarity===5?5:4;
-  const base=def.mag?{...verde,damage:verde.damage*magDpsFactor(def.pattern,verde,def.mag)}:verde;
+  // A starter (minRarity 1, the pistola) keeps its table hit: vida-clash counts the role hp in starter hits and no common
+  // enemy may die to one, so its magazine costs ~8 % mean DPS instead of a harder shot.
+  const base=def.mag&&def.minRarity>1?{...verde,damage:verde.damage*magDpsFactor(def.pattern,verde,def.mag)}:verde;
   return {...rest,kind:'weapon',maxLevel:top,levels:byRarity(base,top),describe:describe(intro)};
 };
 /**

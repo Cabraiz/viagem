@@ -61,9 +61,11 @@ test('the card\'s table: magazine and reload of the six firearms; the faca and P
   assert.equal(getWeapon('faca')?.mag,undefined);
 });
 
-test('damage per shot rises so a full magazine plus its reload deals the old mean DPS',()=>{
+test('damage per shot rises so a full magazine plus its reload deals the old mean DPS (a starter keeps its hit)',()=>{
   for(const [id,mag] of Object.entries(MAGAZINES)){
     const def=getWeapon(id)!,row=def.levels[0];
+    // The pistola (minRarity 1) keeps its table hit: vida-clash's no-one-hit-kill of the starters (arsenal.ts weapon()).
+    if(def.minRarity===1){assert.equal(row.damage,30,`${id}: the table hit`);continue;}
     const interval=row.cooldown+(def.pattern==='zone'?row.duration:0);
     const factor=magDpsFactor(def.pattern,row,mag),before=row.damage/factor;
     const cycle=(mag.size-1)*interval+Math.max(interval,mag.reload);

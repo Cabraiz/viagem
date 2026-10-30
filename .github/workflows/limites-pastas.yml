@@ -1,0 +1,30 @@
+# At most 6 items per folder in src/, with a ratchet (NEW-20261030-ORQ-trava-pastas-no-ci): tools/limites-pastas.mjs
+# against tools/limites-pastas.base.json. It runs ONLY here, on a push to main: it is not in the queue's suite,
+# test:changed or ci.mjs, so a red run stays red on GitHub and wakes nobody. Rewriting the base is the ORQ's:
+#   node tools/limites-pastas.mjs --gravar
+name: Limites de pastas
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tools/limites-pastas.mjs'
+      - 'tools/limites-pastas.base.json'
+      - '.github/workflows/limites-pastas.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: limites-pastas
+  cancel-in-progress: true
+jobs:
+  pastas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.9.0'
+      - name: No máximo 6 itens por pasta em src/
+        run: node tools/limites-pastas.mjs

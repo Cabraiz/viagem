@@ -14,7 +14,7 @@ import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {reconcile,simulate,type MoveEffects} from '../../src/maps/prediction.ts';
 import {InputBatcher,ROOM_PROTOCOL,type PlayerWireView} from '../../src/protocol/index.ts';
 import {addTelegraph} from '../../src/sim/index.ts';
-import {heroSpeed} from '../../src/maps/world.ts';
+import {heroSpeed,walkable} from '../../src/maps/world.ts';
 /** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
 const WALK=heroSpeed();
 import {STEP} from '../../src/maps/prediction.ts';
@@ -53,6 +53,13 @@ function play(s:Scenario){
   assert.equal(room.run.snapshot().phase,'combat');
   combat=true;
   const me=room.sim.players.get(id)!;
+  // Card colisao-entre-herois: the heroes are solid to each other; Bia waits out of Ana's way (this phone keeps no
+  // copies of her, colisao-entre-herois / predicao-corpos-coop cover those), so the steps here are the effects' alone.
+  const bia=[...room.sim.players.values()].find(p=>p.id!==id)!;
+  // Behind Ana's walks (they drift +x/+y), far enough for every scenario here.
+  const aside=[[-12,-12],[-15,0],[0,-15],[-10,-4],[-4,-10],[-8,-8]].map(([dx,dy])=>({x:me.x+dx,y:me.y+dy})).find(q=>walkable(q,room.sim.terrain));
+  assert.ok(aside,'a walkable spot behind Ana for Bia');
+  bia.x=aside.x;bia.y=aside.y;
   const round=room.run.snapshot().round;
 
   // The phone: CoopClient's prediction state, stepped like client.ts input() and frame().

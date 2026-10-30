@@ -13,6 +13,7 @@
 import {walkable,worldBase} from './world.ts';
 import {FlowField,type FlowGrid} from './flowfield.ts';
 import type {CityTerrain} from './city/terrain.ts';
+import {pertoDaBoca} from './city/entradas.ts';
 import {Rng,type Point} from '../contract/index.ts';
 import {citySafePlaces,safePlaceAt} from './safe-places.ts';
 
@@ -81,15 +82,19 @@ export const POPULATION=20;
  * (42.5, 147.5) joined it; the SO yard at (18, 134.5) left too, 13 u from the only G (always drawn), so never drawn.
  * The viaduct (etapa 3): the N avenue runs beside the ramp now, nearer the NO yard at (58.3, 21), which left too (it was
  * 21 u from the new start, the Uno on the deck, under NEST_FROM_START: never drawn).
+ * NEW-20261030-ORQ-entradas-livres-de-tudo (the user, 30/10: "obstáculos em entradas são horríveis"): no yard's point
+ * within NEST_ENTRADA_FOLGA of an entrance's free strip (maps/city/entradas.ts bocaFaixa); three moved the least that
+ * clears it: (47, 53.1) 1 u E, (100.7, 52.9) 1 u E, (124.5, 147.9) 3.6 u NO.
  * 11 spots, every quadrant beyond NEST_FROM_START of the start.
  */
+export const NEST_ENTRADA_FOLGA=.5;
 const POOL_ROWS:readonly (readonly [NestKind,number,number,NestSize,string?])[]=[
   // NO
-  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',47,53.1,'P'],
+  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',48,53.1,'P'],
   // NE
-  ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',100.7,52.9,'P'],['terreno',147.9,34.2,'P'],
+  ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',101.7,52.9,'P'],['terreno',147.9,34.2,'P'],
   // SE
-  ['predio',103.2,145.9,'M','b-0158'],['terreno',124.5,147.9,'M'],
+  ['predio',103.2,145.9,'M','b-0158'],['terreno',122.5,144.9,'M'],
   // SO
   ['terreno',19,147.7,'G'],['terreno',42.5,147.5,'M'],
 ];
@@ -331,6 +336,7 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     for(const r of routes)if(routeDistance(n,r)<NEST_FROM_ROUTE)bad(n.id,`a ${routeDistance(n,r).toFixed(1)} u de uma rota da moto`);
     for(let j=i+1;j<plan.nests.length;j++)if(dist(n,plan.nests[j])<NEST_SPACING)bad(n.id,`perto de ${plan.nests[j].id}`);
     if(n.kind==='terreno'&&!city.clearDisc(n.x,n.y,NEST_YARD_RADIUS[n.size]))bad(n.id,`o pátio não cabe um ninho ${n.size}`);
+    if(n.kind==='terreno'&&pertoDaBoca(city.asset,n,NEST_ENTRADA_FOLGA))bad(n.id,`na boca de uma entrada em (${n.x}, ${n.y})`);
     const box=n.kind==='predio'?bboxOf(city,n.block):undefined;
     if(n.kind==='predio'&&!box)bad(n.id,`prédio ${n.block} não existe`);
     if(box&&RANK[buildingNestSize(box.w,box.h)]<RANK[n.size])bad(n.id,`o prédio ${n.block} não cabe um ninho ${n.size}`);

@@ -12,7 +12,7 @@ import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
 import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
-import {cityEntradas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -71,7 +71,7 @@ export const BOCA_DECOR_RAIO=6;
 export function semDecorNasBocas(data:CityAssetData):CityDecor[]{
   const d=decodeCityAsset(encodeCityAsset(data));
   if(!d.ok)throw new Error(d.error);
-  const a=d.asset,u=a.unitsPerCell,bocas=cityEntradas(a);
+  const a=d.asset,u=a.unitsPerCell,bocas=entradasEstreitas(a);
   const gap=(q:CityDecor,e:{x:number;y:number})=>Math.hypot(Math.max(q.c*u-e.x,0,e.x-(q.c+q.w)*u),Math.max(q.r*u-e.y,0,e.y-(q.r+q.h)*u));
   const inMouth=(q:CityDecor)=>isCalcada(q.id)&&bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO&&estreitaBoca(a,e,q));
   const taken=(data.decor??[]).filter(inMouth);

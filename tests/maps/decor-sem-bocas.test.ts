@@ -8,12 +8,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
-import {bocaPassagem,cityEntradas,estreitaBoca} from '../../src/maps/city/entradas.ts';
+import {bocaPassagem,entradasEstreitas,estreitaBoca} from '../../src/maps/city/entradas.ts';
 import {BOCA_DECOR_RAIO,isCalcada} from '../../scripts/cenario-cidade.ts';
 
 const d=decodeCityAsset(readFileSync(fileURLToPath(new URL('../../public/maps/cidade-nevada.json',import.meta.url)),'utf8'));
 if(!d.ok)throw new Error(d.error);
-const a=d.asset,u=a.unitsPerCell,bocas=cityEntradas(a);
+const a=d.asset,u=a.unitsPerCell,bocas=entradasEstreitas(a);
 const gap=(q:{c:number;r:number;w:number;h:number},e:{x:number;y:number})=>Math.hypot(Math.max(q.c*u-e.x,0,e.x-(q.c+q.w)*u),Math.max(q.r*u-e.y,0,e.y-(q.r+q.h)*u));
 
 test('estreitaBoca: a piece on the middle of a passage narrows it, one beside the passage does not',()=>{

@@ -45,10 +45,10 @@ test('seo head: the claims are the game (players, free, no made-up rating)', () 
 });
 
 test('seo head: the share image is a real 1200x630 file', async () => {
-  // ?v=2b: crawlers (WhatsApp above all) keep the preview by URL; the 2B logo replaced the stadium picture.
-  assert.equal(meta('property', 'og:image'), 'https://viagem.cyou/og.jpg?v=2b');
-  assert.equal(meta('name', 'twitter:image'), 'https://viagem.cyou/og.jpg?v=2b');
-  assert.equal(ld.image, 'https://viagem.cyou/og.jpg?v=2b');
+  // ?v=2c: crawlers (WhatsApp above all) keep the preview by URL; 2c = Codex background behind the 2B logo.
+  assert.equal(meta('property', 'og:image'), 'https://viagem.cyou/og.jpg?v=2c');
+  assert.equal(meta('name', 'twitter:image'), 'https://viagem.cyou/og.jpg?v=2c');
+  assert.equal(ld.image, 'https://viagem.cyou/og.jpg?v=2c');
   const { width, height, format } = await sharp('public/og.jpg').metadata();
   assert.deepEqual([width, height, format], [1200, 630, 'jpeg']);
   assert.equal(meta('property', 'og:image:width'), '1200');

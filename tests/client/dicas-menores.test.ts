@@ -23,8 +23,12 @@ const fontPx=(v:string)=>{const m=v.match(/var\(--t-(\d+)\)|(\d+(?:\.\d+)?)px/);
 
 test('hints: one line, cut with an ellipsis, 13 px text, small stickers',()=>{
   for(const row of ['.rh-coach','.rh-objetivo','.rh-marquee'])assert.equal(value(HUD,row,'white-space'),'nowrap',`${row}: one line`);
-  for(const text of ['.rh-coach-text','.rh-objetivo-text','.rh-marquee-title','.rh-marquee-sub'])
+  for(const text of ['.rh-coach-text','.rh-objetivo-text','.rh-marquee-sub'])
     assert.equal(value(HUD,text,'text-overflow'),'ellipsis',`${text}: cut, never wrapped`);
+  // The banner's title is never cut (BUG-20261023-ORQ-resultado-paisagem-e-125): whole, or two lines past the banner's
+  // width; the subtitle then fits by words in topbar.ts (whole, the modifier's name, or gone), so its ellipsis is a net.
+  assert.ok(!HUD.some(d=>d.selector==='.rh-marquee-title'&&d.prop==='text-overflow'),'.rh-marquee-title: no ellipsis');
+  assert.equal(value(HUD,'.rh-marquee-title','max-width'),'100%');
   for(const [sel,prop] of [['.rh-coach-text','font'],['.rh-objetivo-text','font'],['.rh-marquee-title','font'],['.rh-marquee-sub','font']] as const){
     const size=fontPx(value(HUD,sel,prop));assert.ok(size>=11&&size<=16,`${sel}: ${size} px`);
   }

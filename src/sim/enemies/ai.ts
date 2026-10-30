@@ -26,6 +26,7 @@ import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
 import {AGGRO,AGGRO_PER_PLAYER,AGGRO_SECONDS,FOCO,FOCO_CACADOR,FOCO_UNO,type ProvokedEnemy} from './foco.ts';
+import {hushSanfoneiro,isPlaying,isSanfoneiro,stepSanfoneiro} from './sanfoneiro.ts';
 
 /**
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
@@ -339,6 +340,8 @@ export class EnemyAi implements SimSystem {
       // A retreating enemy never comes back for a taunt; drop it so checkpoints stay clean.
       // Its pending burp is cancelled too (D-010: retreaters deal no damage), and so is the influencer's pose (a
       // retreater reflects nothing, catalog.ts isReflecting).
+      // The sanfoneiro (sanfoneiro.ts) never plays fleeing, scared (frozen) or knocked silly.
+      if(isSanfoneiro(e)&&(e.memory?.retreat===1||ctx.tick<(e.frozenUntil??-1)||!!e.knock&&Math.hypot(e.knock.x,e.knock.y)>KNOCK_STUN))hushSanfoneiro(ctx,e);
       if(e.memory?.retreat===1){
         delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);
         if(e.memory.state===STATE.pose){e.memory.state=STATE.walk;delete e.memory.reflectSay;}
@@ -402,6 +405,7 @@ export class EnemyAi implements SimSystem {
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
       // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
       if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
+        if(isSanfoneiro(e))hushSanfoneiro(ctx,e);
         if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
         memory.state=STATE.walk;
       }
@@ -583,6 +587,13 @@ export class EnemyAi implements SimSystem {
           }
           case 'brute':
           case 'minichefe':{
+            // The sanfoneiro plays (drags heroes in) and hits with the fole instead (sanfoneiro.ts).
+            if(isSanfoneiro(e)){
+              const move=stepSanfoneiro(ctx,e,memory,player,best,this.heroSpeed,this.hazardRoom(ctx));
+              if(move==='start')this.react(ctx,rng,e,def,1);
+              else if(move==='walk'){dirX=ux;dirY=uy;}
+              break;
+            }
             // The stomp: warned circle around him; he stands still until it lands (plus a short recovery).
             const slam=def.behavior==='brute'?BRUTE_SLAM:SLAM;
             if(memory.state===STATE.slam){
@@ -604,7 +615,8 @@ export class EnemyAi implements SimSystem {
         // do not hit mid wind-up; the coach never hits (no melee). A coached enemy hits for PALESTRA.damageMult × damage.
         if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
         // At a bait point (Bancos) there is nobody to hit.
-        if(touching&&(player||structure)&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&noMelee(def))&&ctx.tick>=memory.hitReady){
+        // The sanfoneiro's only melee is his warned fole (sanfoneiro.ts).
+        if(touching&&(player||structure)&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&(noMelee(def)||isSanfoneiro(e)))&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           const charging=memory.state===STATE.charge;
           const amount=(def.behavior==='kamikaze'&&charging?MOTOBOY.hitDamage:e.damage)*coachMult(e,ctx.tick);
@@ -782,7 +794,7 @@ export class EnemyAi implements SimSystem {
       if(held.coachedUntil!==undefined&&(retreat||!isCoached(held,ctx.tick)))delete held.coachedUntil;
       const behavior=enemyDef(e.kind).behavior,state=m?.state;
       const acting=!retreat&&(behavior==='coach'&&state===STATE.lecture||behavior==='kamikaze'&&(state===STATE.joke||state===STATE.charge)
-        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||(behavior==='minichefe'||behavior==='brute')&&state===STATE.slam);
+        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||(behavior==='minichefe'||behavior==='brute')&&state===STATE.slam||behavior==='brute'&&isPlaying(state));
       const phase=acting?ENEMY_PHASE.acting:held.coachedUntil!==undefined?ENEMY_PHASE.coached:undefined;
       if(phase===undefined){if(e.phase!==undefined)delete e.phase;}
       else e.phase=phase;

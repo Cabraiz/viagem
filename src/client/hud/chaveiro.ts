@@ -270,9 +270,11 @@ export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a
 export function vaquinhaLine(share:readonly VaquinhaShare[]|undefined,nameOf:(id:string)=>string){
   if(!share?.length)return undefined;
   let zeros=0;
-  const parts=share.map(s=>{
+  // Each part apart too (`pieces`): a tight layout may drop the jokes and keep every name and value.
+  const pieces=share.map(s=>{
     const paid=Math.max(0,Math.round(Number.isFinite(s.paid)?s.paid:0));
-    return `${nameOf(s.id)} ${reais(paid)}${paid>0?'':`, ${VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]}`}`;
+    return {who:`${nameOf(s.id)} ${reais(paid)}`,joke:paid>0?undefined:VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]};
   });
-  return {text:`Vaquinha: ${parts.join('; ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`};
+  const parts=pieces.map(p=>p.joke?`${p.who}, ${p.joke}`:p.who);
+  return {text:`Vaquinha: ${parts.join('; ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`,pieces};
 }

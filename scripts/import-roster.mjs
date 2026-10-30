@@ -40,6 +40,15 @@ const LEGACY=[
   ['motoboy','Motoboy Kamikaze','kamikaze',160,0xc23b2a],['influencer','Influencer de Academia','refletor',160,0xe0407a],
   ['chefe','Síndico Supremo','chefe',384,0x6b3f7a],
 ];
+/**
+ * Held entries (HELD_ROSTER): defined and spawnable by id (sim/enemies/catalog.ts reads them through rules/enemy-cast.ts)
+ * but out of the wave draw (rules/enemy-rotation.ts reads ROSTER only) until their art and the user's go land. Pack 0,
+ * P0 (copy file `held`: 4 barks, 3 death lines, a pop and the gag). [id, name, role, cell, accent]
+ */
+const HELD=[
+  // NEW-20261029-ORQ-sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): cell 128, ~1.2× the hero until the user decides.
+  ['sanfoneiro','Sanfoneiro Arrasta-Pé','brutamontes',128,0xc68e3a],
+];
 /** Entries that fly although their role (enxame) does not: aerial swarms. */
 const FLYING={'pernilongo-vampiro':'a mosquito swarm','bot-de-curtida':'"a tiny hovering thumbs-up creature"'};
 /** FLY_WORDS matches in a concept (before "Death:") that do not make the body fly. */
@@ -117,6 +126,13 @@ const entries=[
   }),
   ...extras,
 ];
+const held=HELD.map(([id,name,role,cell,accent])=>{
+  if(seen.has(id))problems.push(`held id ${id} is already in the roster`);
+  const t=copy.held?.[id];
+  if(!t?.gag||t.barks?.length!==4||t.death?.length!==3||typeof t.pop!=='string')problems.push(`${id}: a held entry needs 4 barks, 3 death lines, a pop and the gag`);
+  return {id,name,role,cell,priority:'P0',pack:0,accent,gag:t?.gag,barks:t?.barks,deathLines:t?.death,pop:t?.pop};
+});
+for(const id of Object.keys(copy.held??{}))if(!HELD.some(h=>h[0]===id))problems.push(`held copy for unknown id ${id}`);
 if(problems.length){console.error(problems.join('\n'));process.exit(1);}
 
 const hex=n=>`0x${n.toString(16).padStart(6,'0')}`;
@@ -171,6 +187,11 @@ const freeze=<T>(entries:T[]):readonly T[]=>Object.freeze(entries.map(e=>{
 
 export const ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
 ${entries.map(line).join('\n')}
+]);
+
+/** Defined but kept out of the wave draw (enemy-rotation.ts reads ROSTER only) until their art and the user's go land. */
+export const HELD_ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
+${held.map(line).join('\n')}
 ]);
 `;
 // LF only, whatever the checkout does to this script's own line endings (core.autocrlf); the check ignores CRs too.

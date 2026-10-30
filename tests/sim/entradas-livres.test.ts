@@ -32,8 +32,9 @@ test('entradas: mouths of every width, the print\'s wide one included; each stri
   const all=cityEntradas(a);
   assert.ok(all.length>=300,`${all.length} mouths`);
   assert.ok(all.filter(e=>e.largura>5).length>=30,'wide mouths too');
-  // The print (30/10): the street 8 cells wide that opens off the north avenue at ≈ (79.3, 30.7).
-  assert.ok(all.some(e=>e.largura>=6&&Math.hypot(e.x-79.3,e.y-30.7)<2),'the print\'s mouth');
+  // The print (30/10): the street 8 cells wide that opens off the north avenue at ≈ (79.3, 30.7). Its ground is open now
+  // (bocas-chao-aberto: the wall behind it, between the viaduct's pillars, went), so it is measured a few u further in.
+  assert.ok(all.some(e=>e.largura>=6&&Math.hypot(e.x-79.3,e.y-30.7)<5),'the print\'s mouth');
   for(const e of all){
     const z=bocaFaixa(a,e),across=e.ax?z.w:z.h;
     assert.ok(across>=e.largura*C-1e-6,`(${e.x.toFixed(1)},${e.y.toFixed(1)}) w${e.largura}: strip ${across.toFixed(2)} u`);

@@ -228,8 +228,9 @@ test('props: kinds mapped, radius clamped, ids stable, none inside a block',()=>
     assert.equal(coverOf[Math.floor(q.y/CELL)*W+Math.floor(q.x/CELL)],-1,`${q.id} inside a block`);
     kinds.add(q.kind);
   }
-  // Asset v4: ~1/3 of the ground, the stacks dedup'd (PROP_DEDUP): ~30 drawn (was > 50 on the 1.7× city).
-  assert.ok(city.props.length>25,`${city.props.length} props`);
+  // Asset v4: ~1/3 of the ground, the stacks dedup'd (PROP_DEDUP): ~30 drawn (was > 50 on the 1.7× city); v9 took the
+  // ones on the entrances' ground (bocas-sem-muro-pedra-decor): 16 left.
+  assert.ok(city.props.length>12,`${city.props.length} props`);
   for(const k of ['crate','barrel','bench','lamp'])assert.ok(kinds.has(k),`generic props spread over ${k}`);
 });
 

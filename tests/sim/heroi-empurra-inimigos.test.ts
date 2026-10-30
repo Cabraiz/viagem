@@ -1,8 +1,8 @@
 /**
  * Card NEW-20261025-ORQ-heroi-empurra-inimigos (user, 25/10: "deveria ter hitbox e não eu simplesmente passando por
  * dentro deles, nem que seja empurrando eles"): heroes and awake enemies are solid (maps/bodies.ts, sim/bodies.ts).
- *  - a hero walking into a common body pushes it and keeps almost all the walk; an elite about half, the boss almost
- *    nothing (but something); the hero never ends a step inside a body;
+ *  - a hero walking into a common body pushes it and keeps almost all the walk; an elite about half; a boss (since
+ *    colisao-entre-herois: only the mendigo is pushed) not at all, the hero stops at its edge; never inside a body;
  *  - the phone's replay (maps reconcile with clock.bodies) takes the very same steps as the room;
  *  - in a real run (enemy AI, crowd push, the end-of-tick pass) no solid body stands inside a hero after any tick, a
  *    ring of 8 does not hold the hero (out in ≤ 1 s), and the flying ones are walked under.
@@ -64,7 +64,6 @@ test('masses: a common gives way, an elite less, the boss almost nothing; never 
 for(const [name,setup,min,max] of [
   ['common',(e:EnemyState)=>e,.85,.97],
   ['elite',(e:EnemyState)=>{e.elite=true;e.radius*=1.35;return e;},.4,.7],
-  ['boss',(e:EnemyState)=>{e.boss=true;e.radius=1.04;return e;},.05,.15],
 ] as const){
   test(`room: walking into a still ${name}, the hero pushes it, never stands inside it, and keeps ${min}..${max} of the walk; the phone replays the same`,()=>{
     const world=walkRig(()=>({seq:1,x:1,y:0} as PlayerInput));
@@ -86,6 +85,23 @@ for(const [name,setup,min,max] of [
     assert.ok(Math.abs(copy.x-e.x)<1e-9&&Math.abs(copy.y-e.y)<1e-9,'the copy went where the body went');
   });
 }
+
+// colisao-entre-herois (addendum, user 30/10: of the monsters only the mendigo is pushed): a boss is fixed (shovedEnemy
+// false, enemyHeroShare 1), so the hero stops at its edge and it does not move; the phone (Body.fixed) the same.
+test('room: walking into a still boss, the hero stops at its edge and the boss does not move; the phone replays the same',()=>{
+  const world=walkRig(()=>({seq:1,x:1,y:0} as PlayerInput));
+  const start={x:BASE.x-2,y:BASE.y};
+  const p=addPlayer(world,'a',start);
+  const e=createEnemy(world,'bebado',{x:BASE.x,y:BASE.y});e.boss=true;e.radius=1.04;
+  const copy:Body={x:e.x,y:e.y,radius:e.radius,boss:true,fixed:true};
+  const inputs:PlayerInput[]=[];
+  for(let t=0;t<40;t++){world.step();inputs.push({seq:t+1,x:1,y:0} as PlayerInput);assert.ok(gap(p,e)>=-1e-9,`tick ${t}: inside by ${-gap(p,e)}`);}
+  assert.ok(gap(p,e)<.02,`the hero stopped ${gap(p,e).toFixed(3)} u short of the edge`);
+  assert.equal(e.x,BASE.x,'the boss was not pushed');
+  const phone=reconcile({...start},inputs,city,{tick:0,bodies:[copy]});
+  assert.ok(Math.abs(phone.x-p.x)<1e-9&&Math.abs(phone.y-p.y)<1e-9,`phone (${phone.x},${phone.y}) room (${p.x},${p.y})`);
+  assert.equal(copy.x,e.x,'the copy stayed');
+});
 
 /** A real run on the plaza (enemy AI, crowd push, the end-of-tick pass), the hero holding `dir`. */
 function runRig(dir:Point|undefined|(()=>Point|undefined),seed=7){

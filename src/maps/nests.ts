@@ -109,9 +109,10 @@ const NEST_OFF:Readonly<Record<string,string>>={
 };
 const ALL_SPOTS=POOL_ROWS.map(([kind,x,y,maxSize,block],i):NestSpot=>
   Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})}));
-/** Where the map (v8) laid the yards before entradas-livres-de-tudo moved them: the asset is built around these. */
+/** Where the map (v8) laid the yards before entradas-livres-de-tudo moved them: the asset is built around these.
+ *  ninho-03's yard is where it is drawn since v10 (bocas-chao-aberto: the cuts beside the old yard moved a mouth onto it). */
 const MAP_YARD:Readonly<Record<string,readonly [number,number]>>={
-  'ninho-03':[47,53.1],'ninho-06':[100.7,52.9],'ninho-09':[124.5,147.9],'ninho-11':[42.5,147.5],
+  'ninho-06':[100.7,52.9],'ninho-09':[124.5,147.9],'ninho-11':[42.5,147.5],
 };
 /** Every spot as the map scripts keep it (becos-cidade, cenario-cidade): the ones out of the draw too, at the yard the
  *  map laid. Moving a nest or taking it out of the draw must not change the committed asset (mapa-175). */

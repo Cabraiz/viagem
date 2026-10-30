@@ -34,3 +34,6 @@
 .rh[data-hud=fone] .rh-chegou-titulo{font-size:var(--t-16)}
 .rh[data-hud=fone] .rh-chegou-segurem{font-size:var(--t-13)}
 .rh[data-hud=fone] .rh-chegou-track{justify-self:stretch;height:8px}
+/* Card relogio-do-chaveiro-com-legenda: the phone's bar now reads "Chaveiro 7:03"; on a narrow phone the "+216 s" after
+   it would burst the bar, so there it goes (the bar's screen-reader words keep "Uno apanhou: chaveiro +N s"). */
+@media (max-width:419px){.rh[data-hud=fone] .rh-camp-relogio-mais{display:none}}

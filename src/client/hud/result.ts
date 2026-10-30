@@ -24,14 +24,14 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 };
 
 const VICTORY_LINES=[
-  'O síndico foi despejado',
-  'O bêbado pediu a saideira',
-  'Condomínio liberado, churrasco confirmado',
+  'O saci voltou pulando pro mato',
+  'O sanfoneiro guardou a sanfona',
+  'Rua liberada, churrasco confirmado',
   'Nem o boleto segurou vocês',
 ];
 const DEFEAT_LINES=[
-  'o agiota cobrou com juros',
-  'o síndico manda lembranças',
+  'o saci levou até o chinelo',
+  'o sanfoneiro manda lembranças',
   'bateu a segunda-feira',
   'faltou só… tudo',
 ];
@@ -68,7 +68,7 @@ export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
 
 /**
  * The defeat's second line (UX-resultado-revanche): "O que derrubou a turma: Tio do Pavê (4 quedas)" and, with rounds,
- * "Faltou 3 rodadas pro síndico". Undefined on a win or with nothing to say.
+ * "Faltou 3 rodadas pra vitória". Undefined on a win or with nothing to say.
  */
 export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'|'objective'>,causes:CauseLog){
   if(result.victory)return undefined;
@@ -76,7 +76,7 @@ export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'
   const team=topCause(causes);
   if(team)parts.push(`O que derrubou a turma: ${causeCopy(team.kind).name} (${team.count} ${team.count===1?'queda':'quedas'})`);
   const left=result.objective?0:result.totalRounds-result.round;
-  if(left>0)parts.push(`Faltou ${left===1?'1 rodada':`${left} rodadas`} pro síndico`);
+  if(left>0)parts.push(`Faltou ${left===1?'1 rodada':`${left} rodadas`} pra vitória`);
   return parts.length?parts.join('. '):undefined;
 }
 
@@ -136,7 +136,7 @@ export interface ResultRoster {
 }
 /** The owner's buttons on a card: the verb, and the one-tap confirmation with the name. */
 export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},asking:boolean)=>
-  asking?`${player.bot?'Tirar':'Expulsar'} ${railName(player.name)}? Toca de novo.`:(player.bot?'Tirar bot':'Expulsar');
+  asking?`Expulsar ${railName(player.name)}? Toca de novo.`:(player.bot?'Expulsar bot':'Expulsar');
 /** The owner's button on the result: what it does, with no room for "turma" to read as the team's score. */
 export const MANAGE_LABEL='Arrumar a sala';
 /** The same verb where three buttons share one row (portrait): the crown says whose button it is (BUG-resultado-dono-6p-rola). */
@@ -198,7 +198,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const titles=el('div','rh-result-titles',head);
   const title=el('h2','rh-result-title',titles);title.id='rh-result-title';
   const subtitle=el('p','rh-result-sub',titles);
-  // The defeat's "O que derrubou a turma … Faltou N rodadas pro síndico" (UX-resultado-revanche).
+  // The defeat's "O que derrubou a turma … Faltou N rodadas pra vitória" (UX-resultado-revanche).
   const lost=el('p','rh-result-lost',titles);lost.hidden=true;
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);
@@ -226,7 +226,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const matches=el('section','rh-result-matches',root);matches.hidden=true;matches.setAttribute('aria-label','Seus matches');
   const actions=el('div','rh-result-actions',root);
   const rematch=el('button','rh-result-btn rh-result-rematch',actions);rematch.type='button';
-  // The owner's "Arrumar turma" (D-025): the cards trade their prizes for "Expulsar" / "Tirar bot", plus "Adicionar bot".
+  // The owner's "Arrumar turma" (D-025): the cards trade their prizes for "Expulsar" / "Expulsar bot", plus "Adicionar bot".
   const manage=el('button','rh-result-btn rh-result-manage',actions);manage.type='button';manage.hidden=true;
   const exit=el('button','rh-result-btn rh-result-exit',actions);exit.type='button';exit.textContent='Sair';
   exit.hidden=!options.onExit;
@@ -237,7 +237,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     // Portrait has three buttons in 350 px: the crown and "Turma"; landscape has room for the whole verb.
     // Landscape and wide rows say the whole verb; portrait's single row of three says "Arrumar" (CSS picks one).
     manage.innerHTML=managing?'Feito':`${icon('coroa')}<span class="rh-manage-long">${MANAGE_LABEL}</span><span class="rh-manage-short">${MANAGE_SHORT}</span>`;
-    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':`${MANAGE_LABEL}: expulsar, tirar ou pôr bot`);
+    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':`${MANAGE_LABEL}: expulsar ou pôr bot`);
     actions.classList.toggle('has-manage',can);
     root.classList.toggle('is-managing',managing);
   };

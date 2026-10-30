@@ -16,7 +16,7 @@ export const FALLBACK_LINES:Readonly<Record<Situation,readonly string[]>>={
   down:['Alguém me levanta aí!','Deitei só um pouquinho...'],
   revive:['De pé, guerreiro!','Levanta que ainda não acabou!'],
   upgrade:['Esse aqui parece bom.','Escolhi pela cor.'],
-  win:['Ganhamos?! Ganhamos!','Síndico derrotado, festa!'],
+  win:['Ganhamos?! Ganhamos!','Horda derrotada, festa!'],
   lose:['Foi o lag, certeza.','Revanche? Revanche.'],
 };
 

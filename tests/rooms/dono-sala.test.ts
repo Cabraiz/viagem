@@ -265,9 +265,9 @@ test('waiting room: the owner manages, people first then bots, the crown and rob
   // Countdown: still allowed; combat and result: the waiting room is hidden (the result has its own buttons).
   assert.equal(waitingRoomView({...run,phase:'countdown',remaining:40},names,'me').canManage,true);
   assert.equal(waitingRoomView({...run,phase:'combat'},names,'me').canManage,false);
-  assert.equal(confirmText({name:'Wagner Washington',bot:false}),'Expulsar Wagner? Toca de novo.');assert.equal(confirmText({name:'Pamonha 3000',bot:true}),'Tirar Pamonha? Toca de novo.');
-  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Fujão 3000',bot:true},false),'Tirar bot');
-  assert.equal(manageLabel({name:'Fujão 3000',bot:true},true),'Tirar Fujão? Toca de novo.');
+  assert.equal(confirmText({name:'Wagner Washington',bot:false}),'Expulsar Wagner? Toca de novo.');assert.equal(confirmText({name:'Pamonha 3000',bot:true}),'Expulsar Pamonha? Toca de novo.');
+  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Fujão 3000',bot:true},false),'Expulsar bot');
+  assert.equal(manageLabel({name:'Fujão 3000',bot:true},true),'Expulsar Fujão? Toca de novo.');
   assert.ok(OWNER_HINT.length<60);assert.match(OWNER_HINT,/dono da sala/);assert.doesNotMatch(OWNER_HINT,/chefe/);
   // Owner news: the post moved, mine now, or a guest's first look; the owner's own first look says nothing.
   assert.equal(ownerNotice({name:'Tia Cleide Aparecida'},'Wagner Washington',false),'Tia saiu. Agora quem manda é Wagner.');

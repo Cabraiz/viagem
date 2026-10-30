@@ -44,9 +44,9 @@ export const WAITING_LINES:readonly string[]=Object.freeze([
   'O Wi-Fi do vizinho está colaborando.',
   'Aquecendo o chinelo…',
   'Conferindo se o boleto venceu.',
-  'O bêbado também está esperando. Na saideira.',
+  'O sanfoneiro está afinando a sanfona.',
   'Quem não estiver pronto paga a coxinha.',
-  'O tio do pavê está ensaiando a piada.',
+  'O saci foi atrás do outro pé do chinelo.',
 ]);
 export const WAITING_LINE_SECONDS=5;
 export const waitingLine=(elapsedSeconds:number)=>WAITING_LINES[Number.isFinite(elapsedSeconds)?Math.floor(Math.max(0,elapsedSeconds)/WAITING_LINE_SECONDS)%WAITING_LINES.length:0];
@@ -112,12 +112,12 @@ export interface WaitingView {
   seatsLeft:number;
 }
 /**
- * What an armed chip says (D-025, design review): the verb (a person is expelled, a bot is taken out), the first name
+ * What an armed chip says (D-025, design review): the verb (one verb, "Expulsar", for a person and a bot alike), the first name
  * as the rail shows it, and what to do: "Expulsar Wagner? Toca de novo."
  */
-export const confirmText=(m:Pick<WaitingMember,'name'|'bot'>)=>`${m.bot?'Tirar':'Expulsar'} ${railName(m.name)}? Toca de novo.`;
+export const confirmText=(m:Pick<WaitingMember,'name'|'bot'>)=>`Expulsar ${railName(m.name)}? Toca de novo.`;
 /** The owner's line in place of the waiting joke (the joke is optional; this line says what the chips do). */
-export const OWNER_HINT='Você é o dono da sala. Toca num nome pra tirar.';
+export const OWNER_HINT='Você é o dono da sala. Toca num nome pra expulsar.';
 /** How long the owner news stays on top of the waiting room (ms). */
 export const OWNER_NEWS_MS=4000;
 /**
@@ -449,7 +449,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         if(view.canManage&&!m.self){
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
-          const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
+          const label=ask?confirmText(m):`${m.name}${said}. Toca pra expulsar.`;
           return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${ask?escapeHtml(confirmText(m)):chipNameHtml(shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})+kind}</button></li>`;
         }
         return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${chipNameHtml(shown)}${m.self?' <small>(você)</small>':''}${kind}</span>${crown}<span class="sr-only">${said}</span></li>`;
@@ -605,7 +605,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
 }
 /** How long "Jogar sozinho" waits for the city's manifest (a few bytes): the solo match is on the city, so it needs it. */
 export const SOLO_MANIFEST_MS=8000;
-export const SOLO_TEXT={noRooms:ROOMS_UNREACHABLE,noCity:'A cidade não baixou. Tente novamente.'} as const;
+export const SOLO_TEXT={noRooms:ROOMS_UNREACHABLE,noCity:'A cidade não baixou. Tenta de novo.'} as const;
 /**
  * What "Jogar sozinho" downloads before the room (cena-nasce-rapido; auditoria-ui-menus 5: started when the choice
  * popup opens, not on the tap, so the seconds the player spends looking at the popup are spent downloading): the game's

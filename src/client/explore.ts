@@ -54,6 +54,7 @@ import {objectiveOf} from './render/chaveiro/view.ts';
 import type {KeyValue} from './economy.ts';
 import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
 import {pageZoomEvent,saveZoom,startZoom} from './camera-zoom.ts';
+import {BOOT_TEXT,COVER_SLOW_MS,SLOW_COVER,bootFailure,refusalExit,webglWorks,type BootExit,type BootFailure} from './match-boot.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 import {LayoutCache,viewportSize} from './hud/box-cache.ts';
@@ -93,17 +94,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   if(active)return;
   active=true;
   const returnFocus=document.getElementById('confirm');
-  const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
+  const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Partida');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar-camera',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar-camera',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}${wantsGearTag()?'<span class="explore-config-tag" aria-hidden="true">Pausa</span>':''}</button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Heróis</button></header>
-    <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
+    <section class="explore-stage" aria-label="Mapa da partida">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
       <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
       <div class="explore-map" aria-hidden="true"><svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="39" ry="39" fill="#c8d795"/><path d="M50 68 35 47 69 47 50 24 35 47" fill="none" stroke="#f7e5b2" stroke-width="5"/><g fill="#a184b4"><circle cx="35" cy="47" r="3"/><circle cx="69" cy="47" r="3"/><circle cx="50" cy="24" r="3"/></g><circle id="explore-dot" cx="50" cy="68" r="4" fill="#fff7d3" stroke="#7e638f" stroke-width="2"/></svg></div>
       <div class="explore-notice" role="status">${INPUT_TEXTS.touch.soloNotice}</div>
-      <div class="explore-loading" role="status">${net?'Arrumando a cidade…':'Arrumando a ilha pra visita…'}</div>
+      <div class="explore-loading" role="status">${BOOT_TEXT.loading}</div>
     </section>
     <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span></p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
@@ -412,8 +413,21 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       ...(net?.run?.objective?{objective:{...net.run.objective}}:{})};
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
+  // partida-que-nao-abre-tem-saida: a boot that throws or a cover that never falls gets the window with its ways out
+  // (match-boot.ts); a second way out is a second button of the same look.
+  let bootShown:BootFailure|undefined;
+  const bootFatal=(failure:BootFailure)=>{
+    const exit=(kind:BootExit)=>kind==='retry'?{label:BOOT_TEXT.retry,run:()=>location.reload()}:{label:BOOT_TEXT.home,run:close};
+    const panel=showFatal(find('.explore-layout'),failure.text,{action:exit(failure.exits[0])});
+    panel.querySelector('.net-fatal-exit')?.remove();
+    const second=failure.exits[1];
+    if(second){const {label,run}=exit(second),button=document.createElement('button');button.type='button';button.className='net-fatal-reload net-fatal-exit';button.textContent=label;button.addEventListener('click',run);panel.append(button);}
+    shell.dataset.fatal='true';bootShown=failure;
+  };
+  const hideBoot=()=>{hideFatal(find('.explore-layout'));delete shell.dataset.fatal;bootShown=undefined;};
+  const coverSlow=setTimeout(()=>{if(!closed&&!sceneReady&&!shell.dataset.fatal)bootFatal(SLOW_COVER);},COVER_SLOW_MS);
   const close=()=>{
-    if(closed)return;closed=true;active=false;abort.abort();releaseBack();gearTagSeen();reset();if(economyTimer)clearTimeout(economyTimer);
+    if(closed)return;closed=true;active=false;clearTimeout(coverSlow);abort.abort();releaseBack();gearTagSeen();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
     ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
@@ -700,7 +714,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           putData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{reconnect:()=>net.restart()});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;bootShown=undefined;find('.explore-layout').querySelector('.net-fatal-exit')?.remove();
+            // Only a new version or another tab keeps the reload: every other refusal forgot the seat (match-boot.ts refusalExit).
+            const exit=refusalExit(net.fatal,{kicked:net.kicked,linkLost:net.fatal===LINK_LOST}),home={label:BOOT_TEXT.home,run:close};
+            showFatal(find('.explore-layout'),net.fatal,exit==='kicked'?{title:KICKED_TITLE,action:home}:exit==='home'?{action:home}:exit==='room'?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{reconnect:()=>net.restart()});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           // "Reconectar" (nao-e-versao-nova): the client is on again, the window and the hidden HUD come back down.
@@ -906,7 +923,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
-      ready:()=>{sceneReady=true;if(skill)skill.visible=true;ux?.ready();syncTurn();
+      ready:()=>{sceneReady=true;clearTimeout(coverSlow);if(bootShown===SLOW_COVER)hideBoot();if(skill)skill.visible=true;ux?.ready();syncTurn();
         // Solo: the cover's line gives way to the room's ("Chamando os bots…", then the 3-2-1) until the match.
         if(options.solo)$('.explore-loading').textContent='';
         syncCover();$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
@@ -916,5 +933,5 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // The phone dropped the WebGL context (gl-lost.ts): a plain panel and a way back instead of a black screen; a room's own window wins, a restore takes ours down.
     watchGlLoss(controller.game.canvas,{lost:()=>{if(closed||fatalShown)return;const to=glLostTarget(options.solo?undefined:net?.code,inviteQuery(location.search));showFatal(find('.explore-layout'),GL_LOST_TEXT,{action:{label:GL_LOST_BUTTON,run:()=>to?location.assign(to):location.reload()}});shell.dataset.fatal='true';if(hud)hud.el.hidden=true;},
       restored:()=>{if(closed||fatalShown||find('.explore-layout').querySelector(':scope > .net-fatal .net-fatal-text')?.textContent!==GL_LOST_TEXT)return;hideFatal(find('.explore-layout'));delete shell.dataset.fatal;if(hud)hud.el.hidden=false;}});
-  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte aos heróis e tente novamente.':'Não foi possível carregar a ilha. Volte aos heróis e tente novamente.';}}
+  }catch(e){if(!closed){clearTimeout(coverSlow);if(chunkFailed(e))$('.explore-loading').textContent='Saiu versão nova do jogo.';else bootFatal(bootFailure(webglWorks()));}}
 }

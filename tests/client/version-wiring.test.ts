@@ -224,7 +224,7 @@ test('explore.ts: the phase on the shell drives matchEnded; the scene chunk 404 
   const explore=read('src/client/explore.ts');
   assert.match(explore,/const previous=shell\.dataset\.runPhase;\s*\n\s*putData\(shell,'runPhase',run\.phase\);/);
   assert.match(explore,/if\(leftMatch\(previous,run\.phase\)\)matchEnded\(\)/);
-  assert.match(explore,/\}catch\(e\)\{if\(!closed\)\{\$\('\.explore-loading'\)\.textContent=chunkFailed\(e\)\?/);
+  assert.match(explore,/\}catch\(e\)\{if\(!closed\)\{clearTimeout\(coverSlow\);if\(chunkFailed\(e\)\)\$\('\.explore-loading'\)\.textContent='Saiu versão nova do jogo\.'/);
   assert.match(explore,/net\.run\?\.phase!=='combat'\)return false;runHud\.queueRow\(el,UPDATE_ROW_MS\)/);
   // Closing the island or the room is the end of the match too (after the shell is gone, so the resume sees the menu).
   assert.match(explore,/shell\.remove\(\);returnFocus\?\.focus\(\);\s*\n(?:\s*\/\/.*\n)*\s*matchEnded\(\);/);

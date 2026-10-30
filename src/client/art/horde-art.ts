@@ -14,7 +14,7 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
-import {CIDADE_MODIFIERS,WAVE_BOSS,WAVE_BOSS_IDS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
+import {CIDADE_MODIFIERS,SCALED_WAVE_BOSS_IDS,WAVE_BOSS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
@@ -532,24 +532,29 @@ export const DEFAULT_HEIGHT=.9;
 /**
  * One art's own height × the hero's, over its role's: the aberração-saci 1.4× the hero as drawn on screen (card
  * saci-elite-no-jogo, the user: "E as proporções"), so its 1.4 folds out the enemies' ENEMY_DRAW_SCALE over the heroes'
- * HERO_DRAW_SCALE (else it stands 2× the hero); a mini-chefe's 2 would make the one-legged saci a giant.
+ * HERO_DRAW_SCALE (else it stands 2× the hero); a mini-chefe's 2 would make the one-legged saci a giant. Card
+ * saci-chefe-2x (the user, 30/10: "O saci é o boss do jogo então ponha o saci 2x"): the chefão now, 2× that, 2.8;
+ * his body (rules SACI_BOSS.size) and so his shadow grow with it.
  */
-export const SACI_ON_SCREEN=1.4;
+export const SACI_ON_SCREEN=2.8;
 export const ART_HEIGHT:Readonly<Record<string,number>>={'aberracao-saci':SACI_ON_SCREEN*HERO_DRAW_SCALE/ENEMY_DRAW_SCALE};
-/** The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it). */
+/**
+ * The chefão of the 1st wave draws × this over his role's height (rules WAVE_BOSS.drawScale; a dev lab may change it),
+ * unless he has his own size (rules SCALED_WAVE_BOSS_IDS: not the saci, whose ART_HEIGHT is already his).
+ */
 let waveBossDraw:number=WAVE_BOSS.drawScale;
 /** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
 export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
 if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
 /** The chefão's extra scale for art `id` (1 for every other art). */
-const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
+const waveBossK=(id:string)=>SCALED_WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
 /**
  * The ground shadow's length × this for art `id` (render/silhouette.ts castSilhouette): the chefão's, as long as a
  * WAVE_BOSS_SHADOW-times-bigger figure's would be, never a streak across the street (the user, 24/10: "corrige a
  * sombra dele quando ele tiver grande"); 1 for everyone else.
  */
 export const WAVE_BOSS_SHADOW=1.2;
-export const artShadowLength=(id:string|undefined)=>id&&WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
+export const artShadowLength=(id:string|undefined)=>id&&SCALED_WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
 export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ART_HEIGHT[id]??ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */

@@ -3,16 +3,14 @@
  * fixadas nele mostrando que ele chegou"): the chefão at the end of the 1st wave, mode 'ninhos' only. Shared by the sim
  * (sim/ninhos/chefao.ts: who, when, where), the room (multiplayer/boss-scene.ts: the scene) and the client (name,
  * subtitle, the camera).
- *  - who: one of WAVE_BOSSES, drawn per run from the room's seed (pickWaveBoss: the same for every player). The four
- *    roster chefes with a full boss sheet (384 px, 8 directions) that never showed up before (the user, 23/10: "aleatório
- *    entre os 4");
+ *  - who: the aberração-saci, every run (card NEW-20261030-ORQ-saci-chefe-2x, the user 30/10: "O saci é o boss do jogo
+ *    então ponha o saci 2x"). The four roster chefes with a full boss sheet (384 px, 8 directions; the user, 23/10:
+ *    "aleatório entre os 4") stay in WAVE_BOSSES, hidden: only labs and tests call them by id (options.who);
  *  - when: the 1st wave's last body leaves (its map share dripped out): a fixed moment that always happens (a cleared
  *    wave may never close with one player); then the time to explore (inicio-no-uno-caixas-120) once he falls;
  *  - the scene: CENA.totalMs with the room not stepping the sim (like the level-up pause, D-050): the camera goes to
  *    him (CENA.goMs), holds with the name (CENA.holdMs) and comes back (CENA.backMs). Nobody moves nor takes damage.
  */
-import {Rng} from '../contract/index.ts';
-
 export interface WaveBoss {
   /** Roster id (rules/enemy-roster.ts, role 'chefe'): the enemy kind and its art. */
   id:string;
@@ -20,8 +18,22 @@ export interface WaveBoss {
   name:string;subtitle:string;bar:string;
   /** Barks (≤ 30 chars) for the fight and his death lines. */
   barks:readonly string[];deathLines:readonly string[];
+  /**
+   * His body over the boss controller's (sim/ninhos/chefao.ts waveBossTuning); absent: WAVE_BOSS.drawScale. One that
+   * has it draws at its own height (client art/horde-art.ts ART_HEIGHT), not × drawScale over its role's.
+   */
+  size?:number;
 }
+/**
+ * The saci: today's elite body (enemy def radius × ELITE_SIZE ≈ 1.03, as BOSS_TUNING.radius) × 2, the user's "2x"; his
+ * drawing 2× too (horde-art SACI_ON_SCREEN).
+ */
+export const SACI_BOSS:WaveBoss=Object.freeze({id:'aberracao-saci',name:'SACI ABERRAÇÃO',bar:'Saci Aberração',
+  subtitle:'Uma perna só e mesmo assim chega antes de você.',
+  barks:['Uma perna e te alcanço!','Cadê teu cachimbo, hein?','Redemoinho de gente!','Pula, pula, que eu piso'],
+  deathLines:['Tropecei... na única perna','Vou virar redemoinho...','Me devolve o gorro!'],size:2});
 export const WAVE_BOSSES:readonly WaveBoss[]=Object.freeze([
+  SACI_BOSS,
   {id:'o-grande-credor',name:'O GRANDE CREDOR',bar:'O Grande Credor',subtitle:'Feito de todos os boletos que você esqueceu.',
     barks:['Tua dívida tem filhos','Juros compostos, dor composta','Parcela um de novecentas','Eu sou o rotativo'],
     deathLines:['Quitado?! Ninguém quita!','Viro avião de papel...','Nome limpo... o meu?']},
@@ -36,10 +48,15 @@ export const WAVE_BOSSES:readonly WaveBoss[]=Object.freeze([
     deathLines:['Reciclado... em cubinhos','Virei sacola retornável','Separa o lixo, por favor']},
 ]);
 export const WAVE_BOSS_IDS:readonly string[]=Object.freeze(WAVE_BOSSES.map(b=>b.id));
+/** The chefões drawn × WAVE_BOSS.drawScale over their role's height (no own size): the four HD ones. */
+export const SCALED_WAVE_BOSS_IDS:readonly string[]=Object.freeze(WAVE_BOSSES.filter(b=>b.size===undefined).map(b=>b.id));
 export const waveBossById=(id:string|undefined)=>WAVE_BOSSES.find(b=>b.id===id);
 
-/** The run's chefão: drawn from the room's seed, so every player (and a resumed run) gets the same one. */
-export const pickWaveBoss=(seed:number):WaveBoss=>WAVE_BOSSES[new Rng(seed).fork('chefao-onda').int(0,WAVE_BOSSES.length-1)];
+/**
+ * The run's chefão: the saci (above), the same for every player and a resumed run. The seed is kept for when the
+ * draw comes back.
+ */
+export const pickWaveBoss=(_seed:number):WaveBoss=>SACI_BOSS;
 
 /**
  * The fight (first pass; the balance is noted on the card): the final boss's controller (sim/boss.ts) with these

@@ -9774,13 +9774,13 @@
    "fails": []
   },
   "lite/enemies-pc/saci/idle-sombra.webp": {
-   "sha": "bb8b367c5bf999fc88aa7a8052aa7948d39d4a7b092865ecc5120b2c2e0f3272",
+   "sha": "1e937b1a9ef77016bfe8116215856c7887e55e84c703053c6131c5d71dfdc9ae",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/saci/idle.webp": {
-   "sha": "1d907c3aadc376bead3d809d1e56dfb8d793d992eed7ebb7d09c93c4437a8255",
-   "ilhas": 0,
+   "sha": "ced7fdb92aa2dd230c6909a06f4e5a388b9cc40cf095891ffc48300f35c9b124",
+   "ilhas": 6,
    "fails": []
   },
   "lite/enemies-pc/sapo-cururu/death.webp": {
@@ -15609,12 +15609,12 @@
    "fails": []
   },
   "lite/enemies/saci/idle-sombra.webp": {
-   "sha": "71491e88eb3a62f3ab387e63841517c7de1e540adc234bf6e41381380a3c27a4",
+   "sha": "64c0530107c752bf005caf8cf73240138557c35a416df3d279c51d33e17e3cc0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/saci/idle.webp": {
-   "sha": "58ec434ef72157945f43b401662a5d23112eb197f2e157ddaf91ab083e0832f7",
+   "sha": "3b4a9912153e986ca4b8716d4777ac463ca3db68065be4d2db4440132e81140c",
    "ilhas": 0,
    "fails": []
   },

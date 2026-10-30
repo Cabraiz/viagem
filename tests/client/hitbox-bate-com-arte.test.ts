@@ -40,7 +40,7 @@ const ENEMIES=[
 const NO_ART=['sanfoneiro'];
 /** Out of the band today; the card carries the proposed number. Fixing it makes this test fail: drop the line then. */
 const ESCALA='NEW-20261028-ORQ-escala-heroi-uno-inimigo',RAIO='NEW-20261030-E3-raio-heroi-pos-escala';
-const OUT:Readonly<Record<string,string>>={viciado:RAIO,clt:RAIO,vendedor:RAIO,gato:ESCALA,maromba:ESCALA,aposentado:ESCALA,mendigo:ESCALA,saci:ESCALA};
+const OUT:Readonly<Record<string,string>>={viciado:RAIO,clt:RAIO,vendedor:RAIO,gato:ESCALA,maromba:ESCALA,aposentado:ESCALA,mendigo:ESCALA};
 
 const heroTorsoUnits=(h:typeof HEROES[number])=>h.torso*HERO_WORLD_PX/h.cell*HERO_DRAW_SCALE*CITY_VIEW_SCALE/UNIT_PX;
 const enemyTorsoUnits=(e:typeof ENEMIES[number])=>e.torso/e.figure*artTargetHeight(e.art)*ENEMY_DRAW_SCALE*CITY_VIEW_SCALE/UNIT_PX;

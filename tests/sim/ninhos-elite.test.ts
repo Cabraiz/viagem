@@ -1,8 +1,8 @@
 /**
- * NEW-20261029-ORQ-saci-nasce-nos-ninhos: in mode 'ninhos' (the default) the run's ELITE_ONLY elite (the saci) comes with
- * the waves (src/sim/ninhos/ninhos.ts NEST_ELITE): none in wave 1, then 1 and 2 a wave, under the per-wave and alive caps,
- * born in a live nest's yard at the director's elite numbers; a run without one (a legacy mini-chefe as round 5's elite,
- * no roster) sends none; the legacy cast stays out.
+ * NEW-20261029-ORQ-saci-nasce-nos-ninhos: in mode 'ninhos' (the default) the run's ELITE_ONLY elite comes with the waves
+ * (src/sim/ninhos/ninhos.ts NEST_ELITE): none in wave 1, then 1 and 2 a wave, under the per-wave and alive caps. Card
+ * NEW-20261030-ORQ-saci-chefe-2x (the user 30/10: "O saci é o boss do jogo"): ELITE_ONLY is empty, the saci is the end of
+ * wave 1's chefão (rules/chefao-onda.ts SACI_BOSS), so the nests send no elite; the legacy cast stays out.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,7 +25,7 @@ const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
-const SACI=ELITE_ONLY[0];
+const SACI='aberracao-saci';
 
 const PLAN:NestPlan={seed:1,players:1,nests:[
   {id:'p0',kind:'terreno',x:40,y:40,size:'P',radius:6,sleepers:[{x:40,y:41},{x:41,y:40}]},
@@ -71,51 +71,15 @@ test('NEST_ELITE: none in wave 1, then 1 a wave, 2 from wave 4, never past perWa
   assert.ok(NEST_ELITE.alive>=NEST_ELITE.perWave);
 });
 
-test('6 waves of the liberated run: the saci comes from wave 2 (1, 1, 2, 2, 2), at the elite\'s numbers in a nest yard; only liberated kinds',()=>quickPace(()=>{
-  const roster=liberated();
-  assert.equal(roster(5).elite,SACI,'the liberated rotation\'s round-5 elite is the saci');
-  const r=rig(roster);
-  const elites:EnemyState[]=[];
-  const seen=new Set<string>();
-  const perWave:Record<string,number>[]=[];
-  for(let guard=0;r.nests.state.sent<6&&guard<1e5;guard++){
-    const sent=r.nests.state.sent;
-    r.world.step();
-    if(r.nests.state.sent===sent)continue;
-    const kinds:Record<string,number>={};
-    for(const [id,e] of r.world.enemies)if(!seen.has(id)){seen.add(id);kinds[e.kind]=(kinds[e.kind]??0)+1;if(e.kind===SACI)elites.push(structuredClone(e));}
-    perWave.push(kinds);
-    r.world.enemies.clear();
-  }
-  if(process.env.SACI_LOG)console.log(JSON.stringify(perWave));
-  assert.equal(perWave.length,6);
-  assert.deepEqual(perWave.map(w=>w[SACI]??0),[0,1,1,2,2,2],JSON.stringify(perWave));
-  for(const w of perWave){
-    assert.ok((w.mendigo??0)>0,'the mendigo horde still comes');
-    for(const k of Object.keys(w))assert.ok(INIMIGOS_LIBERADOS.includes(k),`spawned ${k}, not liberated`);
-  }
-  const log=r.nests.state.log!;
-  assert.deepEqual(log.map(l=>l.elite??0),[0,1,1,2,2,2],'the wave log counts them');
-  for(const l of log)assert.equal(l.total,l.nests+l.outside+(l.elite??0));
-  // The director's elite: ELITE_HP × the row's hp × playerScale.solo (× crowd, 1 for 1p), ELITE_SIZE, the flag, besieging.
-  const plain=createEnemy(r.world,SACI,{x:0,y:0},1);r.world.enemies.delete(plain.id);
-  for(const e of elites){
-    assert.ok(e.elite,'flagged elite (its extras and its chest)');
-    assert.ok(Math.abs(e.radius-plain.radius*ELITE_SIZE)<1e-9,'elite size');
-    assert.ok(e.memory?.[WAVE_MEMORY]!==undefined&&e.memory?.[SIEGE_FLAG]===1,'a wave body besieging the car');
-    const nest=PLAN.nests[e.memory![NEST_MEMORY]!];
-    assert.ok(nest.sleepers.some(p=>p.x===e.x&&p.y===e.y),'born in a live nest\'s yard');
-  }
-  const rows=elites.map(e=>e.maxHp/plain.maxHp);
-  const lo=Math.min(...ROUNDS.slice(1,9).map(row=>row.hpNinhos??row.hpScale))*playerScale(1).solo*ELITE_HP;
-  assert.ok(rows.every(x=>x>=lo*.99),`elite hp × ${rows} ≥ ${lo}`);
-}));
-
-test('the alive cap: elites left standing hold the next waves to NEST_ELITE.alive up',()=>quickPace(()=>{
+test('the liberated run: no elite from the nests (the saci is the chefão, not an elite), only liberated kinds',()=>quickPace(()=>{
+  assert.deepEqual([...ELITE_ONLY],[]);
   const r=rig(liberated());
-  play(r,8,true);
-  const up=[...r.world.enemies.values()].filter(e=>e.elite);
-  assert.equal(up.length,NEST_ELITE.alive);
+  const perWave=play(r,6,true);
+  assert.equal(perWave.length,6);
+  assert.ok(![...r.world.enemies.values()].some(e=>e.elite),'no elite left standing');
+  assert.ok(r.nests.state.log!.every(l=>(l.elite??0)===0),'the wave log counts none');
+  for(const kinds of perWave)for(const k of Object.keys(kinds))assert.ok(INIMIGOS_LIBERADOS.includes(k),`spawned ${k}`);
+  assert.ok(perWave.every(kinds=>!kinds['aberracao-saci']),'the saci never comes from a nest');
 }));
 
 test('no ELITE_ONLY elite in the run (no roster, or a legacy mini-chefe as round 5\'s): no elite from the nests',()=>quickPace(()=>{
@@ -139,7 +103,7 @@ test('the enemy cap: no elite past maxEnemies',()=>quickPace(()=>{
   assert.ok(r.nests.state.log!.every(l=>l.total<=4));
 }));
 
-test('assembled mode ninhos (the room rotation, the real city): a 6-wave run counts the saci from wave 2, the legacy cast out',()=>{
+test('assembled mode ninhos (the room rotation, the real city): a 6-wave run: the saci only as the wave-1 chefão, none from the nests, the legacy cast out',()=>{
   const world=new SimWorld({terrain:city.fork(),seed:21,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,mode:'ninhos',objective:'chaveiro'});
   const car=sys.chaveiro!.state.car;
@@ -158,6 +122,7 @@ test('assembled mode ninhos (the room rotation, the real city): a 6-wave run cou
   }
   if(process.env.SACI_LOG)console.log(JSON.stringify(byWave));
   assert.equal(sys.nests!.state.sent,6);
-  assert.deepEqual([0,1,2,3,4,5].map(w=>byWave[w]?.[SACI]??0),[0,1,1,2,2,2],JSON.stringify(byWave));
-  for(const k of all)assert.ok(INIMIGOS_LIBERADOS.includes(k)||k==='chefe'||k==='o-grande-credor',`spawned ${k}, not liberated`);
+  assert.deepEqual([0,1,2,3,4,5].map(w=>byWave[w]?.[SACI]??0),[0,0,0,0,0,0],JSON.stringify(byWave));
+  assert.ok(all.has(SACI),'the saci came, as the chefão');
+  for(const k of all)assert.ok(INIMIGOS_LIBERADOS.includes(k)||k==='chefe',`spawned ${k}, not liberated`);
 });

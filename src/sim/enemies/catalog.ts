@@ -385,6 +385,12 @@ export const LIBERADO_TUNE:Readonly<Record<string,Readonly<{hp:number;damage:num
   'aberracao-saci':Object.freeze({hp:1,damage:1}),
 });
 /**
+ * A roster entry that keeps its own moves under another role's numbers: the sanfoneiro plays and hits with the fole
+ * (sanfoneiro.ts, through enemy-ai's brute branch) as a corredor (card saci-chefe-2x, the user 30/10: "ele é um
+ * inimigo comum").
+ */
+export const OWN_BEHAVIOR:Readonly<Record<string,EnemyDef['behavior']>>=Object.freeze({sanfoneiro:'brute'});
+/**
  * Def of a pack entry: its role's hp (roleHp) and profile on the role's base kind (speed, damage, radius × cell / role cell, xp;
  * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).
  * A clone with a feel (rules/enemy-feel.ts) scales speed, hp, radius and sway on top.
@@ -396,7 +402,7 @@ function rosterDef(kind:string):EnemyDef|undefined{
   const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base],feel=enemyFeel(kind)??{speed:1,hp:1,radius:1,sway:1};
   const tune=Object.hasOwn(LIBERADO_TUNE,kind)?LIBERADO_TUNE[kind]!:{hp:1,damage:1},hpMult=feel.hp*tune.hp;
   const def:EnemyDef=Object.freeze({
-    id:entry.id,name:entry.name,behavior:role.behavior,
+    id:entry.id,name:entry.name,behavior:OWN_BEHAVIOR[kind]??role.behavior,
     hp:hpMult===1?roleHp(entry.role,base.hp):Math.round(roleHp(entry.role,base.hp)*hpMult),speed:base.speed*role.speed*feel.speed,damage:Math.max(1,Math.round(base.damage*role.damage*tune.damage)),
     radius:base.radius*role.radius*entry.cell/role.cell*feel.radius,xp:Math.max(1,Math.round(base.xp*role.xp)),
     contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,

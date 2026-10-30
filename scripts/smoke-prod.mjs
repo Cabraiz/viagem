@@ -142,7 +142,7 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
     mark('load');
     await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
     mark('personagem');
-    await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Smoke';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+    await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Smoke';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card[data-hero]:not([data-bloqueado])').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
     await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
     await p.evaluate(()=>document.getElementById('enter-island').click());
     mark('jogar');
@@ -273,10 +273,10 @@ async function startPages(dir,port){
  * The checkout's own rooms Worker (its scripts/local-worker.mjs and multiplayer/, the protocol of THAT build): wrangler
  * runs from the current directory, so it is started from inside the checkout.
  */
-async function startWorkerOf(checkout,port){
+async function startWorkerOf(checkout,port,label){
   const {startLocalWorker:start}=await import(pathToFileURL(join(checkout,'scripts','local-worker.mjs')).href);
   const here=process.cwd();
-  try{process.chdir(checkout);return await start({port,logPath:join(tmpdir(),`viagem-smoke-worker-${port}.log`)});}
+  try{process.chdir(checkout);return await start({port,logPath:join(tmpdir(),`viagem-smoke-worker-${port}.log`),label});}
   finally{process.chdir(here);}
 }
 
@@ -306,7 +306,7 @@ async function upgrade(chromium){
   try{
     for(const [phase,checkout,distDir] of [['anterior',previous,prevDist],['novo',process.cwd(),dist]]){
       const workerPort=await freePort();
-      worker=await startWorkerOf(checkout,workerPort);
+      worker=await startWorkerOf(checkout,workerPort,`Worker do smoke upgrade (${phase})`);
       pointAt(distDir,`http://127.0.0.1:${workerPort}`);
       preview=await startPages(distDir,port);
       const errors=[],p=await context.newPage();p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
@@ -337,7 +337,7 @@ try{
     code=r?smokeExit([r]):0;
   }else{
     const workerPort=await freePort(),port=await previewPort();
-    worker=await startLocalWorker({port:workerPort,logPath:join(tmpdir(),`viagem-smoke-worker-${workerPort}.log`)});
+    worker=await startLocalWorker({port:workerPort,logPath:join(tmpdir(),`viagem-smoke-worker-${workerPort}.log`),label:'Worker do smoke'});
     pointAt(dist,`http://127.0.0.1:${workerPort}`);
     preview=await startPreview(port);
     const results=[];

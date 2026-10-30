@@ -69,6 +69,11 @@
  * the critters' withdrawals (count and R$), the Cliente Prime promotions and the times an ATM ran dry. The summary
  * gives the per-run means and the pooled share (bank R$ / earned R$ over the team size's runs). Absent in older files.
  *
+ * Economy (NEW-20261029-ORQ-bench-economia, auditoria-economia item 11): per run `econ` (EconRecord): every purchase
+ * by type, the refusals, the first sim second each price was in reach, the Grana held idle over the run and per wave,
+ * a sample every ECON_SAMPLE_S s and the wallets at the end; the summary gives the per-team-size means. It only watches
+ * the sim, so runDigest leaves it out (digests stay comparable with files written before it). Absent in older JSON files.
+ *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
@@ -97,14 +102,14 @@ import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
 import {OPEN_SECONDS} from '../src/sim/crates.ts';
 import {CRATE_STAND} from '../src/sim/bot-loot.ts';
-import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,RECIPES,PERSONAGENS_LIBERADOS,ROOT_DEFENSE,TOWER_TOKENS,UNITS_PER_TOKEN,getClass,priceOf,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import {BOT_WALK_MULT} from '../src/contract/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
 import type {ObjectiveResult} from '../src/contract/index.ts';
-import {CHAVEIRO_PACE,ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
+import {CHAVEIRO_CLOCK,CHAVEIRO_PACE,ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
 import {NEST_PACE} from '../src/sim/ninhos/ninhos.ts';
 import {NOISE} from '../src/sim/ninhos/sono.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
@@ -203,7 +208,8 @@ export interface RunRecord {
     /** NEW-20261014-ORQ-carteira-e-pix: the bots' PIX to the forger this run (count, R$). */
     pix?:{count:number;amount:number}};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
-  objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
+  /** addedS (card missao-proteger-uno-tempo, mode 'ninhos'): the seconds the hits on the Uno added to the clock. */
+  objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number};addedS?:number};
   /** D-051 (--mode ninhos): see NestRecord. Absent in round runs and older JSON files. */
   nests?:NestRecord;
   /** Enemies of the run (both modes): most alive at once, distinct bodies, alive at each minute mark, new ones per minute. */
@@ -227,12 +233,17 @@ export interface RunRecord {
    * people (every pause to PAUSE_FIRST_MS) over the wave seconds. Absent in older JSON files.
    */
   pause?:{count:number;botSeconds:number;waveSeconds:number;humanShare:number};
+  /** NEW-20261029-ORQ-bench-economia: see EconRecord. Absent in older JSON files. */
+  econ?:EconRecord;
   /** runDigest: the same seed and code give the same digest on any machine (CI determinism check). */
   digest?:string;
 }
-/** sha256 (12 hex) of the record without `perf` (wall clock) and `digest`: equal digests = bit-identical runs. */
+/**
+ * sha256 (12 hex) of the record without `perf` (wall clock), `digest` and `econ` (a view of the same sim):
+ * equal digests = bit-identical runs.
+ */
 export function runDigest(r:RunRecord):string{
-  const {perf:_perf,digest:_digest,...rest}=r;
+  const {perf:_perf,digest:_digest,econ:_econ,...rest}=r;
   return createHash('sha256').update(JSON.stringify(rest)).digest('hex').slice(0,12);
 }
 export interface BankRecord {grana:number;withdraws:number;share:number|null;enemyWithdraws:number;enemyGrana:number;primes:number;empties:number}
@@ -284,6 +295,78 @@ export function winTarget(players:number,seeds:number):{min:number;max:number}|u
   const t=WIN_TARGETS[players];
   return t&&{min:t[0]*seeds/TARGET_SEEDS,max:t[1]*seeds/TARGET_SEEDS};
 }
+/**
+ * NEW-20261029-ORQ-bench-economia (see the module doc). `buys`: every order that went through
+ * Simulation.build/upgrade/repair/forge/place/buyCida: sim s, round, act, buyer, what it bought (`from`: the defense
+ * it evolved or repaired), the team Grana and units it took and the buyer's wallet before; `byKind` the same folded
+ * by `act:kind`; `refused` by `act:reason`; `firstAffordable`: the sim s each price was first in reach (a defense by
+ * priceOf: fichas → the team's units, Grana → the fullest wallet; the paid free pieces and the forge recipes at their
+ * base price, against the fullest wallet), null = never; `idleMean`: the team's Grana held, mean over the run's steps;
+ * `waves`: at each wave start (the round's 'wave' event, or a nest launch with the nests) the team Grana, units and
+ * fullest wallet, and `idleMean` the team's mean Grana until the next wave; `samples` every ECON_SAMPLE_S s; `wallets`
+ * at the end.
+ */
+export interface EconRecord {
+  buys:EconBuy[];byKind:Record<string,{count:number;grana:number;units:number}>;refused:Record<string,number>;
+  firstAffordable:Record<string,number|null>;idleMean:number|null;waves:EconWave[];
+  samples:{t:number;grana:number;units:number;wallets:number[]}[];wallets:Record<string,number>;
+}
+export type EconAct='build'|'upgrade'|'repair'|'forge'|'place'|'buyCida';
+export interface EconBuy {t:number;round:number;act:EconAct;who:string;kind:string;from?:string;grana:number;units:number;wallet:number}
+export interface EconWave {t:number;round:number;grana:number;units:number;maxWallet:number;idleMean:number|null}
+export const ECON_SAMPLE_S=30;
+/** A price firstAffordable watches: fichas de torre (`tokens`) or R$ (`grana`). */
+export interface PriceTarget {id:string;tokens?:number;grana?:number}
+/** Every defense (priceOf), the free pieces with a price and the forge recipes (their base price, before inflation). */
+export function affordTargets():PriceTarget[]{
+  const out:PriceTarget[]=[];
+  for(const d of Object.values(DEFENSES)){const p=priceOf(d);out.push('tokens' in p?{id:d.id,tokens:p.tokens}:{id:d.id,grana:p.grana});}
+  for(const f of Object.values(FREE_PIECE_DEFS))if(f.price>0)out.push({id:f.id,grana:f.price});
+  for(const r of Object.values(RECIPES))out.push({id:r.id,grana:r.cost});
+  return out;
+}
+/** Folds a run's economy step by step into an EconRecord (pure: the bench hands it the sim's numbers). */
+export class EconTracker {
+  readonly buys:EconBuy[]=[];readonly refused:Record<string,number>={};readonly first:Record<string,number|null>;
+  readonly waves:EconWave[]=[];readonly samples:EconRecord['samples']=[];
+  private idleSum=0;private idleN=0;private waveSum=0;private waveN=0;
+  private readonly targets:readonly PriceTarget[];
+  constructor(targets:readonly PriceTarget[]=affordTargets()){this.targets=targets;this.first=Object.fromEntries(targets.map(p=>[p.id,null]));}
+  buy(b:EconBuy){this.buys.push(b);}
+  refuse(act:EconAct,reason:string){const k=`${act}:${reason}`;this.refused[k]=(this.refused[k]??0)+1;}
+  /** One sim step: its tick and round, the team's units, each seated wallet, and whether a wave started on it. */
+  step(tick:number,round:number,units:number,wallets:readonly number[],waveStart:boolean){
+    const grana=wallets.reduce((a,b)=>a+b,0),max=wallets.length?Math.max(...wallets):0,t=r2(tick/HZ);
+    for(const p of this.targets)if(this.first[p.id]===null&&(p.tokens!==undefined?units+1e-9>=p.tokens*UNITS_PER_TOKEN:max+1e-9>=(p.grana??Infinity)))this.first[p.id]=t;
+    if(waveStart){this.closeWave();this.waves.push({t,round,grana:r2(grana),units:r2(units),maxWallet:r2(max),idleMean:null});}
+    this.idleSum+=grana;this.idleN++;
+    if(this.waves.length){this.waveSum+=grana;this.waveN++;}
+    if(tick%(ECON_SAMPLE_S*HZ)===0)this.samples.push({t,grana:r2(grana),units:r2(units),wallets:wallets.map(r2)});
+  }
+  private closeWave(){const w=this.waves.at(-1);if(w&&this.waveN)w.idleMean=r2(this.waveSum/this.waveN);this.waveSum=0;this.waveN=0;}
+  record(wallets:Record<string,number>):EconRecord{
+    this.closeWave();
+    const byKind:EconRecord['byKind']={};
+    for(const b of this.buys){const s=byKind[`${b.act}:${b.kind}`]??={count:0,grana:0,units:0};s.count++;s.grana=r2(s.grana+b.grana);s.units=r2(s.units+b.units);}
+    return {buys:this.buys.map(b=>({...b})),byKind,refused:{...this.refused},firstAffordable:{...this.first},idleMean:this.idleN?r2(this.idleSum/this.idleN):null,
+      waves:this.waves.map(w=>({...w})),samples:this.samples.map(s=>({...s})),wallets:{...wallets}};
+  }
+}
+/** The econ records of one team size: per-run means, first-affordable stats and the waves by index (TeamSummary.econ). */
+export function econSummary(list:readonly EconRecord[]):NonNullable<TeamSummary['econ']>{
+  const n=list.length,kinds=[...new Set(list.flatMap(e=>Object.keys(e.byKind)))].sort();
+  const per=(k:string,f:'count'|'grana')=>r2(list.reduce((s,e)=>s+(e.byKind[k]?.[f]??0),0)/n);
+  const ids=[...new Set(list.flatMap(e=>Object.keys(e.firstAffordable)))];
+  const firstAffordable=Object.fromEntries(ids.map(id=>{
+    const s=list.map(e=>e.firstAffordable[id]).filter((v):v is number=>typeof v==='number');
+    return [id,{reached:s.length,s:numStats(s)}];
+  }));
+  const waves=Array.from({length:Math.max(0,...list.map(e=>e.waves.length))},(_,i)=>{
+    const ws=list.map(e=>e.waves[i]).filter((w):w is EconWave=>!!w);
+    return {index:i+1,runs:ws.length,grana:mean(ws.map(w=>w.grana)),idleMean:mean(ws.flatMap(w=>w.idleMean===null?[]:[w.idleMean])),maxWallet:mean(ws.map(w=>w.maxWallet))};
+  });
+  return {runs:n,buysPerRun:Object.fromEntries(kinds.map(k=>[k,{count:per(k,'count'),grana:per(k,'grana')}])),idleMean:numStats(list.map(e=>e.idleMean??NaN)),firstAffordable,waves};
+}
 export interface TeamSummary {
   players:number;runs:number;wins:number;winRate:number;
   causes:Record<Cause,number>;
@@ -309,6 +392,14 @@ export interface TeamSummary {
    */
   banks:{runs:number;grana:NumStats|null;share:NumStats|null;pooledShare:number|null;withdraws:NumStats|null;enemyWithdraws:NumStats|null;enemyGrana:NumStats|null;
     primes:NumStats|null;empties:NumStats|null;verdict:'ok'|'low'|'high'|'no-grana'}|null;
+  /**
+   * NEW-20261029-ORQ-bench-economia (EconRecord): buys per run by `act:kind` (mean count and R$), the idle Grana per run,
+   * per price the runs that reached it and the s it took, and per wave index (1st, 2nd…) the mean team Grana at its
+   * start, held through it and the fullest wallet. null when no run recorded econ (older files).
+   */
+  econ:{runs:number;buysPerRun:Record<string,{count:number;grana:number}>;idleMean:NumStats|null;
+    firstAffordable:Record<string,{reached:number;s:NumStats|null}>;
+    waves:{index:number;runs:number;grana:number|null;idleMean:number|null;maxWallet:number|null}[]}|null;
   verdict:{wins:'ok'|'too-easy'|'too-hard'|'no-target';target:{min:number;max:number}|null;round1:'ok'|'deaths'};
 }
 export interface Summary {runs:number;byPlayers:Record<string,TeamSummary>;verdict:{ok:boolean;notes:string[]}}
@@ -339,6 +430,7 @@ export function summarize(runs:readonly RunRecord[]):Summary{
     const banked=list.filter(r=>r.banks),bankSum=banked.reduce((s,r)=>s+r.banks!.grana,0),earnedSum=banked.reduce((s,r)=>s+(r.grana?.earned??0),0);
     const pooledShare=earnedSum>0?Math.round(bankSum/earnedSum*1000)/1000:null;
     const bankVerdict=pooledShare===null?'no-grana':pooledShare<BANK_SHARE_TARGET.min?'low':pooledShare>BANK_SHARE_TARGET.max?'high':'ok';
+    const econs=list.flatMap(r=>r.econ?[r.econ]:[]);
     const spentOf=(g:NonNullable<RunRecord['grana']>)=>g.spent.evolutions+g.spent.repairs+g.spent.forge+g.spent.other;
     byPlayers[n]={
       players:n,runs:list.length,wins,winRate:list.length?r2(wins/list.length):0,causes,deathRounds,
@@ -361,6 +453,7 @@ export function summarize(runs:readonly RunRecord[]):Summary{
       banks:banked.length?{runs:banked.length,grana:numStats(banked.map(r=>r.banks!.grana)),share:numStats(banked.map(r=>r.banks!.share??NaN)),pooledShare,
         withdraws:numStats(banked.map(r=>r.banks!.withdraws)),enemyWithdraws:numStats(banked.map(r=>r.banks!.enemyWithdraws)),enemyGrana:numStats(banked.map(r=>r.banks!.enemyGrana)),
         primes:numStats(banked.map(r=>r.banks!.primes)),empties:numStats(banked.map(r=>r.banks!.empties)),verdict:bankVerdict}:null,
+      econ:econs.length?econSummary(econs):null,
       verdict:{wins:winsVerdict,target,round1:r1Deaths?'deaths':'ok'},
     };
     if(banked.length&&bankVerdict!=='ok')notes.push(`${n}p: banks ${pooledShare===null?'-':`${r2(pooledShare*100)} %`} of the Grana, target ${BANK_SHARE_TARGET.min*100}–${BANK_SHARE_TARGET.max*100} % (${bankVerdict})`);
@@ -401,7 +494,7 @@ export function nestLine(r:RunRecord):string{
 /** D-047: one line of a chaveiro run's bill (outcome/cause, ETA left, car, Grana and the waves). */
 export function objectiveLine(r:RunRecord):string{
   const o=r.objective;if(!o)return '';
-  return `seed ${r.seed} ${r.players}p: ${o.outcome}/${o.cause} at ${r2(o.seconds/60)} min | ETA left ${o.eta}s | hits ${o.hits}/${o.limit} parts ${o.parts.toString(2).padStart(4,'0')} | `+
+  return `seed ${r.seed} ${r.players}p: ${o.outcome}/${o.cause} at ${r2(o.seconds/60)} min | ETA left ${o.eta}s${o.addedS!==undefined?` +${o.addedS}s by hits`:''} | hits ${o.hits}/${o.limit} parts ${o.parts.toString(2).padStart(4,'0')} | `+
     `Grana ${o.grana} budget ${o.budget} paid ${o.paid} debt ${o.debt} | wave ${o.wave} (+${o.extraWaves} extra) | boss ${o.bossCalled?'called':'-'} | `+
     `moto ${Object.entries(o.moments).map(([k,v])=>`${k} ${v}`).join(', ')||'-'} | deliveries clean ${o.deliveries.clean} dirty ${o.deliveries.dirty}`;
 }
@@ -414,6 +507,7 @@ export function runLine(r:RunRecord):string{
     `${r.towers?`towers ${r.towers.orders} orders ${r.towers.units}u ${r.towers.roots??'-'} roots ${r.towers.tokens??'-'} fichas end ${Object.values(r.towers.final).reduce((a,b)=>a+b,0)}${r.towers.gustavao?' +Gustavão':''} ruined ${r.towers.ruined} | `:''}`+
     `${r.grana?`grana +${r.grana.earned} evo ${r.grana.spent.evolutions} rep ${r.grana.spent.repairs} forge ${r.grana.spent.forge}${r.grana.spent.other?` other ${r.grana.spent.other}`:''} end ${r.grana.final} | `:''}`+
     `${r.banks?`banks R$ ${r.banks.grana} (${r.banks.share===null?'-':`${r2(r.banks.share*100)} %`}) bicho ${r.banks.enemyWithdraws}× R$ ${r.banks.enemyGrana} prime ${r.banks.primes} dry ${r.banks.empties} | `:''}`+
+    `${r.econ?`econ ${r.econ.buys.length} buys idle R$ ${r.econ.idleMean??'-'} | `:''}`+
     `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s${r.digest?` | digest ${r.digest}`:''}`;
 }
 const mean=(list:readonly number[])=>list.length?r2(list.reduce((a,b)=>a+b,0)/list.length):null;
@@ -446,6 +540,10 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
       ` | bicho withdraws/run ${b.enemyWithdraws?.mean??'-'} (R$ ${b.enemyGrana?.mean??'-'}) | primes/run ${b.primes?.mean??'-'} | dry ATMs/run ${b.empties?.mean??'-'}`);
   }
   for(const n of sizes){
+    const e=s.byPlayers[n]?.econ;
+    if(e)out.push(...econLines(n,e));
+  }
+  for(const n of sizes){
     const rs=runs.filter(r=>r.players===n&&r.vehicles);
     if(!rs.length)continue;
     const kinds:Record<string,number>={};
@@ -468,6 +566,18 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
   }
   out.push(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
   return out;
+}
+/**
+ * The econ lines of a team size: buys per run (most first), the idle Grana, the first time each price was in reach
+ * (ids with the same numbers share an entry: median s, runs that reached it / runs) and the Grana by wave.
+ */
+export function econLines(n:number,e:NonNullable<TeamSummary['econ']>):string[]{
+  const buys=Object.entries(e.buysPerRun).sort((a,b)=>b[1].count-a[1].count||a[0].localeCompare(b[0])).map(([k,v])=>`${k} ${v.count}× R$ ${v.grana}`);
+  const groups=new Map<string,string[]>();
+  for(const [id,f] of Object.entries(e.firstAffordable)){const k=`${f.s?.median??'never'}${f.s?'s':''} ${f.reached}/${e.runs}`;groups.set(k,[...(groups.get(k)??[]),id]);}
+  return [`econ ${n}p (${e.runs} runs): idle Grana ${JSON.stringify(e.idleMean)} | buys/run ${buys.join(', ')||'-'}`,
+    `   1st affordable (median, reached/runs): ${[...groups].map(([k,ids])=>`${ids.join('/')} ${k}`).join(' | ')}`,
+    `   Grana by wave (start / held / fullest wallet): ${e.waves.map(w=>`w${w.index} ${w.grana??'-'}/${w.idleMean??'-'}/${w.maxWallet??'-'}${w.runs<e.runs?` (${w.runs})`:''}`).join(' ')||'-'}`];
 }
 /** Before (the base commit's runs) / after table per team size: wins, causes, sim minutes, ms/tick, identical runs. */
 export function compareLines(before:readonly RunRecord[],after:readonly RunRecord[]):string[]{
@@ -748,12 +858,13 @@ function injectAssemble(sim:Simulation,cityBalance:unknown){
 // One run
 // ---------------------------------------------------------------------------------------------------------------
 
-/** Fixed varied rotation of real class ids (every sixth of the roster, from the first). */
+/** Fixed varied rotation of real class ids (every count-th of the list, from the first). */
 export function classRotation(ids:readonly string[],count=6):string[]{
   const step=Math.max(1,Math.floor(ids.length/count));
   return Array.from({length:count},(_,i)=>ids[(i*step)%ids.length]);
 }
-const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
+/** The 6 released heroes (card ferramentas-so-elenco-ativo; was every sixth of the whole roster, legacy included). */
+const CLASS_ROTATION=classRotation(PERSONAGENS_LIBERADOS);
 
 export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
@@ -837,6 +948,22 @@ export function playRun(o:RunOptions):RunRecord{
     if(r.ok){purchases.push({tick:sim.tick,round:sim.world.round.index,recipe:r.recipe as RecipeId,by:id});curInter?.purchases.push(r.recipe as RecipeId);}
     return r;
   };
+  // NEW-20261029-ORQ-bench-economia: every purchase, over the counters above (EconRecord).
+  const econ=new EconTracker(),kindOf=(defense:unknown)=>sim.defenses().find(d=>d.id===defense)?.kind;
+  let econLastWave=-1;
+  const watch=<A extends [string,...unknown[]],R extends {ok:boolean}>(act:EconAct,fn:(...a:A)=>R,what:(r:Extract<R,{ok:true}>)=>string,from?:(a:A)=>string|undefined)=>(...a:A):R=>{
+    const s=sim.run.stonewards.state,units=s.balance.units,grana=sim.teamGrana(),wallet=sim.granaOf(a[0]),was=from?.(a),r=fn(...a);
+    if(r.ok)econ.buy({t:r2(sim.tick/HZ),round:sim.world.round.index,act,who:a[0],kind:what(r as Extract<R,{ok:true}>),...(was?{from:was}:{}),
+      grana:r2(grana-sim.teamGrana()),units:r2(units-s.balance.units),wallet:r2(wallet)});
+    else econ.refuse(act,String((r as {reason?:unknown}).reason));
+    return r;
+  };
+  sim.build=watch('build',sim.build.bind(sim),r=>r.kind);
+  sim.upgrade=watch('upgrade',sim.upgrade.bind(sim),r=>r.kind,a=>kindOf(a[1]));
+  sim.repair=watch('repair',sim.repair.bind(sim),r=>r.kind);
+  sim.forge=watch('forge',sim.forge.bind(sim),r=>r.recipe);
+  sim.place=watch('place',sim.place.bind(sim),r=>r.kind);
+  sim.buyCida=watch('buyCida',sim.buyCida.bind(sim),r=>r.item);
   let interGathered:Record<string,number>={},boss:BossRecord|undefined,bossId:string|undefined;
   const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks(),vehicles=emptyVehicles(),riders=new Set<string>();
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
@@ -924,6 +1051,11 @@ export function playRun(o:RunOptions):RunRecord{
     const grana0=sim.teamGrana(),events=sim.step();ticks++;
     {const d=sim.teamGrana()-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
     const w=sim.world,tick=w.tick;
+    // A wave: a nest launch with the nests (--mode ninhos), else the round's 'wave' event.
+    let econWave=false;const nestLog=sim.run.nests?.state.log;
+    if(sim.run.nests){for(const l of nestLog??[])if(l.tick>econLastWave){econLastWave=l.tick;econWave=true;}}
+    else econWave=(events as readonly SimEvent[]).some(e=>e.type==='round'&&e.phase==='wave');
+    econ.step(tick,w.round.index,st().balance.units,ids.map(id=>sim.granaOf(id)),econWave);
     trackNests(tick);
     for(const e of events as readonly SimEvent[]){
       countBankEvent(banks,e);
@@ -1003,12 +1135,14 @@ export function playRun(o:RunOptions):RunRecord{
     ...(o.towers?{towers:towerSummary()}:{}),
     pause:{count:pause.count,botSeconds:r2(pause.loops*STEP_MS/1000),waveSeconds:r2(pause.waveTicks/HZ),humanShare:pause.waveTicks?r2(pause.count*PAUSE_FIRST_MS/1000/(pause.waveTicks/HZ+pause.count*PAUSE_FIRST_MS/1000)):0},
     grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(sim.teamGrana()),pix:{count:room.pixes-pix0.count,amount:room.pixed-pix0.amount}},
-    ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
+    ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries,
+      ...(sim.run.chaveiro?.state.added!==undefined?{addedS:r2(sim.run.chaveiro.state.added/HZ)}:{})}}:{}),
     ...(sim.run.nests?{nests:nestSummary()}:{}),
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
     vehicles,
     levels:levelS,
+    econ:econ.record(Object.fromEntries(ids.map(id=>[id,r2(sim.granaOf(id))]))),
   };
   function nestSummary():NestRecord{
     const ns=sim.run.nests!.state,start=ns.startTick??0,sec=(t:number|null)=>t===null?null:r2((t-start)/HZ),sono=sim.run.sono();
@@ -1032,7 +1166,7 @@ export function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;chaveiroPace?:typeof CHAVEIRO_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;chaveiroPace?:typeof CHAVEIRO_PACE|null;chaveiroClock?:typeof CHAVEIRO_CLOCK|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -1045,7 +1179,7 @@ function args(argv:readonly string[]){
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
-    nestPace:get('--nest-pace'),chaveiroPace:get('--chaveiro-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
+    nestPace:get('--nest-pace'),chaveiroPace:get('--chaveiro-pace'),chaveiroClock:get('--chaveiro-clock'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -1085,6 +1219,8 @@ async function main(){
   if(a.nestPace)Object.assign(NEST_PACE,JSON.parse(a.nestPace));
   // balanco-6p-facil: --chaveiro-pace '{"ride":[420,420,420,480,540,600]}' overrides the moto's ride by room size (mode 'ninhos').
   if(a.chaveiroPace)Object.assign(CHAVEIRO_PACE,JSON.parse(a.chaveiroPace));
+  // missao-proteger-uno-tempo: --chaveiro-clock '{"perHit":3}' tunes the run's clock (mode 'ninhos': start, perHit…).
+  if(a.chaveiroClock)Object.assign(CHAVEIRO_CLOCK,JSON.parse(a.chaveiroClock));
   // monstros-espalhados: --spread '{"gap":6}' overrides the field (maps/nests.ts SPREAD) for this bench.
   if(a.spread)Object.assign(SPREAD,JSON.parse(a.spread));
   // --alarm '{"r":20,"p":0.1}': the car alarm's noise (sono NOISE.alarm), for the grid only.
@@ -1111,7 +1247,7 @@ async function main(){
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
   if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,chaveiroPace:a.mode==='ninhos'?{ride:[...CHAVEIRO_PACE.ride]}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,chaveiroPace:a.mode==='ninhos'?{ride:[...CHAVEIRO_PACE.ride],limit:[...CHAVEIRO_PACE.limit],rate:CHAVEIRO_PACE.rate}:null,chaveiroClock:a.mode==='ninhos'?{...CHAVEIRO_CLOCK}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){

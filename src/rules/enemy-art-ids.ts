@@ -5,6 +5,7 @@
  * (rules/enemy-rotation.ts). The sim never reads the art index; tests/rules/enemy-art-ids.test.ts pins the two equal.
  */
 export const ENEMY_ART_IDS:readonly string[]=Object.freeze([
+  'aberracao-saci',
   'agiota',
   'alambiqueiro',
   'ambulante-guarda-chuva',

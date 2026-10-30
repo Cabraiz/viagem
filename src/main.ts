@@ -8,7 +8,6 @@ import { mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { startAds } from './client/ui/ads-boot.ts';
-import { MenuDance } from './client/ui/menu-dance.ts';
 import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode, inviterName, setInviter } from './client/ui/invite.ts';
@@ -74,17 +73,18 @@ try {
 } catch { /* armazenamento indisponível: criação continua sem persistência */ }
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
-// chosen hero big, dancing on the bar, and on the side the letreiro with the hero's name, the plaque with his nickname
+// chosen hero big, standing still on the bar (menu-sem-danca: he dances only in the match, hero-dance.ts), and on the
+// side the letreiro with the hero's name, the plaque with his nickname
 // (ui/apelidos.ts; botao-selecionar), the row of heroes between ‹ › and "Selecionar". Letreiro, plaque and button are
 // HTML over the picture, so the text can be translated and changed. The name field only after "Selecionar"
 // (nome-depois-de-selecionar, ui/menu-etapa.ts): the row gives its place to [‹] [chosen tile] [name], the button enters.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
-  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
+  <div class="estadio-palco"><div id="portrait" class="estadio-heroi" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <button type="button" class="menu-tela-cheia" hidden></button>
-  <a class="menu-privacidade" href="/privacidade/">Privacidade</a>
+  <nav class="menu-rodape" aria-label="O site"><a class="menu-privacidade" href="/privacidade/">Privacidade</a><a class="menu-sobre" href="/sobre/">Sobre</a></nav>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <p class="convite-faixa" role="status" hidden></p>
     <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
@@ -132,7 +132,7 @@ new MutationObserver(()=>{if(!document.querySelector('dialog.explore-shell[open]
   .observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open']});
 
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
-// point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
+// point; the CSS sizes the hero from it. PC: the hero stands at 70% of the width, like the approved reference.
 const stage=document.querySelector<HTMLElement>('.estadio-palco')!;
 const tallStadium=matchMedia(STADIUM_TALL_QUERY),cutoutScreen=matchMedia(CUTOUT_QUERY);
 // Landscape (the PC, the phone on its side) shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
@@ -212,13 +212,11 @@ function lazySrc(img: HTMLImageElement, url: string) {
 // Not on the profile (phone upright), where the row is hidden: its faces come in when it shows (the observer above).
 addEventListener('load',()=>idle(()=>!instaScreen.matches&&document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
-const menuDance=new MenuDance(document.getElementById('portrait')!);
-// A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
-// every landscape screen (the PC and the phone on its side, celular-deitado-foto); the dance is held (its pages released) while he does.
+// A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the portrait, on
+// every landscape screen (the PC and the phone on its side, celular-deitado-foto).
 const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
 // mureta-camada-frente: the piece of the background over the hero (the bar), placed by the background's own framing.
 const frontImg=stage.querySelector<HTMLImageElement>('.estadio-mureta')!;
-let cutoutHold:(()=>void)|undefined;
 // A cutout with its own background (tela-clt-pose2) swaps the stage's picture once it is decoded (never a blank stage);
 // the CSS's stadium otherwise. Same geometry as the stadium's bleed, so frameStage's size and position fit both.
 let stageFundo='',stageWant:StadiumCutout|undefined;
@@ -237,8 +235,6 @@ function showCutout() {
   // The whole hero on screen, his feet on the floor the background's framing puts there (fitCutout, menu-pes-nitidez).
   const box={w:stage.clientWidth,h:stage.clientHeight},placed=cut&&placeCutout(box,STADIUM.bleed,cut),spot=placed&&fitCutout(box,placed);
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
-  if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
-  else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
   showStageFundo(spot?cut:undefined);
   if(!cut||!spot) {showFront(box,undefined);return;}
   // The file by the shown width x devicePixelRatio (never the 2/3 copy stretched on a big or HiDPI screen).
@@ -262,7 +258,6 @@ new ResizeObserver(showCutout).observe(stage);
 cutoutScreen.addEventListener('change',showCutout);
 const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
-  menuDance.show(hero.id);
   const frame=document.getElementById('portrait')!;
   const current=frame.querySelector('img'), img=portraitImage(hero,!current), token=++portraitToken;
   // Flicking past a class drops its half-downloaded art, so on 4G the bandwidth goes to the one that stays on screen.
@@ -330,8 +325,8 @@ function renderSelected(announce=false) {
   else{sign.style.removeProperty('--sinal-ar');sign.style.removeProperty('--alto-ar');}
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
-  showCutout(); // first: a hero standing in place never starts his dance
-  // The profile (phone upright) shows no dancer and no portrait: neither downloads until the stadium comes back.
+  showCutout(); // first: a hero drawn in place hides the portrait
+  // The profile (phone upright) shows no portrait: it does not download until the stadium comes back.
   if(instaScreen.matches) renderInsta(); else showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
@@ -401,12 +396,9 @@ insta.grade.addEventListener('click',event=>{
   if(!foto||!perfil) return;
   abrirPost(perfil,Number(foto.dataset.post),i=>insta.grade.querySelector<HTMLElement>(`[data-post="${i}"]`));
 });
-// The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
-let instaHold:(()=>void)|undefined;
+// A hero with no profile (picked on the stadium) becomes the default one when the profile is up.
 function syncInsta() {
   fecharPost(true);fecharStories(true);
-  if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
-  else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
   if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();
   instaShown='';
   renderSelected();
@@ -506,14 +498,13 @@ const coopButton=document.createElement('button');coopButton.id='enter-coop';coo
 // says why (a saved hero's invite opens it from the menu, so it is filled first).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;setInviter(nickname.trim());
-  const releaseDance=menuDance.hold();
   const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
   try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
   catch(e){
     if(!chunkFailed(e)){text('explore-error','Não foi possível abrir as salas.');if(!dialog.open){showChosen();dialog.showModal();}}
     return false;
   }
-  finally{releaseDance();coopButton.disabled=false;}
+  finally{coopButton.disabled=false;}
   return true;
 }
 // Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
@@ -567,12 +558,11 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   toMatch();
   button.disabled=true;text('explore-error','');
   if(island){
-    const releaseDance=menuDance.hold();
     try {
       const {openExploration}=await import('./client/explore.ts');
       dialog.close();await openExploration(selected,nickname.trim());
     } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
-    finally {releaseDance();button.disabled=false;}
+    finally {button.disabled=false;}
     return;
   }
   // auditoria-ui-menus 5: the card says which step is running, over a bar of the real steps (solo-plan.ts).
@@ -580,18 +570,18 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const bar=soloBar(button);
   const showStep=()=>{const p=soloProgress(parts);rotulo(button).textContent=p.text;bar.set(p.fraction);};
   button.setAttribute('aria-busy','true');showStep();
-  const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
     await openSolo(selected,nickname.trim(),{bots,
       onStep:(step,fraction)=>{parts[step]=Math.max(parts[step]??0,fraction);showStep();},
       onJoined:()=>{rotulo(button).textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {releaseDance();button.disabled=false;button.removeAttribute('aria-busy');bar.set(undefined);rotulo(button).textContent=label;}
+  finally {button.disabled=false;button.removeAttribute('aria-busy');bar.set(undefined);rotulo(button).textContent=label;}
 });
 syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
-// with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
+// with a room, joins it by itself (the room's token in localStorage keeps the same seat, net/room-return.ts).
+// F5 in a room lands on the invite path: the welcome put ?sala= in the address (F5 volta pra sala).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
 else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();

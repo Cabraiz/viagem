@@ -4,6 +4,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import type {Input} from '../../src/protocol/room.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {stateHash} from '../../src/sim/core.ts';
+import {xpToNext} from '../../src/sim/progression.ts';
 import type {SimEvent} from '../../src/contract/types.ts';
 
 const IDS=['a','b','c'];
@@ -88,7 +89,7 @@ test('rematch reset is deterministic and clears world, combat fields and id coun
   assert.ok(runA.world.state().eventSeq>=runB.world.state().eventSeq);
   assert.equal(runA.tick,0);assert.equal(runA.outcome,undefined);
   assert.equal(runA.world.enemies.size,0);assert.equal(runA.world.pickups.size,0);assert.equal(runA.world.projectiles.size,0);
-  assert.equal(runA.world.round.index,0);assert.deepEqual(runA.world.team,{xp:0,level:1,nextXp:5});
+  assert.equal(runA.world.round.index,0);assert.deepEqual(runA.world.team,{xp:0,level:1,nextXp:xpToNext(1)});
   for(const p of runA.players.values()){
     const twin=runB.players.get(p.id)!;
     assert.deepEqual(p.weaponReady,{});assert.deepEqual(p.build,twin.build);

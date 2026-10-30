@@ -36,6 +36,7 @@ import {createEnemy,type EnemyKind} from '../src/sim/enemies/catalog.ts';
 import type {SimContext} from '../src/sim/context.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {RoomBots} from '../multiplayer/room-bots.ts';
+import {ROTA_INIMIGOS,herois} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
@@ -43,8 +44,8 @@ const SEED=Number(arg('seed','4242')),MEASURE=Number(arg('ticks','1200')),WARMUP
 const PROFILE=process.argv.includes('--profile'),OUT=arg('out',''),NESTS=arg('mode','rounds')==='ninhos';
 /** --mode ninhos: untimed ticks before the measure (the sleepers come on the first step; 30 s of the bots' start). */
 const SETTLE=600;
-const CLASSES=['cidadao-comum','clt-cansado','feirante','cidadao-comum','clt-cansado','feirante'];
-const KINDS:EnemyKind[]=['bebado','bebado','pombos','tio-pave','agiota','bebado'];
+const CLASSES=herois(6);
+const KINDS:EnemyKind[]=[...ROTA_INIMIGOS];
 const RING_MIN=12,RING_MAX=45,LATTICE=1.5;
 
 // --- profile: wrap FlowField.recompute -------------------------------------------------------------------------

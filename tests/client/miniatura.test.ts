@@ -19,9 +19,8 @@ test('every released hero has his face in the row: the lite copy the tile loads 
 });
 
 test('a locked hero never leaks his face: the tile keeps the "?" even when his file exists (the maromba)',()=>{
-  const locked=PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id));
-  assert.ok(locked.length>0);
-  for(const id of locked)assert.equal(miniaturaOf(id,false),undefined,id);
+  // herois-legados-escondidos: no playable hero is locked any more (the legacy ones never reach the row); the rule holds.
+  for(const id of ['mendigo','coach',...PLAYABLE_CLASS_IDS])assert.equal(miniaturaOf(id,false),undefined,id);
   for(const id of ROSTOS)assert.equal(miniaturaOf(id,false),undefined,id);
   // The row asks with the hero's own lock state, and a face goes in only through miniaturaOf.
   assert.match(main,/miniaturaOf\(hero\.id,isLiberado\(hero\.id\)\)/);

@@ -47,7 +47,7 @@ import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {GROUPS} from './art-v2/spec.mjs';
 import {writeIndex} from './art-v2/convert.mjs';
-import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
+import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,SHADOW,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
 import {HD_ENEMIES} from '../src/client/art/manifest.ts';
 import {WAVE_BOSS} from '../src/rules/index.ts';
@@ -172,6 +172,11 @@ manifest.enemyFigures??={};
 const enemies=existsSync(ENEMIES)?JSON.parse(readFileSync(ENEMIES,'utf8')):{pieces:{}};
 /** `enemies/<file>` → its cell and the smaller cell of its copy (only for files whose copy is smaller). */
 const liteCells=new Map();
+/**
+ * A real cast shadow sheet (`shadow/<anim>`, the saci's) over its body's scale: a soft, faint shape (alpha ≤ 89) that
+ * keeps its look at half the texels, half the GPU memory per side (the client draws it × the cells' ratio).
+ */
+const SHADOW_LITE=.5;
 /** `enemies/<file>` → its cell and the cell of its computer copy (enemies-pc), for the files that have one. */
 const pcCells=new Map();
 const figures={};
@@ -189,14 +194,16 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
   // copy keeps that cell (horde-art enemyFileUrl loads it on both screens, ~half the bytes), and the phone copy no screen
   // loads stays at his role's size (BUG-20261025-ORQ-art-lite-chefoes-velho: at × 3 it would be the full sheet).
   const boss=HD_ENEMIES.has(id),height=artTargetHeight(id)/(boss?WAVE_BOSS.drawScale:1);
-  const need=height*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*LITE_TEXELS;
+  // An elite-only figure (meta.eliteArt: the saci) is drawn at its own height, never × ELITE_SCALE.
+  const need=height*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*(piece.meta?.eliteArt?1:ELITE_SCALE)*LITE_TEXELS;
   const scale=fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*need/fig.drawn)/file.cell[1]):1;
   if(scale>=1)continue;
   const needPc=height*PC_HERO_SCREEN_PX/HERO_FIGURE_PX*LITE_TEXELS;
   const pcScale=boss?1:fig.drawn>0?Math.min(1,Math.ceil(file.cell[1]*needPc/fig.drawn)/file.cell[1]):1;
   for(const [name,f] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue; // the rest rows no match downloads (the nests' card) keep their cell
-    const cell=[Math.ceil(f.cell[0]*scale),Math.ceil(f.cell[1]*scale)],pc=[Math.ceil(f.cell[0]*pcScale),Math.ceil(f.cell[1]*pcScale)];
+    const k=name.startsWith(SHADOW)?SHADOW_LITE:1;
+    const cell=[Math.ceil(f.cell[0]*scale*k),Math.ceil(f.cell[1]*scale*k)],pc=[Math.ceil(f.cell[0]*pcScale*k),Math.ceil(f.cell[1]*pcScale*k)];
     for(const p of f.pages?.length?f.pages.map(x=>x.file):[f.file]){
       liteCells.set(`enemies/${p}`,{cell:f.cell,lite:cell});
       pcCells.set(`enemies/${p}`,{cell:f.cell,lite:pc});

@@ -8,6 +8,7 @@ export * from './bodies.ts';
 export * from './city-asset.ts';
 export * from './flowfield.ts';
 export * from './city/terrain.ts';
+export * from './city/entradas.ts';
 export * from './city/relief.ts';
 export * from './build-sites.ts';
 export * from './far-path.ts';

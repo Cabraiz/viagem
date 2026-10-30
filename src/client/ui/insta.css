@@ -17,8 +17,9 @@
   }
   .estadio .estadio-escolha > * { flex: none; width: calc(var(--u) * 734); max-width: none; }
 
-  /* The privacy link (estadio.css) on the light profile: dark text, centred in the air under the card. */
-  .estadio .menu-privacidade { left: 50%; transform: translateX(-50%); color: var(--insta-texto); text-shadow: none; opacity: .6; }
+  /* The privacy and about links (estadio.css) on the light profile: dark text, centred in the air under the card. */
+  .estadio .menu-rodape { left: 50%; transform: translateX(-50%); }
+  .estadio .menu-rodape a { color: var(--insta-texto); text-shadow: none; opacity: .6; }
 
   .insta-topo { display: block; }
   .insta-grade-area { display: block; margin-top: calc(var(--u) * 14); }
@@ -27,7 +28,7 @@
   .insta-topo { order: -2; }
   .menu-oque {
     order: -1; display: flex; align-items: center; justify-content: center; height: calc(var(--u) * 55); margin-top: calc(var(--u) * 14);
-    padding: 0 calc(var(--u) * 40); max-width: none; font: 400 max(11px, calc(var(--u) * 23))/1.2 var(--f-sistema); color: var(--insta-cinza);
+    padding: 0 calc(var(--u) * 40); max-width: none; font: 400 max(12px, calc(var(--u) * 23))/1.2 var(--f-sistema); color: var(--insta-cinza);
     text-align: center; text-shadow: none;
   }
   .estadio-escolha[data-etapa="nome"] .insta-grade-area { display: none; }
@@ -90,12 +91,12 @@
   }
   .insta-rosto { display: block; width: 100%; height: 100%; border: calc(var(--u) * 3) solid var(--insta-fundo); border-radius: var(--r-circulo); object-fit: cover; }
   .insta-cadeado { position: absolute; right: calc(var(--u) * 42); bottom: calc(var(--u) * 36); width: calc(var(--u) * 50); height: auto; }
-  .insta-story-nome { font: 400 max(10px, calc(var(--u) * 28))/1 var(--f-botao); }
+  .insta-story-nome { font: 400 max(12px, calc(var(--u) * 28))/1 var(--f-botao); }
 
   /* "Toque para trocar" (418..441) between two lines of 120 (x 125..245 and 490..610). */
   .insta-trocar {
     display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 25); margin: calc(var(--u) * 15) 0 0;
-    font: 400 max(10px, calc(var(--u) * 25))/1 var(--f-sistema); color: var(--insta-texto);
+    font: 400 max(12px, calc(var(--u) * 25))/1 var(--f-sistema); color: var(--insta-texto);
   }
   .insta-trocar::before, .insta-trocar::after { content: ''; width: calc(var(--u) * 120); height: max(1px, calc(var(--u) * 2)); background: var(--insta-linha); }
 
@@ -108,15 +109,15 @@
   .insta-info { flex: 1; min-width: 0; padding-top: calc(var(--u) * 50); padding-right: calc(var(--u) * 22); }
   .insta-arroba {
     display: flex; align-items: center; gap: calc(var(--u) * 14); margin: 0;
-    font: 400 max(10px, calc(var(--u) * 64 * var(--arroba-fit, 1)))/1 var(--f-botao); white-space: nowrap;
+    font: 400 max(12px, calc(var(--u) * 64 * var(--arroba-fit, 1)))/1 var(--f-botao); white-space: nowrap;
   }
   .insta-selo { flex: none; width: calc(var(--u) * 46); height: auto; }
   .insta-numeros { display: grid; grid-template-columns: 1fr 1fr; margin-top: calc(var(--u) * 26); }
   .insta-numeros p { display: flex; flex-direction: column; align-items: center; margin: 0; padding-block: calc(var(--u) * 4); }
   .insta-numeros p + p { border-left: max(1px, calc(var(--u) * 2)) solid var(--insta-linha); }
-  .insta-numeros strong { font: 800 max(10px, calc(var(--u) * 37))/1.05 var(--f-sistema); }
-  .insta-numeros span { margin-top: calc(var(--u) * 6); font: 400 max(10px, calc(var(--u) * 24))/1.1 var(--f-sistema); color: var(--insta-cinza); }
-  .insta-bio { margin: calc(var(--u) * 26) 0 0; font: 400 max(10px, calc(var(--u) * 25))/1.2 var(--f-sistema); text-align: center; text-wrap: balance; white-space: pre-line; }
+  .insta-numeros strong { font: 800 max(12px, calc(var(--u) * 37))/1.05 var(--f-sistema); }
+  .insta-numeros span { margin-top: calc(var(--u) * 6); font: 400 max(12px, calc(var(--u) * 24))/1.1 var(--f-sistema); color: var(--insta-cinza); }
+  .insta-bio { margin: calc(var(--u) * 26) 0 0; font: 400 max(12px, calc(var(--u) * 25))/1.2 var(--f-sistema); text-align: center; text-wrap: balance; white-space: pre-line; }
 
   /* Chips (782..852, x 25..709 with 18 between): the icon, then the label and the value. The game's letter is wider than
      the reference's, so each chip is as wide as its text (the longest trio, the viciado's, takes 670 of the 684) and the
@@ -154,14 +155,14 @@
   }
   .insta-privada-cadeado { width: calc(var(--u) * 84); height: auto; }
   .insta-privada p { display: flex; flex-direction: column; gap: calc(var(--u) * 6); margin: 0; }
-  .insta-privada b { font: 800 max(10px, calc(var(--u) * 30))/1.1 var(--f-sistema); }
-  .insta-privada span { font: 400 max(10px, calc(var(--u) * 24))/1.2 var(--f-sistema); color: var(--insta-cinza); }
+  .insta-privada b { font: 800 max(12px, calc(var(--u) * 30))/1.1 var(--f-sistema); }
+  .insta-privada span { font: 400 max(12px, calc(var(--u) * 24))/1.2 var(--f-sistema); color: var(--insta-cinza); }
 
   /* Step 2: the name row takes the tabs and the grid's place (880..1234; the stadium's margin-top:auto does not apply). */
   .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 281); margin-top: calc(var(--u) * 14); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
   .estadio .estadio-nome[hidden] { display: none; }
   .estadio .estadio-nome .estadio-escolhido { display: none; }
-  .estadio .estadio-nome .round-button { width: calc(var(--u) * 84); height: calc(var(--u) * 84); border-color: var(--insta-fundo); background: var(--insta-texto); color: var(--insta-fundo); font-size: max(10px, calc(var(--u) * 52)); }
+  .estadio .estadio-nome .round-button { width: calc(var(--u) * 84); height: calc(var(--u) * 84); border-color: var(--insta-fundo); background: var(--insta-texto); color: var(--insta-fundo); font-size: max(12px, calc(var(--u) * 52)); }
   .estadio .estadio-nome #nickname {
     max-width: none; min-height: calc(var(--u) * 92); border: max(2px, calc(var(--u) * 4)) solid var(--insta-texto); border-radius: var(--r-ficha);
     background: var(--insta-chip); color: var(--insta-texto); box-shadow: none; font-size: max(16px, calc(var(--u) * 30));
@@ -212,7 +213,7 @@
   width: calc(var(--u) * 66); height: calc(var(--u) * 66); padding: calc(var(--u) * 4); border-radius: var(--r-circulo); object-fit: cover;
   background: linear-gradient(45deg, var(--insta-anel-a) 12%, var(--insta-anel-b) 52%, var(--insta-anel-c) 88%);
 }
-.insta-ver-topo b { font: 800 max(10px, calc(var(--u) * 30))/1 var(--f-sistema); }
+.insta-ver-topo b { font: 800 max(12px, calc(var(--u) * 30))/1 var(--f-sistema); }
 .insta-ver-selo { width: calc(var(--u) * 32); height: auto; margin-left: calc(var(--u) * -8); }
 .insta-ver-mais { margin-left: auto; }
 .insta-ver-mais svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
@@ -230,10 +231,10 @@
 .insta-ver-curtir[aria-pressed="true"] svg { fill: currentColor; }
 .insta-ver-salvar { margin-left: auto; }
 .insta-ver-curtidas, .insta-ver-legenda, .insta-ver-quando { margin: 0 calc(var(--u) * 28); }
-.insta-ver-curtidas { font: 400 max(10px, calc(var(--u) * 26))/1.3 var(--f-sistema); }
+.insta-ver-curtidas { font: 400 max(12px, calc(var(--u) * 26))/1.3 var(--f-sistema); }
 .insta-ver-curtidas b, .insta-ver-legenda b { font-weight: 800; }
-.insta-ver-legenda { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 27))/1.3 var(--f-sistema); }
-.insta-ver-quando { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 22))/1.2 var(--f-sistema); color: var(--insta-cinza); }
+.insta-ver-legenda { margin-top: calc(var(--u) * 8); font: 400 max(12px, calc(var(--u) * 27))/1.3 var(--f-sistema); }
+.insta-ver-quando { margin-top: calc(var(--u) * 8); font: 400 max(12px, calc(var(--u) * 22))/1.2 var(--f-sistema); color: var(--insta-cinza); }
 .insta-ver-pontos { display: flex; justify-content: center; gap: calc(var(--u) * 10); padding: calc(var(--u) * 20) 0 calc(var(--u) * 24); }
 .insta-ver-pontos i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: var(--r-circulo); background: var(--insta-linha); }
 .insta-ver-pontos i.ativo { background: var(--insta-roxo); }
@@ -266,12 +267,12 @@
 .insta-sv:not(.letras) .insta-sv-camadas { visibility: hidden; }
 .insta-st {
   position: absolute; margin: 0; translate: -50% -50%; rotate: var(--giro, 0deg); white-space: nowrap; text-align: center;
-  font-size: clamp(10px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
+  font-size: clamp(12px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
 }
 /* Texts: the 4 letters, and the 3 ways of the "A" button (a band per line, bare with a shadow, one box). */
 .insta-st-texto[data-alinhar="esquerda"] { text-align: left; }
 .insta-st-texto[data-fonte="classica"] { font-family: var(--f-insta-classica); font-weight: 800; }
-.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(10px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
+.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(12px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
 .insta-st-texto[data-fonte="forte"] { font-family: var(--f-insta-forte); font-weight: 400; line-height: 1.02; }
 .insta-st-texto[data-fonte="maquina"] { font-family: var(--f-insta-maquina); font-weight: 700; }
 .insta-st-texto[data-jeito="faixa"] { line-height: 1.45; }
@@ -282,30 +283,30 @@
 .insta-st-texto[data-jeito="caixa"] { padding: .5em .7em; background: var(--st-fundo, var(--insta-st-branco)); }
 /* The poll (the LEGO one): the question in a dark box over a white card with the two answers, A and B. */
 .insta-st-enquete {
-  width: 15em; white-space: normal; font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica);
+  width: 15em; white-space: normal; font: 400 clamp(12px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica);
   color: var(--insta-st-preto); box-shadow: var(--insta-st-sombra-sticker); border-radius: var(--r-janela); overflow: hidden;
 }
 .insta-st-enquete p { margin: 0; padding: 1em 1.2em; background: var(--insta-st-enquete); color: var(--insta-st-branco); font-weight: 800; font-size: 1.1em; text-wrap: balance; }
 .insta-st-enquete ol { display: grid; gap: .6em; margin: 0; padding: .9em; list-style: none; background: var(--insta-st-branco); }
 .insta-st-enquete li { display: flex; align-items: center; gap: .6em; padding: .55em .7em; border: 1px solid var(--insta-st-linha); border-radius: var(--r-pilula); text-align: left; }
-.insta-st-enquete i { display: grid; place-items: center; flex: none; width: 1.7em; height: 1.7em; border: 1.5px solid var(--insta-st-preto); border-radius: var(--r-circulo); font-style: normal; font-weight: 800; font-size: .8em; }
+.insta-st-enquete i { display: grid; place-items: center; flex: none; width: 1.7em; height: 1.7em; border: 1.5px solid var(--insta-st-preto); border-radius: var(--r-circulo); font-style: normal; font-weight: 800; font-size: max(12px, .8em); }
 /* The question box (the goodlifefitness one): the hero's face on top of a white card, the question, "Digite algo...". */
 .insta-st-pergunta {
   width: 13em; padding: 1.5em 1em 1em; white-space: normal; border-radius: var(--r-janela); background: var(--insta-st-branco);
-  box-shadow: var(--insta-st-sombra-sticker); font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica); color: var(--insta-st-preto);
+  box-shadow: var(--insta-st-sombra-sticker); font: 400 clamp(12px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica); color: var(--insta-st-preto);
 }
 .insta-st-avatar { position: absolute; left: 50%; top: 0; width: 2.4em; height: 2.4em; translate: -50% -50%; border: 2px solid var(--insta-st-branco); border-radius: var(--r-circulo); object-fit: cover; }
 .insta-st-pergunta p { margin: 0 0 .7em; font-weight: 800; font-size: 1.05em; text-wrap: balance; }
-.insta-st-pergunta span { display: block; padding: .6em; border-radius: var(--r-balao); background: var(--insta-st-campo); color: var(--insta-st-cinza); font-size: .85em; }
+.insta-st-pergunta span { display: block; padding: .6em; border-radius: var(--r-balao); background: var(--insta-st-campo); color: var(--insta-st-cinza); font-size: max(12px, .85em); }
 /* The hashtag sticker (#BOZZUTORAD): white, its tag in the strong letter and a colour. */
 .insta-st-hashtag {
   padding: .12em .4em .02em; border-radius: var(--r-ficha); background: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
-  font: 400 clamp(10px, calc(var(--sv-h) * .036), 96px)/1.1 var(--f-insta-forte); color: var(--st-cor);
+  font: 400 clamp(12px, calc(var(--sv-h) * .036), 96px)/1.1 var(--f-insta-forte); color: var(--st-cor);
 }
 /* The likes bubble (the red ♥ 1 of the reference): a heart and a number on red, its tail pointing down. */
 .insta-st-curtidas {
-  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-vermelho);
-  font: 800 clamp(10px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
+  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-curtidas);
+  font: 800 clamp(12px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
 }
 .insta-st-curtidas svg { width: 1.1em; height: 1.1em; fill: currentColor; stroke: none; }
 .insta-st-curtidas::after { content: ''; position: absolute; left: 50%; bottom: -.3em; width: .7em; height: .7em; translate: -50% 0; rotate: 45deg; background: inherit; }

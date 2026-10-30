@@ -15,17 +15,25 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {MODE,VISIT_COUNT,VISIT_EVERY,VISIT_FAR,VISIT_FROM,VISIT_NEAR,VISIT_QUIET} from '../../src/sim/ninhos/sono.ts';
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 
+/**
+ * A run with the 120 s minute the visits were made for: since missao-proteger-uno-tempo the minute is 30 s (MINERVA_S),
+ * over before VISIT_FROM, so the visits wait for a longer minute (the rooms' option, a test's).
+ */
 function run(seed=1):{world:SimWorld;sys:RunSystems}{
-  const world=new SimWorld({terrain:city.fork(),seed,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',mode:'ninhos'});
-  world.step();
-  return {world,sys};
+  const saved=NEST_PACE.minerva;NEST_PACE.minerva=120;
+  try{
+    const world=new SimWorld({terrain:city.fork(),seed,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',mode:'ninhos'});
+    world.step();
+    return {world,sys};
+  }finally{NEST_PACE.minerva=saved;}
 }
 /** A hero that never falls; `unarmed`: the manual combat's inventory (build.hand) with no weapon in it. */
 function addPlayer(world:SimWorld,id:string,x:number,y:number,unarmed=false){

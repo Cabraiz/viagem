@@ -18,7 +18,7 @@
 #confirmation.escolha-arte{overflow:visible}
 #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,24dvh,190px);height:clamp(110px,24dvh,190px);margin:calc(-.5 * clamp(110px,24dvh,190px)) 0 -6px -8px;position:relative;z-index:1}
 /* Chip da classe como na ref. 7: pílula roxa viva, texto claro, numa linha só; a descrição vai embaixo. */
-#confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:11px;white-space:nowrap}
+#confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:12px;white-space:nowrap}
 #confirmation.escolha-arte .chosen-role .suit{fill:currentColor}
 #confirmation.escolha-arte #chosen-class{color:color-mix(in srgb,var(--c-papel-claro) 80%,var(--c-lilas))}
 #confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
@@ -33,6 +33,10 @@
 #confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
 #confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;border-radius:var(--r-janela)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
+/* O brilho do hover (style.css) é um filter: num #enter-island sem position ele vira o bloco de contenção da arte absoluta,
+   que encolhe para o botão e deixa a barra de bots sem fundo. O brilho vai para o bloco inteiro, já relative. */
+#confirmation.escolha-arte #enter-island:hover:not(:disabled){filter:none}
+#confirmation.escolha-arte .solo-row:has(#enter-island:hover:not(:disabled)){filter:brightness(1.035)}
 /* Amigos como na ref. 7: a arte vai de borda a borda; os corpos terminam um pouco acima do rótulo, dissolvendo no
    amarelo, e o texto fica numa faixa amarela limpa embaixo. */
 #confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}

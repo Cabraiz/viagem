@@ -132,6 +132,6 @@ test('CoopClient in a pause: the hero the room holds does not move while the pho
 test('production wiring: explore.ts hands every run state to Hud.setPause (the offer only opens in the pause)',async()=>{
   const fs=await import('node:fs');
   const explore=fs.readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.ok(explore.includes(`net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);};`),'every {t:run} (the pause ticks once a second with no frame)');
+  assert.ok(explore.includes(`net.onRun=run=>{syncCena(run);hud?.setPause(run.phase==='combat'?run.pause:undefined);`),'every {t:run} (the pause ticks once a second with no frame)');
   assert.ok(explore.includes(`hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(`),'and every view');
 });

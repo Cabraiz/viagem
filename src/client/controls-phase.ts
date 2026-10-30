@@ -8,6 +8,7 @@
  */
 import type {RunPhase} from '../contract/index.ts';
 import type {InputKind} from './desktop-input.ts';
+import {dicaFor} from './hud/coach/dicas-dom.ts';
 
 export type StickMode='live'|'dimmed'|'off';
 export type SkillMode='live'|'disabled'|'off';
@@ -62,12 +63,18 @@ export function applyControls(root:HTMLElement,controls:Controls):boolean{
   if(root.dataset.controls!==next)root.dataset.controls=next;
   const hint=root.querySelector<HTMLElement>('.explore-stick-hint');
   if(hint){
-    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',manual=root.dataset.combat==='manual',key=controls.hint?`${controls.hint}:${kind}:${manual?'manual':'auto'}`:'';
+    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',manual=root.dataset.combat==='manual';
+    // In the round the etiqueta lends itself to the first match's gesture tips (hud/coach/dicas-dom.ts).
+    const dica=controls.hint?undefined:dicaFor(root,controls);
+    const key=controls.hint?`${controls.hint}:${kind}:${manual?'manual':'auto'}`:dica?`dica:${dica.tip}:${kind}`:'';
     if(hint.dataset.hint!==key){
       hint.dataset.hint=key;
-      hint.replaceChildren(...(controls.hint?controlsHintLines(controls.hint,kind,manual):[]).map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
+      const lines=controls.hint?controlsHintLines(controls.hint,kind,manual):dica?[dica.text]:[];
+      hint.replaceChildren(...lines.map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
+      if(dica)hint.dataset.dica=dica.tip;else delete hint.dataset.dica;
     }
-    if(hint.hidden!==!controls.hint)hint.hidden=!controls.hint;
+    const shown=!!(controls.hint||dica);
+    if(hint.hidden!==!shown)hint.hidden=!shown;
   }
   return next==='off'&&!wasOff;
 }

@@ -40,20 +40,6 @@ export function cityGroundLuminance(asset:CityAsset,x:number,y:number):number{
   return GROUND_LUMINANCE[groundAt(asset,Math.floor((x-asset.origin.x)/asset.cell),Math.floor((y-asset.origin.y)/asset.cell))];
 }
 
-/**
- * The local hero's "você" sticker in the city (contraste: the island's offset copies left ~1 CSS px of soft Breu
- * outside the Papel band, 2.04:1 on water): true distance bands baked once into a copy of the hero sheet, inside out
- * Breu (the figure's own CITY_RING, hidden under the sprite), Papel 2 (STICKER_CSS.papel), Breu outer. The outer band is
- * 2.5 CSS px so that its outer 2 CSS px are fully opaque Breu (render/outline.ts bandsRgba: a pixel is solid once its
- * centre is half a pixel inside the band; the last half pixel is the anti-aliased edge).
- */
-export const CITY_STICKER=Object.freeze([
-  {css:CITY_RING.cssPx,color:CITY_RING.color},
-  {css:2,color:0xeeddb8},
-  {css:2.5,color:CITY_RING.color},
-] as const);
-/** Width of the whole sticker in CSS px (its copies are padded for it). */
-export const CITY_STICKER_CSS=CITY_STICKER.reduce((sum,b)=>sum+b.css,0);
 /** Tag of every city texture key: `<base key>:cidade:<serial>` (the serial changes when a copy is rebuilt). */
 export const CITY_KEY_TAG=':cidade:';
 export const cityKey=(base:string,serial:number)=>`${base}${CITY_KEY_TAG}${serial}`;
@@ -105,19 +91,18 @@ export function cropOf(box:{left:number;top:number;right:number;bottom:number}|u
  * Geometry of a city copy. The `crop` of every cell (the whole `cellW × cellH` cell by default; a hero sheet's figure
  * box, which halves its memory) drawn at `drawScale` world px per source px, under camera `zoom` (CSS px per world px)
  * at `res` copy px per CSS px (copyResolution), is resampled to `cw × ch` px (never upscaled: a sheet already at or
- * below screen size keeps its resolution) and padded by `pad` px on every side, so the ring (`ring` copy px = `ringCss`
- * on screen: CITY_RING.cssPx, or every band of CITY_STICKER together) never touches the slot edge. `perCss`: copy px
- * per CSS px on screen. `kx`, `ky` (source px per copy px) multiply the draw site's scale; they do not depend on the
- * ring, so a copy and its sticker share them and the figure lands on the same screen px in both.
+ * below screen size keeps its resolution) and padded by `pad` px on every side, so the ring (`ring` copy px = CITY_RING.cssPx
+ * on screen) never touches the slot edge. `perCss`: copy px per CSS px on screen. `kx`, `ky` (source px per copy px)
+ * multiply the draw site's scale.
  */
 export interface VariantGeometry {cellW:number;cellH:number;crop:CellCrop;cw:number;ch:number;pad:number;ring:number;perCss:number;slotW:number;slotH:number;kx:number;ky:number}
-export function variantGeometry(cellW:number,cellH:number,drawScale:number,zoom:number,res=1,crop?:CellCrop,ringCss:number=CITY_RING.cssPx):VariantGeometry|undefined{
+export function variantGeometry(cellW:number,cellH:number,drawScale:number,zoom:number,res=1,crop?:CellCrop):VariantGeometry|undefined{
   const perSource=drawScale*zoom*res;
   if(!(cellW>0)||!(cellH>0)||!(perSource>0)||!Number.isFinite(perSource))return undefined;
   const c=crop&&crop.w>0&&crop.h>0&&crop.x>=0&&crop.y>=0&&crop.x+crop.w<=cellW&&crop.y+crop.h<=cellH?crop:{x:0,y:0,w:cellW,h:cellH};
   const r=Math.min(1,perSource),cw=Math.max(1,Math.round(c.w*r)),ch=Math.max(1,Math.round(c.h*r));
   const kx=c.w/cw,ky=c.h/ch,perCopy=perSource*(kx+ky)/2;
-  const perCss=res/perCopy,ring=ringCss*perCss,pad=Math.ceil(ring)+1;
+  const perCss=res/perCopy,ring=CITY_RING.cssPx*perCss,pad=Math.ceil(ring)+1;
   return {cellW,cellH,crop:c,cw,ch,pad,ring,perCss,slotW:cw+2*pad,slotH:ch+2*pad,kx,ky};
 }
 /** Copy px (from the slot's corner) of source px (sx, sy) of the cell. */

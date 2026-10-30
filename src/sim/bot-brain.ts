@@ -74,7 +74,7 @@ import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {OPEN_REACH} from './crates.ts';
-import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
+import {CRATE_STAND,LOOT_ANY_NEAR,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /**
@@ -297,6 +297,10 @@ export interface BrainMemory {
   skip?:Record<string,number>;
   /** The goal walked to and the best distance (and its hp) so far, since `tick`. */
   track?:{key:string;d:number;hp:number;tick:number;x:number;y:number};
+  /** The crate or weapon looted at the last decision (bot-loot.ts LOOT_KEEP_HP: kept with critters near), and the hp then. */
+  lootGoal?:string;lootHp?:number;
+  /** The tick an armed bot that left its loot for a critter may start another (bot-loot.ts LOOT_REST). */
+  lootRest?:number;
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -382,6 +386,8 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
  * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
 export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
+/** Card bots-build-parado: a bot alone in the room loots this far in the intermission (the late check still brings it home). */
+export const LOOT_RADIUS_SOLO=LOOT_RADIUS_RUN;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -604,14 +610,26 @@ export function granaReserve(view:Pick<RunView,'objective'>&{players?:readonly P
   return Math.ceil((o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:o.budget*CHAVEIRO_KEEP_SHARE)/seats);
 }
 
+/**
+ * auditoria-economia item 1 (bot-solo-gasta-grana): of its own wallet (view.camp.grana) a bot keeps for the bill at
+ * most CHAVEIRO_KEEP_WALLET (rounded down) when it buys. Alone, granaReserve is the whole bill × 1.3, more than a solo
+ * run earns (R$ 155 for a R$ 300+ bill): the bot never evolved, repaired nor forged, and lost the car in 3 of 4 runs.
+ * A buy now leaves at least half the wallet; the reserve still caps it where it is smaller (3p/6p mostly).
+ */
+export const CHAVEIRO_KEEP_WALLET=.5;
+/** The Grana a bot never spends its wallet below when it buys: granaReserve, at most CHAVEIRO_KEEP_WALLET of the wallet. */
+export function spendReserve(view:Pick<RunView,'objective'|'camp'>&{players?:readonly Pick<PlayerRunView,'spectator'>[]}):number{
+  return Math.min(granaReserve(view),Math.floor(Math.max(0,view.camp?.grana??0)*CHAVEIRO_KEEP_WALLET));
+}
+
 /** Wall share under which the forger repairs it even out of the chaveiro's reserve (review: the bill never beats a defeat). */
 export const WALL_CRITICAL=.5;
 /**
  * What the forger buys with its wallet (view.camp.grana; D-048: the forge is paid in R$, never material), or nothing: repair a
  * hurt wall, then towers up to the forge's cap, then gambiarras. A recipe the forge refused this round (`refused`:
- * recipe -> round index) is skipped; `keep` (default granaReserve: the chaveiro's bill) is never spent.
+ * recipe -> round index) is skipped; `keep` (default spendReserve: the chaveiro's bill, at most half the wallet) is never spent.
  */
-export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=granaReserve(view)):RecipeId|undefined{
+export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=spendReserve(view)):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
   const wall=wallOf(view),round=view.round?.index??0;
   const ok=(id:RecipeId,reserve=keep)=>refused[id]!==round&&canPay((camp.grana??0)-reserve,forgePrice(id,camp.forge));
@@ -832,12 +850,32 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  // Card bot-nao-trava-entre-casa-e-arma: not for a bot with no weapon at all (it cannot hit; seed 11 held at the car ~60 s
+  // by one critter the Minerva held still 10.6 u off it).
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&hasWeapon(me.weapons)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  const keep=memory.lootGoal,keptHp=memory.lootHp;delete memory.lootGoal;delete memory.lootHp;
   if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
-    const car=input.nests&&lootLeashed(view.players)?view.objective?.car:undefined;
-    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
-      {skip:id=>skipped(`loot:${id}`),...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    const solo=!lootLeashed(view.players),car=input.nests&&!solo?view.objective?.car:undefined;
+    // Card bots-build-parado: a bot alone (nobody to open the rest, nobody to rescue) opens the verdes past LOOT_ANY_NEAR
+    // too, and in the intermission looks as far as a runner (1p: 22 of 45 verdes 12-20 u from the car opened, none past 30).
+    // Only to a crate with no critter awake about it: one by it ended the calm on the way, and with it the trip, a swing
+    // home and back each second (1p seed 12: bau-21, 11 u past a critter 16 u off).
+    const far=(id:string)=>{
+      const k=solo?view.pickups.find(q=>q.id===id):undefined,d=k?dist(k,at):0;
+      return !!k&&(d>LOOT_RADIUS_CALM||k.kind==='chest'&&k.value<=1&&d>LOOT_ANY_NEAR)&&!calmAround(view.enemies,k,CALMA.botR+CALM_SLACK);
+    };
+    const plan=(kept?:string)=>planLoot(view,me,at,prepare?(solo?LOOT_RADIUS_SOLO:LOOT_RADIUS_CALM):runner?LOOT_RADIUS_RUN:LOOT_RADIUS,
+      {skip:id=>skipped(`loot:${id}`)||far(id),keep:kept,...(solo?{anyVerde:true}:{}),
+        ...(input.partner?{leash:{at:input.partner,r:PARTNER_LOOT}}:car?{leash:{at:car,r:LOOT_CAR_LEASH}}:{})});
+    let loot=plan(keep);
+    if(loot.goal&&loot.goal.id!==keep&&tick<(memory.lootRest??-Infinity)&&hasWeapon(me.weapons))delete loot.goal;
+    // Card bot-nao-trava-entre-casa-e-arma: a crate opens only for who is not hurt (crates.ts): hurt by it since the last
+    // decision, the bot leaves it out for LOOT_SKIP and goes to another (seed 12: 18 s by one, a critter on it biting).
+    if(loot.goal?.stand&&loot.goal.id===keep&&keptHp!==undefined&&me.hp<keptHp&&dist(at,loot.goal.at)<=OPEN_REACH){
+      (memory.skip??={})[`loot:${keep}`]=tick+LOOT_SKIP;
+      loot=plan();
+    }
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
@@ -847,13 +885,15 @@ export function decide(input:BrainInput):Decision{
     const there=!!loot.goal&&(loot.goal.stand?reached(loot.goal.at,CRATE_STAND,OPEN_REACH*.25):dist(at,loot.goal.at)<=.25);
     if(there)delete memory.track;
     if(loot.goal&&!late&&(there||!stalled(`loot:${loot.goal.id}`,loot.goal.at,0,LOOT_SKIP))){
-      decision.mode='loot';
+      decision.mode='loot';memory.lootGoal=loot.goal.id;memory.lootHp=me.hp;
       const close=there;
       if(!close)want=go(loot.goal.at);
       decision.direction=close?{x:0,y:0}:norm(want);
       return finish(decision,input);
     }
   }
+  if(keep!==undefined&&hasWeapon(me.weapons)&&(carThreat||view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<LOOT_SAFE)))
+    memory.lootRest=tick+LOOT_REST*HZ;
   // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
   if(task?.kind==='clear'&&prepare){
     decision.mode='clear';
@@ -882,8 +922,9 @@ export function decide(input:BrainInput):Decision{
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
     const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId;
-    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs below).
-    const keep=granaReserve(view);
+    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs
+    // below), at most half the wallet (spendReserve: a bot alone kept it all and never bought).
+    const keep=spendReserve(view);
     let recipe=forger?pickRecipe(view,memory.refused,keep):undefined;
     // Towers first (torres-sim): only a needed wall repair goes ahead. The caller hands `towers` to the bot that builds
     // (the room bots: the forger, or the forger-to-be). torres-ajustes: the sim takes an order only next to the obra, so
@@ -1011,6 +1052,7 @@ export function decide(input:BrainInput):Decision{
     want=add(want,{x:-s.vy/speed*side*1.2,y:s.vx/speed*side*1.2});
   }
   const walking=escorting&&!!pace&&!task;
+  let engaged=false;
   if(walking){
     // Walk with the person at their speed (ESCORT_WALKING): the way to them out of the leash, their heading inside it.
     decision.mode='escort';
@@ -1033,8 +1075,8 @@ export function decide(input:BrainInput):Decision{
     const stand=siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6;
     if(target&&open&&(siege||roam)&&dist(target,at)>stand){
       // Item 2: one it gets no nearer to (nor hurts) is left out (the boss at the car never is).
-      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp))want=add(want,chase!);
-    }
+      if(target===focus||prey||!stalled(`foe:${target.id}`,target,target.hp)){want=add(want,chase!);engaged=true;}
+    }else if(target&&dist(target,at)<=stand)engaged=true;
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
@@ -1055,6 +1097,9 @@ export function decide(input:BrainInput):Decision{
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&!lure&&dist(at,home)>leash+2)decision.mode='home';
+  // Item 2 (29/10): by the car with no critter to hit or chase (none in reach, or one left out as stalled) the bot holds
+  // home; 'fight' read as standing still in a fight (6p: 36 holds of 10-108 s at 4-7 u from the car, none near).
+  else if(decision.mode==='fight'&&input.nests&&view.objective&&!prey&&!lure&&!engaged&&!decision.attack)decision.mode='home';
   // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
   // the bot where it stands, instead of a full step one way and the other each think.
   decision.direction=city&&Math.hypot(want.x,want.y)<HOLD_BELOW?{x:0,y:0}:norm(want);
@@ -1265,7 +1310,7 @@ export interface TowerBrainView {
   units:number;
   /** The builder's own wallet, R$ (D-048; NEW-20261014-ORQ-carteira-e-pix): every other evolution and the tower repairs. */
   grana:number;
-  /** Grana the towers never spend (decide fills it with granaReserve: the chaveiro's bill); unset: 0. */
+  /** Grana the towers never spend (decide fills it with spendReserve: the chaveiro's bill, at most half the wallet); unset: 0. */
   granaKeep?:number;
   /** x/y: the site's centre, where the bot walks to give the order (absent: the order goes out from anywhere). */
   sites:readonly {id:string;maxSize:number;x?:number;y?:number}[];
@@ -1313,6 +1358,18 @@ export function orderSpot(v:TowerBrainView,order:TowerOrder):Point|undefined{
 
 /** Branch a bot picks for the root on the n-th site of the plan (cycled): twice A, then B and C. */
 export const BOT_BRANCHES:readonly Branch[]=Object.freeze(['A','B','A','C'] as Branch[]);
+/**
+ * auditoria-economia item 5 (bot-solo-gasta-grana): a root takes branch C (the Holofote: no damage, only a slow) only
+ * once the defenses standing add up to BOT_SUPPORT_DPS (defenseDps); before that BOT_BRANCHES goes on to the next
+ * branch (A or B). The 6p bought the Holofote 3× a run, as often as A2, on teams with little to shoot with. 60: about an
+ * A3, an A2, a B2 and a root (66).
+ */
+export const BOT_SUPPORT_DPS=60;
+/** A defense's damage a second over its targets (damage × shots ÷ cooldown; the area and the slow left out). */
+export function defenseDps(kind:DefenseId):number{
+  const d=DEFENSES[kind];
+  return d.cooldown>0?d.damage*d.shots*HZ/d.cooldown:0;
+}
 /** The forger keeps at least this many defenses standing before it evolves any. */
 export const BOT_MIN_DEFENSES=2;
 /** A defense of the bots at or under this share of its maxHp is repaired first, when the Grana pays it. */
@@ -1387,7 +1444,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
  *     Obuseiro) when its money pays it; towerReserve keeps that step aside for the rest of the rule;
  *  4. the cheapest-tier evolution among the bots' other ready defenses, when what is left pays it (ties: plan order).
  *     Branch at the root: B on a 3×3 site while the bots have no line (on a map with a rail), else BOT_BRANCHES by the
- *     site's index (the next one that fits the site's size); at A3 the main line
+ *     site's index (the next one that fits the site's size; C only from BOT_SUPPORT_DPS standing); at A3 the main line
  *     when the site fits A4, else A4b; at the Obuseiro the Gustavão (laying the rail first), while none was built;
  *  5. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root, when the material left
  *     over is a whole ficha;
@@ -1451,8 +1508,10 @@ function nextStep(v:TowerBrainView,d:BrainDefense,at:number,size:number,startLin
   if(d.kind===ROOT_DEFENSE){
     // The Gustavão's line needs a 3×3 site (the Lança-Foguetes and the Obuseiro).
     if(startLine&&size>=3)return {cost:costOf(pickChild(d.kind,'B')!),order:{upgrade:d.id,branch:'B'}};
+    let support:number|undefined;
     for(let k=0;k<BOT_BRANCHES.length;k++){
       const branch=BOT_BRANCHES[(at+k)%BOT_BRANCHES.length],child=pickChild(d.kind,branch);
+      if(branch==='C'&&(support??=v.defenses.reduce((n,x)=>x.ruined?n:n+defenseDps(x.kind),0))<BOT_SUPPORT_DPS)continue;
       if(child&&fits(child.id))return {cost:costOf(child),order:{upgrade:d.id,branch}};
     }
     return undefined;

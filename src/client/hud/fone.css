@@ -37,6 +37,10 @@
 .rh[data-hud=fone] .rh-camp-relogio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .rh[data-hud=fone] .rh-camp-relogio-ficha{display:flex;align-items:center;gap:1px;line-height:0;white-space:nowrap}
 .rh[data-hud=fone] .rh-camp .rh-camp-relogio .ic{width:16px;height:16px}
+/* The round chip's "+N s" after the clock (camp.ts clockMore): Laranja Cone for a hit on the Uno, Breu for a moto stop. */
+.rh[data-hud=fone] .rh-camp-relogio-mais{margin-left:4px;padding:0 4px;border-radius:var(--r-etiqueta);font:400 var(--t-13)/16px var(--f-cartaz);white-space:nowrap;background:var(--c-breu);color:var(--c-papel);box-shadow:0 0 0 1px var(--c-pedra)}
+.rh[data-hud=fone] .rh-camp-relogio-mais[data-motivo=urgente]{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
+.rh[data-hud=fone] .rh-camp-relogio-mais[hidden]{display:none}
 .rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic){display:none}
 /* The last 5 s of the intermission: Laranja Cone with Breu text and the round chip's pulse (topbar.ts rh-urgent). */
 .rh[data-hud=fone] .rh-camp-relogio[data-urgente] b{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}

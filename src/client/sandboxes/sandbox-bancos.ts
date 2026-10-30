@@ -9,9 +9,10 @@
  * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
  * With it `turno=0` (etapa 4): the middle one open, the hero in its ring (the button says Trabalhar); `turno=1`: the hero
  * ('voce') inside its shift (gone through the door, the button "No turno", the tag "Você no turno").
+ * `assentos=1..6` (card anel-caixa-por-assento): the room's seats; an open shop holds bicoSaldo(seats), its ring whole.
  */
 import {SIM_HZ,type BankName,type BankState,type BankView,type BicoId,type EnemyView} from '../../contract/index.ts';
-import {BANCO} from '../../rules/index.ts';
+import {BANCO,bicoSaldo} from '../../rules/index.ts';
 /** Each bank's gig here: one shop front each (24/7, call center, Compro Ouro). */
 const SANDBOX_BICO:Record<BankName,BicoId>={posto:'entregador','pao-duro':'telemarketing',juros:'compro-ouro'};
 
@@ -19,7 +20,7 @@ type Pt={x:number;y:number};
 const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacando',bicho:'bicho',vazio:'sem-cedulas'};
 /**
  * Where the three stand around the hero (units): up left, down left and down, all on a phone held upright (390×844 at
- * the default zoom; the city sandbox's open snow at hero=156,74).
+ * the default zoom; the city sandbox's open snow at hero=53,56.5).
  */
 const AROUND:readonly Pt[]=[{x:-3.6,y:-1.2},{x:1.5,y:4.5},{x:3.4,y:4.2}];
 const DEFAULT:readonly BankState[]=['sacando','bicho','sem-cedulas'];
@@ -33,6 +34,9 @@ export interface FakeBanks {
   /** The critters at the robbed banks (a Cliente Prime at each), for the horde renderer. */
   enemies:EnemyView[];
 }
+
+/** `assentos=` (1..6, default 1): the seats the sandbox's room stands for. */
+export const sandboxSeats=(params:URLSearchParams)=>Math.max(1,Math.min(6,Number(params.get('assentos'))|0||1));
 
 export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
   const all=STATES[params.get('banco')??''],row=params.get('bicos')==='1';
@@ -52,7 +56,7 @@ export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
         if(state==='sacando')return {...base,saldo:30-BANCO.nota*(Math.floor(now/(BANCO.saqueS*1000))%14)};
         if(state==='bicho')return {...base,saldo:18-BANCO.nota*(Math.floor(now/(BANCO.bichoSaqueS*1000))%8)};
         if(state==='sem-cedulas')return {...base,saldo:0,until:tick+130*SIM_HZ};
-        return {...base,saldo:BANCO.saldo};
+        return {...base,saldo:bicoSaldo(sandboxSeats(params))};
       });
       return {banks,tick};
     },

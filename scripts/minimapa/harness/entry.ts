@@ -23,7 +23,7 @@ document.body.append(mm.el);
 const at=(dx:number,dy:number)=>({x:P.x+dx,y:P.y+dy});
 const players=[
   {id:'p1',classId:'viciado-em-bet',...at(-4,-6),online:true},
-  {id:'p2',classId:'coach',...at(-30,10),online:true},
+  {id:'p2',classId:'clt-cansado',...at(-30,10),online:true},
   {id:'p3',classId:'gato-nada-pra-comer',...at(25,-30),online:true},
   {id:'p4',classId:'maromba',...at(10,35),online:true},
 ];

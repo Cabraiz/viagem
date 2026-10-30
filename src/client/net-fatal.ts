@@ -4,7 +4,9 @@
  * WhatsApp/Instagram browsers the reload lives in a menu, so the button is the way out.
  * A "versão nova" message (needsUpdate) never leaves the player stuck (BUG-20261024-ORQ-arrastar-atualiza-versao-nova):
  * short title, "Atualizar agora", and the page asks the site's build every few seconds with a countdown, reloading by
- * itself once the new one is out (ui/update-retry.ts).
+ * itself once the new one is out (ui/update-retry.ts). The site naming this same build twice: it was the link, not a
+ * version (nao-e-versao-nova), so the button becomes "Reconectar" (`reconnect`; by default a reload, which takes the
+ * seat back through ?sala= and the saved token).
  */
 import './net-fatal.css';
 import {needsUpdate} from '../protocol/index.ts';
@@ -23,7 +25,7 @@ export const BACK_TO_ROOM='Voltar pra sala';
  * `action` replaces the reload (kicked from the room, D-025: reloading would knock on the same door); `title` goes
  * above the text in the poster voice (Londrina 21, left), and the window then reads left-aligned.
  */
-export function showFatal(host:HTMLElement,message:string,{inline=false,action,title}:{inline?:boolean;action?:{label:string;run():void};title?:string}={}):HTMLElement{
+export function showFatal(host:HTMLElement,message:string,{inline=false,action,title,reconnect}:{inline?:boolean;action?:{label:string;run():void};title?:string;reconnect?:()=>void}={}):HTMLElement{
   let panel=host.querySelector<Panel>(':scope > .net-fatal');
   if(!panel){
     panel=document.createElement('div');panel.className='net-fatal';panel.setAttribute('role','alert');
@@ -48,10 +50,24 @@ export function showFatal(host:HTMLElement,message:string,{inline=false,action,t
   else if(!panel.retry){
     status.hidden=false;
     panel.retry=startUpdateRetry({current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),reload:()=>updateNow(),
-      show:state=>{if(!panel!.isConnected){panel!.retry?.stop();return;}status.textContent=retryLine(state);},
+      show:state=>{
+        if(!panel!.isConnected){panel!.retry?.stop();return;}
+        status.textContent=retryLine(state);
+        if(state.kind==='stuck'&&panel!.dataset.kind!=='reconnect'){
+          panel!.dataset.kind='reconnect';panel!.action=reconnect??(()=>location.reload());
+          panel!.querySelector('.net-fatal-text')!.textContent=UPDATE_TEXT.stuckTitle;
+          panel!.querySelector('.net-fatal-reload')!.textContent=UPDATE_TEXT.reconnect;
+        }
+      },
       setTimeout:(h,ms)=>window.setTimeout(h,ms),clearTimeout:id=>window.clearTimeout(id as number)});
   }
   return panel;
+}
+
+/** Takes the panel away (the client reconnected after "Reconectar"); its asks stop with it. */
+export function hideFatal(host:HTMLElement){
+  const panel=host.querySelector<Panel>(':scope > .net-fatal');
+  panel?.retry?.stop();panel?.remove();
 }
 
 /** After this long trying to get back, the reconnect banner gets a second line and a way out (UX onda 5, B13). */

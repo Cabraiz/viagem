@@ -4,9 +4,9 @@
 // photo per profile.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync} from 'node:fs';
+import {existsSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles} from '../../src/client/hud/perfis.ts';
+import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,FOIL_TAROT,MOLDURA_TAROT,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles,tarotCard,popCard,ARCANOS,LIVRO_POP} from '../../src/client/hud/perfis.ts';
 import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
@@ -14,7 +14,10 @@ import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
 test('lotes 1–4: every kind with art has a profile with its photo; the texts fit the card',()=>{
   const ids=Object.keys(PERFIS_TEXTO);
   assert.equal(ids.length,159);
-  const due=ROSTER.filter(e=>ENEMY_ART_IDS.includes(e.id)).map(e=>e.id);
+  // The saci (card saci-elite-no-jogo) is in the game before his ChatGPT portrait: no card until then
+  // (card NEW-20261029-E4-perfil-saci).
+  const pending=['aberracao-saci'];
+  const due=ROSTER.filter(e=>ENEMY_ART_IDS.includes(e.id)&&!pending.includes(e.id)).map(e=>e.id);
   assert.deepEqual(due.filter(id=>!ids.includes(id)),[],'a kind with art and no profile');
   for(const id of ids){
     const p=perfilOf(id);
@@ -109,4 +112,63 @@ test('the card never covers the hero, the Uno, the allies or the mission band: a
   assert.equal(small?.scale,SMALL_SCALE);
   for(const g of wall)assert.ok(!cross(boxOf(home,small!),g,GUARD_MARGIN_PX));
   assert.equal(placeProfiles(home,useful,[{x:0,y:0,width:390,height:844}]),undefined,'no room anywhere: no card');
+});
+
+test('tarot card and pop-up book: the ChatGPT frame, foil, book and cut-outs are light, the Cinzel font ships with its OFL, the three arcana',()=>{
+  for(const art of [MOLDURA_TAROT,FOIL_TAROT,LIVRO_POP,...Object.values(ARCANOS).flatMap(a=>[a.arte,a.pop])]){
+    const file=fileURLToPath(new URL(`../../public${art}`,import.meta.url));
+    assert.ok(existsSync(file),`${art} ships`);
+    assert.ok(statSync(file).size<=100_000,`${art} is ≤ 100 KB (phone)`);
+  }
+  for(const f of ['cinzel-700.woff2','OFL-cinzel.txt'])assert.ok(existsSync(fileURLToPath(new URL(`../../public/fonts/${f}`,import.meta.url))),f);
+  assert.deepEqual(Object.values(ARCANOS).map(a=>a.num),['I','II'],'the beggar is I, the saci II (the sanfoneiro III later)');
+});
+
+/** Just enough DOM for one card: elements with class, children, text, attributes and dataset. */
+function fakeDoc(){
+  type Node={tagName:string;className:string;children:Node[];textContent:string;dataset:Record<string,string>;attrs:Record<string,string>;
+    style:{setProperty():void};src?:string;complete?:boolean;naturalWidth?:number;append(...n:Node[]):void;setAttribute(k:string,v:string):void};
+  const make=(tag:string):Node=>{const n:Node={tagName:tag.toUpperCase(),className:'',children:[],textContent:'',dataset:{},attrs:{},style:{setProperty(){}},
+    append(...c){n.children.push(...c);},setAttribute(k,v){n.attrs[k]=v;}};return n;};
+  return {createElement:make} as unknown as Document;
+}
+const walk=(n:any):any[]=>[n,...n.children.flatMap(walk)];
+
+test('the phone tarot card: photo in the frame, roman numeral and ONLY the name; nothing of the dating app',()=>{
+  const card:any=tarotCard(fakeDoc(),{kind:'bebado',distance:12,tilt:0});
+  const all=walk(card);
+  const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+  assert.ok(cls('rh-tarot').length&&cls('rh-perfil-compacto').length,'the compact card, tarot flavour');
+  assert.equal(cls('rh-perfil-img')[0].src,perfilOf('bebado')!.foto,'the enemy current photo');
+  assert.equal(cls('rh-tarot-moldura')[0].src,MOLDURA_TAROT);
+  assert.equal(cls('rh-tarot-nome')[0].textContent,`${perfilOf('bebado')!.name.toLocaleUpperCase('pt-BR')}.`,'the name with a full stop, like THE SUN.');
+  assert.equal(cls('rh-tarot-num')[0].textContent,'','a legacy kind has no numeral');
+  assert.equal(cls('rh-tarot-foil').length,1,'the foil layer');
+  const texts=all.map(n=>n.textContent).filter(Boolean);
+  assert.equal(texts.length,1,'only the name: no tale, no subtitle');
+  assert.equal(all.filter(n=>n.tagName==='BUTTON').length,0,'no ✕/♥');
+  assert.ok(!all.some(n=>/MATCH/i.test(n.textContent)),'no DEU MATCH');
+  assert.ok(!cls('rh-perfil-balao').length&&!cls('rh-perfil-dist').length,'no balloon nor distance');
+});
+
+test('the beggar as arcanum I: its Rider-Waite art, numeral and name, and its kill counts as a match without a dating profile',()=>{
+  const all=walk(tarotCard(fakeDoc(),{kind:'mendigo',distance:0,tilt:0}) as any);
+  const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+  assert.equal(cls('rh-perfil-img')[0].src,ARCANOS.mendigo.arte);
+  assert.equal(cls('rh-tarot-num')[0].textContent,'I');
+  assert.equal(cls('rh-tarot-nome')[0].textContent,'O MENDIGO.');
+  assert.ok(new MatchBook(undefined,()=>0).kill({kind:'mendigo',by:'p1',x:0,y:0},'p1'),'the beggar matches');
+});
+
+test('the desktop pop-up book: the cut-out on the open book and ONLY the name in the cartouche',()=>{
+  for(const kind of Object.keys(ARCANOS)){
+    const all=walk(popCard(fakeDoc(),{kind,distance:0,tilt:0}) as any);
+    const cls=(c:string)=>all.filter(n=>n.className.split(' ').includes(c));
+    assert.ok(cls('rh-pop').length&&cls('rh-perfil-compacto').length,kind);
+    assert.equal(cls('rh-pop-livro')[0].src,LIVRO_POP);
+    assert.equal(cls('rh-pop-figura')[0].src,ARCANOS[kind].pop);
+    assert.equal(cls('rh-pop-nome')[0].textContent,`${ARCANOS[kind].name.toLocaleUpperCase('pt-BR')}.`);
+    assert.equal(all.map(n=>n.textContent).filter(Boolean).length,1,'only the name');
+    assert.equal(all.filter(n=>n.tagName==='BUTTON').length,0,'no ✕/♥');
+  }
 });

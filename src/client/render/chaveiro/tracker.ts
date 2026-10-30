@@ -5,6 +5,7 @@
  */
 import {headingOf,newlyFallen,PART_FALL_MS,alarmOn,HIT_MERGE_MS,HIT_POPS_MAX,HIT_POP_MS} from './rules.ts';
 import type {ChaveiroView} from './view.ts';
+import {SIM_HZ} from '../../../contract/index.ts';
 
 /** Keeps the last route and stops seen, and fills a view that came without them. */
 export class RouteMemo {
@@ -36,9 +37,13 @@ export class ChaveiroTracker {
   carHeading=0;
   /** How far the car rolled along its heading (units, negative backwards): its wheels turn by it. */
   carRoll=0;
-  /** Card inimigos-querem-o-uno: when the car last took a hit (renderer clock) and the hits' numbers in the air. */
+  /**
+   * Card inimigos-querem-o-uno: when the car last took a hit (renderer clock) and the hits' numbers in the air. Card
+   * missao-proteger-uno-tempo: with them, the seconds those hits added to the clock (its ETA rose over its fall).
+   */
   lastHitAt?:number;
-  readonly pops:{amount:number;at:number}[]=[];
+  readonly pops:{amount:number;at:number;seconds:number}[]=[];
+  private eta?:{etaS:number;tick:number};
   private carAt?:{x:number;y:number};
   private hits?:number;
   private parts=0;
@@ -49,14 +54,16 @@ export class ChaveiroTracker {
   push(next:ChaveiroView|undefined,tick:number,now:number,reduced:boolean){
     this.tick=tick;
     const view=this.memo.fill(next);
-    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=this.carAt=this.hits=this.lastHitAt=undefined;this.pops.length=0;this.heading=this.carHeading=this.carRoll=0;return;}
+    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=this.carAt=this.hits=this.lastHitAt=this.eta=undefined;this.pops.length=0;this.heading=this.carHeading=this.carRoll=0;return;}
     // The hits it took since the last view (none on the first view: its old damage is no news).
     const took=this.hits===undefined?0:view.car.hits-this.hits;
     this.hits=view.car.hits;
+    const eta=this.eta;this.eta={etaS:view.etaS,tick};
     if(took>0&&!view.ended){
+      const seconds=eta&&tick>=eta.tick?Math.max(0,Math.round(view.etaS-(eta.etaS-(tick-eta.tick)/SIM_HZ))):0;
       const last=this.pops[this.pops.length-1];
-      if(last&&now-last.at<HIT_MERGE_MS)last.amount+=took;
-      else{this.pops.push({amount:took,at:now});if(this.pops.length>HIT_POPS_MAX)this.pops.shift();}
+      if(last&&now-last.at<HIT_MERGE_MS){last.amount+=took;last.seconds+=seconds;}
+      else{this.pops.push({amount:took,at:now,seconds});if(this.pops.length>HIT_POPS_MAX)this.pops.shift();}
       this.lastHitAt=now;
     }
     // Parts that fell since the last view fall now (the first view shows the fallen ones already down).

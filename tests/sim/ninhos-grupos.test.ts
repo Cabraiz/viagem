@@ -115,7 +115,7 @@ test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map
 }));
 
 test('the time to explore (inicio-no-uno-caixas-120): a wave over (no besieger up) opens NEST_PACE.explore s, at least waveMin s after it left, and the next wave leaves at its end; a wave never holds it past waveCap',()=>rawPace(()=>{
-  assert.deepEqual([NEST_PACE.explore,NEST_PACE.waveMin,NEST_PACE.waveCap],[120,20,150]);
+  assert.deepEqual([NEST_PACE.explore,NEST_PACE.waveMin,NEST_PACE.waveCap],[30,20,150]);
   const r=rig();
   r.world.step();
   const first=r.nests.state.nextWave!;
@@ -178,6 +178,27 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
   const fits=Array.from({length:hi-lo+1},(_,i)=>lo+i).some(b=>log.outside===Math.max(Math.ceil(b*NEST_PACE.floor),b-4));
   assert.ok(fits,`outside ${log.outside} of ${lo}-${hi}, 4 past the quota`);
 }));
+
+test('a trickle under 1 a second adds up: one with the wave, then one every 1/trickle s (solo-uno-aguenta-1a-onda); NEST_PACE 1p trickles under 1, never 0 while warming',()=>{
+  const saved=structuredClone(NEST_PACE);
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,warmEase:0,mapShare:[.1,.1],trickle:[.5,.5]});
+  try{
+    const r=rig();
+    r.world.step();
+    const due=r.nests.state.nextWave!;
+    until(r,due+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1],'1 with the wave');
+    until(r,due+ticks(1)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1],'nobody a second later');
+    until(r,due+ticks(2)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1],'the next after 2 s');
+    until(r,due+ticks(8)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1,1,1,1],'all 5, one every 2 s');
+    assert.equal(r.nests.state.drip,undefined);
+  }finally{Object.assign(NEST_PACE,saved);}
+  assert.ok(pace(NEST_PACE.trickle,1)<1,'1p under 1 a second');
+  assert.ok(pace(NEST_PACE.trickle,1)*NEST_PACE.warmTrickle>0,'1p warming still trickles');
+});
 
 test('the map share trickles out (NEST_PACE.trickle a second, the first batch with the wave), and the wave bodies take the march, hp and damage of NEST_PACE once',()=>{
   const saved=structuredClone(NEST_PACE);
@@ -343,6 +364,8 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   const spot=a.sys.nests!.bossSpot()!;
   assert.ok(spot);
   const m=a.sys.chaveiro!.state.moto;m.stop=a.sys.chaveiro!.stops.length;m.task='anda';m.s=a.sys.chaveiro!.route.length-.01;
+  // missao-proteger-uno-tempo: the clock ran out too (mode 'ninhos' waits on it before the last stretch).
+  a.sys.chaveiro!.state.wait=0;
   stepRun(a,3);
   const boss=[...a.world.enemies.values()].find(e=>e.boss);
   assert.ok(boss,'called');
@@ -351,7 +374,7 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   assert.equal(off.sys.nests,undefined);assert.equal('ninhos' in off.sys.state(),false);
 });
 
-test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
+test('the minuto de Minerva: for 30 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
   const saved=NEST_PACE.minerva;NEST_PACE.minerva=MINERVA_S;
   try{
     const a=assembled(11,new Map());
@@ -359,8 +382,8 @@ test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and 
     addPlayer(a.world,'far',{x:car.x+1.5,y:car.y});
     stepRun(a);
     const nests=a.sys.nests!,sono=a.sys.sono()!,start=nests.state.startTick!;
-    assert.equal(MINERVA_S,120,'inicio-no-uno-caixas-120');
-    assert.equal(nests.state.minervaUntil,start+ticks(120));
+    assert.equal(MINERVA_S,30,'missao-proteger-uno-tempo');
+    assert.equal(nests.state.minervaUntil,start+ticks(30));
     assert.ok(nests.state.nextWave!>=nests.state.minervaUntil!+ticks(NEST_PACE.first[0]),'the first wave counts from its end');
     // A hero 3 u from a sleeper (inside WAKE_SIGHT, outside MINERVA_REACH): it sleeps on.
     const loose=sono.bodies.find(b=>b.nest===undefined&&b.band!==undefined)!;

@@ -47,6 +47,9 @@
   unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
 @font-face{font-family:'Courier Prime';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/courier-prime-700.woff2) format('woff2');
   unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+/* Os títulos da carta de tarô do celular (perfil-vira-livro-de-contos, como 'THE SUN.' das refs Rider-Waite do usuário):
+   Cinzel 700, SIL OFL 1.1 (public/fonts/OFL-cinzel.txt), uso comercial livre. Só baixa quando a carta abre. */
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/cinzel-700.woff2) format('woff2')}
 
 :root,::backdrop{
   /* ::backdrop does not inherit custom properties before Safari 17.4 / Chrome 122, so the dialog veil needs its own copy. */
@@ -102,7 +105,7 @@
   /* Perfil do celular em pé (NEW-20261023-ORQ-selecao-mobile-instagram): a tela clara estilo Instagram da referência do
      usuário (folha-8), cores medidas nela. Só ui/insta.css. */
   --insta-fundo:#FBFAF8;--insta-chip:#F0EFED;--insta-linha:#E2DDDA;
-  --insta-texto:#170D36;--insta-cinza:#7E7C87;
+  --insta-texto:#170D36;--insta-cinza:#68666F;
   --insta-roxo:#8623CC;--insta-botao-a:#9440F2;--insta-botao-b:#680DCC;--insta-botao-c:#7A1EDB;--insta-botao-borda:#4F1696;--insta-botao-coroa:#C9A2FF;
   --insta-anel-a:#F2B347;--insta-anel-b:#D45FB0;--insta-anel-c:#9A1DD3;
   /* BUG-20261023-ORQ-instagram-letreiro-do-perfil: os ícones dos chips em cinza-escuro como na referência; o coração
@@ -114,9 +117,14 @@
      hashtag) e os stickers dele (enquete, caixa de pergunta, coração). Só ui/insta.css .insta-st-*. */
   --insta-st-branco:#FFFFFF;--insta-st-preto:#000000;--insta-st-azul:#3897F0;--insta-st-verde:#70C050;
   --insta-st-amarelo:#FDCB5C;--insta-st-laranja:#FD8D32;--insta-st-vermelho:#ED4956;--insta-st-rosa:#D10869;--insta-st-roxo:#A307BA;
-  --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#8E8E8E;
+  --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#666666;
+  /* auditoria-legibilidade L8: o balão de curtidas um tom mais escuro que o vermelho do texto, branco nele ≥ 4.5. */
+  --insta-st-curtidas:#D42F3D;
   --insta-st-sombra-texto:0 1px 6px color-mix(in srgb,var(--insta-st-preto) 55%,transparent);
   --insta-st-sombra-sticker:0 2px 10px color-mix(in srgb,var(--insta-st-preto) 25%,transparent);
+  /* A carta de tarô do celular (perfil-vira-livro-de-contos): preto, ouro e tinta das refs Rider-Waite. Só hud/perfis.css. */
+  --tarot-preto:#0B0B0A;--tarot-ouro:#F1CF6A;--tarot-tinta:#141414;--tarot-janela:#1D2238;
+  --tarot-sombra:0 6px 18px color-mix(in srgb,var(--tarot-preto) 45%,transparent);
   /* Cartão de app de namoro do inimigo novo (NEW-20261024-ORQ-nome-inimigo-rede-social, mockup 8 que o usuário
      escolheu): papel creme, balão branco morno, tinta quase preta, o "MATCH" verde. Só hud/perfis.css .rh-perfil*.
      O contorno e a sombra macia do balão são da referência (o usuário mandou copiar o balão igual). */
@@ -140,6 +148,7 @@
   --f-insta-moderna:'Archivo Expanded',var(--f-insta-classica);
   --f-insta-forte:'Bebas Neue',var(--f-cartaz);
   --f-insta-maquina:'Courier Prime',var(--f-sistema);
+  --f-tarot:'Cinzel',Georgia,serif; /* só a carta de tarô (hud/perfis.css) */
   --f-perfil:'Inter',var(--f-sistema); /* só o cartão de app de namoro (hud/perfis.css) */
   --f-pixel:'Pixelify Sans',var(--f-cartaz); /* só o popup de level-up px39 (hud/offer-centro.css); sem a fonte, a Londrina */
   /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
@@ -163,6 +172,7 @@
   --r-ficha:6px;     /* contador sobre o mapa (nunca pílula no HUD) */
   --r-balao:10px;    /* falas e emotes */
   --r-janela:12px;   /* sistema persistente */
+  --r-carta:4cqw;    /* só a carta de tarô, cantos de carta de baralho */
   --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
   --r-pilula:999px;  /* só o menu do estádio (menu-estadio): classe, nome e "Selecionar", como na referência aprovada */
   --r-insta:16px;    /* só o SELECIONAR do perfil no celular em pé (selecao-mobile-instagram), como na referência */

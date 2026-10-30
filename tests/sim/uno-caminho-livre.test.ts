@@ -107,7 +107,8 @@ const laid=new Map(SEEDS.map(s=>[s,matches.get(s)!.tralha]));
 
 test('the map\'s tralha leans on the walls and leaves the Uno room to drive past, every square of every match',()=>{
   for(const [seed,pieces] of laid){
-    assert.ok(pieces.length>=8,`seed ${seed}: ${pieces.length} squares`);
+    // NEW-20261029-ORQ-sem-tralha-nas-entradas: off the entrances, 4–8 squares a match (was ≥ 8).
+    assert.ok(pieces.length>=3,`seed ${seed}: ${pieces.length} squares`);
     pieces.forEach((p,i)=>{
       assert.ok(againstWall(city,pieceRectOf(p)),`seed ${seed}: ${p.id} in the middle of the street`);
       const others=pieces.filter((_,j)=>j!==i).flatMap(discsOf);

@@ -14,7 +14,7 @@ import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
-import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {SOLO_SECOND_CHANCES,createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
@@ -33,9 +33,9 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_CLOCK,CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
 import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
@@ -142,6 +142,8 @@ export interface RunSystemsState {
   director:DirectorState;progression:ProgressionState;boss:BossState;enemyAi:EnemyAiState;
   /** Completed revives per rescuer (ReviveSystem.revives), as entries. */
   revives:[string,number][];
+  /** Solo second chances left (ReviveSystem.soloChances), only once one was spent (absent otherwise, so no hash moves). */
+  soloChances?:number;
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
@@ -453,10 +455,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
-      // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
-      ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
-      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
-      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
+      // missao-proteger-uno-tempo: in mode 'ninhos' the run is the clock (5:00, each hit on the Uno adds time), then he
+      // rides the last stretch and unlocks; no stops, no ride by room, no nests' ramp to wait for.
+      ...(nestMode?{clock:CHAVEIRO_CLOCK}:{}),
       // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
       ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
@@ -544,7 +545,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // Veículos: in both city modes too (a ride ends on moving the car).
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
-  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives,soloChances:cp.soloChances}:{})});
   // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
   const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
     base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
@@ -632,7 +633,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       place:(id,slot,order,requestId)=>{const p=world.players.get(id);return p?placeKit(world,p,slot,order,inventoryHooks,requestId):{ok:false,reason:'player'};},
       placeNear:(id,slot)=>{const p=world.players.get(id);return p?placeKitNear(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
-    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
+    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],...(revive.soloChances!==SOLO_SECOND_CHANCES?{soloChances:revive.soloChances}:{}),stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(chefao?{chefao:chefao.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };

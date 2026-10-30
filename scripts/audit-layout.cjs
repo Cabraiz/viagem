@@ -284,12 +284,12 @@ const SCENES=[
     await run('hud setas na borda, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13,longNames);
     for(const [name,state] of [['combate','wave'],['caído','downed']])
       await run(`hud ${name} no PC (coluna), 6p, nomes longos`,`/?sandbox=hud&players=6&state=${state}&frozen=1`,'.rh',13,()=>longNames(true));
-    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/rules/classes.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
+    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {heroiPadrao}=await import('/src/rules/personagens-liberados.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(heroiPadrao(),'Maria Aparecida');});await page.waitForTimeout(900);});
     // The real SkillButton (sticker + "Habilidade", E7-skill-hud-wiring), ready and cooling with the widest note.
     for(const [label,setup] of [['botão de habilidade','ready'],['botão de habilidade, recarga','cooling'],['botão de habilidade, nota','note']])
-      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/client/coop.css');const {SkillButton}=await import('/src/client/hud/skill.ts');
+      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/client/coop.css');const {SkillButton}=await import('/src/client/hud/skill.ts');const {PERSONAGEM_PADRAO}=await import('/src/rules/personagens-liberados.ts');
         const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack"></button>';document.body.append(d);
-        const b=new SkillButton(d.querySelector('#coop-attack'),'cidadao-comum');
+        const b=new SkillButton(d.querySelector('#coop-attack'),PERSONAGEM_PADRAO);
         if(state==='cooling')b.update({skillTick:1,skillReadyTick:300},100,0);
         if(state==='note'){b.update({skillTick:1,skillReadyTick:300},100,0);b.tap(()=>1,0);}},setup);});
     await ctx.close();

@@ -6,6 +6,8 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {Nevoa} from './render/nevoa.ts';
+import {exposureGameConfig} from './render/exposure-pipeline.ts';
 import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
 import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
@@ -524,7 +526,10 @@ export class IslandScene extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
     // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
-    this.vignette=new Vignette(this);this.applyGrade();
+    this.vignette=new Vignette(this);
+    // jogo-mais-escuro: the fog over the world, faded around the hero (`?nevoa=0..3`).
+    this.nevoa=new Nevoa(this,{reduced:this.reduced,hero:()=>this.actor&&{x:this.actor.x,y:this.actor.y-this.actor.displayHeight*.4}});
+    this.applyGrade();
     // The hero's ring and stand-in follow its drawn size (HERO_DRAW_SCALE, render/draw-scale.ts).
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
@@ -841,7 +846,7 @@ export class IslandScene extends Phaser.Scene {
   private updatePip(time:number){
     const hit=this.chaveiro?.hitState();
     if(!hit&&!this.pip)return;
-    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return [...v?[v]:[],...this.fearDark?.objects??[]];}});
+    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return [...v?[v]:[],...this.nevoa?.objects??[],...this.fearDark?.objects??[]];}});
     const live=!!hit&&!hit.ended,cam=this.cameras.main,carPx=hit?this.project(hit.car):undefined;
     const me=this.watchPoint??this.position,distance=hit?Math.hypot(hit.car.x-me.x,hit.car.y-me.y):Infinity;
     const carOnScreen=!!carPx&&cam.worldView.contains(carPx.x,carPx.y);
@@ -1108,6 +1113,7 @@ export class IslandScene extends Phaser.Scene {
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
+  private nevoa?:Nevoa;
   /** The chefão's arena in the dark (boss-fim-onda-1, render/arena-rules.ts): built on the first chefão. */
   private readonly arenaClock=new ArenaClock();
   /** Who the server keeps untouchable (getting up, the start grace): their sprite blinks (you-rules.ts SafeClock). */
@@ -1195,7 +1201,7 @@ export class IslandScene extends Phaser.Scene {
     this.vignette?.cover(dark.covering);
   }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
-  private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
+  private applyGrade(){const world=isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha';this.vignette?.set(world,this.economy);this.nevoa?.set(world,this.economy);}
   private readonly catchUp=new CatchUp();
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
@@ -1238,6 +1244,7 @@ export class IslandScene extends Phaser.Scene {
     if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)if(!chefaoDeferred(id))queueEnemyArt(this,id);}
     if(this.elenco)this.stepChefaoArt();
     this.vignette?.update();
+    this.nevoa?.update(delta);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.artMarks?.begin();
@@ -1376,7 +1383,7 @@ export class IslandScene extends Phaser.Scene {
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
     if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position,
-      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';}});
+      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},seats:()=>this.hooks.net?.players.size??1});
     this.banks?.push(view.banks,view.tick,view.events);
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
@@ -2060,7 +2067,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
-    antialias:true,transparent:false,autoFocus:false,
+    antialias:true,transparent:false,autoFocus:false,...exposureGameConfig(),
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
   // Phone turned: Phaser 3.90 refreshes on screen.orientation 'change' with the old parent size, then reads the new one
   // inside that refresh, so its own size check never sees a change and the canvas stays stretched (22/10, espectador

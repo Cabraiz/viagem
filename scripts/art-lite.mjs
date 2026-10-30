@@ -33,6 +33,8 @@
  * file as `pcCell` (manifest and index). Only the files a match downloads (not the rest rows), and only when the phone
  * copy is smaller: else that copy is the full sheet already.
  *
+ * Hero levels (family `sprites-nivel`, NEW-20261021-E6-q3-niveis-qualidade): see LEVEL_CELL below.
+ *
  * Quality, measured per file and kept in scripts/art-lite.json:
  *   - `psnr`: the whole sheet, premultiplied colour and alpha (what the GPU blends), at full size (a smaller enemy
  *     copy: against the source scaled the same way, so it measures the encoding);
@@ -89,7 +91,7 @@ export const CITY_LITE_MIN_BYTES=64*1024;
 const CITY_MIN_PSNR=36;
 /** The art groups the city draws from (art-plan.ts), by their GROUPS key. */
 const CITY_GROUPS=['predios','base','props','cenario'];
-const KINDS=['trees','sprites','enemies','enemies-pc','menu','towers','city'];
+const KINDS=['trees','sprites','sprites-nivel','enemies','enemies-pc','menu','towers','city'];
 const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 /**
  * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base, the
@@ -118,6 +120,41 @@ const MENU_LITE=/^(danca\/|insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/;
  */
 const MENU_SIZE=[[/^letreiro\//,{width:960,quality:90}],[/^fundo-[^/]+\.webp$/,{width:1920,quality:80}]];
 export const menuLiteSize=name=>MENU_SIZE.find(([re])=>re.test(name))?.[1];
+/**
+ * Quality levels (NEW-20261021-E6-q3-niveis-qualidade, fatia 2; family `sprites-nivel`): the phone's Normal and Leve draw
+ * the heroes from smaller copies of public/art/sprites (src/client/sprites/movement128.ts leveled, sprite-sheets.ts). Every
+ * 96 px clip gets a LEVEL_CELL copy: R06 (16×8, 128 frames) at sprites-normal/ (every 2nd frame, 8×8) and sprites-leve/
+ * (every 4th, 8×4); the others (M16, idle8, the dance loop) at sprites-64/, same grid. The 192 px dir4/dir4c pages get a
+ * PHONE_DIR4_CELL copy at sprites-celular/. Each copy is in scripts/art-lite.json with its `liteCell` and `frames`.
+ */
+export const LEVEL_CELL=64,PHONE_DIR4_CELL=128;
+const LEVEL_DIRS=['sprites-64','sprites-normal','sprites-leve','sprites-celular'];
+const HEROES=join(ROOT,'public/art/sprites/manifest.json');
+/** The level copies of one hero file (its manifest entry): where each goes, its cell and which source frames it keeps. */
+function levelJobs(f){
+  const p=f.pages?.[0];
+  if(f.pages?.length!==1||!p||p.file!==f.file||p.firstFrame!==0||!Array.isArray(f.cell))return [];
+  if(f.cell[0]===96&&f.cell[1]===96){
+    if(p.columns===16&&p.rows===8&&p.frameCount===128)return [
+      {dir:'sprites-normal',cell:f.cell,lite:[LEVEL_CELL,LEVEL_CELL],columns:16,stride:2,frames:64,outColumns:8},
+      {dir:'sprites-leve',cell:f.cell,lite:[LEVEL_CELL,LEVEL_CELL],columns:16,stride:4,frames:32,outColumns:8}];
+    return [{dir:'sprites-64',cell:f.cell,lite:[LEVEL_CELL,LEVEL_CELL],columns:p.columns,stride:1,frames:p.columns*p.rows,outColumns:p.columns}];
+  }
+  if(/\.dir4c?\.webp$/.test(f.file)&&f.cell[0]===192&&f.cell[1]===192)
+    return [{dir:'sprites-celular',cell:f.cell,lite:[PHONE_DIR4_CELL,PHONE_DIR4_CELL],columns:p.columns,stride:1,frames:p.columns*p.rows,outColumns:p.columns}];
+  return [];
+}
+/** The kept frames (every `stride`th), each cell resized on its own with a transparent border (as shrink). */
+async function levelSheet({data,width,height},{cell:[cw,ch],lite:[lw,lh],columns,stride,frames,outColumns}){
+  const rows=Math.ceil(frames/outColumns),W=outColumns*lw,out=Buffer.alloc(W*rows*lh*4),src=sharp(data,{raw:{width,height,channels:4}});
+  for(let i=0;i<frames;i++){
+    const g=i*stride,cell=await src.clone().extract({left:(g%columns)*cw,top:Math.floor(g/columns)*ch,width:cw,height:ch}).resize(lw,lh,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer();
+    for(let y=0;y<lh;y++)for(let x=0;x<lw;x++)if(x===0||y===0||x===lw-1||y===lh-1)cell[(y*lw+x)*4+3]=0;
+    const x0=(i%outColumns)*lw,y0=Math.floor(i/outColumns)*lh;
+    for(let y=0;y<lh;y++)cell.copy(out,((y0+y)*W+x0)*4,y*lw*4,(y+1)*lw*4);
+  }
+  return {data:out,width:W,height:rows*lh};
+}
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -164,7 +201,7 @@ async function shrink({data,width,height},[cw,ch],[lw,lh]){
 
 const options=process.argv.slice(2),args=new Set(options),kindArg=options.indexOf('--kinds');
 const kinds=kindArg<0?KINDS:[...new Set((options[kindArg+1]??'').split(',').map(k=>k.trim()).filter(Boolean))];
-if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,enemies-pc,menu,towers,city.');
+if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,sprites-nivel,enemies,enemies-pc,menu,towers,city.');
 const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{webp:WEBP,files:{}};
 manifest.enemyFigures??={};
 
@@ -250,7 +287,7 @@ for(const kind of kinds){
   if(!existsSync(dir))continue;
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
-  if(kind==='towers'||kind==='city')continue; // joined per file / smaller per cell below
+  if(kind==='towers'||kind==='city'||kind==='sprites-nivel')continue; // joined per file / smaller per cell below
   // A source that left (a hero moved to legado/, a sheet reimported under a new hash) takes its entry with it.
   const present=new Set(names);
   if(!args.has('--check'))for(const key of Object.keys(manifest.files))
@@ -269,6 +306,31 @@ for(const kind of kinds){
     const e=manifest.files[key];
     console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,liteCell?`cell ${liteCell.join('×')}`:'',`psnr ${e.psnr} dB, shown ${e.shownPsnr} dB`);
     save();
+  }
+}
+
+// ---------- sprites-nivel: the hero sheets of the phone's levels (Normal / Leve), smaller cells, fewer R06 frames ----------
+if(kinds.includes('sprites-nivel')){
+  const heroes=existsSync(HEROES)?JSON.parse(readFileSync(HEROES,'utf8')):{pieces:{}},wanted=new Set();
+  for(const piece of Object.values(heroes.pieces??{}))for(const f of Object.values(piece.files)){
+    if(!f?.file||UNUSED.test(f.file)||!existsSync(join(ROOT,'public/art/sprites',f.file)))continue;
+    for(const job of levelJobs(f)){
+      const key=`${job.dir}/${f.file}`,out=join(ROOT,'public/art/lite',key),entry=manifest.files[key];wanted.add(key);
+      const source=readFileSync(join(ROOT,'public/art/sprites',f.file));
+      if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(job.lite)&&entry.frames===job.frames&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+      stale.push(key);
+      if(args.has('--check'))continue;
+      const s=await levelSheet(await decode(join(ROOT,'public/art/sprites',f.file)),job);
+      const lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer();
+      mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
+      const shown=psnr(s.data,await rgba(lite)); // the copy is at the size a phone draws it already
+      manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,liteCell:job.lite,frames:job.frames,psnr:shown,shownPsnr:shown};
+      console.error(key,`${Math.round(source.length/1024)} → ${Math.round(lite.length/1024)} KB`,`cell ${job.lite.join('×')}, ${job.frames} frames`,`psnr ${shown} dB`);
+      save();
+    }
+  }
+  for(const key of Object.keys(manifest.files))if(LEVEL_DIRS.some(d=>key.startsWith(`${d}/`))&&!wanted.has(key)){
+    stale.push(key);if(!args.has('--check')){delete manifest.files[key];console.error(key,'dropped (no source)');save();}
   }
 }
 

@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,CITY_NEST_POOL,citySafePlaces,decodeCityAsset,type Point} from '../../src/maps/index.ts';
+import {cityEntradas,faixaCelulas} from '../../src/maps/city/entradas.ts';
 import {PLAZA_DROP,SOURCE_COMMIT,compactBase,compactedAsset,sourceAsset,sourceAvailable} from '../../scripts/compactar-cidade.ts';
+import {BOCA_PEDACO} from '../../scripts/becos-cidade.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -38,13 +40,19 @@ test('every base is still there: every block of the 1.7× city (but the plaza fo
   const src=await sourceAsset(),U=src.unitsPerCell;
   assert.equal(asset.unitsPerCell,U,'the cell keeps its size');
   assert.equal(m,Math.round(src.cells.w/1.75));
-  const ids=new Set(asset.blocks.map(b=>b.id)),baseIds=new Set((await compactBase()).data.blocks.map(b=>b.id));
+  const ids=new Set(asset.blocks.map(b=>b.id)),base=new Map((await compactBase()).data.blocks.map(b=>[b.id,b]));
+  // bocas-chao-aberto (scripts/becos-cidade.ts abrirChaoDasBocas): a piece of rock or wall of up to BOCA_PEDACO cells in an
+  // entrance's strip goes whole, on purpose (tests/maps/bocas-chao-aberto.test.ts).
+  const strips=new Set(cityEntradas(asset,true).flatMap(e=>faixaCelulas(asset,e)));
+  const inMouth=(b:{rects:readonly (readonly number[])[]})=>b.rects.reduce((n,r)=>n+r[2]*r[3],0)<=BOCA_PEDACO*U*U&&b.rects.some(([x,y,w,h])=>{
+    for(let cy=Math.round(y/U);cy<Math.round((y+h)/U);cy++)for(let cx=Math.round(x/U);cx<Math.round((x+w)/U);cx++)if(strips.has(cx+cy*m))return true;return false;});
   let lost=0;
   for(const b of src.blocks){
     if(PLAZA_DROP.includes(b.id)||ids.has(b.id))continue;
     // mapa-conexoes-sem-beco (scripts/becos-cidade.ts): the heaps of rubble in the Uno's way are taken off after the
     // compaction, on purpose (tests/maps/mapa-becos.test.ts); here, the compaction's own blocks.
-    if(b.kind==='rubble'&&baseIds.has(b.id))continue;
+    const was=base.get(b.id);
+    if(was&&(b.kind==='rubble'||inMouth(was)))continue;
     // Only slivers may go: a block of a few cells whose ground a door needed.
     const area=b.rects.reduce((sum,r)=>sum+r[2]*r[3],0)/U/U;
     assert.ok(area<=6,`${b.kind} ${b.id} (${area.toFixed(1)} cells) kept`);lost++;

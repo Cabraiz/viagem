@@ -221,8 +221,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 // Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 // Re-recorded for modificadores-so-elenco-ativo (29/10): the 7 modifiers naming hidden enemies left the draw, so seeds draw other themes.
+// Re-recorded for bocas-chao-aberto (30/10): map v10 (on cercas-nordeste), the walls and rock behind the mouths cut, so routes and spawn spots move.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'7b836303eaadc2b2','tutorial seed 8 r4':'9a17088db044d4cc','plain seed 21 r10':'38432c5aef56c1a7',
+  'tutorial seed 3 r4':'04489244b1873351','tutorial seed 8 r4':'541b6625efebbf2f','plain seed 21 r10':'ef72d953c3d559cc',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

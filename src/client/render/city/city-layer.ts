@@ -497,6 +497,12 @@ export class CityLayer {
     for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
     return missingByDistance(chunks,camera,key=>this.scene.textures.exists(key));
   }
+  /** Every key of the chunks' art, loaded or not, with the same distance (Q3 fatia 3: the art stream's LRU, art-stream.ts). */
+  artDistance(camera:Rect,view:number):{key:string;px:number}[]{
+    const v=normalizeView(view),chunks:{bounds:Rect;keys:readonly string[]}[]=[];
+    for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
+    return missingByDistance(chunks,camera,()=>false);
+  }
   /** A texture of the chunks' art arrived: the live chunks drawing it are rebuilt with it once they are off screen. */
   artArrived(key:string){
     for(const [chunkKey,keys] of this.chunkArt())if(this.live.has(chunkKey)&&keys.includes(key))this.lateArt.add(chunkKey);

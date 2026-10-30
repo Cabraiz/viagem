@@ -1104,6 +1104,7 @@ export class IslandScene extends Phaser.Scene {
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
+    this.horde?.setEnemyCap(profile.enemyCap); // Q3 fatia 4 (E2): teto de bichos desenhados por nível (150/300/3000)
   }
   /**
    * Phaser's frame gate (the game starts with fps.limit 60), changed live: the economy profile, or one frame every

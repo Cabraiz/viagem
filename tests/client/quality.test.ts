@@ -76,9 +76,9 @@ test('3. the watch: 10 s of combat at 25 fps steps one level down; a 30 Hz cap, 
 });
 
 test('what each level turns on: Leve = the old economy + a still scenery; Normal and Alta the full game',()=>{
-  assert.deepEqual(qualityProfile('leve'),{fps:30,effects:'reduced',economy:true,still:true});
-  assert.deepEqual(qualityProfile('normal'),{fps:60,effects:'full',economy:false,still:false});
-  assert.deepEqual(qualityProfile('alta'),{fps:60,effects:'full',economy:false,still:false});
+  assert.deepEqual(qualityProfile('leve'),{fps:30,effects:'reduced',economy:true,still:true,enemyCap:150});
+  assert.deepEqual(qualityProfile('normal'),{fps:60,effects:'full',economy:false,still:false,enemyCap:300});
+  assert.deepEqual(qualityProfile('alta'),{fps:60,effects:'full',economy:false,still:false,enemyCap:3000});
   assert.equal(qualityFromUrl('?qualidade=leve'),'leve');assert.equal(qualityFromUrl('?x=1&qualidade=alta'),'alta');
   assert.equal(qualityFromUrl('?qualidade=ultra'),undefined);assert.equal(qualityFromUrl(''),undefined);
 });

@@ -22,6 +22,7 @@
  * `ritmo=antes` (card inimigos-animacao-2x-lenta): the enemies' loops and walk cadence of before, 2x faster (ENEMY_PACE).
  * `golpe=antes` (card inimigos-animacao-auditoria): the swing and the walking of before: each contact hit swings once
  * at the sheet's pace (idle in between) and a jiggle against the hero walks in place (ENEMY_SWING, ENEMY_WALK.leash).
+ * teto=N: the quality level's cap of critters drawn (Q3 slice 4: 150 Leve, 300 Normal, 3000 Alta), nearest first.
  * barras=1 (with elenco=1): every critter of the line-up takes a hit every 5 ticks, so its health bar shows.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
@@ -360,7 +361,7 @@ class FakeHorde {
   view():RunView{
     const events=this.events;this.events=[];
     return {tick:this.tick,team:{xp:0,level:1,nextXp:5},enemies:this.enemies,pickups:this.pickups,projectiles:this.projectiles,telegraphs:this.telegraphs,structures:[],
-      players:CERCO.length?[{id:this.players[0].id,name:'',classId:this.players[0].classId,hp:70,maxHp:100,online:true,spectator:false,weapons:[],passives:[]} as unknown as RunView['players'][number]]:[],offers:[],events};
+      players:CERCO.length||TETO?[{id:this.players[0].id,name:'',classId:this.players[0].classId,hp:70,maxHp:100,online:true,spectator:false,weapons:[],passives:[]} as unknown as RunView['players'][number]]:[],offers:[],events};
   }
 }
 
@@ -407,7 +408,9 @@ class HordeSandboxScene extends Phaser.Scene {
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
       cull:new URLSearchParams(location.search).get('cull')!=='0', // `cull=0`: the A/B of the off-camera culling
       // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
-      locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
+      locate:lineup||TETO?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
+    // `teto=150|300|3000` (Q3 slice 4): the level's cap of critters drawn, the nearest to the first player (quality.ts enemyCap).
+    if(TETO)this.layers.setEnemyCap(TETO);
     // `apagao=1` (art-d item 5): the critters show their blackout eyes (imported `olhos-escuro` when it is in); the dark
     // rectangle itself belongs to the zueira layer of the game, not drawn here.
     if(new URLSearchParams(location.search).get('apagao')==='1')this.layers.setBlackout(.8);
@@ -466,6 +469,7 @@ class HordeSandboxScene extends Phaser.Scene {
 }
 
 const BARRAS=new URLSearchParams(location.search).get('barras')==='1';
+const TETO=Number(new URLSearchParams(location.search).get('teto'))||0;
 declare global {interface Window {__horde?:Record<string,unknown>}}
 
 export async function openHordeSandbox(){

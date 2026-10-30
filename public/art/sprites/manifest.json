@@ -2875,6 +2875,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "aposentado.shoved16-n.d0208bd9e23b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 11,
+            "top": 23,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-n.d0208bd9e23b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db"
+            }
+          ],
+          "sha256": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db"
+        },
+        "shoved16-NW": {
+          "file": "aposentado.shoved16-nw.d68e56b03ec1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 13,
+            "top": 22,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-nw.d68e56b03ec1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d"
+            }
+          ],
+          "sha256": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d"
+        },
+        "shoved16-S": {
+          "file": "aposentado.shoved16-s.ea95dee4ead5.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 24,
+            "right": 79,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-s.ea95dee4ead5.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c"
+            }
+          ],
+          "sha256": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c"
+        },
+        "shoved16-SE": {
+          "file": "aposentado.shoved16-se.cd2a925a664b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 14,
+            "top": 23,
+            "right": 86,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-se.cd2a925a664b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1"
+            }
+          ],
+          "sha256": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1"
+        },
+        "shoved16-W": {
+          "file": "aposentado.shoved16-w.0bea132d3f82.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 21,
+            "top": 20,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-w.0bea132d3f82.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab"
+            }
+          ],
+          "sha256": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab"
+        },
         "walk16-N": {
           "file": "aposentado.walk16-n.b25e20405860.webp",
           "cell": [
@@ -3236,7 +3416,7 @@
           "sha256": "c0cd2502af22e1f8a509b3944f035b46eafcad22db392900f51f08740f0bfef4"
         }
       },
-      "sha256": "30e28cdb86a55a0d51cd01b287e131f361406a6e95e3b4ffa1caa048c593af6e"
+      "sha256": "da7de53207d04d1ba3d645c5a5e9e9910cc1228e03f3ef7651096634d7349552"
     },
     "astrologa": {
       "kind": "dir8",
@@ -6561,6 +6741,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "clt-cansado.shoved16-n.5b2375e0892b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 23,
+            "top": 26,
+            "right": 85,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-n.5b2375e0892b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad"
+            }
+          ],
+          "sha256": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad"
+        },
+        "shoved16-NW": {
+          "file": "clt-cansado.shoved16-nw.5dbfbb4936c2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 23,
+            "right": 80,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-nw.5dbfbb4936c2.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363"
+            }
+          ],
+          "sha256": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363"
+        },
+        "shoved16-S": {
+          "file": "clt-cansado.shoved16-s.bfff487e1e8f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 12,
+            "top": 30,
+            "right": 70,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-s.bfff487e1e8f.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76"
+            }
+          ],
+          "sha256": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76"
+        },
+        "shoved16-SE": {
+          "file": "clt-cansado.shoved16-se.2df34dae1db1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 28,
+            "right": 80,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-se.2df34dae1db1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631"
+            }
+          ],
+          "sha256": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631"
+        },
+        "shoved16-W": {
+          "file": "clt-cansado.shoved16-w.03f0ea4a1152.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 24,
+            "top": 30,
+            "right": 76,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.shoved16-w.03f0ea4a1152.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5"
+            }
+          ],
+          "sha256": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5"
+        },
         "walk128-E": {
           "file": "clt-cansado.walk128-e.9af9af8efb4f.webp",
           "cell": [
@@ -7022,7 +7382,7 @@
           "sha256": "f2c9a88bb0874c4330ba27e2d182dc1a8bd3fce2408d49936d3b063c97b7355f"
         }
       },
-      "sha256": "f0a5f8ddb35ef110e40f3e34617a99d4f8e20ab3dc3966c000a54f3c167b43a9"
+      "sha256": "af385313ac6b47e5d20e9b1740a79af33689ac6ebda1a5c8e440f6be314a790b"
     },
     "coach": {
       "kind": "dir8",
@@ -12777,6 +13137,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "gato-nada-pra-comer.shoved16-n.001ba72bb494.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 29,
+            "right": 78,
+            "bottom": 91
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.shoved16-n.001ba72bb494.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "001ba72bb4940248dc5309761ee421e6b829ff05f854b2851b5df803815be46b"
+            }
+          ],
+          "sha256": "001ba72bb4940248dc5309761ee421e6b829ff05f854b2851b5df803815be46b"
+        },
+        "shoved16-NW": {
+          "file": "gato-nada-pra-comer.shoved16-nw.6249d5a7981f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 27,
+            "right": 78,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.shoved16-nw.6249d5a7981f.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "6249d5a7981f1e4071abfedb6b30df7d8ee9091ac5583ddeca0511a38c305226"
+            }
+          ],
+          "sha256": "6249d5a7981f1e4071abfedb6b30df7d8ee9091ac5583ddeca0511a38c305226"
+        },
+        "shoved16-S": {
+          "file": "gato-nada-pra-comer.shoved16-s.2d180540fb73.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 30,
+            "right": 83,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.shoved16-s.2d180540fb73.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2d180540fb73191fb750c5aba13f329b402692bec360f7833a02ab8e99161fb9"
+            }
+          ],
+          "sha256": "2d180540fb73191fb750c5aba13f329b402692bec360f7833a02ab8e99161fb9"
+        },
+        "shoved16-SE": {
+          "file": "gato-nada-pra-comer.shoved16-se.0e7d04b422b4.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 29,
+            "top": 26,
+            "right": 93,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.shoved16-se.0e7d04b422b4.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0e7d04b422b4a8bf9afde90807caeacf4ef452262dd9a8469e93e0674493f60e"
+            }
+          ],
+          "sha256": "0e7d04b422b4a8bf9afde90807caeacf4ef452262dd9a8469e93e0674493f60e"
+        },
+        "shoved16-W": {
+          "file": "gato-nada-pra-comer.shoved16-w.06de87039cec.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48,
+          "figure": {
+            "left": 22,
+            "top": 29,
+            "right": 81,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.shoved16-w.06de87039cec.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "06de87039cec0da5a4e6dd9f32c74218498a51b43216f9ccc4bb83c72623e14a"
+            }
+          ],
+          "sha256": "06de87039cec0da5a4e6dd9f32c74218498a51b43216f9ccc4bb83c72623e14a"
+        },
         "walk16-N": {
           "file": "gato-nada-pra-comer.walk16-n.17a75a5e2089.webp",
           "cell": [
@@ -13138,7 +13678,7 @@
           "sha256": "a340fd188c368902a83a2c228f7bcb85eabc674d3890b8906955fb9399b90677"
         }
       },
-      "sha256": "2c5af22cc231c4bf706e002210b5589f3ea253ae776301618f000b55df533f06"
+      "sha256": "a2f98ac9a710fea97665ef5686a359de32efd68eeb779927de5fb30d5513ba3f"
     },
     "mae-pet": {
       "kind": "dir8",
@@ -16416,6 +16956,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "maromba.shoved16-n.604215f06847.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 10,
+            "top": 12,
+            "right": 87,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-n.604215f06847.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65"
+            }
+          ],
+          "sha256": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65"
+        },
+        "shoved16-NW": {
+          "file": "maromba.shoved16-nw.126c839f6d44.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 16,
+            "top": 15,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-nw.126c839f6d44.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6"
+            }
+          ],
+          "sha256": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6"
+        },
+        "shoved16-S": {
+          "file": "maromba.shoved16-s.82e4a05f2f10.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 18,
+            "top": 16,
+            "right": 85,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-s.82e4a05f2f10.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a"
+            }
+          ],
+          "sha256": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a"
+        },
+        "shoved16-SE": {
+          "file": "maromba.shoved16-se.3ef8c9b949f2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 22,
+            "top": 15,
+            "right": 87,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-se.3ef8c9b949f2.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e"
+            }
+          ],
+          "sha256": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e"
+        },
+        "shoved16-W": {
+          "file": "maromba.shoved16-w.0e86c7bd2b11.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 9,
+            "top": 19,
+            "right": 83,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-w.0e86c7bd2b11.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3"
+            }
+          ],
+          "sha256": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3"
+        },
         "walk128-E": {
           "file": "maromba.walk128-e.daed1993b619.webp",
           "cell": [
@@ -17057,7 +17777,7 @@
           "sha256": "65ff30c99f533dd5c9d641ea5e1f6ed0f9d68172f93d8c2e9d87203d6a13c068"
         }
       },
-      "sha256": "d4975d04a8ff8357f98f4a43336a1af937dfd4e1c519a996c894904ee61e0002"
+      "sha256": "de5c7a257d97e619e77e007245584727a7ea1f223baf4d1035d68f39a6fb6105"
     },
     "mendigo": {
       "kind": "dir8",
@@ -24300,6 +25020,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "vendedor-praia.shoved16-n.401a94d1d892.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 21,
+            "right": 82,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.shoved16-n.401a94d1d892.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "401a94d1d8929f073cac0167c10b653c37f964f46f01853b61cfbf281ac5359b"
+            }
+          ],
+          "sha256": "401a94d1d8929f073cac0167c10b653c37f964f46f01853b61cfbf281ac5359b"
+        },
+        "shoved16-NW": {
+          "file": "vendedor-praia.shoved16-nw.1132eae5b995.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 21,
+            "top": 23,
+            "right": 87,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.shoved16-nw.1132eae5b995.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1132eae5b995f4e9ea50be9ec5e0383b357d45815ae2c18cc3fb77a8526c3179"
+            }
+          ],
+          "sha256": "1132eae5b995f4e9ea50be9ec5e0383b357d45815ae2c18cc3fb77a8526c3179"
+        },
+        "shoved16-S": {
+          "file": "vendedor-praia.shoved16-s.c9961fdd41a6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 25,
+            "top": 25,
+            "right": 87,
+            "bottom": 90
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.shoved16-s.c9961fdd41a6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c9961fdd41a67554db685f3a0e92122e494de9aad1ca4335a93e0f8791777f5a"
+            }
+          ],
+          "sha256": "c9961fdd41a67554db685f3a0e92122e494de9aad1ca4335a93e0f8791777f5a"
+        },
+        "shoved16-SE": {
+          "file": "vendedor-praia.shoved16-se.48c555361e39.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 24,
+            "top": 26,
+            "right": 80,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.shoved16-se.48c555361e39.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "48c555361e39a962d5d6102f53181f07f14d2abeaf3e89646f66220599e771b7"
+            }
+          ],
+          "sha256": "48c555361e39a962d5d6102f53181f07f14d2abeaf3e89646f66220599e771b7"
+        },
+        "shoved16-W": {
+          "file": "vendedor-praia.shoved16-w.f61d1a74694a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 25,
+            "right": 78,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.shoved16-w.f61d1a74694a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "f61d1a74694a874943a273f2eec9b80fe47ca6a769e3bf719a33b98dae328e77"
+            }
+          ],
+          "sha256": "f61d1a74694a874943a273f2eec9b80fe47ca6a769e3bf719a33b98dae328e77"
+        },
         "walk16-N": {
           "file": "vendedor-praia.walk16-n.79c664a88da3.webp",
           "cell": [
@@ -24661,7 +25561,7 @@
           "sha256": "7f0e9fcc97ee3f8e38243aac98cba7f5245915e92046fb4c54b401776b5b1be5"
         }
       },
-      "sha256": "e27014494f1ce015df5d0fc26a50839cfb9edc529b9a0dcc34fd3295532393b2"
+      "sha256": "7090d7a24966f6c0ea120513d07b69fcaab775035139c9b4285bbf520a6f98e4"
     },
     "viciado-em-bet": {
       "kind": "dir8",
@@ -27820,6 +28720,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "viciado-em-bet.shoved16-n.b523f5dcec0d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 28,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-n.b523f5dcec0d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9"
+            }
+          ],
+          "sha256": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9"
+        },
+        "shoved16-NW": {
+          "file": "viciado-em-bet.shoved16-nw.2665aeb3c712.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 29,
+            "right": 77,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-nw.2665aeb3c712.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f"
+            }
+          ],
+          "sha256": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f"
+        },
+        "shoved16-S": {
+          "file": "viciado-em-bet.shoved16-s.a5ffcef2891f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 23,
+            "top": 31,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-s.a5ffcef2891f.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26"
+            }
+          ],
+          "sha256": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26"
+        },
+        "shoved16-SE": {
+          "file": "viciado-em-bet.shoved16-se.94291ccc3c98.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 21,
+            "top": 31,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-se.94291ccc3c98.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025"
+            }
+          ],
+          "sha256": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025"
+        },
+        "shoved16-W": {
+          "file": "viciado-em-bet.shoved16-w.26e8faceed35.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 30,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-w.26e8faceed35.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452"
+            }
+          ],
+          "sha256": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452"
+        },
         "walk128-E": {
           "file": "viciado-em-bet.walk128-e.af6573c0b904.webp",
           "cell": [
@@ -28461,7 +29541,7 @@
           "sha256": "051f67a6c14382577c2a2540fc3f5ecaf52a320e5655ce35a8af0d9951aa45aa"
         }
       },
-      "sha256": "1cd11022de96651d9e51f9f7bedb2f51a7e82bba99f01f226156c82fef5c3ad2"
+      "sha256": "333917ed1a9de8f8df9d859536778f366e0c780fe6cfa1fc8d101438fe5d58df"
     },
     "vizinha-fofoqueira": {
       "kind": "dir8",

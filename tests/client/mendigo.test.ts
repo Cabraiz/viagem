@@ -26,7 +26,7 @@ test('só o mendigo: todo inimigo comum desenha o mendigo; chefões e a aberraç
 });
 test('só o mendigo: a peça entra no grupo inimigos com parado, andar em 8 direções e a mesma folha como camada de elite',()=>{
   const idx=withMendigo(parseArtIndex(raw)),p=idx.groups.inimigos.pieces[MENDIGO];
-  assert.deepEqual(Object.keys(p.files).sort(),['elite/idle','elite/walk','idle','walk']);
+  assert.deepEqual(Object.keys(p.files).sort(),['elite/idle','elite/shoved','elite/walk','idle','shoved','walk']);
   assert.equal(p.files.idle.file,'mendigo/idle.webp');
   assert.equal(p.files['elite/walk'],p.files.walk);
   const w=p.files.walk;
@@ -43,9 +43,13 @@ test('só o mendigo: o carregamento do manifest põe a peça, e a horda pede só
     await loadArtManifest(async()=>({ok:true,json:async()=>raw}));
     assert.equal(artPiece('inimigos',MENDIGO)?.files.idle?.file,'mendigo/idle.webp');
     // a camada de elite é a mesma folha: não carrega de novo (uma textura por folha)
+    // o shoved (8 páginas, ~19 MB de GPU) fica fora da rodada: carrega no primeiro empurrão (queueEnemyShoved)
     assert.equal(enemyPieceLoads(MENDIGO).length,9);
-    const urls=[...new Set(enemyPieceLoads(MENDIGO).map(l=>l.url))].sort();
-    assert.equal(urls.length,9);
+    const push=enemyPieceLoads(MENDIGO,'push');
+    assert.deepEqual(push.map(l=>l.url),['S','SW','W','NW','N','NE','E','SE'].map(d=>`/art/lite/enemies/mendigo/shoved-${d}.webp`));
+    assert.equal(enemyPieceLoads(MENDIGO,'all').length,17);
+    const urls=[...new Set(enemyPieceLoads(MENDIGO,'all').map(l=>l.url))].sort();
+    assert.equal(urls.length,17);
     assert.ok(urls.every(u=>u.startsWith('/art/lite/enemies/mendigo/')),urls.join());
   }finally{setArtIndex(parseArtIndex({}));}
 });

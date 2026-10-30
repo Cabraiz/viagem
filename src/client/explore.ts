@@ -178,7 +178,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // Quick emotes (emote-relay-sala): the bar above the skill button is OFF (user, 13/10: "remova esse botão"; when it
     // comes back it is a radial wheel around the hero, like a weapon wheel). The relay and the balloons stay.
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
-    const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
+    // The room's connection panel (players online, latency, a reconnect test) is a dev tool: the published game never
+    // shows it (painel-conexao-so-dev); `vite dev` and ?perf=1 keep it.
+    if(import.meta.env.DEV||SHELL_DEBUG){const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);}
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     // ?matches=sempre: every kill of the hero is a match (hud/perfis.ts MatchBook); ?matches=demo (gravar-partida's matches
     // roteiro): the same, and the run starts with three, so the flame and its card show with no kill (round 1 has no weapon).
@@ -306,7 +308,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     }
     net.onStatus=m=>{const line=$('#coop-network');line.textContent=m;line.hidden=quietStatus(m,roomLine(net.run?.members,net.id)===SOLO_LINE);};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
-    $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
+    document.querySelector('#coop-reconnect')?.addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{$('#coop-network').hidden=false;try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
@@ -895,7 +897,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           // The tick moves every frame: the debug line follows at the shell attributes' pace, and only while it is read
           // (its <details> open, or ?perf=1).
           const diagnostics=find('#coop-diagnostics');
-          if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length} de 6 na sala. A sala responde em ${net.rtt} ms.`);
+          if(slow&&diagnostics&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length} de 6 na sala. A sala responde em ${net.rtt} ms.`);
         }
       },
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name}: ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},

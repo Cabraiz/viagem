@@ -59,7 +59,7 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
   const bet=playableClasses.find(c=>c.id==='viciado-em-bet')!;
   assert.deepEqual(titleLines(bet.name),['VICIADO EM','BET']);
   assert.equal(plaqueText(bet),'O REI DA PICARETAGEM');
-  assert.deepEqual(titleLines('Mendigo'),['','MENDIGO']);
+  assert.deepEqual(titleLines('Maromba'),['','MAROMBA']);
   const clt=playableClasses.find(c=>c.id==='clt-cansado')!;
   assert.ok(!APELIDOS[clt.id]);assert.equal(plaqueText(clt),'TANQUE EM HORÁRIO COMERCIAL');
   assert.equal(titleFit(['BORA PRA','TORCIDA!']),1,'the approved sign keeps its size');
@@ -577,7 +577,7 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
     const row=tile*h/.82+14,button=Math.max(52,bh*h),gap=gapVh*h;
     // titulo-mesmo-espaco: every hero (the two pictures, the HTML ones) in the viciado sign's box.
     const top=Math.max(signTop*h,0),boxH=Math.min(.332*w,.564*h)*Math.max(...signs.map(([,k])=>k));
-    const blocks:[string,number,number][]=[...signs.map(([id])=>id),'mendigo'].map(id=>[id,top,top+boxH]);
+    const blocks:[string,number,number][]=[...signs.map(([id])=>id),'aposentado'].map(id=>[id,top,top+boxH]);
     for(const [id,titleTop,titleBottom] of blocks){
       const screen=`${w}x${h} ${id}`,rowTop=titleBottom+gap,buttonTop=rowTop+row+gap,buttonBottom=buttonTop+button;
       assert.ok(titleTop>=.05*h-1e-9,`${screen}: air over the title (${titleTop.toFixed(0)})`);

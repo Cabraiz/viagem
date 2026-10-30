@@ -190,10 +190,10 @@ test('compositionLine: 3+ with every class known names the first missing role, s
   // CLT (frente), Viciado em Bet (dano), Fofoqueira (controle): no support.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet','vizinha-fofoqueira')),COMPOSITION_LINES['Suporte']);
   assert.match(COMPOSITION_LINES['Suporte'],/café/);
-  // Mendigo (suporte), Maromba (dano), Fofoqueira: nobody up front.
-  assert.equal(compositionLine(m('mendigo','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
+  // Tio do Churrasco (suporte), Maromba (dano), Fofoqueira: nobody up front.
+  assert.equal(compositionLine(m('tio-do-churrasco','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
   // All four roles: nothing to say.
-  assert.equal(compositionLine(m('clt-cansado','mendigo','viciado-em-bet','vizinha-fofoqueira')),undefined);
+  assert.equal(compositionLine(m('clt-cansado','tio-do-churrasco','viciado-em-bet','vizinha-fofoqueira')),undefined);
   // Two players, or a class still unknown: no verdict yet.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet')),undefined);
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet',undefined)),undefined);
@@ -205,7 +205,7 @@ test('memberClassName: the class short name under the chip, empty until known',(
 });
 
 test('chipNameHtml: a numbered name keeps its number apart (the words before it take the reticências); others plain, escaped',()=>{
-  assert.equal(chipNameHtml('Mendigo 2'),'<b class="coop-wait-numbered"><b>Mendigo</b><b>&nbsp;2</b></b>');
+  assert.equal(chipNameHtml('Aposentado 2'),'<b class="coop-wait-numbered"><b>Aposentado</b><b>&nbsp;2</b></b>');
   assert.equal(chipNameHtml('Passage. 3'),'<b class="coop-wait-numbered"><b>Passage.</b><b>&nbsp;3</b></b>');
   assert.equal(chipNameHtml('CLT'),'CLT');assert.equal(chipNameHtml('Bet 365'),'Bet 365');assert.equal(chipNameHtml('2'),'2');
   assert.equal(chipNameHtml('<i> 2'),'<b class="coop-wait-numbered"><b>&lt;i&gt;</b><b>&nbsp;2</b></b>');

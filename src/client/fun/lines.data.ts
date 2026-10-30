@@ -9,14 +9,6 @@ export const CLASS_LINES:Readonly<Record<string,Readonly<Record<Situation,readon
     win:['Síndico vencido. Agora a padaria.','Bom, já que tô aqui… uhul?'],
     lose:['Devia ter pedido delivery.','Amanhã compro pão mais perto.'],
   },
-  'mendigo':{
-    levelUp:['Subi! E ainda achei um parafuso.','Upei na base do reaproveitamento.'],
-    down:['Me ajuda, eu sei um atalho!','Me tira daqui, eu conserto tudo!'],
-    revive:['Achei você no achados e perdidos!','Novo em folha! Quase. Funciona.'],
-    upgrade:['Isso aqui vira coisa boa.','Card usado? Melhor ainda.'],
-    win:['Eu disse que aquilo era tesouro!','O síndico caiu no meu atalho.'],
-    lose:['Guardei uns trecos pra próxima.','Dessa derrota eu faço uma estante.'],
-  },
   'viciado-em-bet':{
     levelUp:['Eu falei que ia bater! Eu falei!','Subi! Pura estatística, juro.'],
     down:['Era 1% de chance… saiu o 1%.','Calculei tudo, menos o chão!'],

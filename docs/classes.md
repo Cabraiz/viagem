@@ -1,4 +1,4 @@
-# As 36 classes de viagem
+# As 35 classes de viagem
 
 Catálogo da primeira versão de seleção. Habilidades abaixo são propostas de design; ainda não estão implementadas em combate. Atributos: Força / Agilidade / Malícia / Carisma.
 
@@ -14,19 +14,7 @@ Atributos: 3 / 3 / 3 / 3.
 
 > Eu só queria chegar em casa.
 
-## 02. Mendigo
-
-**Suporte** · Improviso lendário.
-
-Conhece cada atalho e transforma o que o resto do mundo ignora em equipamento indispensável para a turma.
-
-**Tesouro do Achados:** Monta um abrigo improvisado que protege e recupera aliados na área.
-
-Atributos: 2 / 3 / 4 / 3.
-
-> Isso aqui ainda dá jogo.
-
-## 03. Viciado em Bet
+## 02. Viciado em Bet
 
 **Dano** · A sorte não leu o tutorial.
 
@@ -38,7 +26,7 @@ Atributos: 4 / 2 / 5 / 1.
 
 > Dessa vez é certeza. Eu acho.
 
-## 04. CLT Cansado
+## 03. CLT Cansado
 
 **Linha de frente** · Tanque em horário comercial.
 
@@ -50,7 +38,7 @@ Atributos: 5 / 1 / 3 / 3.
 
 > Isso entra no banco de horas?
 
-## 05. Motogirl
+## 04. Motogirl
 
 **Suporte** · Sua salvação saiu para entrega.
 
@@ -62,7 +50,7 @@ Atributos: 2 / 5 / 2 / 3.
 
 > Tô na porta. Qual é o portão?
 
-## 06. Pedreiro
+## 05. Pedreiro
 
 **Linha de frente** · A obra é a defesa.
 
@@ -74,7 +62,7 @@ Atributos: 5 / 1 / 4 / 2.
 
 > Dá pra fazer. Só falta material.
 
-## 07. Vizinha Fofoqueira
+## 06. Vizinha Fofoqueira
 
 **Controle** · Informação privilegiada.
 
@@ -86,7 +74,7 @@ Atributos: 1 / 3 / 5 / 3.
 
 > Não sou de falar, mas...
 
-## 08. Tio do Churrasco
+## 07. Tio do Churrasco
 
 **Suporte** · O suporte está no ponto.
 
@@ -98,7 +86,7 @@ Atributos: 3 / 1 / 3 / 5.
 
 > Quem pediu bem passado?
 
-## 09. Maromba
+## 08. Maromba
 
 **Dano** · Hoje é treino de chefe.
 
@@ -110,7 +98,7 @@ Atributos: 5 / 3 / 1 / 3.
 
 > Tá leve! Tá leve!
 
-## 10. Feirante
+## 09. Feirante
 
 **Suporte** · Três buffs por um.
 
@@ -122,7 +110,7 @@ Atributos: 2 / 2 / 3 / 5.
 
 > Olha a promoção da cura!
 
-## 11. Técnico de TI
+## 10. Técnico de TI
 
 **Controle** · Já tentou reviver de novo?
 
@@ -134,7 +122,7 @@ Atributos: 1 / 3 / 5 / 3.
 
 > Na minha máquina não tinha dragão.
 
-## 12. Streamer
+## 11. Streamer
 
 **Dano** · A live não pode cair.
 
@@ -146,7 +134,7 @@ Atributos: 3 / 4 / 2 / 3.
 
 > Chat, vocês viram isso?!
 
-## 13. Coach Quântico
+## 12. Coach Quântico
 
 **Suporte** · Destrave seu dano interior.
 
@@ -158,7 +146,7 @@ Atributos: 1 / 2 / 4 / 5.
 
 > O limite é uma crença do boss.
 
-## 14. Faxineira
+## 13. Faxineira
 
 **Controle** · Vai varrer a dungeon.
 
@@ -170,7 +158,7 @@ Atributos: 3 / 3 / 4 / 2.
 
 > Acabei de limpar esse chão!
 
-## 15. Concurseira
+## 14. Concurseira
 
 **Controle** · Especialista em decorar padrões.
 
@@ -182,7 +170,7 @@ Atributos: 1 / 2 / 5 / 4.
 
 > Esse padrão já caiu em 2018.
 
-## 16. Vendedor de Praia
+## 15. Vendedor de Praia
 
 **Suporte** · Reforço geladinho.
 
@@ -194,7 +182,7 @@ Atributos: 2 / 4 / 2 / 4.
 
 > Vai uma geladinha, aventureiro?
 
-## 17. Tia da Festa
+## 16. Tia da Festa
 
 **Suporte** · Ninguém fica parado.
 
@@ -206,7 +194,7 @@ Atributos: 2 / 2 / 3 / 5.
 
 > Come alguma coisa antes de ir!
 
-## 18. Roqueira
+## 17. Roqueira
 
 **Dano** · Distorção em área.
 
@@ -218,7 +206,7 @@ Atributos: 4 / 3 / 2 / 3.
 
 > Agora vai entrar a guitarra.
 
-## 19. Pagodeiro
+## 18. Pagodeiro
 
 **Suporte** · Sustain no cavaquinho.
 
@@ -230,7 +218,7 @@ Atributos: 2 / 2 / 3 / 5.
 
 > Só mais uma e a gente vai.
 
-## 20. Caça-Promoção
+## 19. Caça-Promoção
 
 **Controle** · Economia de cooldown.
 
@@ -242,7 +230,7 @@ Atributos: 1 / 4 / 4 / 3.
 
 > Espera, eu tenho um cupom.
 
-## 21. Gambiarreiro
+## 20. Gambiarreiro
 
 **Controle** · Temporário há seis anos.
 
@@ -254,7 +242,7 @@ Atributos: 3 / 2 / 5 / 2.
 
 > Agora segura aqui um pouquinho.
 
-## 22. Universitário Virado
+## 21. Universitário Virado
 
 **Dano** · Entrega às 23h59.
 
@@ -266,7 +254,7 @@ Atributos: 3 / 4 / 4 / 1.
 
 > Dá tempo. Ainda dá tempo.
 
-## 23. Passageira do Busão
+## 22. Passageira do Busão
 
 **Linha de frente** · Esquiva em horário de pico.
 
@@ -278,7 +266,7 @@ Atributos: 3 / 5 / 2 / 2.
 
 > Vai descer? Então deixa eu passar.
 
-## 24. Porteiro
+## 23. Porteiro
 
 **Linha de frente** · Entrada só com autorização.
 
@@ -290,7 +278,7 @@ Atributos: 4 / 1 / 4 / 3.
 
 > Vou precisar confirmar lá em cima.
 
-## 25. Goleira de Várzea
+## 24. Goleira de Várzea
 
 **Linha de frente** · Aqui não passa nada.
 
@@ -302,7 +290,7 @@ Atributos: 4 / 5 / 1 / 2.
 
 > Essa era minha!
 
-## 26. Sensei do Bairro
+## 25. Sensei do Bairro
 
 **Dano** · Disciplina e chinelada cósmica.
 
@@ -314,7 +302,7 @@ Atributos: 4 / 4 / 2 / 2.
 
 > Respira. Agora desvia.
 
-## 27. Merendeira
+## 26. Merendeira
 
 **Suporte** · A cura vem de concha.
 
@@ -326,7 +314,7 @@ Atributos: 3 / 1 / 3 / 5.
 
 > Você tá muito magrinho, vem cá.
 
-## 28. Rei do Pastel
+## 27. Rei do Pastel
 
 **Dano** · Crocância ofensiva.
 
@@ -338,7 +326,7 @@ Atributos: 4 / 2 / 3 / 3.
 
 > Saiu um especial da casa!
 
-## 29. Astróloga
+## 28. Astróloga
 
 **Controle** · Seu ascendente é stun.
 
@@ -350,7 +338,7 @@ Atributos: 2 / 2 / 5 / 3.
 
 > Eu avisei no mapa astral.
 
-## 30. Rei do Arraiá
+## 29. Rei do Arraiá
 
 **Controle** · Pula a fogueira, chefão.
 
@@ -362,7 +350,7 @@ Atributos: 3 / 2 / 2 / 5.
 
 > É mentira! Ou será que não?
 
-## 31. Mãe de Pet
+## 30. Mãe de Pet
 
 **Suporte** · Companheiro inseparável.
 
@@ -374,7 +362,7 @@ Atributos: 1 / 3 / 3 / 5.
 
 > Ele não morde. Normalmente.
 
-## 32. Aposentado
+## 31. Aposentado
 
 **Controle** · Experiência não falta.
 
@@ -386,7 +374,7 @@ Atributos: 3 / 1 / 5 / 3.
 
 > Antigamente o boss era maior.
 
-## 33. Salva-Vidas
+## 32. Salva-Vidas
 
 **Suporte** · Resgate sem drama.
 
@@ -398,7 +386,7 @@ Atributos: 3 / 4 / 2 / 3.
 
 > Não entra aí sem saber nadar!
 
-## 34. Conspiracionista
+## 33. Conspiracionista
 
 **Controle** · Ele sabe demais. Talvez.
 
@@ -410,7 +398,7 @@ Atributos: 1 / 3 / 5 / 3.
 
 > Isso tudo é um grande tutorial.
 
-## 35. Gamer de Celular
+## 34. Gamer de Celular
 
 **Dano** · A culpa é sempre do ping.
 
@@ -422,7 +410,7 @@ Atributos: 3 / 5 / 3 / 1.
 
 > Tô lagado! Mas eu vi que acertou.
 
-## 36. Rainha da Bateria
+## 35. Rainha da Bateria
 
 **Dano** · O ritmo empurra a turma.
 

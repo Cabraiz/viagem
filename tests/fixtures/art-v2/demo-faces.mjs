@@ -5,7 +5,7 @@
  * a thick ring in the expression colour, the class initials in big block letters and an expression glyph under them:
  *  - normal: green ring, smile;   ferido: orange ring, flat wavy mouth and a sweat drop;   caido: gray ring, two X eyes;
  *  - rindo: yellow ring, wide open mouth;   bravo: red ring, frown and angry brows.
- * Classes: cidadao-comum (all 5 expressions), mendigo (only normal), viciado-em-bet (normal and bravo).
+ * Classes: cidadao-comum (all 5 expressions), motogirl (only normal), viciado-em-bet (normal and bravo).
  *
  *   node tests/fixtures/art-v2/demo-faces.mjs <pasta>     then: node scripts/import-art-v2.mjs --dry-run --input <pasta>
  */
@@ -18,13 +18,13 @@ export const FACE_DEMO_SIZE=256,FACE_DEMO_RADIUS=118;
 /** Expressions delivered per class. */
 export const DEMO_FACE_SET=Object.freeze({
   'cidadao-comum':Object.freeze(['normal','ferido','caido','rindo','bravo']),
-  mendigo:Object.freeze(['normal']),
+  motogirl:Object.freeze(['normal']),
   'viciado-em-bet':Object.freeze(['normal','bravo']),
 });
 /** What writeDemoFaces writes, by group (every one must be approved by the importer). */
 export const DEMO_FACES=Object.freeze({rostos:Object.freeze(Object.entries(DEMO_FACE_SET).flatMap(([c,list])=>list.map(e=>`${c}-${e}`)))});
 
-const CLASS_COLOURS={'cidadao-comum':[200,160,110],mendigo:[110,150,90],'viciado-em-bet':[160,110,210]};
+const CLASS_COLOURS={'cidadao-comum':[200,160,110],motogirl:[110,150,90],'viciado-em-bet':[160,110,210]};
 const RING={normal:[40,190,70],ferido:[245,140,20],caido:[140,140,150],rindo:[255,215,0],bravo:[225,30,40]};
 const INK=[20,18,24,255],WHITE=[255,255,255,255],SWEAT=[70,170,255,255];
 /** 5×7 bitmap font: the initials this demo writes (other letters are left blank). */

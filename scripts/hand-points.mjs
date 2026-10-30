@@ -30,7 +30,7 @@ const CELL=96;
 /** Measured and approved before the bots' classes (arma-na-mao): their tracking keeps the rules it had (no feet rule). */
 const LEGACY=new Set(['clt-cansado','viciado-em-bet']);
 /** The bots' classes whose walk128 and idle8 the tracking gets right (hands apart from bare skin elsewhere; checked by eye). */
-const AUTO=new Set(['faxineira','mendigo','passageira']);
+const AUTO=new Set(['faxineira','passageira']);
 /** M16 heroes measured by the rule (the outermost paw on the weapon side, per pose) and reviewed on the debug sheets. */
 const M16_AUTO=new Set(['gato-nada-pra-comer']);
 /** M16 heroes found by their navy WRISTBAND (wristOf): the maromba's bulky biceps is the outermost skin, not the fist. */

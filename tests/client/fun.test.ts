@@ -7,8 +7,8 @@ import {CLASS_LINES} from '../../src/client/fun/lines.data.ts';
 
 const normalize=(s:string)=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim();
 
-test('every one of the 29 classes has short lines for all situations',()=>{
-  assert.equal(classes.length,29);
+test('every one of the 28 classes has short lines for all situations',()=>{
+  assert.equal(classes.length,28);
   assert.deepEqual(Object.keys(CLASS_LINES).sort(),classes.map(c=>c.id).sort());
   for(const hero of classes)for(const situation of SITUATIONS){
     const lines=CLASS_LINES[hero.id][situation];
@@ -28,7 +28,7 @@ test('no line repeats anywhere, even ignoring case, accents and punctuation',()=
     assert.ok(!seen.has(key),`"${line}" (${id}.${situation}) repeats ${seen.get(key)}`);
     seen.set(key,`${id}.${situation}`);
   }
-  assert.ok(seen.size>=29*6*2);
+  assert.ok(seen.size>=28*6*2);
 });
 
 test('pickLine is deterministic, stays in the class list and falls back for unknown classes',()=>{
@@ -37,11 +37,11 @@ test('pickLine is deterministic, stays in the class list and falls back for unkn
     assert.equal(a,b);assert.ok(CLASS_LINES[hero.id][situation].includes(a));
   }
   // Golden values: server and every client build must pick the same line for the same seed.
-  assert.equal(pickLine('mendigo','down',1),'Me ajuda, eu sei um atalho!');
+  assert.equal(pickLine('tio-do-churrasco','down',1),'Caí! Alguém vira a carne pra mim!');
   assert.equal(pickLine('tecnico-ti','revive','t120|p2'),'Desliga e liga de novo!');
   assert.equal(pickLine('clt-cansado','upgrade',7),'Esse card podia ser um e-mail.');
-  const spread=new Set(Array.from({length:40},(_,i)=>pickLine('mendigo','down',i)));
-  assert.equal(spread.size,CLASS_LINES.mendigo.down.length,'seeds reach every line');
+  const spread=new Set(Array.from({length:40},(_,i)=>pickLine('tio-do-churrasco','down',i)));
+  assert.equal(spread.size,CLASS_LINES['tio-do-churrasco'].down.length,'seeds reach every line');
   assert.equal(linesFor('classe-nova','win'),FALLBACK_LINES.win);
   assert.ok(FALLBACK_LINES.win.includes(pickLine('classe-nova','win',1)));
 });

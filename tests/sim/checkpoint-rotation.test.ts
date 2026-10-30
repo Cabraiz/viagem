@@ -7,7 +7,7 @@ import {Simulation,type SimCheckpoint} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {isRotation,rotationIds} from '../../src/rules/index.ts';
 
-const SEED=4242,BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
+const SEED=4242,BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
 const seat=(sim:Simulation)=>{for(const [id,name,classId] of BOTS)sim.addBot(id,name,classId);return sim;};
 const botsFor=()=>{const bots=new RoomBots();BOTS.forEach(([id],i)=>bots.add(id,i));return bots;};
 

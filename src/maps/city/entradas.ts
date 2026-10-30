@@ -99,11 +99,6 @@ export function naBoca(a:CityAsset,r:Rect,folga=0):boolean{
   return false;
 }
 
-/** Whether a point (u) is within `r` of the free strip of any entrance. */
-export function pertoDaBoca(a:CityAsset,p:CityPoint,r:number):boolean{
-  return naBoca(a,{x:p.x,y:p.y,w:0,h:0},r);
-}
-
 /**
  * The passage at an entrance: across goes the mouth's axis (a bare point: the way the ground is narrower); for each
  * cell along it (BOCA_FUNDO each way, walkable ones), the row of walkable cells across.

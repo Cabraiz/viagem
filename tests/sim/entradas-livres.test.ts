@@ -4,8 +4,9 @@
  * or gate, of any width; its whole width stays free a cell each way (maps/city/entradas.ts bocaFaixa):
  *  1. the mouths of every width are found (wide ones too, the print's included) and each strip spans the whole mouth;
  *  2. per match (seeds 1–8, the real Cidade Nevada): no square of the map's tralha nor of a feirinha's barracas in a
- *     strip, and no terreno nest of the drawn plan within NEST_ENTRADA_FOLGA of one (validateNestPlan agrees);
- *  3. the whole nest pool (every nest a seed may draw) and the map's solid props on the ground stay off the strips.
+ *     strip, and no drawn art (nestArte) of a terreno nest on one (validateNestPlan agrees);
+ *  3. the art of every nest a seed may draw (the whole active pool, at its biggest size) and the map's solid props on
+ *     the ground stay off the strips, no exception; the spots out of the draw (CITY_NEST_OFF) say why.
  * D-031: results only.
  */
 import test from 'node:test';
@@ -13,9 +14,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import {bocaFaixa,cityEntradas,naBoca,pertoDaBoca} from '../../src/maps/city/entradas.ts';
+import {bocaFaixa,cityEntradas,naBoca} from '../../src/maps/city/entradas.ts';
 import {cityAsField} from '../../src/maps/index.ts';
-import {CITY_NEST_POOL,NEST_ENTRADA_FOLGA,cityNestPlan,validateNestPlan} from '../../src/maps/nests.ts';
+import {CITY_NEST_OFF,CITY_NEST_POOL,cityNestPlan,nestArte,validateNestPlan} from '../../src/maps/nests.ts';
 import {pieceRectOf,type PieceState} from '../../src/sim/towers/free-build.ts';
 import {TRALHA_OWNER} from '../../src/sim/towers/tralha.ts';
 import {FEIRA_OWNER} from '../../src/sim/towers/barracas.ts';
@@ -50,13 +51,15 @@ test('per match (seeds 1–8): no tralha, no barraca and no terreno nest in an e
     assert.ok(feira.length>=3,`seed ${seed}: ${feira.length} barracas`);
     for(const p of [...tralha,...feira])assert.ok(!naBoca(a,pieceRectOf(p)),`seed ${seed}: ${p.owner} ${p.id} at (${p.x.toFixed(1)},${p.y.toFixed(1)}) in an entrance`);
     const plan=cityNestPlan(city,seed);
-    for(const n of plan.nests)if(n.kind==='terreno')assert.ok(!pertoDaBoca(a,n,NEST_ENTRADA_FOLGA),`seed ${seed}: nest ${n.id} at (${n.x},${n.y}) in an entrance`);
+    for(const n of plan.nests)if(n.kind==='terreno')assert.ok(!naBoca(a,nestArte(C,n,n.size)),`seed ${seed}: nest ${n.id} at (${n.x},${n.y}) in an entrance`);
     assert.deepEqual(validateNestPlan(plan,city).filter(p=>p.reason.includes('boca')),[],`seed ${seed}`);
   }
 });
 
 test('the whole nest pool and the map\'s solid props on the ground stay off the strips',()=>{
-  for(const n of CITY_NEST_POOL)if(n.kind==='terreno')assert.ok(!pertoDaBoca(a,n,NEST_ENTRADA_FOLGA),`nest ${n.id} at (${n.x},${n.y})`);
+  for(const n of CITY_NEST_POOL)if(n.kind==='terreno')assert.ok(!naBoca(a,nestArte(C,n,n.maxSize)),`nest ${n.id} at (${n.x},${n.y})`);
+  assert.ok(CITY_NEST_POOL.length>=8,`${CITY_NEST_POOL.length} spots to draw`);
+  for(const n of CITY_NEST_OFF)assert.ok(n.motivo,`${n.id} out of the draw with no reason`);
   const props=(JSON.parse(json) as {props:{x:number;y:number;r:number;kind:string;solid?:boolean}[]}).props;
   const ground=props.filter(p=>p.solid&&a.walkableAt(p.x,p.y));
   for(const p of ground)assert.ok(!naBoca(a,{x:p.x-p.r,y:p.y-p.r,w:2*p.r,h:2*p.r}),`${p.kind} at (${p.x},${p.y})`);

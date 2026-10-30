@@ -9,7 +9,7 @@
  *  3. the loose fences (a few fence pieces in the open, closing nothing) are off the map (becos-cidade.ts
  *     tirarCercasSoltas), at most the one whose removal would shorten a horde's walk left;
  *  4. per match (seeds 1–8, the living nests' keep out), the Uno's body (carBodyDiscs, 8 headings) gets within 3 u of
- *     ≥ 97.9 % of the hero's ground off the safe places and the nests' keep out, of every spawn and of every crate off them.
+ *     ≥ 98 % of the hero's ground off the safe places and the nests' keep out, of every spawn and of every crate off them.
  * D-031: results only.
  */
 import test from 'node:test';
@@ -101,7 +101,7 @@ function bodyNear(nests:readonly Point[]):Uint8Array{
   return near;
 }
 
-test('per match, the Uno\'s body gets near ≥ 97.9 % of the hero\'s ground, every spawn and every crate (off the safe places and the nests)',t=>{
+test('per match, the Uno\'s body gets near ≥ 98 % of the hero\'s ground, every spawn and every crate (off the safe places and the nests)',t=>{
   for(const seed of [1,2,3,4,5,6,7,8]){
     const s=new Simulation(seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
     s.add('p0','P0','cidadao-comum');s.resetRun();s.step();
@@ -111,9 +111,7 @@ test('per match, the Uno\'s body gets near ≥ 97.9 % of the hero\'s ground, eve
     for(let k=0;k<W*H;k++)if(hero[k]&&kept(centre(k))){all++;if(near[k])got++;}
     const at=(p:Point)=>near[Math.floor(p.x/CELL)+Math.floor(p.y/CELL)*W]===1;
     t.diagnostic(`seed ${seed}: ${(100*got/all).toFixed(2)} %`);
-    // 97.9, not 98: ninho-06 one cell E off an entrance (NEW-20261030-ORQ-entradas-livres-de-tudo) loses the Uno no ground
-    // it got near before, but the alley W of it, never reached, now stands past the keep out and counts (seed 4: 98.04 → 97.95).
-    assert.ok(got/all>=.979,`seed ${seed}: ${(100*got/all).toFixed(2)} % of the hero's ground`);
+    assert.ok(got/all>=.98,`seed ${seed}: ${(100*got/all).toFixed(2)} % of the hero's ground`);
     for(const [k,p] of Object.entries({N:P.spawnN,S:P.spawnS,L:P.spawnL,O:P.spawnO}))assert.ok(at(p),`seed ${seed}: spawn ${k}`);
     const out=A.loot.filter(p=>kept(p)&&!at(p));
     assert.deepEqual(out,[],`seed ${seed}: crates the Uno never gets near`);

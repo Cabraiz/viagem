@@ -2875,6 +2875,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "aposentado.shoved16-n.d0208bd9e23b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 11,
+            "top": 23,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-n.d0208bd9e23b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db"
+            }
+          ],
+          "sha256": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db"
+        },
+        "shoved16-NW": {
+          "file": "aposentado.shoved16-nw.d68e56b03ec1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 13,
+            "top": 22,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-nw.d68e56b03ec1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d"
+            }
+          ],
+          "sha256": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d"
+        },
+        "shoved16-S": {
+          "file": "aposentado.shoved16-s.ea95dee4ead5.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 24,
+            "right": 79,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-s.ea95dee4ead5.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c"
+            }
+          ],
+          "sha256": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c"
+        },
+        "shoved16-SE": {
+          "file": "aposentado.shoved16-se.cd2a925a664b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 14,
+            "top": 23,
+            "right": 86,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-se.cd2a925a664b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1"
+            }
+          ],
+          "sha256": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1"
+        },
+        "shoved16-W": {
+          "file": "aposentado.shoved16-w.0bea132d3f82.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 21,
+            "top": 20,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.shoved16-w.0bea132d3f82.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab"
+            }
+          ],
+          "sha256": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab"
+        },
         "walk16-N": {
           "file": "aposentado.walk16-n.b25e20405860.webp",
           "cell": [
@@ -3236,7 +3416,7 @@
           "sha256": "c0cd2502af22e1f8a509b3944f035b46eafcad22db392900f51f08740f0bfef4"
         }
       },
-      "sha256": "30e28cdb86a55a0d51cd01b287e131f361406a6e95e3b4ffa1caa048c593af6e"
+      "sha256": "da7de53207d04d1ba3d645c5a5e9e9910cc1228e03f3ef7651096634d7349552"
     },
     "astrologa": {
       "kind": "dir8",

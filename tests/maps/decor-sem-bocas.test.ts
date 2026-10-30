@@ -1,7 +1,8 @@
 /**
  * NEW-20261029-ORQ-sem-tralha-nas-entradas (the user, 29/10: the junk at the street mouths spoils them): on the committed
  * Cidade Nevada no sidewalk object (OBJETOS_1/OBJETOS_2) stands in the middle of an entrance (maps/city/entradas.ts
- * estreitaBoca), and the rest of the sidewalk scenery is still there (cenario-cidade.ts semDecorNasBocas, map v8).
+ * estreitaBoca), and the rest of the sidewalk scenery is still there (cenario-cidade.ts semDecorNasBocas, map v8; map v9
+ * takes every piece off the ground of any entrance, maps/bocas-chao-livre.test.ts).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,7 +30,8 @@ test('no sidewalk object in the middle of an entrance; the other sidewalk scener
   const calcada=a.decor.filter(q=>isCalcada(q.id));
   const bad=calcada.filter(q=>bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO&&estreitaBoca(a,e,q)));
   assert.deepEqual(bad.map(q=>`${q.id} ${q.c},${q.r}`),[]);
-  // v7 → v8 took 100 pieces off the mouths; the sidewalks keep the rest (215), most of them near an entrance (196).
-  assert.ok(calcada.length>=200,`${calcada.length} sidewalk objects`);
-  assert.ok(calcada.filter(q=>bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO)).length>=180,'the ones beside the mouths stay');
+  // v7 → v8 took 100 pieces off the mouths (215 left), v8 → v9 the 129 on an entrance's ground; the sidewalks keep 86,
+  // most of them near an entrance (76).
+  assert.ok(calcada.length>=80,`${calcada.length} sidewalk objects`);
+  assert.ok(calcada.filter(q=>bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO)).length>=70,'the ones beside the mouths stay');
 });

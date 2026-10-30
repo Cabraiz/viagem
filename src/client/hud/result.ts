@@ -14,10 +14,10 @@ import {causeCopy,resultCause,topCause,type CauseLog} from './cause.ts';
 import {shareCard,shareResultImage} from './share-result.ts';
 import {icon} from '../ui/icon.ts';
 import {faceExpression,faceImg} from '../ui/face-crop.ts';
-import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
 import type {MapId} from '../../protocol/index.ts';
-import {objectiveBill,vaquinhaLine} from './chaveiro.ts';
+import {objectiveBill,reais,vaquinhaLine} from './chaveiro.ts';
+import {FREE_PIECE_DEFS,WALL_DOWN_LINES} from '../../rules/index.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -78,6 +78,24 @@ export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'
   const left=result.objective?0:result.totalRounds-result.round;
   if(left>0)parts.push(`Faltou ${left===1?'1 rodada':`${left} rodadas`} pra vitória`);
   return parts.length?parts.join('. '):undefined;
+}
+
+/** Grana left on the bill at a defeat that reads as "parada": five muros' worth (R$ 4 each, rules/towers.ts). */
+export const IDLE_GRANA=5*FREE_PIECE_DEFS.muro.price;
+/** The Uno took this share of its hit limit or more: the tip says to guard it, even when the team fell first. */
+export const UNO_HURT_SHARE=.5;
+/**
+ * The defeat's "Da próxima: …" (auditoria-primeira-partida-30-10 item 9: the defeat did not say what to do differently),
+ * from what was missing, the most pressing first and two at most: the Uno took a beating (it fell, or half its limit),
+ * the Grana stayed in the pocket (sobrou R$ 288: build), no nest fell (0/5). Undefined on a win or with nothing to say.
+ */
+export function nextTip(result:Pick<RunResult,'victory'|'objective'>,nests?:{down:number;total:number}){
+  if(result.victory)return undefined;
+  const o=result.objective,tips:string[]=[];
+  if(o&&(o.cause==='car'||(o.limit>0&&o.hits>=o.limit*UNO_HURT_SHARE)))tips.push('proteja ou conserte o Uno');
+  if(o&&o.grana>=IDLE_GRANA)tips.push(`construa com a grana (sobrou ${reais(o.grana)})`);
+  if(nests&&nests.total>0&&nests.down===0)tips.push('derrube ninhos');
+  return tips.length?`Da próxima: ${tips.slice(0,2).join(' e ')}.`:undefined;
 }
 
 /** The room's rematch vote (RunState.rematchVotes): who said "topa", who is asked (people online) and the majority's clock. */
@@ -200,6 +218,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const subtitle=el('p','rh-result-sub',titles);
   // The defeat's "O que derrubou a turma … Faltou N rodadas pra vitória" (UX-resultado-revanche).
   const lost=el('p','rh-result-lost',titles);lost.hidden=true;
+  // "Da próxima: …" (nextTip): what to do differently; it stays when the cards push the line above out.
+  const tip=el('p','rh-result-tip',titles);tip.hidden=true;
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);
   // What downed you (UX-voce-e-dano f): critter sticker + name, one line.
@@ -482,6 +502,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
       const why=defeatLine(result,ctx.tally.causes);lost.hidden=!why;lost.textContent=why??'';
+      const next=nextTip(result,nests);tip.hidden=!next;tip.textContent=next??'';
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
       const conta=result.objective&&objectiveBill(result.objective);
       round.textContent=resultRoundLine(result,nests);

@@ -862,6 +862,8 @@
 .rh-rcard-topa{position:absolute;top:-13px;right:-5px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-amarelo);border:2px solid var(--c-breu);color:var(--c-breu);font:800 var(--t-13)/1.2 var(--f-sistema);transform:rotate(4deg);box-shadow:0 2px 0 var(--c-breu);pointer-events:none}
 /* The defeat's "O que derrubou a turma … Faltou N rounds pro síndico". */
 .rh-result-lost{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-amarelo)}
+/* The defeat's "Da próxima: …" (nextTip): paper white under the yellow line, kept when that one goes. */
+.rh-result-tip{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* "Foto" (camera sticker): the same word on every screen (resultado-e-topo-com-rotulo), beside the sticker. */
 .rh-result .rh-result-share{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
 .rh-result .rh-result-rematch.rh-waiting:disabled{opacity:1}

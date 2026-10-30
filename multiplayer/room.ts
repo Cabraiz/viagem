@@ -806,8 +806,9 @@ export class Room {
   private addBot(c:Connection,m:any,now:number){
     if(!this.ownerCommand(c,m,now))return;
     if(this.sim.players.size>=6){this.notice(c,ROOM_FULL_BOTS);return;}
-    const n=this.botsAdded++,taken=new Set([...this.sim.players.values()].map(p=>p.name));
-    const {name,classId}=botIdentity(this.sim.seed,n,BOT_CLASSES,taken);
+    const n=this.botsAdded++,seated=[...this.sim.players.values()],taken=new Set(seated.map(p=>p.name));
+    const classOf=(bot:boolean)=>seated.filter(p=>this.sim.bots.has(p.id)===bot).map(p=>p.classId);
+    const {name,classId}=botIdentity(this.sim.seed,n,BOT_CLASSES,taken,classOf(true),classOf(false));
     this.seatBot(`bot-${n+1}`,name,classId,this.bots.freeSlot());
     this.syncSpectators();this.pushRun();
   }

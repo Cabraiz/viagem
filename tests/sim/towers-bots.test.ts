@@ -264,6 +264,7 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // cheaper, the first cards earlier): seeds 1, 2, 4, 5, 8, 10, 13, 15, 16 of 1–16 start the B line. Seed 5 since levelup-espalhado met
   // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line. Seed 6 since so-3-inimigos (only the mendigo horde in the
   // rotation): seeds 1, 2, 3, 6, 7, 8, 9, 13, 16 of 1–16 start the B line.
+  // Seed 6 still with colisao-entre-herois (the heroes solid to each other): seeds 2, 3, 6, 7, 9, 11, 12, 16 of 1–16 start the B line.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);

@@ -9,7 +9,6 @@
     "src/client/framing.ts": 401,
     "src/client/hud/camp.ts": 472,
     "src/client/hud/edges.ts": 526,
-    "src/client/hud/hud.css": 938,
     "src/client/hud/hud.ts": 744,
     "src/client/hud/offer.ts": 442,
     "src/client/hud/result.ts": 568,

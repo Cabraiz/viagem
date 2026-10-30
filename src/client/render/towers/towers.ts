@@ -130,6 +130,12 @@ const SMOKE_R=1.1,SMOKE_MS=6,SMOKE_TINT=0x9aa0a6;
 /** The radar's pulse ring (the wire's spark ring, tinted). */
 const PULSE_TINT=0x6ec6ff;
 /**
+ * The painted effects (NEW-20261029-ORQ-fx-torres-arte, scripts/import-torres-fx.mjs: ChatGPT art, one frame per effect
+ * cell of the atlas, same name and size): loaded once, painted over the procedural bake, which stays only while it loads.
+ */
+export const FX_ART_KEY='torres:fx-arte',FX_ART_URL='/art/fx/torres-fx';
+export interface FxArtFrames {frames:Record<string,{x:number;y:number;w:number;h:number}>}
+/**
  * Explosions by calibre (torres-polimento): from BIG_BLAST u (the obus, the Gustavão) the fireball wears a smoke cap and
  * a shock ring runs over the snow (SHOCK_R × its radius in SHOCK_MS × its life); from SMOKY_BLAST u the smoke rises
  * after it for BLAST_SMOKE × its life (× 1.5 the big ones).
@@ -215,8 +221,27 @@ export class TowerRenderer {
     const small=this.craterFrames.small;
     this.craterImages=this.craters.map(()=>{const img=scene.make.image({x:0,y:0,key:small.key,frame:small.frame},false).setVisible(false);this.ground.add(img);return img;});
     this.bakeEffects();
+    this.paintArt();
     this.atlas.flush();
     this.measure();
+  }
+  /** Paints the delivered effects over the baked ones, asking for them the first time (they come in a frame later). */
+  private paintArt(){
+    const {textures,cache,load}=this.scene,json=`${FX_ART_KEY}:json`;
+    if(!cache?.json||!textures)return;
+    const paint=()=>{
+      const art=cache.json.get(json) as FxArtFrames|undefined;
+      if(!art?.frames||!textures.exists(FX_ART_KEY))return;
+      const src=textures.get(FX_ART_KEY).getSourceImage() as HTMLImageElement;
+      for(const [name,r] of Object.entries(art.frames))
+        this.atlas.repaint(name,(ctx,x,y,w,h)=>ctx.drawImage(src,r.x,r.y,r.w,r.h,x,y,w,h));
+    };
+    if(textures.exists(FX_ART_KEY)&&cache.json.exists(json)){paint();return;}
+    if(!load?.once)return;
+    let left=0;const done=()=>{if(--left===0&&this.bake.scene)paint();};
+    if(!textures.exists(FX_ART_KEY)){left++;load.image(FX_ART_KEY,`${FX_ART_URL}.webp`);load.once(`filecomplete-image-${FX_ART_KEY}`,done);}
+    if(!cache.json.exists(json)){left++;load.json(json,`${FX_ART_URL}.json`);load.once(`filecomplete-json-${json}`,done);}
+    if(!load.isLoading())load.start();
   }
   /** Economy mode (scene.setEconomy): the cast shadows hide (and come back baked as they were). */
   get economy(){return this.economyOn;}
@@ -615,7 +640,7 @@ export class TowerRenderer {
         if(c.shot==='rocket')sh.puff=this.fxImage(sh.puff,FX.puff,d,moved).setPosition(tail.x,tail.y).setScale(8*s/HEAD_TEX).setAlpha(.45);
       }else{sh.trail?.setVisible(false);sh.puff?.setVisible(false);}
       const r=(c.shot==='rocket'?3:c.crater==='gustavao'?9:4.5)*s;
-      sh.head=this.fxImage(sh.head,c.shot==='rocket'?FX.headRocket:FX.headShell,d,moved).setPosition(head.x,head.y).setScale((r+1.5*s)*2/HEAD_TEX).setAlpha(1);
+      sh.head=this.fxImage(sh.head,c.shot==='rocket'?FX.headRocket:FX.headShell,d,moved).setPosition(head.x,head.y).setRotation(rot).setScale((r+1.5*s)*2/HEAD_TEX).setAlpha(1);
     }
     for(const b of this.blasts){
       if(!b.on)continue;

@@ -12,12 +12,12 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityDecor,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
-import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
 import {CAR_BODY_R,CAR_RADIUS} from '../src/contract/index.ts';
-import {BIG_ROCKS,LINK,bigCliffRocks,lineShape} from '../src/maps/city-decor.ts';
+import {BIG_ROCKS,LINK,bigCliffRocks,lineShape,relayWallLines,wallLines,WALL_FAMILIES} from '../src/maps/city-decor.ts';
 
 /** A dead end: a skeleton branch at least this long (cells) from its end to a junction. */
 export const BECO_MIN=3;
@@ -121,7 +121,7 @@ export function lugares(a:CityAsset):Lugar[]{
   return [{id:'praça',p:P.praca},{id:'início',p:P.inicio},
     ...Object.entries(P.bocas).map(([k,p])=>({id:`boca ${k}`,p})),
     ...(['spawnN','spawnS','spawnL','spawnO'] as const).map(k=>({id:k,p:P[k]})),
-    ...CITY_NEST_POOL.map(n=>({id:n.id,p:{x:n.x,y:n.y}}))];
+    ...CITY_NEST_SPOTS.map(n=>({id:n.id,p:{x:n.x,y:n.y}}))];
 }
 
 /** The nearest city cell to `p` (a point may sit on a wall cell's edge). */
@@ -187,10 +187,10 @@ export interface Passagem {readonly cells:readonly number[]; readonly from:numbe
 export function passageBan(g:CityGraph):(t:number)=>boolean{
   const {a,m,u}=g,P=a.points;
   const near=(t:number,p:CityPoint,r:number)=>Math.hypot((t%m+.5)*u-p.x,(Math.floor(t/m)+.5)*u-p.y)<r;
-  const nestBlocks=new Set(CITY_NEST_POOL.filter(n=>n.block).map(n=>n.block));
+  const nestBlocks=new Set(CITY_NEST_SPOTS.filter(n=>n.block).map(n=>n.block));
   return (t:number)=>{
     if(near(t,P.praca,PLAZA_KEEP))return true;
-    for(const n of CITY_NEST_POOL)if(near(t,n,NEST_YARD_RADIUS[n.maxSize]+NEST_KEEP))return true;
+    for(const n of CITY_NEST_SPOTS)if(near(t,n,NEST_YARD_RADIUS[n.maxSize]+NEST_KEEP))return true;
     const b=g.blockOf[t];if(b&&nestBlocks.has(b.id))return true;
     // Nor into a safe place (a cell of it or beside it): its one small opening is the point.
     const tx=t%m,ty=(t-tx)/m;
@@ -333,11 +333,12 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
     // A rock piece (2×2, 2×1) the hole went through: its cells left keep a 1×1 piece along the cliff (bare, a cliff
     // cell is drawn as a pale box).
     const isCliff=(c:number,r:number)=>c>=0&&r>=0&&c<m&&r<m&&!set.has(c+r*m)&&data.blocks.some(b=>b.kind==='cliff'&&b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));
-    const decor:CityDecor[]=[],loose:CityDecor[]=[];
+    const before=data.decor,decor:CityDecor[]=[],loose:CityDecor[]=[];let wallHit=false;
     for(const d of data.decor){
       const cut:[number,number][]=[];let hit=false;
       for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(set.has(c+r*m))hit=true;else cut.push([c,r]);
       if(!hit){decor.push(d);continue;}
+      if(WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)))wallHit=true;
       if(!d.id.startsWith('penhasco'))continue;
       for(const [c,r] of cut){if(!isCliff(c,r))continue;
         // As maps/city-decor.ts placeCityDecor draws a cliff cell.
@@ -347,6 +348,13 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
     }
     // And regrouped into big pieces where they fit (rochas-grandes).
     data.decor=[...decor,...bigCliffRocks(loose,BIG_ROCKS,cells.length)];
+    // A wall the hole went through: its line laid again on what is left, not the old pieces with gaps (cercas-nordeste-ligadas).
+    if(wallHit){
+      const wall=new Uint8Array(m*m);
+      for(const b of data.blocks)if(b.kind==='wall')for(const [x,y,w,h] of b.rects)
+        for(let r=Math.max(0,Math.round(y/u));r<Math.min(m,Math.round((y+h)/u));r++)for(let c=Math.max(0,Math.round(x/u));c<Math.min(m,Math.round((x+w)/u));c++)wall[r*m+c]=1;
+      data.decor=relayWallLines(m,m,i=>wall[i]===1,data.decor,before);
+    }
   }
 }
 
@@ -694,9 +702,16 @@ export const CERCA_SOLTA_MAX=6,CERCA_SOLTA_PAD=3;
 const FENCE=/^(alambrado|cerca-madeira|grade|muro-condominio|muro-pichado|tapume)-/;
 export function cercasSoltas(data:CityAssetData):number[][]{
   const m=data.cells.w,u=data.unitsPerCell!,fence=new Set<number>(),solid=new Uint8Array(m*m),other=new Uint8Array(m*m);
+  const wall=new Uint8Array(m*m);
   for(const d of data.decor??[])if(FENCE.test(d.id))for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)fence.add(c+r*m);
   for(const b of data.blocks)for(const [x,y,w,h] of b.rects)
-    for(let r=Math.floor(y/u+1e-6);r<Math.ceil((y+h)/u-1e-6);r++)for(let c=Math.floor(x/u+1e-6);c<Math.ceil((x+w)/u-1e-6);c++){solid[c+r*m]=1;if(b.kind!=='wall')other[c+r*m]=1;}
+    for(let r=Math.floor(y/u+1e-6);r<Math.ceil((y+h)/u-1e-6);r++)for(let c=Math.floor(x/u+1e-6);c<Math.ceil((x+w)/u-1e-6);c++){solid[c+r*m]=1;if(b.kind!=='wall')other[c+r*m]=1;else wall[c+r*m]=1;}
+  // A piece of the line half on a keep-out is drawn by the render (leftoverWallLines), not in the decor: its cells
+  // count as the fence's all the same (cercas-nordeste-ligadas).
+  for(const d of wallLines(m,m,i=>wall[i]===1,()=>'x',new Uint8Array(m*m))){
+    const cells:number[]=[];for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)cells.push(c+r*m);
+    if(cells.some(t=>fence.has(t)))for(const t of cells)fence.add(t);
+  }
   const seen=new Set<number>(),out:number[][]=[];
   for(const k of [...fence].sort((p,q)=>p-q)){
     if(seen.has(k))continue;

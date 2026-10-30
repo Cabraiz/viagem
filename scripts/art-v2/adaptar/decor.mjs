@@ -20,6 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import {levelWallBase} from './wall-slope.mjs';
 import {plan,measure,cornerOffset,HEIGHT_PX,ART_SCALE,BUILDING_BOTTOM,PROP_BOTTOM,OUTLIER,MAX_UPSCALE} from './cenario.mjs';
 
 // 238 pieces of up to 1024² × 4 views: no libvips cache and one thread keep the run within a shared PC's memory.
@@ -180,7 +181,8 @@ export async function renderRoot(p,{factor,shift=0}){
   const cols=[];
   let need={left:0,right:0,up:0,foot:0};
   for(let c=0;c<4;c++){
-    const sv=(c+shift)%4,img=await scale(p.views[sv],factor),m=measure([img]);
+    // A wall's straight piece gets its base levelled to the screen slope of a cell axis (wall-slope.mjs).
+    const sv=(c+shift)%4,scaled=await scale(p.views[sv],factor),img=wall&&/-reto-/.test(p.id)?levelWallBase(scaled,{grow:true}):scaled,m=measure([img]);
     const fx=img.width/p.views[sv].width,fy=img.height/p.views[sv].height;
     const off=building&&!wall?cornerOffset(fp,c):0,pin=wall?(m.x0+m.x1)/2:m.footX;
     const full=[];

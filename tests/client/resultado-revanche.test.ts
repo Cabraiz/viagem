@@ -23,8 +23,8 @@ test('rematch button: an older room keeps its words; the vote counts people onli
 test('defeat line: the team\'s top cause with its falls, and the rounds left before the boss',()=>{
   const log=emptyCauses();recordFall(log,'a','tio-pave');recordFall(log,'b','tio-pave');recordFall(log,'b','bebado');
   recordFall(log,'c','tio-pave');recordFall(log,'d','tio-pave');
-  assert.equal(defeatLine({victory:false,round:7,totalRounds:10},log),'O que derrubou a turma: Tio do Pavê (4 quedas). Faltou 3 rodadas pro síndico');
-  assert.equal(defeatLine({victory:false,round:9,totalRounds:10},emptyCauses()),'Faltou 1 rodada pro síndico');
+  assert.equal(defeatLine({victory:false,round:7,totalRounds:10},log),'O que derrubou a turma: Tio do Pavê (4 quedas). Faltou 3 rodadas pra vitória');
+  assert.equal(defeatLine({victory:false,round:9,totalRounds:10},emptyCauses()),'Faltou 1 rodada pra vitória');
   assert.equal(defeatLine({victory:false,round:10,totalRounds:10},emptyCauses()),undefined);
   assert.equal(defeatLine({victory:true,round:10,totalRounds:10},log),undefined);
   const one=emptyCauses();recordFall(one,'a','bebado');

@@ -106,9 +106,14 @@ export interface QualityProfile {
   economy:boolean;
   /** The scenery holds still: the CityLive loops and lights and the fountain glint on their first frame. */
   still:boolean;
+  /** Critters drawn at once (render/cull.ts overCap): the nearest to the hero; the rest wait hidden. Client only. */
+  enemyCap:number;
 }
+/** The card's annex B: critters on screen per level (Q3 slice 4). The room's own rule (src/sim) is apart. */
+export const ENEMY_CAP:Readonly<Record<QualityLevel,number>>=Object.freeze({leve:150,normal:300,alta:3000});
 export function qualityProfile(level:QualityLevel):QualityProfile{
-  return level==='leve'?{fps:ECONOMY_FPS,effects:'reduced',economy:true,still:true}:{fps:NORMAL_FPS,effects:'full',economy:false,still:false};
+  const enemyCap=ENEMY_CAP[level];
+  return level==='leve'?{fps:ECONOMY_FPS,effects:'reduced',economy:true,still:true,enemyCap}:{fps:NORMAL_FPS,effects:'full',economy:false,still:false,enemyCap};
 }
 
 /** The FPS watch for the levels: the first 10 s of combat (2 s warm-up, two 4 s windows under 40 fps). */

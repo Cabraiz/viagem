@@ -8,6 +8,9 @@ import {BORROW_TUNE,ENEMY_ART_IDS,MINI_COUNT,ROLE_PROFILES,ROSTER,ROSTER_ONLY_WI
   rosterEntry,rotationIds,roundRoster,slotPools,TUTORIAL_ART_TUNE,type Rotation} from '../../src/rules/index.ts';
 // @ts-expect-error: a plain .mjs script (no types)
 import {enemyArtIds,enemyArtIdsSource} from '../../scripts/art-v2/enemy-art-ids.mjs';
+import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
+// The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
+setRosterOnlyLiberados(false);
 
 const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));
 const SEEDS=Array.from({length:200},(_,i)=>i*104729+7);

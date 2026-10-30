@@ -10,9 +10,9 @@ import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAssetData,type CityDecor} from '../src/maps/city-asset.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
-import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
+import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
-import {cityEntradas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -33,7 +33,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...[p.spawnN,p.spawnS,p.spawnL,p.spawnO].map(q=>({...q,r:KEEP.spawn})),
     ...Object.values(p.bocas).map(q=>({...q,r:KEEP.boca})),
     ...asset.loot.map(q=>({...q,r:KEEP.loot})),
-    ...CITY_NEST_POOL.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
+    ...CITY_NEST_SPOTS.filter(n=>n.kind==='terreno').map(n=>({x:n.x,y:n.y,r:NEST_YARD_RADIUS[n.maxSize]+KEEP.yard})),
   ];
   const keepOutRects=[
     ...plan.sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL)),
@@ -42,7 +42,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
     ...asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>({x:(c-1)*asset.unitsPerCell,y:(r-1)*asset.unitsPerCell,w:(w+2)*asset.unitsPerCell,h:(h+2)*asset.unitsPerCell})),
 
     // A nest in a building keeps its whole block (and a margin) for the nest's own art.
-    ...CITY_NEST_POOL.filter(n=>n.block).map(n=>{
+    ...CITY_NEST_SPOTS.filter(n=>n.block).map(n=>{
       const b=asset.blocks.find(x=>x.id===n.block)!.bbox,m=KEEP.nestBlock;
       return {x:b[0]-m,y:b[1]-m,w:b[2]+2*m,h:b[3]+2*m};
     }),
@@ -71,7 +71,7 @@ export const BOCA_DECOR_RAIO=6;
 export function semDecorNasBocas(data:CityAssetData):CityDecor[]{
   const d=decodeCityAsset(encodeCityAsset(data));
   if(!d.ok)throw new Error(d.error);
-  const a=d.asset,u=a.unitsPerCell,bocas=cityEntradas(a);
+  const a=d.asset,u=a.unitsPerCell,bocas=entradasEstreitas(a);
   const gap=(q:CityDecor,e:{x:number;y:number})=>Math.hypot(Math.max(q.c*u-e.x,0,e.x-(q.c+q.w)*u),Math.max(q.r*u-e.y,0,e.y-(q.r+q.h)*u));
   const inMouth=(q:CityDecor)=>isCalcada(q.id)&&bocas.some(e=>gap(q,e)<=BOCA_DECOR_RAIO&&estreitaBoca(a,e,q));
   const taken=(data.decor??[]).filter(inMouth);

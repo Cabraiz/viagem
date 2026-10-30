@@ -30,12 +30,15 @@ export const CONTROLS_HINTS_MOUSE:Readonly<Record<ControlsHint,readonly string[]
   lobby:['WASD, setas ou clique pra andar.','A arma atira sozinha.'],
   countdown:['Aquece o mouse!'],
 };
-/** D-051 manual combat: the lobby's second line speaks of the attack, not of the weapon firing on its own. */
-export const MANUAL_HINT:Readonly<Record<InputKind,string>>={touch:'Segura Atacar pra bater.',mouse:'Segura Espaço pra atacar.'};
+/**
+ * D-051 manual combat: the lobby speaks of the attack, not of the weapon firing on its own. One line that walks and
+ * attacks (levelup-sem-arma-e-solo): coop.css hides any second line (BUG-20261013-ORQ-oferta-e-dicas-menores, size).
+ */
+export const MANUAL_HINT:Readonly<Record<InputKind,string>>={touch:'Arrasta pra andar, Atacar pra bater.',mouse:'WASD pra andar, Espaço pra atacar.'};
 /** The etiqueta's lines for a phase and an input kind (`manual`: the room plays the D-051 manual combat). */
 export function controlsHintLines(hint:ControlsHint,kind:InputKind='touch',manual=false):readonly string[]{
   const lines=(kind==='mouse'?CONTROLS_HINTS_MOUSE:CONTROLS_HINTS)[hint];
-  return manual&&hint==='lobby'?[lines[0],MANUAL_HINT[kind]]:lines;
+  return manual&&hint==='lobby'?[MANUAL_HINT[kind]]:lines;
 }
 
 export function controlsFor(input:ControlsInput):Controls{

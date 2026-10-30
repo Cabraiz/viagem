@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
-import {BOT_PICK_MS,PAUSE_GAP_TICKS,PAUSE_MAX_MS,pauseMs} from '../../multiplayer/levelup-pause.ts';
+import {BOT_PICK_MS,PAUSE_GAP_TICKS,PAUSE_MAX_MS,PAUSE_RUN_FIRST_MS,pauseMs} from '../../multiplayer/levelup-pause.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 
 function peer(){
@@ -43,10 +43,10 @@ test('a level-up in a wave pauses the run: the sim stands still, RunState.pause 
   assert.equal(room.sim.tick,tick,'2 s later the tick has not moved');
   assert.equal(JSON.stringify([...room.sim.world.enemies.values()].map(e=>[e.x,e.y,e.hp])),enemies,'nothing moved');
   const run=lastRun(a);
-  assert.deepEqual({...run.pause,leftMs:undefined},{leftMs:undefined,totalMs:pauseMs(1),level:room.sim.world.team.level,waiting:[ida,idb].sort(),
+  assert.deepEqual({...run.pause,leftMs:undefined},{leftMs:undefined,totalMs:pauseMs(1,true),level:room.sim.world.team.level,waiting:[ida,idb].sort(),
     // D-052: each player's "Pular" and "Rolar de novo" left (2 each at the start of a run).
     skips:{[ida]:2,[idb]:2},rerolls:{[ida]:2,[idb]:2}});
-  assert.ok(run.pause.leftMs<=pauseMs(1)-1500&&run.pause.leftMs>pauseMs(1)-3500,`left ${run.pause.leftMs}`);
+  assert.ok(run.pause.leftMs<=pauseMs(1,true)-1500&&run.pause.leftMs>pauseMs(1,true)-3500,`left ${run.pause.leftMs}`);
 });
 
 test('the pause ends when everybody picked; then PAUSE_GAP_TICKS of combat before another opens',()=>{
@@ -65,7 +65,7 @@ test('the pause ends when everybody picked; then PAUSE_GAP_TICKS of combat befor
 
 test('the deadline: nobody picks, everyone online gets the default and the run goes on; several levels give a longer pause',()=>{
   let {room,a,t,ida,idb}=paused();
-  for(let i=0;i<pauseMs(1)/50+2;i++)step(room,t+=50);
+  for(let i=0;i<pauseMs(1,true)/50+2;i++)step(room,t+=50);
   assert.equal(room.levelup.paused,false);
   assert.equal(room.sim.offers(ida).length,0);assert.equal(room.sim.offers(idb).length,0);
   assert.ok(lastRun(a).pause===undefined);
@@ -119,7 +119,7 @@ test('reconnecting mid-pause: the welcome already carries the pause (the phone s
   const back=peer();peers.get(room)!.push(back);room.connect(back,t+=50);say(room,back,{t:'join',protocol:ROOM_PROTOCOL,token},t);
   assert.equal(room.levelup.paused,true);
   const w=welcome(back);
-  assert.ok(w.run.pause,'welcome.run.pause');assert.equal(w.run.pause.totalMs,pauseMs(1));
+  assert.ok(w.run.pause,'welcome.run.pause');assert.equal(w.run.pause.totalMs,pauseMs(1,true));
 });
 
 test('someone eliminated with a card never holds the pause; their offer is dropped',()=>{
@@ -149,4 +149,23 @@ test('carteira-e-pix: no PIX in the pause (\'pause\'); after it the room checks 
   say(room,a,{t:'pix',round,req:3,to:idb,amount:10},t+100);
   assert.equal(a.messages.filter(m=>m.t==='pixed'&&m.req===3).at(-1).reason,'duplicate','the same req again moves nothing');
   assert.equal(room.sim.granaOf(ida),20);
+});
+
+test('primeira-melhoria-sem-pressa: the run\'s first pause gives PAUSE_RUN_FIRST_MS, the next ones today\'s deadline; a new run starts over',()=>{
+  assert.equal(pauseMs(1,true),PAUSE_RUN_FIRST_MS);assert.equal(PAUSE_RUN_FIRST_MS,15_000);
+  assert.equal(pauseMs(1),12_000,'from the second pause on, as before');
+  assert.equal(pauseMs(3,true),pauseMs(3),'several levels already get more than the first pause\'s floor');
+  let {room,a,b,t,ida,idb}=paused();
+  assert.equal(lastRun(a).pause.totalMs,PAUSE_RUN_FIRST_MS);
+  pick(room,a,ida,t);pick(room,b,idb,t);step(room,t+=50);
+  assert.equal(room.levelup.paused,false);
+  room.sim.run.progression.grantLevelOffers(room.sim.world,3);
+  for(let i=0;i<PAUSE_GAP_TICKS+5&&!room.levelup.paused;i++)step(room,t+=50);
+  assert.equal(room.levelup.paused,true,'the second pause opened');
+  assert.equal(lastRun(a).pause.totalMs,pauseMs(1));
+  pick(room,a,ida,t);pick(room,b,idb,t);step(room,t+=50);
+  room.levelup.reset();
+  room.sim.run.progression.grantLevelOffers(room.sim.world,4);
+  step(room,t+=50);
+  assert.equal(lastRun(a).pause.totalMs,PAUSE_RUN_FIRST_MS,'a new run (reset): first pause again');
 });

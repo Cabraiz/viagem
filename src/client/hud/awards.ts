@@ -83,7 +83,7 @@ const DEFS:readonly AwardDef[]=[
     line:(_v,_f,solo)=>solo?'O time era você. Parabéns?':'Costas doendo de tanto carregar.'},
   // TODO(D-033): the 'rodo' sticker's <title> in src/client/ui/stickers.svg (scripts/make-stickers.mjs) still says
   // "Exterminador de gosma"; regenerate it with the new wording when the sticker art is redone.
-  {id:'exterminador',title:'Exterminador de bêbado',icon:'rodo',vice:'Estagiário da dedetização',solo:true,
+  {id:'exterminador',title:'Exterminador de bicho',icon:'rodo',vice:'Estagiário da dedetização',solo:true,
     metric:f=>f.kills,
     line:v=>`${v} bichos de volta pro mar.`},
   {id:'build-sem-sentido',title:'Build mais sem sentido',icon:'antena',vice:'Build quase sem sentido',solo:true,person:true,

@@ -12,8 +12,10 @@
  *    per third of the map (three 120° sectors around the car, their start angle drawn), BANCO.distCarro..distCarroMax from the car,
  *    and BANCO.desvio[0]..[1] from the anchor: the moto's route (anchor.route, chaveiro) or the plaza (anchor.plaza,
  *    wall mode). In each sector a spot where the whole shop fits (candidate.lot: a BICO.lote disc clear; ringCandidates
- *    marks it) comes first; with none, the desvio rule drops, then the car rule. Ids 'banco-1'..,
- *    names BANK_IDS in sector order.
+ *    marks it) comes first; with none, the desvio rule drops, then the car rule (a band as wide as the ring from the
+ *    sector's nearest spot), then the sector (a ring spot of any sector), then anywhere in it. The drawn start angle
+ *    turns to give as many sectors a ring spot as the map allows. Shops stay BANK_SPACING apart while the candidates
+ *    allow. Ids 'banco-1'.., names BANK_IDS in sector order. The candidates of a run: fora-das-bocas.ts shopCandidates.
  *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)},
  *    work?(id)}: work is a player's Trabalhar this tick (assemble.ts: the input, held and standing still; undefined
  *    with no input this tick).
@@ -109,7 +111,7 @@ export interface BanksSystem {
   working(playerId:string):string|undefined;
 }
 
-const TAU=Math.PI*2;
+export const TAU=Math.PI*2;
 /**
  * A crate whose point is this close (u) to a bank is not in the run: a hero working it (within its radius + the gather
  * reach, stonewards/resources.ts GATHER_REACH 0.9, CRATE_RADIUS 0.35) would stand within holdR of the bank.
@@ -143,26 +145,49 @@ export function ringCandidates(car:Point,clear:(x:number,y:number,r:number)=>boo
   return out;
 }
 
+/** Step (radians) of the sectors' start angle when it turns to give more sectors a ring spot (planBanks). */
+const SECTOR_TURN=Math.PI/180;
+/** Two shops' points stay this far apart (u: two lots side by side) while the candidates allow it. */
+export const BANK_SPACING=2*BICO.lote;
 /** The run's banks: a pure function of the seed, the candidates, the car and the anchor (see the module doc). */
 export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Point,anchor:BankAnchor):BankPlace[]{
   const rng=new Rng(seed>>>0).fork('bancos'),count=Math.max(0,Math.min(BANCO.count,BANK_IDS.length));
-  const offset=rng.range(0,TAU),width=TAU/Math.max(1,count);
-  const sectorOf=(p:Point)=>{const a=((Math.atan2(p.y-car.y,p.x-car.x)-offset)%TAU+TAU)%TAU;return Math.min(count-1,Math.floor(a/width));};
-  const fromCar=(p:Point)=>Math.hypot(p.x-car.x,p.y-car.y);
+  const width=TAU/Math.max(1,count),fromCar=(p:Point)=>Math.hypot(p.x-car.x,p.y-car.y);
+  let offset=rng.range(0,TAU);
+  const sectorAt=(p:Point,off:number)=>{const a=((Math.atan2(p.y-car.y,p.x-car.x)-off)%TAU+TAU)%TAU;return Math.min(count-1,Math.floor(a/width));};
+  const sectorOf=(p:Point)=>sectorAt(p,offset);
+  // The mouths leave few ring spots (lojasForaDasBocas): the drawn start angle turns on, by SECTOR_TURN steps, to the
+  // first that gives as many sectors a ring spot as any start can (a sector with none sends its shop far from the car).
+  // A map with ring spots all around keeps the drawn angle.
+  const ringed=candidates.filter(p=>fromCar(p)>=BANCO.distCarro&&fromCar(p)<=BANCO.distCarroMax);
+  const covered=(off:number)=>new Set(ringed.map(p=>sectorAt(p,off))).size;
+  const steps=Math.ceil(TAU/SECTOR_TURN);
+  let best=covered(offset);
+  for(let k=1;k<steps&&best<count;k++)best=Math.max(best,covered(offset+k*SECTOR_TURN));
+  for(let k=0;k<steps;k++)if(covered(offset+k*SECTOR_TURN)===best){offset=(offset+k*SECTOR_TURN)%TAU;break;}
   const fromAnchor=(p:Point)=>'route' in anchor?distanceToPolyline(p,anchor.route):Math.hypot(p.x-anchor.plaza.x,p.y-anchor.plaza.y);
   const [lo,hi]=BANCO.desvio;
   const taken=new Set<number>(),out:BankPlace[]=[];
   for(let k=0;k<count;k++){
-    const pool=candidates.map((p,i)=>({p,i})).filter(c=>!taken.has(c.i));
+    const free=candidates.map((p,i)=>({p,i})).filter(c=>!taken.has(c.i));
+    // Not crowded: a lot apart from the shops already drawn, when the map leaves room.
+    const apart=free.filter(c=>out.every(q=>Math.hypot(q.x-c.p.x,q.y-c.p.y)>=BANK_SPACING));
+    const pool=apart.length?apart:free;
     const inSector=pool.filter(c=>sectorOf(c.p)===k);
     const ring=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
+    // No ring spot in the sector (the mouths take most of the ring, lojasForaDasBocas): a band as wide as the ring from
+    // the sector's nearest spot (one per third stays), then a ring spot of another sector.
+    const anyRing=pool.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
+    const outer=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),nearest=Math.min(...outer.map(c=>fromCar(c.p)));
     const tiers=[
       // Bicos: a spot where the whole shop fits first (the desvio rule, then without it).
       ring.filter(c=>c.p.lot&&fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
       ring.filter(c=>c.p.lot),
       ring.filter(c=>fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
       ring,
-      inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),
+      outer.filter(c=>fromCar(c.p)<=nearest+BANCO.distCarroMax-BANCO.distCarro),
+      anyRing,
+      outer,
       inSector,
       pool,
     ];

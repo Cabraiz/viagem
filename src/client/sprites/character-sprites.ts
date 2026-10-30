@@ -18,9 +18,9 @@ import {DanceGate,type DanceCue} from './hero-dance.ts';
 
 export type {FigureBox};
 /** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
-interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
+interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry;cell?:number}
 /** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen (`geom`: the city copy shown). */
-export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
+export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry;cell?:number}
 /**
  * A walk as drawn (card som-passos-fora-do-eixo): the cycles walked since it started (`since`, the scene's clock) up to
  * the frame drawn at `at` (same clock), and the points of the cycle (0..1) where the sheet shown plants a foot: the run
@@ -29,6 +29,8 @@ export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip
 export interface Gait {cycles:number;contacts:readonly number[];since:number;at:number}
 export const LOOP_CONTACTS:readonly number[]=[0,.5];
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
+/** A figure box scaled from one cell size to another (a quality level's smaller copy); undefined stays undefined. */
+const scaleBox=(b:FigureBox|null|undefined,k:number):FigureBox|undefined=>!b?undefined:k===1?b:{left:b.left*k,top:b.top*k,right:b.right*k,bottom:b.bottom*k};
 
 /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas) of one texture. */
 interface AnimSet {
@@ -72,11 +74,11 @@ export class CharacterSprites {
     let sheet=this.sheets.get(id);
     if(!sheet){
       const today=directionalSheets.get(id),directional=this.failed.has(id)?today:directionalSheet(id),catalog=spriteCatalog[id];
-      sheet={key:directional?`sprite:${id}:dir4`:`sprite:${id}`,directional,imported:!!directional&&directional!==today,scale:96/(directional?.height??catalog?.height??96),figure:directional?directional.figure:catalog?.figure};
+      sheet={key:directional?`sprite:${id}:dir4`:`sprite:${id}`,directional,imported:!!directional&&directional!==today,scale:96/(directional?.height??catalog?.height??96)*192/(directional?.cell??192),figure:directional?directional.figure:catalog?.figure};
       const card=directional?.cardinals;
       if(card&&!this.cardinalFailed.has(id)){
         const url=this.cardinalOriginal.has(id)?originalUrl(card.url)??card.url:card.url;
-        sheet.cardinals={key:`sprite:${id}:dir4c`,directional:{url,height:directional.height,figure:card.figure},
+        sheet.cardinals={key:`sprite:${id}:dir4c`,directional:{url,height:directional.height,figure:card.figure,...(directional.cell?{cell:directional.cell}:{})},
           imported:true,scale:sheet.scale,figure:card.figure};
       }
       this.sheets.set(id,sheet);
@@ -101,7 +103,9 @@ export class CharacterSprites {
    * the sprite shows its city copy (contorno-breu), so frame size × origin × scale still give the figure's world box.
    */
   figureIn(sprite:Phaser.GameObjects.Sprite,id:string):FigureBox|undefined{
-    const f=this.states.get(sprite)?.stream?.figure??this.figure(id),copy=f&&this.city?.copyOf(sprite.texture.key);
+    // In the shown frame's px: a stream's figure is in 96 px units, the sheets' in 192 (a quality level draws smaller cells).
+    const stream=this.states.get(sprite)?.stream,k=stream?(stream.cell??96)/96:(this.sheet(id).directional?.cell??192)/192;
+    const f=scaleBox(stream?.figure??this.figure(id),k),copy=f&&this.city?.copyOf(sprite.texture.key);
     if(!f||!copy)return f;
     const g=copy.geom;
     return {left:copyX(g,f.left),right:copyX(g,f.right),top:copyY(g,f.top),bottom:copyY(g,f.bottom)};
@@ -120,22 +124,22 @@ export class CharacterSprites {
     let box:FigureBox|null=null;
     try{
       const image=this.scene.textures.get(sheet.key).getSourceImage() as CanvasImageSource&{width:number;height:number};
-      const off=figureOffThread(image,192);
+      const cell=sheet.directional?.cell??192,k=192/cell,off=figureOffThread(image,cell);
       if(off){
         const token={};this.measuring.set(sheet.key,token);
         // A page forgotten meanwhile (failed download, rejectPage) drops the late box.
-        void off.then(b=>{if(this.measuring.get(sheet.key)!==token)return;this.measuring.delete(sheet.key);this.measured.set(sheet.key,b);});
+        void off.then(b=>{if(this.measuring.get(sheet.key)!==token)return;this.measuring.delete(sheet.key);this.measured.set(sheet.key,scaleBox(b,k)??null);});
         return;
       }
       const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
       const ctx=canvas.getContext('2d',{willReadFrequently:true});
       if(ctx){
         ctx.drawImage(image,0,0);const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
-        let left=192,top=192,right=-1,bottom=-1;
+        let left=cell,top=cell,right=-1,bottom=-1;
         for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>20){
-          const fx=x%192,fy=y%192;if(fx<left)left=fx;if(fx>right)right=fx;if(fy<top)top=fy;if(fy>bottom)bottom=fy;
+          const fx=x%cell,fy=y%cell;if(fx<left)left=fx;if(fx>right)right=fx;if(fy<top)top=fy;if(fy>bottom)bottom=fy;
         }
-        if(right>=left)box={left,top,right:right+1,bottom:bottom+1};
+        if(right>=left)box=scaleBox({left,top,right:right+1,bottom:bottom+1},k)!;
       }
     }catch{box=null;}
     this.measured.set(sheet.key,box);
@@ -179,7 +183,7 @@ export class CharacterSprites {
     const cache=this.detailed??=movement128Textures(this.scene,this.city);
     if(this.scene.textures.exists(plan.key)||cache.status(plan.key)||this.requested.has(plan.key))return;
     this.requested.add(plan.key);this.detailedPreloads.set(plan.key,plan);
-    this.scene.load.spritesheet(plan.key,plan.url,{frameWidth:96,frameHeight:96,endFrame:plan.frameCount-1});
+    this.scene.load.spritesheet(plan.key,plan.url,{frameWidth:plan.cell??96,frameHeight:plan.cell??96,endFrame:plan.frameCount-1});
     if(!this.preloadCleanup){
       this.preloadCleanup=true;
       const cleanup=()=>{
@@ -213,7 +217,7 @@ export class CharacterSprites {
       this.measure(id);
     });
     if(sheet.imported)this.watchErrors();
-    this.scene.load.spritesheet(key,directional?.url??spriteUrl(id),{frameWidth:192,frameHeight:192});
+    this.scene.load.spritesheet(key,directional?.url??spriteUrl(id),{frameWidth:directional?.cell??192,frameHeight:directional?.cell??192});
   }
   /** An imported atlas that fails (missing in a deploy, bad cache) is forgotten: the next animate() asks today's sheet. */
   private watchErrors(){
@@ -267,7 +271,7 @@ export class CharacterSprites {
   gait(sprite:Phaser.GameObjects.Sprite):Gait|undefined{return this.states.get(sprite)?.gait;}
   handPose(sprite:Phaser.GameObjects.Sprite):HandPose|undefined{
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
-    return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
+    return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{}),...(h.cell?{cell:h.cell}:{})}:undefined;
   }
   private cues=new WeakMap<Phaser.GameObjects.Sprite,DanceCue>();
   /**
@@ -346,14 +350,14 @@ export class CharacterSprites {
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){
-        const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE;
+        const cell=detailed.cell??96,scale=96/detailed.height*96/cell*this.viewScale*HERO_DRAW_SCALE;
         // The walk by the ground walked, attack and rest by the clock. A run with a phase table picks its pose by the
         // ground and shifts the sprite back by the planted foot's travel within the pose: the foot stays on its spot.
         // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move; the pull too.
         const run=(motion==='walk'||pushing||pulling)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
           fall?swingFrame(fall,(this.scene.time.now-state.downSince!)/fall.durationMs):dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
-        const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
+        const copy=this.city?.variant(detailed.key,scale,cropOf(scaleBox(detailed.figure,cell/96),cell,cell));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
         if(sprite.texture.key!==key)sprite.setTexture(key,frame);else if(Number(sprite.frame.name)!==frame)sprite.setFrame(frame);
@@ -372,7 +376,7 @@ export class CharacterSprites {
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda), or a tool in them (animacao-construir-6):
         // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned: no hand fits.
-        state.hand=pushing||pulling||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
+        state.hand=pushing||pulling||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale:scale*cell/96,flip,direction,...(copy?{geom:copy.geom}:{}),...(detailed.cell?{cell}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
@@ -395,7 +399,7 @@ export class CharacterSprites {
     const scale=sheet.scale*this.viewScale*HERO_DRAW_SCALE;
     // City mode (contorno-breu): the sheet's Breu-ring copy at screen scale, shown with the inverse scale and the
     // padded origin so the figure keeps its size and feet; its animations are made once per copy.
-    if(this.city&&sheet.crop===undefined)sheet.crop=cropOf(this.pageFigure(sheet),192,192)??null;
+    if(this.city&&sheet.crop===undefined){const cell=sheet.directional?.cell??192;sheet.crop=cropOf(scaleBox(this.pageFigure(sheet),cell/192),cell,cell)??null;}
     const copy=this.city?.variant(sheet.key,scale,sheet.crop??undefined);
     if(copy&&sheet.city?.key!==copy.key){const set:AnimSet&{key:string}={key:copy.key};this.animations(sheet,copy.key,set);sheet.city=set;}
     const key=copy?copy.key:sheet.key,sx=copy?scale*copy.geom.kx:scale,sy=copy?scale*copy.geom.ky:scale,anims:AnimSet=copy&&sheet.city?sheet.city:sheet;

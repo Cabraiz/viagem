@@ -53,15 +53,16 @@ export const HAND_PATCH=3.5;
 /** What heldHand reads of a hero sprite and of CharacterSprites (structural: no Phaser here). */
 interface HandSprite {x:number;y:number;depth:number;rotation:number;visible:boolean;
   texture:{key:string};frame:{name:string|number};originX:number;originY:number;scaleX:number;scaleY:number;flipX:boolean}
-interface HandPoses<S> {handPose(sprite:S):{point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}|undefined}
+interface HandPoses<S> {handPose(sprite:S):{point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry;cell?:number}|undefined}
 /**
  * The patch's crop for the hand at `hand` (cell px, unmirrored) in the frame the sprite shows: the cell itself, or a
  * city copy (`geom`: the cell's crop resampled by kx/ky and padded). Phaser crops a mirrored sprite in its shown
- * (mirrored) coordinates, so the square goes to the frame's width − x.
+ * (mirrored) coordinates, so the square goes to the frame's width − x. `cell`: the frame's px (a quality level's 64 px
+ * copy; the hand stays in 96 px units).
  */
-export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeometry):[number,number,number,number]{
-  const x=geom?geom.pad+(hand.x-geom.crop.x)/geom.kx:hand.x,y=geom?geom.pad+(hand.y-geom.crop.y)/geom.ky:hand.y;
-  const rx=HAND_PATCH/(geom?.kx??1),ry=HAND_PATCH/(geom?.ky??1),w=geom?geom.slotW:96;
+export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeometry,cell=96):[number,number,number,number]{
+  const k=cell/96,hx=hand.x*k,hy=hand.y*k,x=geom?geom.pad+(hx-geom.crop.x)/geom.kx:hx,y=geom?geom.pad+(hy-geom.crop.y)/geom.ky:hy;
+  const rx=HAND_PATCH*k/(geom?.kx??1),ry=HAND_PATCH*k/(geom?.ky??1),w=geom?geom.slotW:cell;
   return [(flip?w-x:x)-rx,y-ry,2*rx,2*ry];
 }
 /**
@@ -70,9 +71,9 @@ export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeo
  * but the quad offset by crop.x BEFORE the flip (MultiPipeline.batchSprite), so the fingers landed on the other side
  * of the body's pivot (E, NE, SW: the handle over the fist, a stray fist on the torso). 0 unmirrored.
  */
-export function patchShift(hand:{x:number},flip:boolean,geom?:VariantGeometry){
+export function patchShift(hand:{x:number},flip:boolean,geom?:VariantGeometry,cell=96){
   if(!flip)return 0;
-  const x=geom?geom.pad+(hand.x-geom.crop.x)/geom.kx:hand.x,w=geom?geom.slotW:96;
+  const hx=hand.x*cell/96,x=geom?geom.pad+(hx-geom.crop.x)/geom.kx:hx,w=geom?geom.slotW:cell;
   return w-2*x;
 }
 /**
@@ -85,8 +86,8 @@ export function heldHand<S extends HandSprite>(sprites:HandPoses<S>,sprite:S|und
   const at=handOnScreen(pose.point,sprite,pose.ox,pose.oy,pose.scale,pose.flip,{x:0,y:0});
   const held:HeldHand={x:at.x,y:at.y,aim:AIM_ANGLE[pose.direction],behind:pose.point.behind,depth:sprite.depth};
   // Behind the body the sprite already covers the weapon: no patch.
-  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x+patchShift(pose.point,pose.flip,pose.geom)*sprite.scaleX,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
-    sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop:patchCrop(pose.point,pose.flip,pose.geom)};
+  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x+patchShift(pose.point,pose.flip,pose.geom,pose.cell)*sprite.scaleX,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
+    sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop:patchCrop(pose.point,pose.flip,pose.geom,pose.cell)};
   return held;
 }
 

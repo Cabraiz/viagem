@@ -1,9 +1,12 @@
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {spriteUrl} from './art-urls.ts';
 import {artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
+import {movementArtLevel} from './movement128.ts';
 
 /** A class's 4-direction atlas (docs/sprite-directions.md): where it is served and its measured standing height. */
-export interface DirectionalSheet {url:string;height:number;figure?:FigureBox;cardinals?:{url:string;figure?:FigureBox}}
+/** `cell`: the atlas's cell px (192 when absent; the phone levels' copy is PHONE_DIR4_CELL), `height` and `figure` stay in 192 px units. */
+export interface DirectionalSheet {url:string;height:number;figure?:FigureBox;cell?:number;cardinals?:{url:string;figure?:FigureBox}}
+export const PHONE_DIR4_CELL=128;
 
 /**
  * The classes with a 4-direction batch: the imported ones (`dir4` in the generated catalog, the atlas next to the
@@ -40,12 +43,14 @@ export function importedSheet(id:string):DirectionalSheet|undefined{
   const height=file.height;
   if(typeof height!=='number'||!Number.isFinite(height)||height<8||height>CELL)return undefined;
   // The game downloads the lossy copy (scripts/art-lite.mjs, ~460 KB instead of ~960 KB), as for today's sheets.
-  const url=artUrl('personagens',file.file)?.replace('/art/sprites/','/art/lite/sprites/');
+  // Normal and Leve (card q3-niveis-qualidade): the 128 px cell copy, dir4 and dir4c alike.
+  const phone=movementArtLevel()!=='alta',lite=phone?'/art/lite/sprites-celular/':'/art/lite/sprites/';
+  const url=artUrl('personagens',file.file)?.replace('/art/sprites/',lite);
   if(!url)return undefined;
   const card=artPiece('personagens',id)?.files.dir4c;
   const cardinalUrl=card&&validPage(card)?artUrl('personagens',card.file!):undefined;
-  return {url,height,...(isFigure(file.figure)?{figure:file.figure}:{}),
-    ...(cardinalUrl?{cardinals:{url:cardinalUrl.replace('/art/sprites/','/art/lite/sprites/'),
+  return {url,height,...(phone?{cell:PHONE_DIR4_CELL}:{}),...(isFigure(file.figure)?{figure:file.figure}:{}),
+    ...(cardinalUrl?{cardinals:{url:cardinalUrl.replace('/art/sprites/',lite),
       ...(isFigure(card?.figure)?{figure:card.figure}:{})}}:{})};
 }
 function validPage(file:ArtFile):file is ArtFile&{file:string}{

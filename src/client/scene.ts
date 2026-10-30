@@ -28,7 +28,7 @@ import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
 import {workFacing} from './sprites/work-facing.ts';
-import {hasWork16,hasDowned16} from './sprites/movement128.ts';
+import {hasWork16,hasDowned16,setMovementArtLevel} from './sprites/movement128.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -412,7 +412,7 @@ export class IslandScene extends Phaser.Scene {
   besideWindow?:BesideWindow;
   /** Where the camera frames the hero beside that window (zones.ts besideArea), CSS px; the useful area without it. */
   frameArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;const k=hooks.zoom??ZOOM_DEFAULT;this.zoomWant=this.zoomNow=hooks.zoomLocked?k:clampZoom(k);this.quality=hooks.quality??'normal';this.economy=qualityProfile(this.quality).economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;const k=hooks.zoom??ZOOM_DEFAULT;this.zoomWant=this.zoomNow=hooks.zoomLocked?k:clampZoom(k);this.quality=hooks.quality??'normal';setMovementArtLevel(this.quality);this.economy=qualityProfile(this.quality).economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet, its walk in the 8 directions and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -1092,6 +1092,7 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Quality level (Q3): Leve is 30 fps, the reduced effects, the economy look (VGM-048) and a still scenery; Normal and Alta the full game. */
   setQuality(level:QualityLevel){
+    setMovementArtLevel(level);
     this.quality=level;const profile=qualityProfile(level),on=profile.economy;this.economy=on;
     // A tap before the scene booted: create() applies it.
     if(!this.booted)return;

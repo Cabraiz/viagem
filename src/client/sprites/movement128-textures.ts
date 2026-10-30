@@ -138,12 +138,12 @@ export function movement128Textures(scene:Phaser.Scene,city?:CityOutlines):Movem
     const available=(plan:Movement128Plan):LoadedTexture|undefined=>{
       if(!textures.exists(plan.key)||!textures.get)return;
       const image=textures.get(plan.key).getSourceImage() as Sheet;
-      if(image.width!==plan.columns*96||image.height!==plan.rows*96)return;
+      const cell=plan.cell??96;if(image.width!==plan.columns*cell||image.height!==plan.rows*cell)return;
       return managed(plan,image);
     };
     const cache=new Movement128Textures<Phaser.GameObjects.Sprite>(async plan=>{
       const preloaded=available(plan);if(preloaded)return preloaded;
-      const w=plan.columns*96,h=plan.rows*96;
+      const cell=plan.cell??96,w=plan.columns*cell,h=plan.rows*cell;
       let image:Sheet|undefined;
       for(const url of [plan.url,plan.original]){
         try{image=await decodeSheet(url,w,h);break;}catch{/* next url */}
@@ -152,7 +152,7 @@ export function movement128Textures(scene:Phaser.Scene,city?:CityOutlines):Movem
       // The GPU upload goes inside the upload queue's frame budget (a 1536×768 clip is one big sheet).
       if(bitmaps())await new Promise<void>(resolve=>queueUpload(w*h,resolve));
       const completedPreload=available(plan);if(completedPreload){free(image);return completedPreload;}
-      try{textures.addSpriteSheet(plan.key,image as HTMLImageElement,{frameWidth:96,frameHeight:96,endFrame:plan.frameCount-1});}
+      try{textures.addSpriteSheet(plan.key,image as HTMLImageElement,{frameWidth:cell,frameHeight:cell,endFrame:plan.frameCount-1});}
       catch(error){free(image);throw error;}
       if(!textures.exists(plan.key)){free(image);throw new Error('movement128 texture unavailable');}
       return managed(plan,image);

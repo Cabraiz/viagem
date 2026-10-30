@@ -2,6 +2,7 @@ import {artIndexVersion,artPiece,artUrl} from '../art/manifest.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,HERO_GAIT,type HeroDirection} from './sprite-motion.ts';
 import type {FigureBox} from './sprite-catalog.ts';
 import {DANCE_RATE} from './hero-dance.ts';
+import type {QualityLevel} from '../quality.ts';
 
 export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
@@ -18,6 +19,8 @@ export interface Movement128Plan {
   phase?:RunPhase;
   /** The dance (danceFrame): its clock runs this many times faster than `durationMs` (the menu's dance128); 1 when absent. */
   rate?:number;
+  /** The sheet's cell px (Normal / Leve: the art-lite level copy, MOVEMENT_LEVEL_CELL); 96 when absent. `figure`, `pivotX` and `phase` stay in 96 px units. */
+  cell?:number;
 }
 /**
  * A run's phase table (card passo-3x-mais-lento): per pose, `d` the ground it covers in figure heights (the stance poses
@@ -56,6 +59,20 @@ export function phaseContacts(p:RunPhase):readonly [number,number]{
 }
 let version=-1;
 const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),pull16=new Map<string,boolean>(),hurt16=new Map<string,boolean>(),build16=new Map<string,boolean>(),work16=new Map<string,boolean>(),downed16=new Map<string,boolean>(),idle16=new Map<string,boolean>();
+/**
+ * The art level (card q3-niveis-qualidade, fatia 2): Alta draws the 96 px sheets; Normal and Leve the art-lite copies at
+ * 64 px, the 128-pose sheets cut to 64 (Normal) or 32 (Leve) poses. Set before the preload; a change rebuilds the plans.
+ */
+let artLevel:QualityLevel='alta';
+export function setMovementArtLevel(level:QualityLevel){if(level!==artLevel){artLevel=level;version=-1;}}
+export const movementArtLevel=()=>artLevel;
+export const MOVEMENT_LEVEL_CELL=64;
+function leveled(plan:Movement128Plan):Movement128Plan{
+  if(artLevel==='alta')return plan;
+  const r06=plan.columns===16&&plan.rows===8&&plan.frameCount===128,leve=artLevel==='leve',dir=r06?leve?'sprites-leve':'sprites-normal':'sprites-64';
+  const [columns,rows,frameCount]=r06?leve?[8,4,32]:[8,8,64]:[plan.columns,plan.rows,plan.frameCount];
+  return {...plan,key:`${plan.key}@${dir}`,url:plan.original.replace('/art/sprites/',`/art/lite/${dir}/`),columns,rows,frameCount,cell:MOVEMENT_LEVEL_CELL};
+}
 function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();pull16.clear();hurt16.clear();build16.clear();work16.clear();downed16.clear();idle16.clear();}}
 const box=(v:unknown):v is FigureBox=>{
   if(!v||typeof v!=='object')return false;
@@ -76,7 +93,7 @@ export function movement128Plan(id:string,motion:DetailedMotion,direction:HeroDi
   }
   const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion,direction,
     columns:16,rows:8,frameCount:128,durationMs,loop:motion==='walk',anchor:[.5,.875],height:f.height,figure:f.figure};
-  plans.set(key,plan);return plan;
+  const leveledPlan=leveled(plan);plans.set(key,leveledPlan);return leveledPlan;
 }
 /** A class's own dance loop (card dancas-5-herois-16q, scripts/import-danca-loop.mjs): 16 to 64 poses (the user asked for ~48 at 10 a second, a calm but fluid loop of ~5 s). */
 export const DANCE_LOOP_FRAMES={min:16,max:64} as const;
@@ -100,7 +117,7 @@ export function dancePlan(id:string):Movement128Plan|undefined{
   }
   const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:16,rows:8,
     frameCount:128,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure,rate:DANCE_RATE};
-  plans.set(key,plan);return plan;
+  const leveledPlan=leveled(plan);plans.set(key,leveledPlan);return leveledPlan;
 }
 /** The class's `dance-loop` plan; null when the file is there but malformed (no dance128 fallback: it was removed), undefined without one. */
 function danceLoopPlan(id:string):Movement128Plan|null|undefined{
@@ -112,8 +129,8 @@ function danceLoopPlan(id:string):Movement128Plan|null|undefined{
     p.frameCount!==frames||f.loop!==true||typeof f.durationMs!=='number'||!(f.durationMs>0)||f.anchor?.[0]!==.5||f.anchor[1]!==.875||
     typeof f.height!=='number'||!Number.isFinite(f.height)||f.height<4||f.height>96||!box(f.figure)||
     typeof f.pivotX!=='number'||!Number.isFinite(f.pivotX)||f.pivotX<=0||f.pivotX>=96)return null;
-  return {key:`sprite96:${id}:dance`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:p.columns,rows:p.rows,
-    frameCount:frames,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure,pivotX:f.pivotX};
+  return leveled({key:`sprite96:${id}:dance`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:p.columns,rows:p.rows,
+    frameCount:frames,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure,pivotX:f.pivotX});
 }
 /** One resting pose per direction, in the same oblique camera and coordinate system as the detailed motions. */
 export function movementIdle8Plan(id:string):Movement128Plan|undefined{
@@ -127,7 +144,7 @@ export function movementIdle8Plan(id:string):Movement128Plan|undefined{
   }
   const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'idle',columns:8,rows:1,frameCount:8,
     durationMs:0,loop:false,anchor:[.5,.875],height:f.height,figure:f.figure};
-  plans.set(key,plan);return plan;
+  const leveledPlan=leveled(plan);plans.set(key,leveledPlan);return leveledPlan;
 }
 export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.indexOf(direction);
 
@@ -188,7 +205,7 @@ export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroD
   const plan:Movement128Plan={key:`sprite16:${id}:${motion}:${source}`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion,direction,
     columns,rows,frameCount,durationMs,loop,anchor:[.5,.875],height:f.height,figure:f.figure,flip,pivotX:f.pivotX,
     ...((motion==='run'||motion==='push'||motion==='pull')&&validPhase(f.phase,frameCount)?{phase:f.phase}:{})};
-  plans.set(lookup,plan);return plan;
+  const leveledPlan=leveled(plan);plans.set(lookup,leveledPlan);return leveledPlan;
 }
 /** True when every direction of walk, attack and idle resolves to a valid M16 sheet (its own or its pair's, mirrored). */
 export function hasMovement16(id:string){

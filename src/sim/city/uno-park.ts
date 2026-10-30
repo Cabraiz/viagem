@@ -83,8 +83,7 @@ export function cityUnoPark(city:CityTerrain,carFits:(p:Point)=>boolean):{car:Po
   search:for(let r=0;r<=last+1e-9;r+=step){
     const steps=r?Math.max(8,Math.round(r*16)):1;
     for(let i=0;i<steps;i++){
-      // The plaza point itself as it is (the car's spot before this card); the rings rounded to the hundredth.
-      const a=i/steps*Math.PI*2,p=!r?{x:praca.x,y:praca.y}:{x:Math.round((praca.x+Math.cos(a)*r)*100)/100,y:Math.round((praca.y+Math.sin(a)*r)*100)/100};
+      const a=i/steps*Math.PI*2,p={x:Math.round((praca.x+Math.cos(a)*r)*100)/100,y:Math.round((praca.y+Math.sin(a)*r)*100)/100};
       if(!city.clearDisc(p.x,p.y,UNO_PARK_ROOM)||!carFits(p))continue;
       const start=startBeside(city,p);
       if(start&&crateRoom(city,p,startSlots(start))){found={car:p,start};break search;}

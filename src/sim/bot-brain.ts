@@ -1266,15 +1266,18 @@ function finish(decision:Decision,input:BrainInput):Decision{
 }
 /** Modes that walk to a place: a turn back held by TURN_HOLD stands there instead of going on. */
 const ARRIVING=new Set<Decision['mode']>(['bank','rescue','push','loot','clear','home','gather','forge','build','veiculo','carro']);
-/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril. */
-function holdHeading(decision:Decision,input:BrainInput):Decision{
+/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril ahead. */
+export function holdHeading(decision:Decision,input:BrainInput):Decision{
   const {memory,view,at}=input,tick=view.tick,d=decision.direction,h=memory.heading;
   const turn=h?d.x*h.x+d.y*h.y:1,back=!!h&&turn<TURN_BACK_COS;
   const soon=tick-(memory.headingTick??-Infinity)<TURN_HOLD||tick-(memory.turnBackTick??-Infinity)<TURN_CALM;
   const calm=decision.mode!=='dodge'&&!peril(view,at);
   // A bot that stood still stands TURN_HOLD (walk, stand, walk each think was the same tique, legs only).
   if(calm&&memory.standTick!==undefined&&tick-memory.standTick<TURN_HOLD){decision.direction={x:0,y:0};return decision;}
-  if(back&&soon&&calm){
+  // In peril only a critter ahead of the heading turns it back at once, and not into another one within PERIL_R:
+  // a critter behind (the heading already goes away from it) or one each way held nothing in the crowd at the car
+  // (fence map, seed 1: 28 half-turns 200 ms after the last in 120 s, the repel flipping over the bot every think).
+  if(back&&soon&&decision.mode!=='dodge'&&!(peril(view,at,h)&&!perilAhead(view,at,d))){
     // Kiting (a critter within DANGER) goes on the way it went; anything else stands.
     const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
     if(kiting)decision.direction=clearPath(at,h!,onFloor(input.terrain,at.andar),h);
@@ -1287,8 +1290,11 @@ function holdHeading(decision:Decision,input:BrainInput):Decision{
   memory.heading={x:d.x,y:d.y};
   return decision;
 }
-function peril(view:RunView,at:Point){
-  if(view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<PERIL_R*(e.boss?1.8:e.elite?1.3:1)))return true;
+/** A critter within PERIL_R of `at` (more for a boss or an elite); `ahead`: only one in front of that heading. */
+const perilAhead=(view:RunView,at:Point,ahead?:Point)=>view.enemies.some(e=>e.hp>0&&!e.asleep
+  &&dist(e,at)<PERIL_R*(e.boss?1.8:e.elite?1.3:1)&&(!ahead||(e.x-at.x)*ahead.x+(e.y-at.y)*ahead.y>0));
+function peril(view:RunView,at:Point,ahead?:Point){
+  if(perilAhead(view,at,ahead))return true;
   if(view.telegraphs.some(t=>telegraphHits(t,at,.4)))return true;
   return view.projectiles.some(s=>{
     if(!s.hostile)return false;

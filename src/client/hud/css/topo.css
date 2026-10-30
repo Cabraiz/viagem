@@ -1,0 +1,190 @@
+/* Run HUD (VGM-040). Root ignores pointers; interactive panels opt back in.
+   Zones: the top band is one row between the camera buttons and the gear (two on narrow phones, hud-topo-uma-linha);
+   team strip left column; offer panel above the joystick/attack row. Landscape (max-height:500px):
+   team strip bottom-center between joystick and attack, offer panel right column.
+   Skin: tokens of src/client/ui/tokens.css (DSG-tokens, D-020). Over the map every chip is a "ficha": Breu body,
+   Papel border (double edge, works on light and dark ground); choices are Papel "etiquetas" with a Breu edge. */
+.rh{
+  /* Aliases kept one cycle for the HUD code; new rules use the tokens directly. */
+  --rh-t:var(--sa-t);--rh-b:var(--sa-b);--rh-l:var(--sa-l);--rh-r:var(--sa-r);
+  --rh-ink:var(--c-breu);--rh-paper:var(--c-papel);--rh-paper-2:var(--c-papel-claro);--rh-line:var(--c-breu);--rh-purple:var(--c-lilas);
+  --rh-glass:var(--c-ficha);--rh-glass-line:var(--c-papel);--rh-cream:var(--c-papel);--rh-gold:var(--c-amarelo);--rh-gold-deep:var(--c-breu);
+  --rh-mint:var(--c-cartolina);--rh-coral:var(--c-cone);--rh-hp:var(--c-cartolina);--rh-hp-low:var(--c-cone);
+  /* Low life with a 2nd signal (auditoria-legibilidade L4: Cartolina → Cone is ΔL 8 for deutan): Breu stripes on the Cone, static. */
+  --rh-hp-low-fill:repeating-linear-gradient(-45deg,var(--rh-hp-low) 0 4px,var(--c-breu) 4px 6px);--rh-xp:var(--c-lilas);
+  --rh-shadow:var(--s-2);--rh-text-shadow:var(--s-texto);
+  position:fixed;inset:0;z-index:var(--z-hud);pointer-events:none;overflow:hidden;
+  font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.rh *,.rh *::before,.rh *::after{box-sizing:border-box}
+.rh [hidden]{display:none!important}
+.rh button{font:inherit;color:inherit;touch-action:manipulation}
+/* Readouts hold their own taps (VGM-043); their empty containers stay transparent to the game. */
+.rh-top>*,.rh-member,.rh-alert{pointer-events:auto;touch-action:none}
+.rh .rh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- Top: one row (card hud-topo-uma-linha) ----------
+   Level + XP thread | Round N/10 · bichos (or "Intervalo N s") | base ficha (wall bar, life, fichas de torre), side by side
+   between the camera buttons (left, 140 px) and the gear (right, 48 px); the boss bar wraps under them only in a boss
+   fight. Narrow screens (portrait phones): the round chip alone between the buttons, the rest on a second row. */
+.rh-top{position:absolute;top:var(--rh-t);left:calc(var(--rh-l) + 152px);right:calc(var(--rh-r) + 60px);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}
+.rh-round{order:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:3px 8px;margin:0;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
+.rh-round-label{font:400 var(--t-21)/1 var(--f-cartaz);white-space:nowrap}
+.rh-round-detail{display:inline-flex;align-items:center;gap:3px;align-self:center;font-size:var(--t-13);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rh-round-detail>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
+.rh-round-detail .ic{width:20px;height:20px}
+.rh-round-detail b{font:400 var(--t-16)/1 var(--f-cartaz)}
+/* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
+.rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .3s ease-in-out 4 alternate}
+/* Level badge with the XP as a thin thread under it (no full-width bar). */
+.rh-xp{order:0;position:relative;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;margin:0}
+.rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
+.rh-xp-track{flex:none;height:5px;border-radius:var(--r-etiqueta);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);overflow:hidden}
+.rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
+.rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
+/* BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: the level is not shown (topbar.ts hides .rh-xp). */
+.rh-xp[hidden]{display:none}
+.rh-boss{order:3;flex:1 0 100%;max-width:560px;padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
+/* The base ficha gives way first (its wall bar shrinks): the numbers never get cut. Wide screens keep one row; only the
+   boss bar wraps under it. */
+.rh-top>.rh-camp{flex:0 1 auto;min-width:0}
+.rh-top .rh-camp-barra{flex:0 1 auto;min-width:16px}
+.rh-top>:is(.rh-xp,.rh-round){flex-shrink:0}
+@media (min-width:600px){.rh-top:not(:has(>.rh-boss:not([hidden]))){flex-wrap:nowrap}}
+/* Landscape: the boss bar's row keeps 32 px more on the right, clear of the minimap under the gear. */
+@media (max-height:500px){.rh-top>.rh-boss{flex:0 0 auto;width:min(440px,calc(100% - 64px));margin-right:32px}}
+@media (max-width:599px){
+  /* Row 1: the round chip right of the camera buttons (150 px), its margin filling the row, so the level, the base and
+     the fichas start row 2, from the left edge: it ends before the minimap under the gear (x ≥ width − 84). The band
+     itself stops left of the gear (row 1). */
+  .rh-top{left:var(--rh-l);right:calc(var(--rh-r) + 58px);justify-content:flex-start}
+  .rh-top>.rh-round{order:0;flex:0 0 calc(100% - 150px);margin:0 0 0 150px;padding-inline:8px}
+  .rh-round-label{font-size:var(--t-16)}
+  .rh-xp{order:1}
+  .rh-camp{gap:10px}
+  .rh-top>.rh-camp{padding-inline:6px}
+  /* A boss fight's bar (row 3) also ends before the minimap. */
+  .rh-top>.rh-boss{margin:0 26px 0 0;flex-basis:calc(100% - 26px)}
+}
+.rh-boss-name{display:block;text-align:center;font:400 var(--t-16)/1.05 var(--f-cartaz);margin-bottom:3px}
+.rh-boss-track{height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
+.rh-boss-fill{display:block;height:100%;transform-origin:left;background:var(--c-cone);transition:transform .2s}
+.rh-boss.rh-enraged{animation:rh-shake .35s linear 2}
+
+/* ---------- Center stack (revive alerts) ---------- */
+.rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + max(70px,var(--rh-coluna,54px) + 16px));right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
+.rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 150px)}
+/* Low slot (VGM-043): the banner leaves the top when it would cover the hero; above the joystick row. */
+.rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 140px)}
+
+/* ---------- Round marquee: a street banner (Papel, Breu edge, hard shadow) ----------
+   UX-zonas-tela: it is the first row of the announcement slot (.rh-stack) in the top band, two lines at most,
+   1.8 s on screen, then it fades out in place (never over the XP bar). Never over the hero (RunHud.avoidHero). */
+/* BUG-20261013-ORQ-oferta-e-dicas-menores: one line, half the old height (title and its line side by side, cut with an
+   ellipsis; the whole text stays in the live region). */
+.rh-marquee{position:relative;display:flex;align-items:baseline;justify-content:center;gap:8px;width:max-content;max-width:min(100%,560px);padding:3px 20px 4px;white-space:nowrap;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
+.rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:4px;bottom:4px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
+.rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
+.rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) 4}
+/* The title is never cut (BUG-20261023-ORQ-resultado-paisagem-e-125): whole on its line, two lines when longer than the
+   banner (topbar.ts fitSubtitle then drops the subtitle, which shows whole, as the modifier's name or not at all). */
+.rh-marquee-title{flex:0 0 auto;max-width:100%;min-width:0;white-space:normal;text-wrap:balance;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
+.rh-marquee-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+.rh-marquee-sub:empty{display:none}
+.rh-marquee[data-tone=interval]{border-color:var(--c-lilas)}
+.rh-marquee[data-tone=boss]{background:var(--c-breu);border-color:var(--c-cone);box-shadow:var(--s-2),inset 0 0 0 3px var(--c-breu)}
+.rh-marquee[data-tone=boss] .rh-marquee-title{color:var(--c-papel)}.rh-marquee[data-tone=boss] .rh-marquee-sub{color:var(--c-papel)}
+.rh-marquee[data-tone=boss]::before,.rh-marquee[data-tone=boss]::after{background-image:radial-gradient(circle,var(--c-cone) 3px,transparent 4px)}
+.rh-marquee-in{animation:rh-faixa 1.8s ease-out both}
+
+/* ---------- Kill-cam (VGM-053B): the round's last critter, in the announcement slot ----------
+   The critter's portrait in a small frame (.rh-killcam-tv, shown only once its picture loaded; none → no frame and the
+   caption takes the width) beside a street-banner caption; "FEITO" is stamped on it (the stamp, the one show moment).
+   Gives way to any notice (.rh-killcam-yield). */
+.rh-killcam{display:flex;align-items:stretch;width:min(100%,380px);height:82px}
+.rh-killcam[hidden],.rh-killcam.rh-killcam-yield{display:none}
+.rh-killcam-tv{flex:none;width:96px;box-sizing:border-box;border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:0 0 0 2px var(--c-papel),var(--s-1);
+  overflow:hidden;background:var(--c-papel-claro);padding:4px}
+.rh-killcam-tv[hidden]{display:none}
+.rh-killcam-tv[hidden]+.rh-killcam-caption{margin-left:0}
+.rh-killcam-pic{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.rh-killcam-caption{position:relative;flex:1;min-width:0;margin-left:8px;padding:6px 10px 7px 12px;display:flex;flex-direction:column;justify-content:center;
+  border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro);text-align:left}
+.rh-killcam-title{display:block;margin-right:62px;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-lilas)}
+.rh-killcam-line{display:block;margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu);overflow-wrap:anywhere}
+.rh-killcam-stamp{position:absolute;right:6px;top:6px;padding:1px 5px 2px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);background:var(--c-papel);
+  color:var(--c-lilas);font:900 var(--t-16)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;transform:rotate(-8deg)}
+.rh-killcam-in .rh-killcam-stamp{animation:rh-killcam-stamp 140ms cubic-bezier(.2,.9,.3,1.25) .7s both}
+@keyframes rh-killcam-stamp{0%{opacity:0;transform:scale(1.8) rotate(-12deg)}70%{opacity:1;transform:scale(.95) rotate(-8deg)}100%{opacity:1;transform:rotate(-8deg)}}
+@media (prefers-reduced-motion:reduce){.rh-killcam-in .rh-killcam-stamp{opacity:1}}
+/* The intermission offer waits for the FEITO (design review D2): hidden, keeping its place, for the first second. */
+.rh-offer-waits .rh-offer[data-mode=intermission]{visibility:hidden}
+
+/* ---------- Team strip (portrait: left column; landscape: bottom center) ---------- */
+.rh-team{position:absolute;top:calc(var(--rh-t) + 112px);left:var(--rh-l);display:flex;flex-direction:column;gap:6px}
+.rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 150px)}
+/* NEW-UX-nome-do-time-na-coluna: the column is as wide as its widest name ficha (54 px at least), so a 9-letter name at
+   125% ("Concursei", 88 px) never pokes past the column, out of the screen or into an arrow that only avoids the members'
+   boxes (the useful area and the arrows already measure .rh-member). Every member stretches to that width. */
+.rh-member{position:relative;min-width:54px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:2px;text-shadow:var(--s-texto)}
+/* Portrait ring: Papel with a Breu edge, so it reads on sand and on sea. */
+.rh-member-ring{--rh-rescue:0deg;width:44px;height:44px;padding:3px;border-radius:var(--r-circulo);background:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
+.rh-member-img{width:100%;height:100%} /* .face (ui/face.css): the class's face crop, not the whole body (rostos-hud) */
+.rh-member.rh-me .rh-member-ring{background:var(--c-lilas);box-shadow:0 0 0 2px var(--c-papel),0 0 0 4px var(--c-breu),var(--s-2)} /* D-022: Breu por fora no mar turquesa claro (Lilás 2,5:1 e Papel 2,7:1 lá) */
+.rh-member-hp{width:44px;height:6px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
+.rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
+/* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
+.rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
+/* Portrait at 125% the column's name grows to 14 px, not 16: at 16 a 9-letter name made the column 85 px wide, the
+   window opened right of it and the field above the forge had no room left for the caído and boss arrows (audit-layout,
+   "sem seta"). 14 px stays above the 13 px floor and still grows with the setting (NEW-UX-nome-do-time-na-coluna). */
+@media (min-height:501px){:root[data-texto="125"] .rh-member-name{font-size:14px}}
+.rh-member-badge{position:absolute;top:-6px;right:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato (centro + 31 px), não à largura da coluna */ /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
+.rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
+.rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
+.rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}
+.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .35s ease-in-out 4 alternate}
+.rh-member[data-state=downed] .rh-member-img{filter:grayscale(.8) brightness(.85)}
+.rh-member[data-state=downed] .rh-member-hp{visibility:hidden}
+.rh-member[data-state=eliminated] .rh-member-img{filter:grayscale(1) brightness(.6)}
+.rh-member:is([data-state=eliminated],[data-state=offline],[data-state=spectator])>:not(.rh-member-badge){opacity:.55} /* o adesivo de status fica inteiro: é ele que diz o estado */
+
+/* ---------- Revive alerts (center stack) ---------- */
+.rh-alerts{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.rh-alert{width:min(100%,320px);padding:6px 12px 7px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);text-align:center;text-shadow:var(--s-texto)}
+.rh-alert-text{display:block;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-alert-track{margin-top:4px;height:5px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
+.rh-alert-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-cartolina);transition:transform .2s}
+.rh-alert[data-kind=self]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;font-size:14px}
+.rh-alert[data-kind=self] .rh-alert-text{font-size:15px}
+.rh-alert[data-kind=self] .rh-alert-track{background:var(--c-trilho)}
+.rh-alert[data-kind=self] .rh-alert-fill{background:var(--c-breu)}
+.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear 2}
+
+/* In, hold, then fade out in place (UX-zonas-tela: 1.8 s in all). Scale only, never above 1, from the top edge
+   (.rh-marquee transform-origin 50% 0): every frame stays inside the banner's own slot, so the exit never crosses the
+   XP bar, the Nv seal or the camp readout above it (BUG-20261012-E1-marquee-saida-paisagem; tests/client/marquee-saida). */
+@keyframes rh-faixa{0%{opacity:0;transform:scale(.92)}10%{opacity:1;transform:none}84%{opacity:1;transform:none}100%{opacity:0;transform:scale(.92)}}
+@keyframes rh-bulbs{to{opacity:.45}}
+@keyframes rh-pop{0%{transform:scale(1)}40%{transform:scale(1.35) rotate(-6deg)}100%{transform:scale(1)}}
+@keyframes rh-pulse{to{transform:scale(1.04)}}
+@keyframes rh-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+
+@media (max-height:500px){
+  .rh-stack{left:calc(var(--rh-l) + 150px);right:calc(var(--rh-r) + 290px)}
+  /* Right under the one-row band (RunHud sets --rh-anuncio from the measured zones, the boss row included; the fallback
+     is for pages that never measure, like the sandbox). */
+  .rh .rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 56px))}
+  .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 84px)}
+  .rh-marquee{padding:2px 18px 3px}
+  .rh-killcam{height:70px}
+  .rh-killcam-tv{width:88px}
+  .rh-team{top:auto;bottom:var(--rh-b);left:50%;transform:translateX(-50%);flex-direction:row;gap:4px}
+  .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:auto}
+  .rh-member{width:auto;min-width:50px}
+  .rh-member-ring{width:40px;height:40px}
+  .rh-member-hp{width:40px}
+  .rh-member-timer{top:24px}
+  .rh-alert{width:min(100%,300px);padding:4px 10px 5px}
+}

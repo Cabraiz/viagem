@@ -5,7 +5,7 @@
  * mendigo entram depois, uma a uma, como peças próprias.
  * A peça: parado de frente v10 (16 quadros, só a frente) e andar walk16 nas 8 direções (16 quadros por direção, uma
  * página 4×4 por direção na ordem das linhas da horda: S, SW, W, NW, N, NE, E, SE). Sem golpe, piada nem morte: o
- * renderer cai no laço (golpe) e no poof (morte). As mesmas folhas servem de camada de elite (mesma textura, sem
+ * renderer cai no laço (golpe) e no poof (morte). Empurrado por um herói: shoved nas 8 direções (cai e levanta). As mesmas folhas servem de camada de elite (mesma textura, sem
  * memória a mais), para a elite ter laço. Uma peça só: a horda inteira carrega UMA arte (a textura GPU cai).
  */
 import {WAVE_BOSS_IDS,roleOf} from '../../rules/index.ts';
@@ -21,6 +21,10 @@ const FILES:Readonly<Record<string,ArtFile>>={
   // 16 quadros em 600 ms; no jogo o passo segue o chão (ENEMY_WALK.byGround), o fps só vale fora dele
   walk:{file:'mendigo/walk-S.webp',cell:CEL,frames:16,directions:8,anchor:PE,fps:27,
     pages:DIRS.map((d,i)=>({file:`mendigo/walk-${d}.webp`,columns:4,rows:4,firstFrame:i*16,frameCount:16}))},
+  // Card anim-ser-empurrado: empurrado por um herói (cai sentado e levanta), 16 quadros em ~1400 ms (o mesmo do shoved16
+  // dos heróis; ENEMY_ANIM_RATE ×0,7), uma vez por empurrão (horde-art.ts applyEnemyArt). E/NE/SW são W/NW/SE espelhados.
+  shoved:{file:'mendigo/shoved-S.webp',cell:CEL,frames:16,directions:8,anchor:PE,fps:16.3,
+    pages:DIRS.map((d,i)=>({file:`mendigo/shoved-${d}.webp`,columns:4,rows:4,firstFrame:i*16,frameCount:16}))},
 };
 /** O que o mendigo ainda não tem (vira o card "mendigo completo", skill personagem-animado). */
 export const MENDIGO_FALTA=['attack','hit','death','elite/*'] as const;

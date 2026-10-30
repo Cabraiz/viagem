@@ -132,6 +132,8 @@ interface EnemyActor{
   art:string;act:string|undefined;
   /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
   asleep:boolean;
+  /** Card anim-ser-empurrado: a hero's walk pushing it (EnemyView.pushed): horde-art.ts applyEnemyArt plays its shoved. */
+  pushed?:{x:number;y:number};
   /** The round costume variant this enemy wears (horde-art.ts ROUND_COSTUMES), or undefined. */
   costume?:string;
   /** The roster accent of the reserve (keys.ts fallbackTint); `tint` is it while the reserve shows, undefined over art. */
@@ -626,6 +628,7 @@ export class HordeRenderer{
     if(used.fresh&&!asleep)this.fresh.push(view);
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
+    a.pushed=view.pushed;
     a.prime=view.prime===true;
     a.floor=view.andar;
     // Every enemy's art (the nine kinds' too) loads per match, the first time one of them shows up (horde-art.ts

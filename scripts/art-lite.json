@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3178,
-  "bytes": 1949192920,
-  "liteBytes": 665813536,
+  "files": 3186,
+  "bytes": 1952105802,
+  "liteBytes": 666810628,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -21940,6 +21940,70 @@
    "liteBytes": 143038,
    "psnr": 37.8,
    "shownPsnr": 43
+  },
+  "enemies/mendigo/shoved-E.webp": {
+   "source": "4aa5839b61938048fa7e4d2a721dc00ba37ec9a4f16375d97905b78fcc3541b8",
+   "lite": "d82e9b484b372749e52fbc1c74fda276391b059f20963bb215c806241a3f815d",
+   "bytes": 403436,
+   "liteBytes": 137416,
+   "psnr": 37.1,
+   "shownPsnr": 41.7
+  },
+  "enemies/mendigo/shoved-N.webp": {
+   "source": "2db2ac7e271da25249c6816b71fa5084a455bf10dcc2a828cdae69c84bd54b07",
+   "lite": "4297486a2150a0aff7f07a458e1dd25b15e7078fded16ab178c1ff04c4dea1a6",
+   "bytes": 373358,
+   "liteBytes": 124730,
+   "psnr": 39,
+   "shownPsnr": 43
+  },
+  "enemies/mendigo/shoved-NE.webp": {
+   "source": "8b0b01ddf2ef92eb9f36ac6571344604b6b8c5c53083c49345e8e58cb8b70266",
+   "lite": "51e0539426291323f353e7af1079602bfca7c42d581f3717e87459434924c62e",
+   "bytes": 286820,
+   "liteBytes": 102918,
+   "psnr": 39.4,
+   "shownPsnr": 43.2
+  },
+  "enemies/mendigo/shoved-NW.webp": {
+   "source": "33f6f93723a9af605924e0dcd8f7890f74c2aecfa92ad6c2203312b5e12b166b",
+   "lite": "cf9066d3ba24efaf94668bdb419debca6873a2e0beae32f8c691b774720dc8c3",
+   "bytes": 281262,
+   "liteBytes": 100904,
+   "psnr": 39.9,
+   "shownPsnr": 44.4
+  },
+  "enemies/mendigo/shoved-S.webp": {
+   "source": "58e63114e528bd79fd22a9d54a53ed41103d945a8dc3f141c68a064846af2022",
+   "lite": "d7aa506b938be1afc964061dcb92f943a2ccfd713998f3dcf8a84177a066b2a9",
+   "bytes": 407684,
+   "liteBytes": 136210,
+   "psnr": 37.1,
+   "shownPsnr": 42.1
+  },
+  "enemies/mendigo/shoved-SE.webp": {
+   "source": "f112f0cfafc7d6faa22c4b876e872310a2f7995717d199f948e9e5ed6bc604a8",
+   "lite": "3f90a7d20187bf6353003371eada9930f3d59aec6a6b2252088ceb56b618371f",
+   "bytes": 379026,
+   "liteBytes": 129976,
+   "psnr": 38.1,
+   "shownPsnr": 42.9
+  },
+  "enemies/mendigo/shoved-SW.webp": {
+   "source": "1e9c82779ac9367a09d700858b6dba4a49fed020ecee42fc3e6120a3aebc2d40",
+   "lite": "ff98893e8222c421e379352d3fe09e54e1d93a996ff8ca0c84e3f6293f83f91c",
+   "bytes": 379228,
+   "liteBytes": 128234,
+   "psnr": 38.2,
+   "shownPsnr": 43
+  },
+  "enemies/mendigo/shoved-W.webp": {
+   "source": "6aa5057e9b7344cd2e0d46b5d1e17ca0b03c676ab300387200a77be9d2ef6ee6",
+   "lite": "39d90efd249131230c7b39b7d71532af4bdec597139da607fa518803179f6b75",
+   "bytes": 402068,
+   "liteBytes": 136704,
+   "psnr": 37.3,
+   "shownPsnr": 42
   },
   "enemies/mendigo/walk-E.webp": {
    "source": "6ad86a4a9407d3a7bca92aa2707da45586a94437824fbf7c58e296d43efcbcb4",

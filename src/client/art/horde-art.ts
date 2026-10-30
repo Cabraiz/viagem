@@ -670,6 +670,8 @@ export function startAction(s:ActionState,piece:ArtPiece,action:string,now:numbe
   // A hit never starts while another action plays, and the same action already playing is not restarted (but a
   // swing that comes back near its end, SWING_RESTART).
   if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
+  // A body knocked down (shoved, card anim-ser-empurrado) gets up before it swings again; a new shove waits for its end.
+  if(s.action==='shoved'&&now<s.end)return false;
   const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
   if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
   const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
@@ -686,6 +688,8 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 
 // ---------- Phaser side: per-enemy state, kept off the actor so layers.ts changes stay tiny ----------
 interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
+  /** Whether the actor carried a push mark (EnemyView.pushed) on its last draw: a new one starts its shoved. */
+  pushedOn?:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
@@ -803,7 +807,7 @@ export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined
   const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
   return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string;vary?:number;pushed?:{x:number;y:number}},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??gameEnemyArt(ENEMY_ART_ID[actor.kind]),piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -811,12 +815,18 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // An elite-only figure (ownElite) is its own elite: no elite layer to wait for, its own height.
   const elite=actor.elite&&!ownElite(piece);
   const s=stateOf(image),loop=loopAnim(piece,moving,elite,actor.bossPhase,actor.act);
-  if(moving||s.row<0)s.row=facingRow(dx,dy,view,s.row);
+  // Card anim-ser-empurrado: a hero's walk pushing it (actor.pushed, from the pusher to it) plays its shoved once from
+  // the push's start, facing the pusher, and holds that row while it plays (the push walks it backwards).
+  const pushed=actor.pushed;
+  if(pushed&&!s.pushedOn&&loop&&startAction(s,piece,'shoved',now))s.row=facingRow(-pushed.x,-pushed.y,view,s.row);
+  s.pushedOn=!!pushed;
+  const shoved=s.action==='shoved'&&now<s.end;
+  if(!shoved&&(moving||s.row<0))s.row=facingRow(dx,dy,view,s.row);
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined;
-  if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
+  if(!shoved&&ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
   // The action's own clock: drawn time since it started (slower for a stretched swing, SWING_FILL).
   const acted=(now-s.at)*(s.pace??1);
   let frame=action?enemyFrame(id,piece,action,s.row,acted,base,true):undefined;

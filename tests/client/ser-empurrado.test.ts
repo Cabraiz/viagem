@@ -5,7 +5,9 @@ import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
-import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {artPiece,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {MENDIGO,withMendigo} from '../../src/client/art/mendigo.ts';
+import {applyEnemyArt,enemyArtKey,facingRow,playEnemyAction} from '../../src/client/art/horde-art.ts';
 import {hasShoved16,shovedPlan,hasPush16,pushPlan,MOVEMENT16_DURATION} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
@@ -91,4 +93,38 @@ test('the 6 heroes have shoved16 and push16; saci and sanfoneiro have neither',(
   setArtIndex(parseArtIndex(JSON.parse(readFileSync('public/art/manifest.json','utf8'))));
   for(const id of HEROES){assert.ok(hasShoved16(id),`${id}: shoved16`);assert.ok(hasPush16(id),`${id}: push16`);}
   for(const id of ['saci','sanfoneiro']){assert.equal(hasShoved16(id),false,id);assert.equal(hasPush16(id),false,id);}
+});
+
+// The mendigo enemy: a hero's walk pushing it (EnemyView.pushed, from the pusher to it) plays its shoved once.
+type Img=Parameters<typeof applyEnemyArt>[0];
+function mockImage(){
+  const scene={textures:{exists:()=>true},add:{image:()=>mockImage()},events:{on(){},off(){}}};
+  const m:{[k:string]:unknown;texture:{key:string};frame:number}={texture:{key:'horde:enemy:bebado'},frame:0,visible:true,alpha:1,x:0,y:0,depth:0,scaleX:1,scaleY:1,originX:.5,originY:.92,scene,
+    tintFill:false,tintTopLeft:0,tintTopRight:0,tintBottomLeft:0,tintBottomRight:0};
+  const self=(f:(...a:never[])=>void)=>(...a:never[])=>{f(...a);return m;};
+  Object.assign(m,{
+    setTexture:self(((k:string,f?:number)=>{m.texture={key:k};m.frame=f??0;}) as never),setFrame:self(((f:number)=>{m.frame=f;}) as never),
+    setOrigin:self(()=>{}),setScale:self(()=>{}),setFlipX:self(()=>{}),setRotation:self(()=>{}),setAlpha:self(()=>{}),setVisible:self(()=>{}),
+    setPosition:self(()=>{}),setDepth:self(()=>{}),once:()=>m,
+  });
+  return m;
+}
+test('the mendigo enemy pushed by a hero plays its shoved once (8 directions), facing the pusher, held on that row, then walks again',()=>{
+  setArtIndex(withMendigo(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{}}}})));
+  const sh=artPiece('inimigos',MENDIGO)!.files.shoved;
+  assert.equal(sh.directions,8);assert.equal(sh.frames,16);
+  assert.deepEqual(sh.pages!.map(p=>p.file),['S','SW','W','NW','N','NE','E','SE'].map(d=>`mendigo/shoved-${d}.webp`));
+  const m=mockImage(),img=m as never as Img,a:Parameters<typeof applyEnemyArt>[1]={kind:'bebado',art:MENDIGO,elite:false,phase:0,x:0,y:0};
+  applyEnemyArt(img,a,false,0,0,0);assert.match(m.texture.key,/:idle/);
+  // Pushed along +x (the hero at its left): it falls back facing −x, and the push walking it along +x does not turn it.
+  a.pushed={x:1,y:0};
+  applyEnemyArt(img,a,true,.02,0,100);
+  const row=facingRow(-1,0,0,-1),key=enemyArtKey(MENDIGO,'shoved',row,8);
+  assert.equal(m.texture.key,key,'the page of the row facing the pusher');assert.equal(m.frame,0,'from its first frame');
+  let last=m.frame;
+  for(let t=200;t<=1450;t+=50){a.x!+=.02;applyEnemyArt(img,a,true,.02,0,t);assert.equal(m.texture.key,key,`${t}`);assert.ok(m.frame>=last);last=m.frame;}
+  assert.ok(last>=14,'reaches its end');
+  // A swing while it is down waits for it to get up; the held mark does not restart it.
+  assert.equal(playEnemyAction(img,MENDIGO,'attack',1400),false);
+  a.pushed=undefined;applyEnemyArt(img,a,true,.02,0,1700);assert.match(m.texture.key,/:walk/,'up again: walks');
 });

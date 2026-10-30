@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3186,
-  "bytes": 1952105802,
-  "liteBytes": 666810628,
+  "bytes": 1952107324,
+  "liteBytes": 666811182,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -29925,14 +29925,6 @@
    "psnr": 40,
    "shownPsnr": 39.3
   },
-  "sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
-   "source": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
-   "lite": "5badbb47af9fdfef607fc78e6ff6eaafcba0c9a8eb06a74b8dec4dd1b089b36d",
-   "bytes": 63994,
-   "liteBytes": 34010,
-   "psnr": 40.8,
-   "shownPsnr": 39.5
-  },
   "sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
    "source": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac",
    "lite": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
@@ -33784,6 +33776,14 @@
    "liteBytes": 141226,
    "psnr": 36.6,
    "shownPsnr": 38.4
+  },
+  "sprites/gato-nada-pra-comer.run16-w.73ceb3122d8b.webp": {
+   "source": "73ceb3122d8b163eeb0188480caf287540f9a55dbc2642eadeb04966accc5800",
+   "lite": "456aa7d0eabedda374c0153c6b6eeb79221dac0ab0b80e909d3898b27236074d",
+   "bytes": 65516,
+   "liteBytes": 34564,
+   "psnr": 40.8,
+   "shownPsnr": 40
   }
  },
  "enemyFigures": {

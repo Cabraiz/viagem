@@ -32,7 +32,6 @@
     "src/client/sprites/character-sprites.ts": 442,
     "src/client/sprites/hero-feet-data.ts": 458,
     "src/main.ts": 600,
-    "src/maps/city-asset.ts": 546,
     "src/maps/city-decor.ts": 433,
     "src/maps/terrain/chunks.ts": 442,
     "src/protocol/protocol4.ts": 1529,

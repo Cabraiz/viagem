@@ -283,7 +283,15 @@ export type SimEvent=
    */
   | {type:'vehicle';player:string;kind:VehicleKind;what:'pegou'|'acabou'|'largou';pickup?:string}
   /** boss-fim-onda-1: a chefão's pancada threw `player`, down until untilTick (the Tank's punch). */
-  | {type:'knock';player:string;untilTick:number};
+  | {type:'knock';player:string;untilTick:number}
+  /**
+   * sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): the Sanfoneiro's play. 'aviso' when the warning starts,
+   * 'toca' when he plays (heroes nearby are dragged toward him), 'para' when he stops (played out, stunned, scared or
+   * fleeing; also a warning called off).
+   */
+  | {type:'sanfona';enemy:string;what:'aviso'|'toca'|'para'}
+  /** sanfoneiro-regra-arrastar: `player` is being dragged by `enemy`'s play (once per hero per play). */
+  | {type:'arrastado';enemy:string;player:string};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

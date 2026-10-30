@@ -3,10 +3,12 @@
  * contact siege. In the run only the enemy-ai hits the wall (D-017): hitStructure -> damageWall, siegeStep stays off.
  */
 import type {TerrainField} from '../../maps/index.ts';
-import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../maps/index.ts';
+import {ISLAND_BASE,naFaixa,obstaclesNear,walkable,worldBase,type CityTerrain,type Obstacle,type Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH} from '../../contract/objective.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
+import {cityUnoPark} from '../city/uno-park.ts';
 import type {StonewardsState,WallState} from './state.ts';
 
 export const WALL_MAX_HP=600;
@@ -24,10 +26,17 @@ export const isSiege=(e:EnemyState)=>e.memory?.[SIEGE_FLAG]===1&&e.memory.retrea
 /**
  * Nearest spot to the base (island center, or the origin of the endless world) where the wall fits:
  * walkable and clear of obstacles. Deterministic spiral.
+ * In the city it is where the Uno parks (chaveiro): its body (heading 0) off every street mouth's free strip
+ * (maps/city/entradas.ts bocaFaixa; NEW-20261030-ORQ-uno-estaciona-fora-da-boca: the plaza point stood in two of them),
+ * the nearest to the plaza where the team's start and its verde crates fit off them too (city/uno-park.ts cityUnoPark).
  */
 export function placeWall(terrain?:TerrainField,source?:readonly Obstacle[]):Point{
   const center=worldBase(terrain);
-  const fits=(p:Point)=>walkable(p,terrain)&&(source??obstaclesNear(p,WALL_RADIUS,terrain)).every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+WALL_RADIUS);
+  const t=terrain as Partial<CityTerrain>|undefined,asset=t?.world==='cidade'?t.asset:undefined;
+  const offMouths=(p:Point)=>!asset||!naFaixa(asset,{x:p.x-CAR_HALF_LENGTH,y:p.y-CAR_HALF_WIDTH,w:2*CAR_HALF_LENGTH,h:2*CAR_HALF_WIDTH},.01);
+  const fits=(p:Point)=>walkable(p,terrain)&&offMouths(p)&&(source??obstaclesNear(p,WALL_RADIUS,terrain)).every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+WALL_RADIUS);
+  const park=asset&&!source?cityUnoPark(terrain as CityTerrain,fits):undefined;
+  if(park)return {...park.car};
   for(let r=0;r<=6;r+=.25){
     const steps=r?Math.max(8,Math.round(r*16)):1;
     for(let i=0;i<steps;i++){

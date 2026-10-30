@@ -44,7 +44,11 @@ function tique(pace?:Partial<typeof NEST_PACE>,seed=1){
     sim.setBotInput=(id,d,...rest)=>{
       const l=last.get(id),n=Math.hypot(d.x,d.y);
       if(n>.01){
-        if(l&&(l.x*d.x+l.y*d.y)/n<Math.cos(135*Math.PI/180)){
+        // A critter within PERIL_R turns the bot back at once on purpose (rule 2 of the header), not the tique: not counted
+        // (NEW-20261030-ORQ-uno-estaciona-fora-da-boca, ORQ's (a): the start crates off the mouths bring the bots and the
+        // first wave together in the open, and every such turn-back there had a critter ~1.3 u off).
+        const bot=sim.players.get(id),peril=bot&&sim.enemies.some(e=>e.hp>0&&Math.hypot(e.x-bot.x,e.y-bot.y)<PERIL_R);
+        if(l&&!peril&&(l.x*d.x+l.y*d.y)/n<Math.cos(135*Math.PI/180)){
           back++;
           const b=lastBack.get(id);if(b!==undefined&&tick-b<=4)quick++;
           lastBack.set(id,tick);

@@ -114,6 +114,13 @@ export function bocaZona(a:CityAsset,e:CityBoca):Rect{
  */
 export const bocaFaixa=(a:CityAsset,e:CityBoca):Rect=>bocaZona(a,e);
 /**
+ * Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance (only the strips, not the plaza ring:
+ * the Uno, the heroes and their start crates stand in it; NEW-20261030-ORQ-uno-estaciona-fora-da-boca).
+ */
+export function naFaixa(a:CityAsset,r:Rect,folga=0):boolean{
+  return cityEntradas(a).some(e=>{const f=bocaFaixa(a,e);return r.x-folga<f.x+f.w&&f.x<r.x+r.w+folga&&r.y-folga<f.y+f.h&&f.y<r.y+r.h+folga;});
+}
+/**
  * Whether a rect (u), grown by `folga`, overlaps the free strip of any entrance (the strip run `fundo` u further into the
  * street) or the plaza ring (PRACA_LIVRE).
  */

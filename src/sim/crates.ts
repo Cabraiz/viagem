@@ -121,10 +121,15 @@ export const FIRST_MINUTE_S=120,FIRST_MINUTE_CRATES=8;
 export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS=30,TRAIL_MAX=16;
 /** A hero's heading follows his walk with this weight a tick (about a second's memory at 20 Hz). */
 const HEADING_KEEP=.9;
-/** Item 2: the near start crate sits at most NEAR_START_REACH u from its hero (tried at NEAR_START_RADII, NEAR_START_ANGLES around). */
-/** placeNear's passes: [room for the crate's body, a mouth's strip allowed]. */
-const NEAR_PASSES:readonly (readonly [boolean,boolean])[]=[[true,false],[false,false],[true,true],[false,true]];
+/**
+ * Item 2: the near start crate sits NEAR_START_REACH u from its hero (tried at NEAR_START_RADII, NEAR_START_ANGLES around);
+ * in the city, when no spot that near is off every street mouth's strip, the nearest one out to NEAR_START_FAR u
+ * (rings NEAR_START_STEP apart; NEW-20261030-ORQ-uno-estaciona-fora-da-boca: the start is the 3 u avenue between the
+ * plaza's two wide mouths, so the crate never stands in a strip).
+ */
 export const NEAR_START_REACH=3,NEAR_START_RADII:readonly number[]=[2.5,2.25,2.75,2,3],NEAR_START_ANGLES=32;
+export const NEAR_START_FAR=12,NEAR_START_STEP=.25;
+const NEAR_FAR_RADII:readonly number[]=Array.from({length:Math.round((NEAR_START_FAR-NEAR_START_REACH)/NEAR_START_STEP)},(_,i)=>NEAR_START_REACH+(i+1)*NEAR_START_STEP);
 /** Item 2: near crates keep this far apart (their bodies, CRATE_BODY_RADIUS 1.5, may touch; a hero still tells them apart). */
 export const NEAR_START_SPACING=2;
 export {START_GRACE_S};
@@ -588,9 +593,9 @@ export function createCrates(options:CratesOptions):Crates{
   }
 
   /**
-   * Item 2: a verde start crate NEAR_START_REACH u from each hero (START_PLAYERS_MAX at most): open ground for its body
-   * (else for a hero, the second pass), off the street mouths (crateInMouth) unless the hero spawned with none free
-   * within reach (the last passes), reached on foot, NEAR_START_SPACING from the other near crates and never on a
+   * Item 2: a verde start crate NEAR_START_REACH u from each hero (START_PLAYERS_MAX at most), in the city out to
+   * NEAR_START_FAR u when nothing nearer fits: open ground for its body (else for a hero, the second pass), always off
+   * the street mouths (crateInMouth), reached on foot, NEAR_START_SPACING from the other near crates and never on a
    * hero nor on the Uno's body (the heroes spawn beside it, six of them in a tight block); and every hero's start grace.
    * Heroes in list order, else in another (a rotation, either way) when that leaves one without: the block's last ones
    * get boxed in by the others' crates. Returns how many crates it placed. Outside the city any spot counts.
@@ -600,7 +605,7 @@ export function createCrates(options:CratesOptions):Crates{
     const end=ctx.tick+ticks(START_GRACE_S),grace=state.grace??={};
     for(const p of heroes){grace[p.id]=end;p.invulnerableUntil=Math.max(p.invulnerableUntil??0,end);}
     // Outside the city (no mask) any spot counts, like heroReach.
-    const fits=(at:Point,body:boolean,mouth:boolean,near:readonly Point[])=>(!city||(city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS)&&(mouth||!crateInMouth(city,at.x,at.y))))
+    const fits=(at:Point,body:boolean,near:readonly Point[])=>(!city||(city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS)&&!crateInMouth(city,at.x,at.y)))
       &&(!car||carGap(car,at)>=(body?CRATE_BODY_RADIUS:RADIUS))
       &&reachable(ctx,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
       &&heroes.every(o=>Math.hypot(o.x-at.x,o.y-at.y)>=CRATE_BODY_RADIUS+RADIUS);
@@ -609,11 +614,17 @@ export function createCrates(options:CratesOptions):Crates{
       const near:Point[]=[];
       for(const i of order){
         const p=owners[i];
-        search:for(const [body,mouth] of NEAR_PASSES)for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
-          const a=a0[i]+k*2*Math.PI/NEAR_START_ANGLES;
-          const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
-          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,mouth,near)){near.push(c);break search;}
-        }
+        // The reach's radii, room for the body before without; then (city) the farther rings, nearest first, each with
+        // room for the body before without (a crate a hero can walk to beats one a ring further for a body's room).
+        search:for(const [radii,reach] of city?[[NEAR_START_RADII,NEAR_START_REACH],[NEAR_FAR_RADII,NEAR_START_FAR]] as const:[[NEAR_START_RADII,NEAR_START_REACH]] as const)
+          for(const [r,body] of radii===NEAR_START_RADII?[true,false].flatMap(b=>radii.map(r=>[r,b] as const)):radii.flatMap(r=>[[r,true],[r,false]] as const)){
+            const steps=r>NEAR_START_REACH?Math.max(NEAR_START_ANGLES,Math.round(r*16)):NEAR_START_ANGLES;
+            for(let k=0;k<steps;k++){
+              const a=a0[i]+k*2*Math.PI/steps;
+              const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
+              if(Math.hypot(c.x-p.x,c.y-p.y)<=reach&&fits(c,body,near)){near.push(c);break search;}
+            }
+          }
       }
       return near;
     };

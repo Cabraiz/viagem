@@ -17,6 +17,8 @@ import {checkCityHash,decodeCityAsset} from '../city-asset.ts';
 import {cityRelief,sampleRelief} from './relief.ts';
 import {deckSamples,floorAfter,surfaceHeight,type Floor} from './viaduct.ts';
 import type {WorldKind} from '../../contract/index.ts';
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH} from '../../contract/objective.ts';
+import {naFaixa} from './entradas.ts';
 import type {TerrainField} from '../terrain/field.ts';
 
 /** Vertical pixels per unit of height, matching the iso y scale of world.project (21 px per unit). */
@@ -298,8 +300,16 @@ export class CityTerrain {
   /** Whole city resident: nothing to stream. */
   retain(_players:Iterable<{x:number;y:number}>,_bodies?:Iterable<{x:number;y:number}>){return 0;}
   prefetch(_players:Iterable<{x:number;y:number}>){return 0;}
-  /** Where the base goes (the fountain plaza) and where heroes start (the crashed helicopter). */
-  get base():CityPoint{return this.asset.points.praca;}
+  /**
+   * Where the base goes (the fountain plaza) and where heroes start (the crashed helicopter). The base is where the Uno
+   * parks: the plaza point, else the nearest ground (stonewards/wall.ts placeWall's spiral) where the car's body (heading
+   * 0) stays off every street mouth's free strip (NEW-20261030-ORQ-uno-estaciona-fora-da-boca: the plaza stood in two).
+   */
+  get base():CityPoint{
+    let at=BASES.get(this.asset);
+    if(!at)BASES.set(this.asset,at=offMouths(this));
+    return at;
+  }
   get spawn():CityPoint{return this.asset.points.inicio;}
 }
 
@@ -342,3 +352,20 @@ export function enemyTerrain(terrain:TerrainField|undefined):TerrainField|undefi
  * CityTerrain has TerrainField's whole shape: if either side changes, this stops type-checking.
  */
 export function cityAsField(terrain:CityTerrain):TerrainField{return terrain;}
+
+/** CityTerrain.base per asset (a pure memo). */
+const BASES=new WeakMap<CityAsset,CityPoint>();
+function offMouths(city:CityTerrain):CityPoint{
+  const praca=city.asset.points.praca;
+  const fits=(x:number,y:number)=>city.land(x,y,BASE_MARGIN)&&!naFaixa(city.asset,{x:x-CAR_HALF_LENGTH,y:y-CAR_HALF_WIDTH,w:2*CAR_HALF_LENGTH,h:2*CAR_HALF_WIDTH},.01);
+  for(let r=0;r<=6;r+=.25){
+    const steps=r?Math.max(8,Math.round(r*16)):1;
+    for(let i=0;i<steps;i++){
+      const a=i/steps*Math.PI*2,x=praca.x+Math.cos(a)*r,y=praca.y+Math.sin(a)*r;
+      if(fits(x,y))return r?{...praca,x:Math.round(x*100)/100,y:Math.round(y*100)/100}:praca;
+    }
+  }
+  return praca;
+}
+/** maps/world.ts walkable's margin (RADIUS+.2): the base stands where a hero could. */
+const BASE_MARGIN=.42;

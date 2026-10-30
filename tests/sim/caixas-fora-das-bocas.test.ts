@@ -8,11 +8,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import {cityAsField} from '../../src/maps/index.ts';
-import {bocaFaixa,cityEntradas} from '../../src/maps/city/entradas.ts';
+import {RADIUS,cityAsField} from '../../src/maps/index.ts';
+import {bocaFaixa,cityEntradas,naFaixa} from '../../src/maps/city/entradas.ts';
 import {CRATE_BODY_RADIUS} from '../../src/rules/index.ts';
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH} from '../../src/contract/objective.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {MOUTH_REACH,NEAR_START_REACH,foraDasBocas} from '../../src/sim/crates.ts';
+import {MOUTH_REACH,NEAR_START_FAR,foraDasBocas} from '../../src/sim/crates.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -37,20 +38,26 @@ test('foraDasBocas: a loot point in a mouth\'s strip moves to clear ground besid
   });
 });
 
-// The hero's own start crate (item 2: NEAR_START_REACH u from him) may stand in a strip only when no spot that near
-// is free of one (seeds 1-8: the heroes spawn beside the Uno, parked in a mouth's strip); placed and trail crates never do.
-test('a run\'s first step: 18 crates for a solo, none in an entrance\'s strip but at most the hero\'s own, seeds 1 to 8',()=>{
+// NEW-20261030-ORQ-uno-estaciona-fora-da-boca: the Uno parks off every strip, the team spawns beside it off them too,
+// and so does every crate, the heroes' own start crates included (item 2: out to NEAR_START_FAR u when nothing nearer fits).
+const CAR=(c:{x:number;y:number})=>({x:c.x-CAR_HALF_LENGTH,y:c.y-CAR_HALF_WIDTH,w:2*CAR_HALF_LENGTH,h:2*CAR_HALF_WIDTH});
+test('a run\'s first step: the Uno and every hero off every entrance\'s strip, 18 crates a solo, none in one, seeds 1 to 8',()=>{
   for(let seed=1;seed<=8;seed++){
-    const s=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
-    s.add('p0','P0','cidadao-comum');
-    s.resetRun();
-    const hero=[...s.players.values()][0],spawn={x:hero.x,y:hero.y};
-    s.step(1000);
-    const chests=[...(s as unknown as {world:{pickups:Map<string,{kind:string;id:string;x:number;y:number}>}}).world.pickups.values()].filter(k=>k.kind==='chest');
-    assert.equal(chests.length,18,`seed ${seed}: ${chests.length} crates`);
-    const stripped=chests.filter(k=>inStrip(k));
-    const own=stripped.filter(k=>Math.hypot(k.x-spawn.x,k.y-spawn.y)<=NEAR_START_REACH+1e-9);
-    assert.ok(own.length<=1,`seed ${seed}: ${own.length} crates in a strip by the hero`);
-    assert.deepEqual(stripped.filter(k=>!own.includes(k)).map(k=>`${k.id} ${k.x.toFixed(1)},${k.y.toFixed(1)}`),[],`seed ${seed}`);
+    for(const players of [1,6]){
+      const s=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
+      for(let i=0;i<players;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
+      s.resetRun();
+      const heroes=[...s.players.values()].map(p=>({id:p.id,x:p.x,y:p.y}));
+      const car=s.run.chaveiro!.state.car;
+      assert.equal(naFaixa(asset,CAR(car)),false,`seed ${seed}: the Uno at ${car.x},${car.y} in a strip`);
+      assert.deepEqual(heroes.filter(h=>naFaixa(asset,{x:h.x-RADIUS,y:h.y-RADIUS,w:2*RADIUS,h:2*RADIUS})).map(h=>h.id),[],`seed ${seed}: heroes in a strip`);
+      s.step(1000);
+      const chests=[...(s as unknown as {world:{pickups:Map<string,{kind:string;id:string;x:number;y:number}>}}).world.pickups.values()].filter(k=>k.kind==='chest');
+      if(players===1)assert.equal(chests.length,18,`seed ${seed}: ${chests.length} crates`);
+      assert.deepEqual(chests.filter(k=>inStrip(k)).map(k=>`${k.id} ${k.x.toFixed(1)},${k.y.toFixed(1)}`),[],`seed ${seed}, ${players} players: crates in a strip`);
+      // Each hero still gets his verde start crate.
+      const own=heroes.map(h=>chests.filter(k=>Math.hypot(k.x-h.x,k.y-h.y)<=NEAR_START_FAR+1e-9).length);
+      assert.ok(own.every(n=>n>=1),`seed ${seed}: a hero without a start crate (${own})`);
+    }
   }
 });

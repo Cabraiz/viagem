@@ -24,9 +24,10 @@
 @media(max-height:500px){.net-slow{inset:30% auto auto 50%}}
 /* Sem conexão o direcional fica a 40%: um passo previsto agora seria corrigido na volta. */
 dialog.explore-shell[data-offline=true] .explore-stick{opacity:.4}
-/* Expulso da sala (D-025, revisão de design): título de cartaz à esquerda e a janela lida à esquerda; sem joystick,
-   Habilidade nem câmera atrás (como no fim da run), porque nada ali responde mais. */
+/* Expulso da sala (D-025, revisão de design): título de cartaz à esquerda e a janela lida à esquerda. */
 .net-fatal-title{margin:0;font:400 var(--t-21)/1.1 var(--f-cartaz);color:var(--c-papel);text-align:left}
 .net-fatal-title[hidden]{display:none}
 .net-fatal.net-fatal-titled{text-align:left}
-dialog.explore-shell[data-kicked=true] :is(.explore-controls,.explore-camera){visibility:hidden}
+/* Sala caída, expulso ou tela do jogo apagada (gl-perdido-esconde-tudo): só a janela fica. Retratos, minimapa, slots,
+   joystick, Dançar e câmera somem, porque nada ali responde mais; o restore tira o data-fatal e tudo volta. */
+dialog.explore-shell[data-fatal=true] .explore-layout>:not(.net-fatal){visibility:hidden}

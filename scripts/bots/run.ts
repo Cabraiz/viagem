@@ -25,9 +25,10 @@ import {RECIPES} from '../../src/rules/stonewards.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import {isMapId,readMapRef,type MapId,type MapRef} from '../../src/protocol/map-select.ts';
 import {cityTerrainFrom} from '../../src/maps/index.ts';
+import {PERSONAGENS_LIBERADOS,PERSONAGEM_PADRAO} from '../../src/rules/personagens-liberados.ts';
 
 const ORIGIN='http://127.0.0.1:4187';
-const CLASSES=['cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum'];
+const CLASSES=[...PERSONAGENS_LIBERADOS];
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 const now=()=>performance.now();
 /**
@@ -100,7 +101,7 @@ async function knock(endpoint:string,code:string,protocol:number,name:string):Pr
   return new Promise(resolve=>{
     let message:string|undefined;
     const timer=setTimeout(()=>{ws.terminate();resolve({message});},8000);
-    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:'cidadao-comum',maps:JOIN_MAPS})));
+    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:PERSONAGEM_PADRAO,maps:JOIN_MAPS})));
     ws.on('message',(d,binary)=>{if(!binary){const m=JSON.parse(String(d));if(m.t==='error')message=m.message;}});
     ws.on('close',code=>{clearTimeout(timer);resolve({message,close:code});});
     ws.on('error',()=>{});

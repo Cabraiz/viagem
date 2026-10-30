@@ -8,8 +8,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAR_LOW,HIT_FLASH_MS,HIT_MERGE_MS,HIT_POP_MS,HIT_POPS_MAX,carLife,hitFlash,hitPop} from '../../src/client/render/chaveiro/rules.ts';
+import {CAR_LOW,HIT_FLASH_MS,HIT_MERGE_MS,HIT_POP_MS,HIT_POPS_MAX,carLife,hitFlash,hitPop,hitPopText} from '../../src/client/render/chaveiro/rules.ts';
 import {ChaveiroTracker} from '../../src/client/render/chaveiro/tracker.ts';
+import {SIM_HZ} from '../../src/contract/types.ts';
 import type {ChaveiroView} from '../../src/client/render/chaveiro/view.ts';
 import * as city from '../../src/client/hud/city/index.ts';
 import {EDGE_KINDS_SHOWN,shownTargets} from '../../src/client/hud/arrows.ts';
@@ -19,14 +20,28 @@ import {PEEK_MS,PIP_FAR_U,PIP_HIDE_MS,PIP_ZOOM_K,peeking,pipViewport,pipWanted,p
 const view=(hits:number,extra:Partial<ChaveiroView>={}):ChaveiroView=>({moto:{x:84.5,y:40,mode:'anda'},etaS:300,alarmUntil:0,
   car:{x:84.5,y:84.5,hits,limit:120,parts:0},...extra});
 
+test('card missao-proteger-uno-tempo: a hit that pushed the clock back pops the seconds with its number',()=>{
+  const t=new ChaveiroTracker();
+  t.push(view(0,{etaS:200}),0,0,false);
+  // One second later the clock should read 199: it reads 202, the hit added 3 s.
+  t.push(view(1,{etaS:202}),SIM_HZ,100,false);
+  assert.deepEqual(t.pops,[{amount:1,at:100,seconds:3}]);
+  t.push(view(2,{etaS:205}),SIM_HZ+1,100+HIT_MERGE_MS-1,false);
+  assert.equal(t.pops[0].seconds,6,'a burst adds up');
+  // The last stretch: hits add nothing to the clock, only the number pops.
+  t.push(view(3,{etaS:200}),SIM_HZ*6,2000,false);
+  assert.equal(t.pops[1].seconds,0);
+  assert.equal(hitPopText(1,3),'-1 +3 s');assert.equal(hitPopText(2,0),'-2');assert.equal(hitPopText(.4),'-1');
+});
+
 test('tracker: a hit since the last view pops its number; close hits add up; the first view and the end pop nothing',()=>{
   const t=new ChaveiroTracker();
   t.push(view(30),1,0,false);
   assert.equal(t.pops.length,0,'old damage on the first view is no news');assert.equal(t.lastHitAt,undefined);
   t.push(view(33),2,100,false);
-  assert.deepEqual(t.pops,[{amount:3,at:100}]);assert.equal(t.lastHitAt,100);
+  assert.deepEqual(t.pops,[{amount:3,at:100,seconds:0}]);assert.equal(t.lastHitAt,100);
   t.push(view(35),3,100+HIT_MERGE_MS-1,false);
-  assert.deepEqual(t.pops,[{amount:5,at:100}],'a horde hitting together is one number');
+  assert.deepEqual(t.pops,[{amount:5,at:100,seconds:0}],'a horde hitting together is one number');
   t.push(view(35),4,600,false);assert.equal(t.pops.length,1,'no hit, no number');
   for(let i=0;i<HIT_POPS_MAX+2;i++)t.push(view(36+i),5+i,1000+i*HIT_MERGE_MS,false);
   assert.equal(t.pops.length,HIT_POPS_MAX,'never more than the pool');

@@ -971,6 +971,10 @@ export class Room {
     // boss-fim-onda-1 proofs: the 1st wave's chefão comes now (mode 'ninhos'), so his scene is photographed without
     // waiting for the wave; the next step opens it like a real arrival.
     if(m.chefao===true)this.sim.summonChefao();
+    // missao-proteger-uno-tempo proofs: the chaveiro's clock waits only m.clock s more (never longer), so a GIF shows
+    // him arriving without the 5:00.
+    const ch=this.sim.run.chaveiro?.state;
+    if(typeof m.clock==='number'&&Number.isFinite(m.clock)&&m.clock>=0&&ch?.wait!==undefined)ch.wait=Math.min(ch.wait,Math.round(m.clock*RUN_HZ));
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);

@@ -5,7 +5,7 @@
 import {putData,putHidden,putIconNumber,putTextData} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
 import {bossInfo,exploraLeft,nestCount,nestsMode,roundInfo,xpFraction,type HudContext,type HudPart} from './model.ts';
-import type {ChaveiroClock} from './chaveiro.ts';
+import {ClockTag,arrivalBand,liveObjective,type ChaveiroClock} from './chaveiro.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
@@ -15,6 +15,9 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 };
 
 export function createTopBar():HudPart{
+  // Lazy, and its rejection dropped, so the node tests that build this part (hud.test, hud-sem-escrita-repetida) never load
+  // a .css (card chaveiro-chegou-e-relogio); Vite always serves it.
+  import('./chaveiro-relogio.css').catch(()=>{});
   const root=el('div','rh-top');
   // Not a live region: the countdown changes every second. Round changes are announced by the marquee.
   const chip=el('div','rh-round',root);
@@ -22,6 +25,16 @@ export function createTopBar():HudPart{
   // D-047: the chaveiro's clock ("Onda 3 · 9:48", no moto since topo-sem-icone-contagem-exploracao), only while the
   // objective runs; in the time to explore, the seconds left ("120", "119"…).
   eta.hidden=true;
+  // Card chaveiro-chegou-e-relogio: while the moto is stopped the clock wears the stop's colour and, under the chip, the
+  // time the stop added ("Moto tombou: +4 s", hud/chaveiro.ts ClockStopTracker).
+  // Right after the clock, in the chip: "+N s", with what stopped the moto before it where the row has room (chaveiro-relogio.css).
+  const stopTag=el('span','rh-relogio-motivo');eta.after(stopTag);stopTag.hidden=true;
+  const stopName=el('span','rh-relogio-motivo-nome',stopTag),stopAdded=el('span','rh-relogio-motivo-mais',stopTag);
+  const tag=new ClockTag();
+  // "Chegou" is a moment: the band under the chip while he opens the car, the seconds left and a bar filling up.
+  const arrival=el('div','rh-chaveiro-chegou',root);arrival.setAttribute('role','status');arrival.hidden=true;
+  const arrivalTitle=el('strong','rh-chegou-titulo',arrival),arrivalHold=el('span','rh-chegou-segurem',arrival);
+  const arrivalFill=el('i','rh-chegou-fill',el('div','rh-chegou-track',arrival));
   const xp=el('div','rh-xp',root);
   const level=el('span','rh-xp-level',xp);
   const track=el('div','rh-xp-track',xp),fill=el('i','rh-xp-fill',track);
@@ -71,8 +84,23 @@ export function createTopBar():HudPart{
         }
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
+      const objective=liveObjective(view);
+      // A stop's "+N s" first; else a hit's on the Uno (card missao-proteger-uno-tempo): both read the ETA, held = nothing.
+      const stop=tag.step(objective&&!round.chaveiro?.held?objective:undefined,view.tick);
+      put('stop',stop?`${stop.mode}|${stop.text}`:'',()=>{
+        putHidden(stopTag,!stop);
+        if(stop){eta.dataset.motivo=stop.urgent?'urgente':'parada';stopTag.dataset.motivo=eta.dataset.motivo;
+          stopName.textContent=`${stop.label}: `;stopAdded.textContent=`+${stop.added} s`;stopTag.title=stop.text;}
+        else{delete eta.dataset.motivo;stopName.textContent=stopAdded.textContent=stopTag.title='';}
+      });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);
     }
+    const band=arrivalBand(liveObjective(view));
+    put('chegou',band?`${band.seconds}`:'',()=>{
+      putHidden(arrival,!band);
+      if(band){arrivalTitle.textContent=band.title;arrivalHold.textContent=band.hold;arrival.setAttribute('aria-label',band.aria);}
+    });
+    if(band)put('chegouFill',`scaleX(${Math.round(band.fraction*100)/100})`,v=>{arrivalFill.style.transform=v;});
     const fraction=xpFraction(view);
     put('xp',`scaleX(${fraction})`,v=>{fill.style.transform=v;});
     put('level',`Nív. ${view.team.level}`,v=>{level.textContent=v;});

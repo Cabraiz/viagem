@@ -23,12 +23,13 @@ import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
 import {FrameDecoder,FrameEncoder} from '../src/protocol/protocol4.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {RoomBots} from '../multiplayer/room-bots.ts';
+import {herois} from './elenco-ativo.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
 const POP=Number(arg('pop','20')),BOTS=Number(arg('bots','6')),SEED=Number(arg('seed','4242'));
 const MEASURE=Number(arg('ticks','3600')),WARMUP=Number(arg('warmup','200')),OUT=arg('out',''),AWAKE=Number(arg('awake','0'));
-const CLASSES=['cidadao-comum','clt-cansado','feirante'];
+const CLASSES=herois(6);
 
 const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');
 const hash=(JSON.parse(fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;

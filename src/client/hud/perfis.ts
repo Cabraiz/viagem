@@ -27,6 +27,13 @@ export const TILT_DEG=4;
 export interface Perfil extends PerfilTexto {kind:string;name:string;foto:string;accent:number}
 const NAMES=new Map(ROSTER.map(entry=>[entry.id,entry] as const));
 export const perfilFoto=(kind:string)=>`/art/perfis/${kind}.webp`;
+/** The phone's tarot card (card perfil-vira-livro-de-contos, ChatGPT after the user's Rider-Waite refs): black border,
+ *  gold filet, numeral cartouche, transparent window over the photo and the cream name band. */
+export const MOLDURA_TAROT='/art/perfis/moldura-tarot.webp';
+/** The holographic foil (ChatGPT) that slides once over the tarot card. */
+export const FOIL_TAROT='/art/perfis/foil.webp';
+/** Names longer than this drop to the small size and wrap (up to three lines in the band). */
+export const NOME_CURTO=14;
 export const BOTAO_FOTO={curtir:'/art/perfis/botao-curtir.webp',passar:'/art/perfis/botao-passar.webp'} as const;
 /** The profile of a kind, or undefined when it has no photo/text yet (later batches). */
 export function perfilOf(kind:string):Perfil|undefined{
@@ -53,7 +60,7 @@ export class MatchBook {
   private readonly kinds=new Set<string>();
   private readonly has:(kind:string)=>boolean;
   private readonly rng:()=>number;
-  constructor(has:(kind:string)=>boolean=kind=>!!perfilOf(kind),rng:()=>number=Math.random){this.has=has;this.rng=rng;}
+  constructor(has:(kind:string)=>boolean=kind=>!!perfilOf(kind)||!!ARCANOS[kind],rng:()=>number=Math.random){this.has=has;this.rng=rng;}
   get matches():readonly Match[]{return this.list;}
   /** A kill: a new match, or undefined (someone else's kill, no profile, already matched, the cap, or the dice said no). */
   kill(e:Pick<KillEvent,'kind'|'by'|'x'|'y'>,localId:string,hero?:{x:number;y:number}):Match|undefined{
@@ -130,6 +137,53 @@ function profileCard(doc:Document,m:Match,className:string,onButton:(how:'passar
   return node;
 }
 
+/**
+ * The game's three enemies as tarot arcana (user 29/10: only the new beggar, the saci and the arrasta-pé are in the game):
+ * numeral, name and the ChatGPT illustration in the Rider-Waite line. Any other kind (legacy, hidden) keeps its photo and
+ * gets no numeral. The sanfoneiro joins as III when E1's art is picked.
+ */
+export const ARCANOS:Readonly<Record<string,{num:string;name:string;arte:string;pop:string}>>={
+  mendigo:{num:'I',name:'O Mendigo',arte:'/art/perfis/tarot-mendigo.webp',pop:'/art/perfis/pop-mendigo.webp'},
+  'aberracao-saci':{num:'II',name:'O Saci',arte:'/art/perfis/tarot-saci.webp',pop:'/art/perfis/pop-saci.webp'},
+};
+/** The desktop's pop-up book (option 15, ChatGPT): the open book with the paper town, the same for every enemy. */
+export const LIVRO_POP='/art/perfis/pop-livro.webp';
+
+/**
+ * The phone's tarot card (perfil-vira-livro-de-contos): the enemy's photo in the frame's window, its numeral on top and
+ * ONLY its name, in capitals with a full stop like the Rider-Waite titles; the ChatGPT foil slides over it once.
+ * Nothing of the dating app: no balloon, distance, buttons nor stamp.
+ */
+export function tarotCard(doc:Document,m:Match){
+  const arcano=ARCANOS[m.kind],p=perfilOf(m.kind);
+  const name=arcano?.name??p?.name??m.kind;
+  const node=el(doc,'article','rh-perfil rh-perfil-compacto rh-tarot');node.dataset.kind=m.kind;
+  node.setAttribute('aria-label',name);
+  const foto=el(doc,'div','rh-tarot-foto',node);
+  const img=el(doc,'img','rh-perfil-img',foto);img.alt='';img.draggable=false;img.decoding='async';
+  img.onload=()=>{node.dataset.foto='ok';};img.src=arcano?.arte??p?.foto??'';if(img.complete&&img.naturalWidth>0)node.dataset.foto='ok';
+  const frame=el(doc,'img','rh-tarot-moldura',node);frame.alt='';frame.draggable=false;frame.decoding='async';frame.src=MOLDURA_TAROT;
+  el(doc,'span','rh-tarot-num',node).textContent=arcano?.num??'';
+  el(doc,'h3',name.length>NOME_CURTO?'rh-tarot-nome rh-tarot-nome-longo':'rh-tarot-nome',node).textContent=`${name.toLocaleUpperCase('pt-BR')}.`;
+  el(doc,'div','rh-tarot-foil',node);
+  return node;
+}
+
+/**
+ * The desktop's pop-up book (perfil-vira-livro-de-contos, option 15): the enemy's paper cut-out (ChatGPT) rises once
+ * from the open book, its name in the book's cartouche. Only for the three arcana; the same rules as the tarot card.
+ */
+export function popCard(doc:Document,m:Match){
+  const arcano=ARCANOS[m.kind]!;
+  const node=el(doc,'article','rh-perfil rh-perfil-compacto rh-pop');node.dataset.kind=m.kind;
+  node.setAttribute('aria-label',arcano.name);
+  const book=el(doc,'img','rh-pop-livro',node);book.alt='';book.draggable=false;book.decoding='async';book.src=LIVRO_POP;
+  const fig=el(doc,'img','rh-pop-figura rh-perfil-img',node);fig.alt='';fig.draggable=false;fig.decoding='async';
+  fig.onload=()=>{node.dataset.foto='ok';};fig.src=arcano.pop;if(fig.complete&&fig.naturalWidth>0)node.dataset.foto='ok';
+  el(doc,'h3','rh-pop-nome',node).textContent=`${arcano.name.toLocaleUpperCase('pt-BR')}.`;
+  return node;
+}
+
 export interface ProfilesOptions {
   /** Where the local hero stands (RunHud.setHero), for the distance at the kill. */
   hero():{x:number;y:number}|undefined;
@@ -148,6 +202,11 @@ export interface ProfilesOptions {
    */
   guards?():readonly Box[]|undefined;
   useful?():Box|undefined;
+  /**
+   * The compact card is the tarot card (tarotCard); by default on the phone (the HUD's data-hud=fone). Off: the
+   * desktop's pop-up book (popCard) for the three arcana.
+   */
+  tarot?():boolean;
 }
 export interface ProfilesPart extends HudPart {
   readonly book:MatchBook;
@@ -189,7 +248,12 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
   const open=()=>{
     const last=book.matches.at(-1);if(!last)return;
     close();
-    card=profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
+    // The phone: the tarot card. The desktop: the pop-up book for the three arcana; a kind with neither pop-up nor dating
+    // profile (the sanfoneiro until its art) falls back to the tarot card.
+    const fone=options.tarot?.()??slot.closest('[data-hud]')?.getAttribute('data-hud')==='fone';
+    const pop=!fone&&!!ARCANOS[last.kind]?.pop,tarot=!pop&&(fone||!perfilOf(last.kind));
+    slot.classList.toggle('rh-perfil-slot-tarot',tarot);slot.classList.toggle('rh-perfil-slot-pop',pop);
+    card=pop?popCard(doc,last):tarot?tarotCard(doc,last):profileCard(doc,last,'rh-perfil-compacto',(how,node)=>{
       if(how==='curtir'){node.dataset.sai='curtir';closeTimer=setTimeout(close,700);}else close();
     });
     card.addEventListener('click',close);
@@ -205,7 +269,7 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
   const hop=(m:Match)=>{
     paintCount();
     flame.classList.remove('rh-matches-pulo');void flame.offsetWidth;flame.classList.add('rh-matches-pulo');
-    live.textContent=`Deu match com ${perfilOf(m.kind)?.name??m.kind}`;
+    live.textContent=ARCANOS[m.kind]?.name??perfilOf(m.kind)?.name??m.kind;
   };
   return {
     el:root,book,flame,

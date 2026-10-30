@@ -13,6 +13,7 @@ import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
 import {walkable} from '../src/maps/index.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {RoomBots} from '../multiplayer/room-bots.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
@@ -22,7 +23,7 @@ const hash=(JSON.parse(fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada
 const loaded=await cityTerrainFrom(text,hash);if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 const sim=new Simulation(SEED,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos',combat:'manual'}),room=new RoomBots();
-for(let i=0;i<BOTS;i++){sim.addBot(`bot${i+1}`,`bot${i+1}`,'cidadao-comum');room.add(`bot${i+1}`,i);}
+for(let i=0;i<BOTS;i++){sim.addBot(`bot${i+1}`,`bot${i+1}`,PERSONAGEM_PADRAO);room.add(`bot${i+1}`,i);}
 sim.botState=()=>room.state();sim.resetRun();room.reset();
 const samples=new Map<string,{x:number;y:number;tick:number}>(),stuck=new Map<string,number>(),moved=new Map<string,number>();
 const r2=(v:number)=>Math.round(v*100)/100;

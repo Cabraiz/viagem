@@ -212,6 +212,10 @@ const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:u
 const BOT_CLASSES=[...BOT_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
+/** A token whose seat is gone (away past GRACE_MS): what happened and the way back (auditoria-erros-cliente E5). */
+export const SEAT_EXPIRED=`Você ficou fora mais de ${GRACE_MS/60_000} minutos e sua vaga foi liberada. Entra de novo pela sala.`;
+/** A fresh join without a usable name or hero (the client never sends one: an old or hand-made build). */
+export const BAD_JOIN='Nome ou herói inválido. Escolhe de novo.';
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
 /** Two {t:'dancou'} of one player at least this far apart (the dance runs seconds; a burst of taps is one). */
 export const DANCE_RELAY_MS=1000;
@@ -651,7 +655,7 @@ export class Room {
       if(m.token!==undefined){
         const hash=typeof m.token==='string'&&m.token.length<=200?sha256Hex(m.token):'';
         session=[...this.sessions.values()].find(s=>s.hash===hash);
-        if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.',now);return;}
+        if(!session||session.until<now){this.reject(peer,SEAT_EXPIRED,now);return;}
         // The newest connection takes the character (BUG-20261009-N1-reconexao-socket-velho): a phone back from another
         // network while the room still holds its dead socket, or a second tab. The old one hears why and is closed with
         // 4009, which the client never retries, so two real tabs cannot keep knocking each other out.
@@ -665,7 +669,7 @@ export class Room {
       }else{
         // A solo room has its person already (a seat, online or away): nobody else sits (they come back with their token).
         if(this.solo&&this.sessions.size>0){this.reject(peer,SOLO_ROOM_REFUSED,now);return;}
-        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,'Nome ou herói inválidos.',now);return;}
+        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,BAD_JOIN,now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).

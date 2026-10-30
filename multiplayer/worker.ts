@@ -4,6 +4,8 @@ import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOption
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
 /** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78. */
 const CREATE_BODY_MAX=256;
+/** The 403 for a page outside the allowed origins, read by the lobby as `error`. */
+export const ORIGIN_REFUSED='Este endereço não pode abrir salas. Abre o jogo pelo viagem.cyou.';
 /**
  * A stored row's options as they were created (sala-solo-privada; anything else is dropped). Only for a room restored
  * after a deploy: one created before rodada-legado keeps its waves, wall or automatic weapons to its end.
@@ -87,7 +89,9 @@ export default {
       if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});
       return Response.json(await env.INDEX.get(env.INDEX.idFromName('index')).summary(),{headers:{'Cache-Control':'no-store'}});
     }
-    if(!allowed(request,env))return new Response('Origin not allowed',{status:403});
+    // Another address (a copy, an old preview): JSON like the other answers, so the lobby shows where the game opens
+    // (auditoria-erros-cliente E5). `*` lets that page read this one line; it holds nothing of a room.
+    if(!allowed(request,env))return Response.json({error:ORIGIN_REFUSED},{status:403,headers:{'Access-Control-Allow-Origin':'*','Cache-Control':'no-store'}});
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/rooms'&&request.method==='POST'){

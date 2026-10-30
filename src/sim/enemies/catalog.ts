@@ -376,6 +376,15 @@ export const hazardKind=(owner:string):EnemyKind|undefined=>{
 export const isEnemyKind=(value:string):value is EnemyKind=>isRosterId(value);
 const ROSTER_DEFS=new Map<string,EnemyDef>();
 /**
+ * balanco-3-inimigos: the numbers of the liberated cast (rules/inimigos-liberados.ts) on top of their role-built def, so the
+ * horde of one common enemy hits as hard as the legacy mix did (evidence/NEW-20261029-ORQ-balanco-3-inimigos/tabela.md).
+ * Multipliers of hp and contact damage; a kind left out keeps its role's numbers.
+ */
+export const LIBERADO_TUNE:Readonly<Record<string,Readonly<{hp:number;damage:number}>>>=Object.freeze({
+  mendigo:Object.freeze({hp:1,damage:1}),
+  'aberracao-saci':Object.freeze({hp:1,damage:1}),
+});
+/**
  * Def of a pack entry: its role's hp (roleHp) and profile on the role's base kind (speed, damage, radius × cell / role cell, xp;
  * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).
  * A clone with a feel (rules/enemy-feel.ts) scales speed, hp, radius and sway on top.
@@ -385,9 +394,10 @@ function rosterDef(kind:string):EnemyDef|undefined{
   const entry=rosterEntry(kind),lines=entryLines(kind);
   if(!entry||!lines)return undefined;
   const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base],feel=enemyFeel(kind)??{speed:1,hp:1,radius:1,sway:1};
+  const tune=Object.hasOwn(LIBERADO_TUNE,kind)?LIBERADO_TUNE[kind]!:{hp:1,damage:1},hpMult=feel.hp*tune.hp;
   const def:EnemyDef=Object.freeze({
     id:entry.id,name:entry.name,behavior:role.behavior,
-    hp:feel.hp===1?roleHp(entry.role,base.hp):Math.round(roleHp(entry.role,base.hp)*feel.hp),speed:base.speed*role.speed*feel.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
+    hp:hpMult===1?roleHp(entry.role,base.hp):Math.round(roleHp(entry.role,base.hp)*hpMult),speed:base.speed*role.speed*feel.speed,damage:Math.max(1,Math.round(base.damage*role.damage*tune.damage)),
     radius:base.radius*role.radius*entry.cell/role.cell*feel.radius,xp:Math.max(1,Math.round(base.xp*role.xp)),
     contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,
     // The swarm's and the stagger's walk sway like their base's (pombos, bêbado), wider or straighter with the feel.

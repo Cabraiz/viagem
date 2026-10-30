@@ -29,11 +29,11 @@ const loaded=await cityTerrainFrom(TEXT,HASH);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 
-/** Seed 1, three room bots and a person, 120 s: turn-backs (more than 135°) and those 200 ms or less after the bot's last. */
-function tique(pace?:Partial<typeof NEST_PACE>){
+/** Seed `seed` (1), three room bots and a person, 120 s: turn-backs (more than 135°) and those 200 ms or less after the bot's last. */
+function tique(pace?:Partial<typeof NEST_PACE>,seed=1){
   const save={...NEST_PACE};Object.assign(NEST_PACE,pace);
   try{
-    const sim=new Simulation(1,{world:'cidade',terrain:city,objective:'chaveiro',combat:'manual',mode:'ninhos'});
+    const sim=new Simulation(seed,{world:'cidade',terrain:city,objective:'chaveiro',combat:'manual',mode:'ninhos'});
     const room=new RoomBots();
     sim.add('p1','Pessoa','clt');
     for(let i=0;i<3;i++){sim.addBot('b'+i,'Bot'+i,['clt','maromba','viciado'][i]);room.add('b'+i,i);}
@@ -67,8 +67,11 @@ test('the user\'s tique: three room bots in the nests turn back under 0.25 times
 
 // Card missao-proteger-uno-tempo: the first wave now comes at 35-45 s, so the 120 s hold a fight. Kiting turns back on
 // purpose (0.28 a second, 99 turns), but the tique, the swap every think (3 in 4 within 200 ms before), stays out: 2 in 99.
+// One seed's fight is chaotic (bico-sem-limite-pix-voando, same bots: seed 1 went 2/99 → 17/123 while seeds 1–8 held
+// 55/795 → 53/783 and main's seed 5 alone gives 15/120), so seeds 1–4 are summed: 22/415 on main, 30/441 with it.
 test('in the first wave (the NEST_PACE default) the turn-backs are kiting, not the 200 ms swap',()=>{
-  const {back,quick}=tique();
+  let back=0,quick=0;
+  for(const seed of [1,2,3,4]){const t=tique(undefined,seed);back+=t.back;quick+=t.quick;}
   assert.ok(back>0,'the first wave reaches the bots inside the 120 s');
   assert.ok(quick/back<.1,`turn-backs within 200 ms of the last: ${quick} of ${back}`);
 });

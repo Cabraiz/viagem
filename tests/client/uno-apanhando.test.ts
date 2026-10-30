@@ -7,6 +7,7 @@
  * Run: node --experimental-strip-types --test tests/client/uno-apanhando.test.ts
  */
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {CAR_LOW,HIT_FLASH_MS,HIT_MERGE_MS,HIT_POP_MS,HIT_POPS_MAX,carLife,hitFlash,hitPop,hitPopText} from '../../src/client/render/chaveiro/rules.ts';
 import {ChaveiroTracker} from '../../src/client/render/chaveiro/tracker.ts';
@@ -104,4 +105,10 @@ test('etapa 3: the window camera viewport is its frame inner box in game px (a s
   assert.deepEqual(pipViewport(inner,canvas,{width:1280,height:800}),{x:1000,y:300,width:240,height:150});
   assert.deepEqual(pipViewport(inner,canvas,{width:2560,height:1600}),{x:2000,y:600,width:480,height:300},'DPR 2 canvas');
   assert.deepEqual(pipViewport({left:10,top:20,width:0,height:0},{left:10,top:0,width:100,height:100},{width:100,height:100}),{x:0,y:20,width:1,height:1});
+});
+
+test("pip: the window's aria label speaks the game's informal Portuguese (glossário 29/10: Uno, Toca)",()=>{
+  const src=readFileSync(new URL('../../src/client/render/chaveiro/pip.ts',import.meta.url),'utf8');
+  assert.match(src,/setAttribute\('aria-label','O Uno tá apanhando\. Toca pra ver\.'\)/);
+  assert.doesNotMatch(src,/Toque|está apanhando/);
 });

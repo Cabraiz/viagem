@@ -7,7 +7,7 @@ import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BO
 import {RunLifecycle} from '../../src/sim/run.ts';
 import {RoomBots,botIdentity,botName,numberedName,BOT_FALLBACK_NAME,BOT_NAME_MAX,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
-import {classes} from '../../src/rules/classes.ts';
+import {BOT_CLASS_IDS,classes} from '../../src/rules/classes.ts';
 import {railName} from '../../src/client/render/map-label-rules.ts';
 import {RAIL_MAX} from '../../src/rules/names.ts';
 import {waitingRoomView,confirmText,ownerNotice,OWNER_HINT} from '../../src/client/lobby.ts';
@@ -175,6 +175,32 @@ test('bots: named after their character (numbered when repeated), a class of the
   const run=new RunLifecycle('x');run.join('b',{bot:true});run.step();assert.equal(run.snapshot().phase,'lobby');
 });
 
+// NEW-20261030-E4-bots-celular-zero-dano (auditoria 30-10 item 8): "Aposentado" and "Aposentado 2" in a solo room of 3 bots.
+test("bots never repeat a class while one of the 5 bot classes is free; the person's class counts as seated",()=>{
+  const ids=[...BOT_CLASS_IDS];
+  assert.equal(ids.length,5);
+  // Unit: only the least seated classes are drawn.
+  for(let n=0;n<20;n++){
+    assert.equal(botIdentity(3,n,ids,new Set(),ids.slice(1)).classId,ids[0],'the one free class');
+    assert.ok(!['maromba','aposentado'].includes(botIdentity(3,n,ids,new Set(),['maromba'],['aposentado']).classId));
+    assert.equal(botIdentity(3,n,ids,new Set(),ids.slice(1),[ids[0]]).classId,ids[0],"a person's class before another bot's");
+    assert.ok(ids.slice(0,2).includes(botIdentity(3,n,ids,new Set(),[...ids,...ids.slice(2)]).classId),'all taken: the least seated');
+  }
+  for(let seed=1;seed<=40;seed++){
+    const room=new Room(1000,seed),a=peer();join(room,a,'Ana',1000,{classId:'aposentado'});
+    for(let i=0;i<3;i++)addBot(room,a,1000);
+    const solo=[...room.sim.players.values()].filter(p=>room.sim.bots.has(p.id)).map(p=>p.classId);
+    assert.equal(solo.length,3);
+    assert.equal(new Set(solo).size,3,`seed ${seed}: 3 bots, 3 classes (${solo})`);
+    assert.ok(!solo.includes('aposentado'),`seed ${seed}: the person's aposentado is not drawn again (${solo})`);
+    assert.ok([...room.sim.players.values()].every(p=>!/ \d$/.test(p.name)),`seed ${seed}: no numbered name`);
+    for(let i=0;i<2;i++)addBot(room,a,1000);
+    const five=[...room.sim.players.values()].filter(p=>room.sim.bots.has(p.id)).map(p=>p.classId);
+    assert.equal(five.length,5);
+    assert.deepEqual(new Set(five),new Set(ids),`seed ${seed}: 5 bots, the 5 classes (the 5th takes the person's)`);
+  }
+});
+
 test('bots send no message: the room receives only what the people send (free plan requests)',()=>{
   const room=new Room(1000),a=peer();join(room,a,'Ana',1000);
   for(let i=0;i<5;i++)addBot(room,a,1000);
@@ -265,9 +291,9 @@ test('waiting room: the owner manages, people first then bots, the crown and rob
   // Countdown: still allowed; combat and result: the waiting room is hidden (the result has its own buttons).
   assert.equal(waitingRoomView({...run,phase:'countdown',remaining:40},names,'me').canManage,true);
   assert.equal(waitingRoomView({...run,phase:'combat'},names,'me').canManage,false);
-  assert.equal(confirmText({name:'Wagner Washington',bot:false}),'Expulsar Wagner? Toca de novo.');assert.equal(confirmText({name:'Pamonha 3000',bot:true}),'Tirar Pamonha? Toca de novo.');
-  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Fujão 3000',bot:true},false),'Tirar bot');
-  assert.equal(manageLabel({name:'Fujão 3000',bot:true},true),'Tirar Fujão? Toca de novo.');
+  assert.equal(confirmText({name:'Wagner Washington',bot:false}),'Expulsar Wagner? Toca de novo.');assert.equal(confirmText({name:'Pamonha 3000',bot:true}),'Expulsar Pamonha? Toca de novo.');
+  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Fujão 3000',bot:true},false),'Expulsar bot');
+  assert.equal(manageLabel({name:'Fujão 3000',bot:true},true),'Expulsar Fujão? Toca de novo.');
   assert.ok(OWNER_HINT.length<60);assert.match(OWNER_HINT,/dono da sala/);assert.doesNotMatch(OWNER_HINT,/chefe/);
   // Owner news: the post moved, mine now, or a guest's first look; the owner's own first look says nothing.
   assert.equal(ownerNotice({name:'Tia Cleide Aparecida'},'Wagner Washington',false),'Tia saiu. Agora quem manda é Wagner.');

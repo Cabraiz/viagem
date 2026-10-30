@@ -13,10 +13,10 @@ export const LINE_MAX=34;
 /** Used for a class id that has no lines (new class, bad data): still funny, never empty. */
 export const FALLBACK_LINES:Readonly<Record<Situation,readonly string[]>>={
   levelUp:['Subi! Nem sei como.','Nível novo, mesma cara.'],
-  down:['Alguém me levanta aí!','Deitei só um pouquinho...'],
+  down:['Alguém me levanta aí!','Deitei só um pouquinho…'],
   revive:['De pé, guerreiro!','Levanta que ainda não acabou!'],
   upgrade:['Esse aqui parece bom.','Escolhi pela cor.'],
-  win:['Ganhamos?! Ganhamos!','Síndico derrotado, festa!'],
+  win:['Ganhamos?! Ganhamos!','Horda derrotada, festa!'],
   lose:['Foi o lag, certeza.','Revanche? Revanche.'],
 };
 

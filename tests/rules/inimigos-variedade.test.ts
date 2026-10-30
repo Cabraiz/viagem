@@ -7,6 +7,9 @@ import {Rng} from '../../src/contract/index.ts';
 import {ART_SLOT_WIDEN,ENEMY_ART_IDS,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,drawRotation,isRotation,rotationSize,roundRoster,slotPools} from '../../src/rules/index.ts';
 import {enemyDef} from '../../src/sim/enemies/catalog.ts';
 import {enemyFeel} from '../../src/rules/enemy-feel.ts';
+import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
+// The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
+setRosterOnlyLiberados(false);
 
 const art=new Set(ENEMY_ART_IDS);
 const artOf=(role:string)=>ROSTER.filter(e=>e.role===role&&art.has(e.id)).length;

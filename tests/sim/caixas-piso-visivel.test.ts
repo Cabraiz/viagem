@@ -43,7 +43,9 @@ test(`a person who opens crate after crate still sees at least ${VISIBLE_FLOOR} 
       // sleeps by seed 1's second crate).
       if(target&&pickups().has(target)&&t-since>ticks(8)){skip.add(target);target=undefined;}
       if(!target||!pickups().has(target)){if(target)opened++;target=mine.find(k=>k.id!==target)?.id;since=t;if(target){const k=pickups().get(target)!;p0.x=k.x;p0.y=k.y;}}
-      p0.hp=p0.stats.maxHp;delete (p0 as {fear?:unknown}).fear;
+      // Untouchable (so-3-inimigos: the mendigo runners chase him and every hit starts the opening over): the floor is the
+      // subject here, not the fight.
+      p0.hp=p0.stats.maxHp;p0.invulnerableUntil=Infinity;delete (p0 as {fear?:unknown}).fear;
       s.step(now+=50);
       if(t>ticks(5)&&t%ticks(1)===0)least=Math.min(least,[...pickups().values()].filter(k=>k.kind==='chest'&&!k.hiddenFor?.includes('p0')).length);
     }

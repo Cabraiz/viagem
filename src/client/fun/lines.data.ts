@@ -30,7 +30,7 @@ export const CLASS_LINES:Readonly<Record<string,Readonly<Record<Situation,readon
     down:['Vou pedir atestado…','Me acorda às 18h, por favor.'],
     revive:['Levanta, ainda não bateu o ponto!','Bora, que o café ainda tá quente.'],
     upgrade:['Esse card podia ser um e-mail.','Pego esse e saio às 18h.'],
-    win:['Sextou com S de síndico!','Agora sim: férias vencidas!'],
+    win:['Sextou com S de saci!','Agora sim: férias vencidas!'],
     lose:['Pelo menos amanhã é feriado?','Segunda-feira foi mais difícil.'],
   },
   'motogirl':{
@@ -214,7 +214,7 @@ export const CLASS_LINES:Readonly<Record<string,Readonly<Record<Situation,readon
     down:['Ai, a coluna! Me ajuda aqui!','Caí! Mas no meu tempo era pior.'],
     revive:['Levanta, moço! Ainda tem dominó.','Te pesquei igual lambari!'],
     upgrade:['Esse eu escolho de olho fechado.','Me lembra minha juventude.'],
-    win:['Bati o dominó! Digo, o síndico!','Essa vou contar por 40 anos.'],
+    win:['Bati o dominó! Digo, a horda!','Essa vou contar por 40 anos.'],
     lose:['Vou pro banco da praça, então.','Nos anos 70 a gente ganhava.'],
   },
   'conspiracionista':{

@@ -113,7 +113,8 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
     range:13,cooldown:s(1.6),damage:70,target:'strongest'}),
   'equipe-antimaterial':def({id:'equipe-antimaterial',name:'Casamata',label:'A5b',tier:5,branch:'A',from:'ninho-do-sniper',alt:true,footprint:[2,2],hp:900,
     range:15,cooldown:s(2.2),damage:200,target:'strongest'}),
-  // B: explosives (area, slow cadence, never the flyers).
+  // B: explosives (area, slow cadence, never the flyers). NEW-20261030-ORQ-ramo-b-e-6p-facil: counted with its area
+  // (≈ 1 + 0.1·π·area² enemies per impact), each B tier from B3 gives ≥ ~60 % of the A tier's DPS per R$, never more.
   'rojao-de-festa':def({id:'rojao-de-festa',name:'Rojão de Festa',label:'B2',tier:2,branch:'B',from:'vigia-do-predio',footprint:[1,1],hp:350,
     range:7,cooldown:s(1.6),damage:14,area:1.2,hits:'ground'}),
   'morteiro':def({id:'morteiro',name:'Morteiro',label:'B3',tier:3,branch:'B',from:'rojao-de-festa',footprint:[2,2],hp:600,
@@ -121,7 +122,7 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   'lanca-foguetes':def({id:'lanca-foguetes',name:'Lança-Foguetes',label:'B4',tier:4,branch:'B',from:'morteiro',footprint:[3,2],hp:800,
     range:10,minRange:2,cooldown:s(3),damage:22,shots:4,area:1.6,hits:'ground'}),
   'obuseiro':def({id:'obuseiro',name:'Obuseiro Pesado',label:'B5',tier:5,branch:'B',from:'lanca-foguetes',footprint:[3,3],hp:1000,
-    range:12,minRange:3,cooldown:s(3.5),damage:90,area:2.4,hits:'ground',target:'cluster'}),
+    range:12,minRange:3,cooldown:s(3.5),damage:140,area:2.4,hits:'ground',target:'cluster'}),
   // B6: fires once in a long while, with a huge area, from the rail; reaches most of the map. City only (the rail): its
   // range is a map length, 60 u × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
   'gustavao':def({id:'gustavao',name:'Gustavão',label:'B6',tier:6,branch:'B',from:'obuseiro',footprint:[12,4],hp:3000,rail:true,
@@ -147,8 +148,9 @@ export type BuildPiece=DefenseId|FreePiece;
  * - muro: one cell, R$ 4, 250 hp, 40 standing per team, 1 s of obra. A wall to the enemies (a blocker on the terrain:
  *   the flow field routes around it, a body pressed against it bashes it); the heroes walk through it like the plaza
  *   barricades. A dragged wall is one {t:'build'} per cell: the sim queues each hero's obras one after the other.
- * - barricada: 2×1 cells (rot 1: 1×2), R$ 10, 400 hp, 8 standing, 2 s of obra. It holds instead of blocking: an enemy
- *   on it walks at `drag` × its speed (60 % slower) and the siege groups bash it like a tower.
+ * - barricada: 2×1 cells (rot 1: 1×2), R$ 5, 200 hp, 40 standing per team, 1 s of obra. A wall to the enemies like the
+ *   muro (blocks, drag 1: the history is beside FREE_PIECE_DEFS.barricada). It comes from the map's tralha as a kit
+ *   (TRALHA_GROUPS below) and is never bought; its price is the kit's worth.
  * Paid in Grana from the builder's wallet (sim/wallet.ts). A fallen piece is gone and frees its cells.
  */
 export interface FreePieceDef {

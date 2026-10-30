@@ -21,7 +21,7 @@ import {directionalSheet} from '../sprites/sprite-sheets.ts';
 import {movementSheets} from '../sprites/movement128.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../sprites/art-urls.ts';
 import {artIndex} from '../art/manifest.ts';
-import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
+import {artLoads} from '../art/horde-art.ts';
 import {baseLoads} from '../art/base-art.ts';
 import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
@@ -104,10 +104,9 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   // The crates' floating items (caixa-aparece-tarde): every arsenal sticker, which the scene's preload asks for in a room
   // (the map opens with crates of any item); fetched here, the first frame finds them in the cache.
   for(const l of arsenalLoads())if(!l.strip)add(l.url,'P1','icon');
-  // The loader requests the enemies' lite copies (liteEnemyUrl): the same URLs here.
-  const enemyPrefix=index.groups.inimigos?liteEnemyUrl(`/${index.groups.inimigos.output.replace(/^public\//,'')}/`):undefined;
+  // No enemy or boss here (Q3 slice 4): they load in their own round (scene queueEnemyArt from the room's elenco or the
+  // first sighting, the HD boss through ChefaoArtPlan), never in the waiting room.
   const horde=artLoads();
-  for(const l of horde)if(enemyPrefix&&l.url.startsWith(enemyPrefix))add(l.url,'P1','enemy');
   for(const l of baseLoads())add(l.url,'P1','base');
   // P2: the city's pine (the scene's preload takes it), items/projectiles, frames and telegraph art.
   if(city)add(treeUrl('arvore-nevada'),'P2','decor');

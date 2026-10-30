@@ -24,7 +24,7 @@
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
 import {heroSpeed,moveDirection,RADIUS,SPEED,walkable} from './world.ts';
 import {floorOf,floorOn,onFloor,type Floor} from './city/viaduct.ts';
-import {bodyBlock,shoveWhereWalkable,type Body} from './bodies.ts';
+import {bodyBlock,heroBlock,heroSpot,heroesApart,shoveWhereWalkable,type Body,type HeroBody} from './bodies.ts';
 import {BURPEE_TICKS,CART_TURN,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,RIDE_MULT,SIM_HZ,carPushOut,carSpeed} from '../contract/index.ts';
 import type {PlayerInput,Point,VehicleKind} from '../contract/index.ts';
 type Input=PlayerInput;
@@ -50,7 +50,14 @@ export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number;
    * Card heroi-empurra-inimigos: copies of the solid bodies near the hero in the frame (EnemyView with its radius); the
    * replay pushes them as the room pushes the enemies (bodies.ts bodyBlock), and keeps them pushed for the next steps.
    */
-  bodies?:Body[]}
+  bodies?:Body[];
+  /**
+   * Card colisao-entre-herois: copies of the other heroes on their feet near this one in the frame (vx, vy: their walk
+   * per tick between the last frames); each replayed step leans on them and walks them on (each copy leaning on the
+   * hero and the others) as the room's steps do, then pushes all apart (bodies.ts heroBlock, heroesApart), and keeps
+   * them moved for the next steps.
+   */
+  heroes?:HeroBody[]}
 /** The car's place as the room and the frame have it (heading absent = 0). */
 export interface CarPlace {x:number;y:number;heading?:number}
 /**
@@ -141,9 +148,11 @@ export function carBlock(from:FloorPoint,to:FloorPoint,car:CarPlace|undefined,te
 }
 /**
  * One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep;
- * `bodies` (card heroi-empurra-inimigos) as bodyBlock, the phone's copies pushed where walkable; `car` as carBlock.
+ * `bodies` (card heroi-empurra-inimigos) as bodyBlock, the phone's copies pushed where walkable; `car` as carBlock;
+ * `heroes` (card colisao-entre-herois): the step leans on them (heroBlock, before the car), they walk on by their vx/vy
+ * leaning the same way, and the tick's heroesApart pushes the hero and them apart, as the room's players system.
  */
-export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace,bodies?:Body[]):FloorPoint {
+export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace,bodies?:Body[],heroes?:HeroBody[]):FloorPoint {
   let to:FloorPoint;
   if(tick===undefined){
     const floor=floorOf(p),q=moveDirection(p,{x:input.x,y:input.y},STEP,onFloor(terrain,floor));
@@ -151,14 +160,44 @@ export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTe
   }else to=moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
   to=capStep(p,to,cap,terrain);
   if(bodies?.length)to=bodyBlock(p,to,bodies,terrain,shoveWhereWalkable(terrain));
-  return carBlock(p,to,car,terrain);
+  if(!heroes?.length)return carBlock(p,to,car,terrain);
+  to=carBlock(p,heroBlock(p,to,heroes,terrain),car,terrain);
+  stood.length=0;stood.push(onto(p,floorOf(p)));
+  for(const h of heroes)stood.push(onto(h,floorOf(h)));
+  walkOn(heroes,terrain,car);
+  const self:HeroBody=onto(to,floorOf(to));
+  together.length=0;together.push(self,...heroes);
+  heroesApart(together,terrain,heroSpot(terrain,car),undefined,stood);
+  together.length=0;stood.length=0;
+  return onto(self,floorOf(self));
+}
+const together:HeroBody[]=[],stood:HeroBody[]=[],leanOn:HeroBody[]=[],walked:(FloorPoint|undefined)[]=[];
+/**
+ * The phone's copies of the other heroes take their walk per tick, each leaning on where the hero (`p`) and the other
+ * copies stood (`stood`: the hero, then the copies, as the tick began; heroBlock, then the car's block, as their own
+ * steps in the room); a copy that cannot walk on stops.
+ */
+function walkOn(heroes:HeroBody[],terrain:TerrainField,car:CarPlace|undefined){
+  walked.length=heroes.length;
+  heroes.forEach((h,i)=>{
+    walked[i]=undefined;
+    if(!h.vx&&!h.vy)return;
+    const floor=floorOf(h),q={x:h.x+(h.vx??0),y:h.y+(h.vy??0)};
+    if(!walkable(q,onFloor(terrain,floor))){h.vx=0;h.vy=0;return;}
+    leanOn.length=0;
+    for(let k=0;k<stood.length;k++)if(k!==i+1)leanOn.push(stood[k]!);
+    const from=stood[i+1]!;
+    walked[i]=carBlock(from,heroBlock(from,onto(q,floorOn(terrain,q.x,q.y,floor)),leanOn,terrain),car,terrain);
+  });
+  heroes.forEach((h,i)=>{const q=walked[i];if(q){h.x=q.x;h.y=q.y;if(q.andar===1)h.andar=1;else delete h.andar;}});
+  leanOn.length=0;walked.length=0;
 }
 /**
  * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
  * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
  */
 export function reconcile(authoritative:FloorPoint,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):FloorPoint {
-  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car,clock?.bodies),onto(authoritative,floorOf(authoritative)));
+  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car,clock?.bodies,clock?.heroes),onto(authoritative,floorOf(authoritative)));
 }
 
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

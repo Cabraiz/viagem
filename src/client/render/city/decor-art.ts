@@ -11,7 +11,8 @@
  *   piece (a pole along a 6×6 mountain's side) is in front of it exactly when its key passes the centre's on a square
  *   footprint, where the front corner's key is ~a cells deeper and drew the mountain over the pole beside it
  *   (montanha-sobre-poste). Actors still sort exactly against the piece's column (occlusion.ts actorDepth).
- * - 'wall' and 'prop' pieces stand at the centre of their cells on the ground there, sorted by that point.
+ * - 'wall' and 'prop' pieces stand at the centre of their cells, sorted by that point: a prop on the ground there, a wall
+ *   on the lowest corner under its cells (wallBase).
  */
 import {groundZ,heightAt,type CityAsset} from './asset.ts';
 import {ART_CELL,texelOf,type DecorSheet} from './art-plan.ts';
@@ -43,9 +44,27 @@ export function decorSprite(entry:DecorEntry,sheet:DecorSheet,view:number,asset:
     const key=depth(origin.x+(entry.c+entry.w/2)*cell,origin.y+(entry.r+entry.h/2)*cell,view,pivot);
     return {x:at.x,y:at.y,originX:o.originX,originY:sheet.originY,scale:sheet.scale,artView,frame,depth:key,base};
   }
-  const wx=origin.x+(entry.c+entry.w/2)*cell,wy=origin.y+(entry.r+entry.h/2)*cell,base=groundZ(asset,wx,wy);
+  const wx=origin.x+(entry.c+entry.w/2)*cell,wy=origin.y+(entry.r+entry.h/2)*cell;
+  const base=sheet.rule==='wall'?wallBase(asset,entry):groundZ(asset,wx,wy);
   const at=project(wx,wy,base,view,pivot);
   return {x:at.x,y:at.y,originX:.5,originY:sheet.originY,scale:sheet.scale,artView,frame,depth:depth(wx,wy,view,pivot),base};
+}
+
+/**
+ * Ground a wall piece stands on: the lowest corner under its cells. Wall cells keep the raw terrace corners (maps/city/
+ * relief.ts locks them), so the ground at each piece's centre jumps up and down along one straight run (a 0.3 corner
+ * among 2.5 ones) and the pieces read as steps with gaps between them (cercas-nordeste-ligadas); the lowest corner is
+ * the same for neighbours that share it, never floats a piece over the ground, only sinks it a little into a rise.
+ */
+export function wallBase(asset:CityAsset,e:Pick<DecorEntry,'c'|'r'|'w'|'h'>){
+  let base=Infinity;
+  if(!asset.corners){
+    for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)base=Math.min(base,heightAt(asset,i,j));
+    return base;
+  }
+  const W=asset.width+1,cl=(v:number,m:number)=>Math.max(0,Math.min(m,v));
+  for(let j=e.r;j<=e.r+e.h;j++)for(let i=e.c;i<=e.c+e.w;i++)base=Math.min(base,asset.corners[cl(j,asset.height)*W+cl(i,asset.width)]);
+  return base;
 }
 
 /** Chunk key (`i,j`, chunks.ts) of the cell holding a decor's centre: the chunk that draws it. */

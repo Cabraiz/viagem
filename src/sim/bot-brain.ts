@@ -61,6 +61,7 @@ import {BASE_STATS,BOT_WALK_MULT,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
+import {peril,perilAhead} from './bot-peril.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
@@ -192,8 +193,7 @@ export const TURN_HOLD=8,TURN_BACK_COS=-.4;
  * kiting), so two pulls in a tug of war (the leash against a lure, a circle against a repel) no longer swap every 400 ms.
  */
 export const TURN_CALM=20;
-/** A critter this close (u, its centre), a shot heading in or a telegraph lets the bot turn back at once. */
-export const PERIL_R=1.4;
+export {PERIL_R} from './bot-peril.ts';
 /**
  * (a) Arrival: a bot that reached a place (an ATM's ring, the dead moto, a fallen friend, a crate) holds it until it is
  * ARRIVE_SLACK u past its stand, and there only a peril moves it: the repel of a critter at DANGER pushed it out of the
@@ -1289,18 +1289,6 @@ export function holdHeading(decision:Decision,input:BrainInput):Decision{
   if(!h||turn<0)memory.headingTick=tick;
   memory.heading={x:d.x,y:d.y};
   return decision;
-}
-/** A critter within PERIL_R of `at` (more for a boss or an elite); `ahead`: only one in front of that heading. */
-const perilAhead=(view:RunView,at:Point,ahead?:Point)=>view.enemies.some(e=>e.hp>0&&!e.asleep
-  &&dist(e,at)<PERIL_R*(e.boss?1.8:e.elite?1.3:1)&&(!ahead||(e.x-at.x)*ahead.x+(e.y-at.y)*ahead.y>0));
-function peril(view:RunView,at:Point,ahead?:Point){
-  if(perilAhead(view,at,ahead))return true;
-  if(view.telegraphs.some(t=>telegraphHits(t,at,.4)))return true;
-  return view.projectiles.some(s=>{
-    if(!s.hostile)return false;
-    const rx=at.x-s.x,ry=at.y-s.y,speed=Math.hypot(s.vx,s.vy);
-    return Math.hypot(rx,ry)<4&&speed>1e-3&&rx*s.vx+ry*s.vy>0;
-  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------

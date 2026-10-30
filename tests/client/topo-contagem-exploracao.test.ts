@@ -39,8 +39,8 @@ test("the phone's bar: the seconds left in the time to explore, the chaveiro's m
   assert.deepEqual({icon:exploring.icon,text:exploring.text},{icon:undefined,text:'119'});
   assert.match(exploring.aria,/Exploração: faltam 119 s/);
   const after=barClock(viewAt(until),explora)!;
-  assert.deepEqual({icon:after.icon,text:after.text},{icon:undefined,text:'11:09'});
-  assert.deepEqual(barClock(viewAt(from))&&barClock(viewAt(from))!.text,'11:09','no window: the chaveiro');
+  assert.deepEqual({icon:after.icon,text:after.text},{icon:undefined,text:'Chaveiro 11:09'});
+  assert.deepEqual(barClock(viewAt(from))&&barClock(viewAt(from))!.text,'Chaveiro 11:09','no window: the chaveiro');
 });
 
 test('no moto sticker on the top (chip and bar), the seconds written in place (no innerHTML per second)',()=>{

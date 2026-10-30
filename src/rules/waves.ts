@@ -18,6 +18,7 @@ import {ticks} from '../contract/index.ts';
 import {clashBodies,LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
 import {roleOf} from './enemy-cast.ts';
 import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
+import {INIMIGOS_LIBERADOS} from './inimigos-liberados.ts';
 const ROLE_BAND=new Map(ROTATION_SLOTS.map(s=>[s.role as EnemyRole,s.band]));
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
@@ -198,6 +199,15 @@ export const MODIFIERS:readonly RoundModifier[]=[
   {id:'bug-spray',name:'Espantalho na Praça',description:'Pombo hoje não.',
     weights:{pombos:0},normalizeThreat:true,banRounds:[6]},
 ];
+/** The enemy kinds a modifier names in its weights or share (a weight 0 counts too: "no pombos today" promises them). */
+export const modifierKinds=(m:RoundModifier):string[]=>[...new Set([...Object.keys(m.weights??{}),...Object.keys(m.share??{})])];
+/**
+ * Modifiers out of the draw (NEW-20261029-ORQ-modificadores-so-elenco-ativo): they name an enemy outside INIMIGOS_LIBERADOS,
+ * so the screen would promise one that no longer spawns. Legacy like the hidden heroes: kept, back in the draw when the enemy is.
+ */
+export const isModifierLegado=(m:RoundModifier)=>modifierKinds(m).some(k=>!INIMIGOS_LIBERADOS.includes(k));
+/** The modifiers drawTheme draws from: those that only name liberated enemies (or none). */
+export const MODIFIERS_SORTEAVEIS:readonly RoundModifier[]=MODIFIERS.filter(m=>!isModifierLegado(m));
 export const MODIFIER_FROM_ROUND=3;
 export const modifierLabel=(m:RoundModifier)=>`${m.name}: ${m.description}`;
 
@@ -208,8 +218,8 @@ export function drawTheme(index:number,rng:Rng,used:readonly string[]):RoundThem
   const names=ROUND_NAMES.filter(n=>!used.includes(n));
   const name=def.fixedNames?.length?rng.pick(def.fixedNames):rng.pick(names.length?names:ROUND_NAMES);
   if(index<MODIFIER_FROM_ROUND||def.boss)return {name};
-  const pool=MODIFIERS.filter(m=>!m.banRounds.includes(index)&&!used.includes(m.id));
-  const mod=rng.pick(pool.length?pool:MODIFIERS.filter(m=>!m.banRounds.includes(index)));
+  const pool=MODIFIERS_SORTEAVEIS.filter(m=>!m.banRounds.includes(index)&&!used.includes(m.id));
+  const mod=rng.pick(pool.length?pool:MODIFIERS_SORTEAVEIS.filter(m=>!m.banRounds.includes(index)));
   return {name,modifierId:mod.id,modifierLabel:modifierLabel(mod)};
 }
 

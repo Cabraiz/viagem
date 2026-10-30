@@ -33,15 +33,18 @@ test('the user\'s 20 %: a room bot walks 0.8 of a person of the same class; the 
   sim.resetRun();
   // Ana away: the room's light bot plays her hero (autopilot), still a person's walk.
   sim.setOnline('ana',false);
-  // An open line out of the plaza, long enough for the person's TICKS steps.
+  // 3 open parallel lines out of the plaza, long enough for the person's TICKS steps, 1 u apart (card
+  // colisao-entre-herois: the heroes are solid to each other, so each seat walks its own lane).
   const plaza=city.asset.points.praca,reach=heroSpeed(city)*TICKS/HZ+1;
   const dirs=Array.from({length:16},(_,k)=>({x:Math.cos(k*Math.PI/8),y:Math.sin(k*Math.PI/8)}));
-  const dir=dirs.find(d=>walkable(plaza,city)&&clearSegment(plaza,{x:plaza.x+d.x*reach,y:plaza.y+d.y*reach},city));
-  assert.ok(dir,'an open line out of the plaza');
   const ids=['ana','bot-1','bot-2'];
-  for(const id of ids){const p=sim.players.get(id)!;p.x=plaza.x;p.y=plaza.y;sim.setBotInput(id,dir!);}
+  const lanes=(d:{x:number;y:number})=>ids.map((_,k)=>({x:plaza.x-d.y*(k-1),y:plaza.y+d.x*(k-1)}));
+  const dir=dirs.find(d=>lanes(d).every(o=>walkable(o,city)&&clearSegment(o,{x:o.x+d.x*reach,y:o.y+d.y*reach},city)));
+  assert.ok(dir,'3 open lines out of the plaza');
+  const starts=lanes(dir!);
+  ids.forEach((id,k)=>{const p=sim.players.get(id)!;p.x=starts[k]!.x;p.y=starts[k]!.y;sim.setBotInput(id,dir!);});
   for(let i=0;i<TICKS;i++)sim.step();
-  const walked=Object.fromEntries(ids.map(id=>{const p=sim.players.get(id)!;return [id,Math.hypot(p.x-plaza.x,p.y-plaza.y)];}));
+  const walked=Object.fromEntries(ids.map((id,k)=>{const p=sim.players.get(id)!;return [id,Math.hypot(p.x-starts[k]!.x,p.y-starts[k]!.y)];}));
   // Every seat walks the same ticks (the first step of the run may not be one): a person's walk is what Ana walked.
   const person=walked.ana,step=heroSpeed(city)/HZ;
   assert.ok(person>=step*(TICKS-1)-1e-9,`the autopiloted person walks a person's walk: ${person}`);

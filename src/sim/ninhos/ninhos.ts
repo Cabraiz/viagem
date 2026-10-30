@@ -29,7 +29,7 @@
  */
 import type {NestPlan,NestSize,Point} from '../../maps/index.ts';
 import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
-import {CLASH_BODIES,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
+import {CLASH_BODIES,ELITE_HP,ELITE_ONLY,ELITE_SIZE,MINI_ROUNDS,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {assignFoco} from '../enemies/foco.ts';
@@ -123,6 +123,25 @@ const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 export const ROLE_WEIGHT:Readonly<Partial<Record<EnemyRole,number>>>=Object.freeze({
   corredor:4,enxame:3,palhaco:.5,arremessador:1.5,atirador:1.5,suporte:.7,voador:.7,kamikaze:.7,refletor:.7,invocador:.4,brutamontes:.6,
 });
+/**
+ * The wave's elite (NEW-20261029-ORQ-saci-nasce-nos-ninhos, E5's bench 29/10: the horde of the liberated cast was 100 %
+ * mendigo, the saci never came, ROLE_WEIGHT has no mini-chefe and it is ELITE_ONLY): the run's round-5 elite when it is an
+ * ELITE_ONLY entry (rules/enemy-rotation.ts: the saci in every liberated run, one rotation in ELITE_EVERY otherwise),
+ * born in a live nest's yard (the nests in turn; none standing: with the outside group), at the elite's numbers (the
+ * director's: ELITE_HP × the row's hp × playerScale.solo, ELITE_SIZE, the elite flag: its extras and its chest), tuned
+ * like every wave body. The one place of its numbers:
+ *  - from: the first wave (1-based) with one: none in wave 1;
+ *  - step: one more every `step` waves after `from` (waves 2-3: 1, 4 on: 2);
+ *  - perWave: the most a wave brings;
+ *  - alive: never more than this many elites up (a wave over at waveCap leaves its elites standing).
+ * The rounds mode keeps its own rule (round 5's elite, director.ts).
+ */
+export const NEST_ELITE={from:2,step:2,perWave:2,alive:3};
+/** Elites wave `index` (0-based) brings, before the alive cap: 0 before NEST_ELITE.from, then 1, 2… up to perWave. */
+export const waveElites=(index:number)=>{
+  const wave=index+1;
+  return wave<NEST_ELITE.from?0:Math.min(NEST_ELITE.perWave,1+Math.floor((wave-NEST_ELITE.from)/NEST_ELITE.step));
+};
 /** Id prefix of a nest as a hit target (sono's index): `ninho:<nest id>`. */
 export const NEST_TARGET='ninho:';
 /** Enemy memory key: the nest a body was born in (JSON-safe: its index in the plan). */
@@ -143,7 +162,9 @@ export interface NestRun {
   down?:true;
 }
 /** One wave as it left (the debug log): the quota, the map kills since the last wave, and each share. */
-export interface WaveLog {tick:number;entrance:string;quota:number;kills:number;map:number;nests:number;outside:number;total:number}
+export interface WaveLog {tick:number;entrance:string;quota:number;kills:number;map:number;nests:number;outside:number;total:number;
+  /** NEST_ELITE: elites it brought (in total too); absent when none. */
+  elite?:number}
 /** JSON-safe (RunSystemsState.ninhos). */
 export interface NestsState {
   /** Tick of the first step; null before it. */
@@ -304,19 +325,43 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     return out;
   }
 
+  /** NEST_PACE.warmRow: during the warm start the waves play that round row (1: the tutorial's light bodies). */
+  const rowAt=(tick:number,f:number)=>warming(tick)?NEST_PACE.warmRow:nestRound(f);
+  /** E6 (upgrades-megabonk): the mode's own hp curve where the row has one. */
+  const rowHp=(row:number)=>ROUNDS[row-1].hpNinhos??ROUNDS[row-1].hpScale;
+  /** NEST_ELITE: the run's ELITE_ONLY elite (the round-5 one), undefined when the run has none. */
+  const eliteKind=()=>{const k=options.roster?.(MINI_ROUNDS[0])?.elite;return k&&ELITE_ONLY.includes(k)?k:undefined;};
   /** Spawns up to `count` wave bodies at `spots` (in turn), as many as fit under the cap; returns how many. */
   function spawn(ctx:SimContext,spots:readonly Point[],count:number,f:number,memory:Record<string,number>){
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size),n=Math.min(count,room);
     if(n<=0||!spots.length)return 0;
-    // NEST_PACE.warmRow: during the warm start the waves play that round row (1: the tutorial's light bodies).
-    const row=warming(ctx.tick)?NEST_PACE.warmRow:nestRound(f);
-    // E6 (upgrades-megabonk): the mode's own hp curve where the row has one.
-    const hp=(ROUNDS[row-1].hpNinhos??ROUNDS[row-1].hpScale)*playerScale(state.players).hp;
+    const row=rowAt(ctx.tick,f);
+    const hp=rowHp(row)*playerScale(state.players).hp;
     let out=0;
     for(const kind of pickKinds(n,row)){
       const at=spots[(state.sent*7+out)%spots.length];
       const e=options.createEnemy(ctx,kind,{x:at.x,y:at.y},hp);
       if(!e)continue;
+      tune(e);
+      e.memory={...e.memory,...memory,[WAVE_MEMORY]:state.sent,[SIEGE_FLAG]:1};
+      out++;state.spawned++;
+    }
+    return out;
+  }
+  /** NEST_ELITE: the wave's elites at `spots` (in turn), under the alive cap and the enemy cap; returns how many. */
+  function spawnElites(ctx:SimContext,spots:readonly Point[],f:number,memory:Record<string,number>){
+    const kind=eliteKind();
+    if(!kind||!spots.length)return 0;
+    let up=0;for(const e of ctx.enemies.values())if(e.elite&&!e.boss&&e.hp>0)up++;
+    const n=Math.min(waveElites(state.sent),NEST_ELITE.alive-up,options.maxEnemies-ctx.enemies.size);
+    // The director's elite numbers (rules/waves.ts planRound eliteHp, director.ts: ELITE_SIZE and the flag).
+    const hp=rowHp(rowAt(ctx.tick,f))*playerScale(state.players).solo*ELITE_HP;
+    let out=0;
+    for(let i=0;i<n;i++){
+      const at=spots[(state.sent*7+i)%spots.length];
+      const e=options.createEnemy(ctx,kind,{x:at.x,y:at.y},hp);
+      if(!e)continue;
+      e.radius*=ELITE_SIZE;e.elite=true;
       tune(e);
       e.memory={...e.memory,...memory,[WAVE_MEMORY]:state.sent,[SIEGE_FLAG]:1};
       out++;state.spawned++;
@@ -386,7 +431,10 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const live=state.nests.find(n=>!n.down);
     const outside=door?spawn(ctx,around(door,want.outside),want.outside,f,{}):live?spawn(ctx,yardOf(live),want.outside,f,{}):0;
     if(!nests&&!outside&&!(want.map>0&&door&&options.recruit))return retry();
-    (state.log??=[]).push({tick:ctx.tick,entrance:door?.id??'-',quota,kills,map:0,nests,outside,total:nests+outside});
+    // NEST_ELITE: in a live nest's yard (in turn by wave), else with the outside group.
+    const standing=state.nests.map((n,i)=>[n,i] as const).filter(([n])=>!n.down),host=standing.length?standing[state.sent%standing.length]:undefined;
+    const elite=host?spawnElites(ctx,yardOf(host[0]),f,{[NEST_MEMORY]:host[1]}):door?spawnElites(ctx,around(door,1),f,{}):0;
+    (state.log??=[]).push({tick:ctx.tick,entrance:door?.id??'-',quota,kills,map:0,nests,outside,total:nests+outside+elite,...(elite?{elite}:{})});
     if(state.log.length>LOG_WAVES)state.log.splice(0,state.log.length-LOG_WAVES);
     // The map share leaves a batch a second (NEST_PACE.trickle), the first batch with the wave; a drip still running
     // from the last wave is dropped (its bodies stay asleep: the new share replaces it).

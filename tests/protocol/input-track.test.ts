@@ -4,7 +4,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {simulate,reconcile,STEP} from '../../src/maps/prediction.ts';
 import {type Input,ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {InputBatcher,InputTrack,DIRECTIONS,DIRECTION_BUCKETS,quantizeDirection,SEND_MIN_MS,KEEPALIVE_MS,HORIZON_STEPS,MAX_SEGMENTS,LEAD_STEPS} from '../../src/protocol/input-track.ts';
-import {heroSpeed,type Point} from '../../src/maps/world.ts';
+import {heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 /** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
 const WALK=heroSpeed();
 import {Room} from '../../multiplayer/room.ts';
@@ -227,6 +227,12 @@ test('room frames: the owner gets its confirmed step and position, the others th
   for(const p of [a,b])room.receive(p,JSON.stringify({t:'ready',round:1,ready:true}),1050);
   let t=1100;for(;room.run.snapshot().phase!=='combat';t+=50)room.advance(t);
   const id=a.messages.find(m=>m.t==='welcome').id,p=room.sim.players.get(id)!;
+  // Card colisao-entre-herois: the heroes are solid; Bia waits out of Ana's way (Ana walks +x), so Ana's own frame stays
+  // the confirmed one (a hero blocked by a teammate gets the live frame instead).
+  const bia=[...room.sim.players.values()].find(q=>q.id!==id)!;
+  const aside=[[-12,0],[-10,-6],[-10,6],[-8,-8],[-8,8],[0,-10],[0,10]].map(([dx,dy])=>({x:p.x+dx,y:p.y+dy})).find(q=>walkable(q,room.sim.terrain));
+  assert.ok(aside,'a walkable spot behind Ana for Bia');
+  bia.x=aside.x;bia.y=aside.y;
   // Ana reports step 5 (walking since 1) and then nothing for a second: the room keeps walking on the clock.
   room.receive(a,JSON.stringify({t:'input',round:1,seq:5,steps:[[1,1,0,0]]}),t);
   const fa=new FrameRunFeed(),fb=new FrameRunFeed();

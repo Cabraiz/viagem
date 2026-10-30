@@ -188,7 +188,7 @@ test('main.ts: watch and notice in the entry chunk, every lazy-import catch asks
   assert.match(main,/void versionWatch\.check\(\);/);
   assert.match(main,/startPullToRefresh\(\{doc:document,win:window,inMatch:\(\)=>inMatchOf\(document\),refresh:\(\)=>updateNow\(\)\}\)/);
   // The two old messages only when it was not a stale chunk.
-  assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível abrir as salas\.'\)/);
+  assert.match(main,/if\(!chunkFailed\(e\)\)\{?text\('explore-error','Não foi possível abrir as salas\.'\)/);
   assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível carregar a ilha\. Tente novamente\.'\)/);
   assert.equal(main.match(/Não foi possível abrir as salas\./g)?.length,1);
   // The lobby import runs with the lobby as the place to come back to.

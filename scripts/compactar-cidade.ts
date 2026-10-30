@@ -498,6 +498,9 @@ export async function sourceAsset():Promise<CityAsset>{
   return d.asset;
 }
 
+/** The cells of a street's mouth the fence lines close (c, r): opened after the loose fences. */
+export const BOCA_NORDESTE:readonly (readonly [number,number])[]=[[67,88],[67,89],[66,90],[67,90]];
+
 /**
  * The asset this script writes: the compacted city with its scenery placed (cenario-cidade.ts decorate, version + 1),
  * then its dead ends opened (scripts/becos-cidade.ts abrirBecos, version + 1: mapa-conexoes-sem-beco). The passages come
@@ -510,7 +513,7 @@ export async function sourceAsset():Promise<CityAsset>{
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
   const {decorate,semDecorNasBocas}=await import('./cenario-cidade.ts');
-  const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno}=await import('./becos-cidade.ts');
+  const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno,openCells}=await import('./becos-cidade.ts');
   const {text,log}=await compactText();
   const decorated=decodeCityAsset(decorate(text));
   if(!decorated.ok)throw new Error(decorated.error);
@@ -525,6 +528,9 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
   // Then the loose fences in the open, junk in the Uno's way (the widening may have left a bit of one alone).
   const loose=tirarCercasSoltas(opened.data);
   Object.assign(log,{cercasSoltas:loose.taken.length,celulasCerca:loose.taken.flat().length,cercaRecusada:loose.refused});
+  // The bit of fence the joined lines keep across the street's mouth at (101.0,133.1), which the loose ones left open:
+  // nothing solid in a street's mouth (the user, twice; cercas-nordeste-ligadas).
+  openCells(opened.data,BOCA_NORDESTE.map(([c,r])=>c+r*opened.data.cells.w));
   // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
   const bocas=semDecorNasBocas(opened.data);opened.data.version++;
   Object.assign(log,{decorNasBocas:bocas.length});

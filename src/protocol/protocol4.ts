@@ -128,9 +128,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since only the 3 enemies (card NEW-20261029-ORQ-so-3-inimigos): 'mendigo', the common
  * enemy of every round (a P1 roster extra), at the DICT's last one-byte index (253); an older decoder would read it as
  * the DICT_EXTENDED escape.
+ * 42 given by the integration queue (tools/fila.mjs, lote 20261030-063957) to: NEW-20261029-ORQ-so-3-inimigos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=41;
+export const PROTOCOL_VERSION=42;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

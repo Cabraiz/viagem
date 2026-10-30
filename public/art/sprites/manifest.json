@@ -16776,6 +16776,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "maromba.shoved16-n.604215f06847.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 10,
+            "top": 12,
+            "right": 87,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-n.604215f06847.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65"
+            }
+          ],
+          "sha256": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65"
+        },
+        "shoved16-NW": {
+          "file": "maromba.shoved16-nw.126c839f6d44.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 16,
+            "top": 15,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-nw.126c839f6d44.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6"
+            }
+          ],
+          "sha256": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6"
+        },
+        "shoved16-S": {
+          "file": "maromba.shoved16-s.82e4a05f2f10.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 18,
+            "top": 16,
+            "right": 85,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-s.82e4a05f2f10.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a"
+            }
+          ],
+          "sha256": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a"
+        },
+        "shoved16-SE": {
+          "file": "maromba.shoved16-se.3ef8c9b949f2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 22,
+            "top": 15,
+            "right": 87,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-se.3ef8c9b949f2.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e"
+            }
+          ],
+          "sha256": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e"
+        },
+        "shoved16-W": {
+          "file": "maromba.shoved16-w.0e86c7bd2b11.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48,
+          "figure": {
+            "left": 9,
+            "top": 19,
+            "right": 83,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "maromba.shoved16-w.0e86c7bd2b11.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3"
+            }
+          ],
+          "sha256": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3"
+        },
         "walk128-E": {
           "file": "maromba.walk128-e.daed1993b619.webp",
           "cell": [
@@ -17417,7 +17597,7 @@
           "sha256": "65ff30c99f533dd5c9d641ea5e1f6ed0f9d68172f93d8c2e9d87203d6a13c068"
         }
       },
-      "sha256": "d4975d04a8ff8357f98f4a43336a1af937dfd4e1c519a996c894904ee61e0002"
+      "sha256": "de5c7a257d97e619e77e007245584727a7ea1f223baf4d1035d68f39a6fb6105"
     },
     "mendigo": {
       "kind": "dir8",

@@ -1274,12 +1274,13 @@ export function holdHeading(decision:Decision,input:BrainInput):Decision{
   const calm=decision.mode!=='dodge'&&!peril(view,at);
   // A bot that stood still stands TURN_HOLD (walk, stand, walk each think was the same tique, legs only).
   if(calm&&memory.standTick!==undefined&&tick-memory.standTick<TURN_HOLD){decision.direction={x:0,y:0};return decision;}
-  // In peril only a critter ahead of the heading turns it back at once, and not into another one within PERIL_R:
+  // In peril a kiting bot still turns back at once for a critter ahead, but not into another one within PERIL_R (a
+  // walk to a place in peril turns at once, as before: standing there by the critter lost papeis-inimigo's run in round 6):
   // a critter behind (the heading already goes away from it) or one each way held nothing in the crowd at the car
   // (fence map, seed 1: 28 half-turns 200 ms after the last in 120 s, the repel flipping over the bot every think).
-  if(back&&soon&&decision.mode!=='dodge'&&!(peril(view,at,h)&&!perilAhead(view,at,d))){
+  const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
+  if(back&&soon&&(calm||kiting&&decision.mode!=='dodge'&&!(peril(view,at,h)&&!perilAhead(view,at,d)))){
     // Kiting (a critter within DANGER) goes on the way it went; anything else stands.
-    const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
     if(kiting)decision.direction=clearPath(at,h!,onFloor(input.terrain,at.andar),h);
     else{decision.direction={x:0,y:0};memory.standTick=tick;}
     return decision;

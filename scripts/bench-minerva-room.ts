@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {register} from 'node:module';
 import {performance} from 'node:perf_hooks';
+import {HEROI_PADRAO} from './elenco-ativo.ts';
 
 const hooks=`export async function resolve(spec,ctx,next){
   if(spec==='cloudflare:workers')return {url:'data:text/javascript,export class DurableObject{constructor(ctx,env){this.ctx=ctx;this.env=env}}',shortCircuit:true};
@@ -33,7 +34,7 @@ await room.ready();
 const messages:any[]=[];
 const peer={send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));else{frames++;bytes+=s.byteLength;}},close:()=>{}};
 const say=(m:object)=>room.receive(peer,JSON.stringify(m),t);
-room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)});
+room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:HEROI_PADRAO,maps:clientCatalog(CITY)});
 t+=OWNER_GAP_MS;say({t:'ready',round:room.run.snapshot().round,ready:true});
 for(let i=0;i<2000&&room.run.snapshot().phase!=='combat';i++)room.advance(t+=50);
 room.advance(t+=50);

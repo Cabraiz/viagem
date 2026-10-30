@@ -53,7 +53,7 @@ test('chaveiro ground: the delivery ring per contour width, breathing by scale; 
 
 test('the renderers freeze the grounds (TriBand) behind their keys, and no longer draw them on the per-frame Graphics',()=>{
   const bank=src('bancos/renderer.ts');
-  assert.match(bank,/groundKeys\(b,k,this\.options\.projector\.view\)/);
+  assert.match(bank,/groundKeys\(b,k,this\.options\.projector\.view,full\)/);
   for(const piece of ['hold','ring','shadow'])
     assert.match(bank,new RegExp(`if\\(g\\.keys\\.${piece}!==keys\\.${piece}\\|\\|!g\\.${piece}\\)\\{[^]*?g\\.${piece}=TriBand\\.make\\(`));
   assert.doesNotMatch(bank,/this\.ground/,'the bank ground Graphics is gone');
@@ -67,7 +67,7 @@ test('the renderers freeze the grounds (TriBand) behind their keys, and no longe
 test('arsenal rings: one frozen look per kind, colour and body, a band per pickup each frame, hidden at begin',()=>{
   const fx=src('arsenal-fx.ts');
   assert.match(fx,/this\.ringBand\(`c\|\$\{color\}\|\$\{Math\.round\(b\*100\)\}`[^]*?\.setScale\(pulse\)/);
-  assert.match(fx,/this\.ringBand\(`i\|\$\{color\}\|\$\{Math\.round\(b\*100\)\}`/);
+  assert.match(fx,/this\.ringBand\(`i\|\$\{rarity\}\|\$\{color\}\|\$\{Math\.round\(b\*100\)\}`/);
   assert.match(fx,/if\(!band\)\{band=TriBand\.make\(this\.scene,draw\)/);
   assert.match(fx,/for\(const band of look\.bands\)band\.setVisible\(false\);\s*look\.used=0;/);
   assert.doesNotMatch(fx,/this\.rings\.[a-zA-Z]+\([^)]*\)\.(fill|stroke)Ellipse/,'no ring ellipses on the per-frame Graphics');

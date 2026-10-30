@@ -15,7 +15,7 @@ import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
 import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
-import {fanSlots,px39Icon,splitGain} from './offer-px39.ts';
+import {fanSlots,offerIcon,splitGain} from './offer-px39.ts';
 import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerGain,offerRarity,offerValue} from './offer-card.ts';
 import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
@@ -206,19 +206,21 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   /** This phone's last pick in the pause: the card the waiting window keeps showing (auditoria-ui-menus-28-10 item 2). */
   let chosen:{offer:OfferView;index:number}|undefined;
 
-  /** One card of the fan (px39): the icon, rarity, "Niv N", the gain or value line; the old tag's pieces for labels and tests. */
+  /**
+   * One card of the fan (px39): the power's icon (oferta-icone-do-poder: the name left the card, it stays in the label),
+   * rarity, "Niv N", the gain or value line; the old tag's pieces for labels and tests.
+   */
   const cardFor=(offer:OfferView,choice:OfferView['choices'][number],index:number,slot:string)=>{
     const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
     const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
     card.dataset.fan=slot;
     card.classList.toggle('rh-card-default',flags.isDefault);
-    el('span','rh-card-icon',card).innerHTML=px39Icon(item.icon);
+    el('span','rh-card-icon',card).innerHTML=offerIcon(choice.itemId,item.icon);
     // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
     const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
     el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];
     el('b','rh-card-level',card).textContent=levelLabel(choice.level);
     const body=el('span','rh-card-body',card);
-    el('strong','rh-card-name',body).textContent=item.name;
     // Card upgrades-megabonk: the tome's gain, short and big ("+1 projétil", "+10% dano").
     const gain=offerGain(choice.itemId,choice.level);
     if(gain){

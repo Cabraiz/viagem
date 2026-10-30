@@ -6,6 +6,8 @@
  *  - rounds 7-9 (late): + kamikazes, refletores, invocadores and the "elites" of the card, the brutamontes;
  *  - two mini-chefes: one replaces round 5's elite, the other comes alone in round 8; round 10 keeps the boss.
  * P0 entries first (only they have their own lines); P1, then P2, only when a role has too few P0 entries.
+ * ELITE_ONLY entries (the aberração-saci) are never drawn as a role or a mini-chefe: about one rotation in ELITE_EVERY (by its
+ * own ids, no rng draw) one of them takes round 5's elite instead of the first mini-chefe, at the elite's numbers.
  * The rotation is JSON (director state, checkpoints and reconnects keep it) and depends only on the rng it is drawn with.
  *
  * ROSTER_ONLY_WITH_ART (the user's request, arte-do-roster-no-render): only entries with imported art are drawn (the
@@ -88,8 +90,23 @@ export interface RoundRoster {
   solo?:string;
 }
 
+/**
+ * Elites only (NEW-20261029-ORQ-saci-elite-no-jogo, "de vez em quando"): mini-chefe entries that come only as round 5's
+ * elite, never in a role slot nor as round 8's mini. Their numbers are the elite's (director.ts eliteHp, the role's damage).
+ */
+export const ELITE_ONLY:readonly string[]=Object.freeze(['aberracao-saci']);
+/** One rotation in ELITE_EVERY gets an ELITE_ONLY entry as its elite. */
+export const ELITE_EVERY=3;
+const eliteOnly=new Set(ELITE_ONLY);
 const PRIORITY_ORDER=['P0','P1','P2'] as const;
-const candidates=(role:EnemyRole,only?:ReadonlySet<string>):readonly RosterEntry[]=>ROSTER.filter(e=>e.role===role&&(!only||only.has(e.id)));
+const candidates=(role:EnemyRole,only?:ReadonlySet<string>):readonly RosterEntry[]=>
+  ROSTER.filter(e=>e.role===role&&!eliteOnly.has(e.id)&&(!only||only.has(e.id)));
+/** FNV-1a of the rotation's ids: which runs get an ELITE_ONLY elite, without a draw (the rng stream stays as it was). */
+function rotationHash(ids:readonly string[]):number{
+  let h=0x811c9dc5;
+  for(const ch of ids.join('|')){h^=ch.charCodeAt(0);h=Math.imul(h,0x01000193)>>>0;}
+  return h;
+}
 /** `count` distinct entries of `role` (only those in `only` when given): shuffled P0 first, then P1, then P2. */
 function pick(rng:Rng,role:EnemyRole,count:number,only?:ReadonlySet<string>):string[]{
   const out:string[]=[];
@@ -137,7 +154,12 @@ export function drawRotation(rng:Rng,options:RotationOptions={}):Rotation{
   }
   const roles:Rotation['roles']={};
   slots.forEach((s,i)=>{if(counts[i]>0)roles[s.slot.role]=pick(rng,s.slot.role,counts[i],s.only);});
-  return {roles,mini:pick(rng,'mini-chefe',MINI_COUNT,mini)};
+  const rotation={roles,mini:pick(rng,'mini-chefe',MINI_COUNT,mini)};
+  // Art only, an elite without art stays out (the rotation draws art entries only).
+  const elites=ELITE_ONLY.filter(id=>!(options.onlyWithArt??onlyWithArt)||new Set(options.artIds??ENEMY_ART_IDS).has(id));
+  const hash=rotationHash(rotationIds(rotation));
+  if(elites.length&&rotation.mini.length&&hash%ELITE_EVERY===0)rotation.mini[0]=elites[Math.floor(hash/ELITE_EVERY)%elites.length];
+  return rotation;
 }
 
 /** A later band's role a short round may borrow, from round `fromRound` on. */
@@ -187,7 +209,7 @@ export function isRotation(value:unknown,options:RotationOptions={}):value is Ro
   const r=value as Rotation;
   if(!Array.isArray(r.mini)||r.mini.length!==MINI_COUNT||!r.roles||typeof r.roles!=='object'||Array.isArray(r.roles))return false;
   const role=new Map(ROSTER.map(e=>[e.id,e.role]));
-  if(!r.mini.every(id=>role.get(id)==='mini-chefe'))return false;
+  if(!r.mini.every((id,i)=>role.get(id)==='mini-chefe'&&(i===0||!eliteOnly.has(id))))return false;
   if(!Object.keys(r.roles).every(k=>ROTATION_SLOTS.some(s=>s.role===k)))return false;
   // Art only, a slot may be short or empty (its role had no art when the rotation was drawn: a checkpoint keeps its cast
   // after new art arrives, roundRoster marks the round short); never more than ROTATION_SLOTS' max (ART_SLOT_WIDEN's for

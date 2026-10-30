@@ -36,7 +36,7 @@ test('no fetch of a public file by a bare literal path: a ?version in the URL or
       bad.push(`${relative(ROOT,file)}:${text.slice(0,at).split('\n').length} fetch(${m[1]}${m[2]}${m[1]}…) has no version and no revalidating cache mode`);
     }
   }
-  assert.ok(literal>=2,'the scan finds the literal fetches (multiplayer.json, the art versions)');
+  assert.ok(literal>=1,'the scan finds the literal fetches (multiplayer.json in the lobby)');
   assert.deepEqual(bad,[]);
 });
 

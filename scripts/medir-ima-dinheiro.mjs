@@ -100,7 +100,7 @@ try{
   const errors=[];p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
   await p.goto(`http://127.0.0.1:${WEB_PORT}/`,{waitUntil:'load',timeout:120000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:90000});
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Prova';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Prova';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card[data-hero]:not([data-bloqueado])').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:30000});
   await p.evaluate(()=>document.getElementById('enter-island').click());
   await p.waitForFunction(()=>window.__partidaPronta===true,null,{timeout:300000,polling:1000});

@@ -22,14 +22,12 @@ const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFile
  * S/N gaits that keep one leg in front, drawn before this gate. None is shown in a run: the heroes that run (viciado,
  * CLT) show run16; the walks are the bots' (R06, card of the bots) and the heroes' walk with HERO_GAIT.run off. A
  * fixed one leaves the list (the test asks for that), a new one fails. The ten bots' walk128-S/N left it on 27/10 (card
- * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror). The mendigo's walk16-S/N (the image
- * tool's cycle: pose i+8 repeats pose i, N limps with the feet side by side half the cycle) goes to card
- * NEW-20261030-ORQ-mendigo-andar-regerar (half a stride + mirror, the dummy for the sides).
+ * NEW-20261025-ORQ-bots-walk128-troca-perna: half a step drawn anew + its mirror). The mendigo's walk16-S/N left it on
+ * 30/10 (card NEW-20261030-ORQ-mendigo-andar-regerar: half a stride + mirror, the dummy for the sides).
  */
 const KNOWN_SN=new Set([
   'clt-cansado walk128-N','clt-cansado walk128-S','maromba walk128-N','maromba walk128-S',
   'viciado-em-bet walk128-N','viciado-em-bet walk128-S','viciado-em-bet walk16-N','viciado-em-bet walk16-S',
-  'mendigo walk16-N','mendigo walk16-S',
 ]);
 
 /** Two legs (left 2 px wide, right 4 px wide) under a body, the front one longer: a 24 px cell, pivot at 12. */
@@ -62,9 +60,10 @@ const KNOWN_SIDE=new Set<string>([]);
 /**
  * A class may measure a lower legs band only when something it wears hangs on ONE hip and so cannot mirror (ORQ, 24/10):
  * the vendedor's cooler box sits at 55–74 % of the figure; below the shorts' hem (74 %) the legs still must alternate.
+ * The mendigo's blanket hangs from the right shoulder to the shins (card mendigo-andar-regerar, ORQ 30/10): boots only, 85 %.
  */
-test('the legs band per class: only the vendedor (cooler on the left hip), below the shorts',()=>{
-  assert.deepEqual(LEGS_BY_CLASS,{'vendedor-praia':.74});
+test('the legs band per class: the vendedor (cooler on the left hip) and the mendigo (blanket on one side)',()=>{
+  assert.deepEqual(LEGS_BY_CLASS,{'vendedor-praia':.74,mendigo:.85});
 });
 
 const clips=gaitClips(manifest);

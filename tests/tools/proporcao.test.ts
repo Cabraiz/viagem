@@ -104,13 +104,12 @@ test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gat
 });
 
 // Card BUG-20261025-ORQ-vendedor-push-pull-sn: a seam over SEAM_MAX only for these clips, with the reason in proporcao.mjs.
-test('loop seams accepted over SEAM_MAX: the vendedor push N and pull S (the leg change), the mendigo walk S/N/E (held poses, regerar)',()=>{
-  assert.deepEqual(SEAM_MAX_BY_CLIP,{'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4,
-    'mendigo walk16-S':1.5,'mendigo walk16-N':3.2,'mendigo walk16-E':1.8});
+test('loop seams accepted over SEAM_MAX: the vendedor push N and pull S (the leg change)',()=>{
+  assert.deepEqual(SEAM_MAX_BY_CLIP,{'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
 });
 // Card NEW-20261029-ORQ-mendigo-andar-poses: the head left to another measure (medir-capuz.py) only for these clips.
-test('clips whose head the template cannot read: only the mendigo walk NW and NE, the height still gated',()=>{
-  assert.deepEqual(HEAD_UNREAD_CLIPS,['mendigo walk16-NW','mendigo walk16-NE']);
+test('clips whose head the template cannot read: only the mendigo walk NW, the height still gated',()=>{
+  assert.deepEqual(HEAD_UNREAD_CLIPS,['mendigo walk16-NW']);
   const c={scale:1,frames:[],head:.77,height:1.1,torso:1,area:1};
-  assert.deepEqual(verdict({id:'mendigo',dirs:{NE:{rest:{},restKey:'idle16',clips:{walk:c}}}}),['mendigo walk16-NE height 1.1 (±4%)']);
+  assert.deepEqual(verdict({id:'mendigo',dirs:{NW:{rest:{},restKey:'idle16',clips:{walk:c}}}}),['mendigo walk16-NW height 1.1 (±4%)']);
 });

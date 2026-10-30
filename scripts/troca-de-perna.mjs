@@ -31,8 +31,10 @@ const LEGS=.55;
  * The legs band per class, where the default one catches what does not mirror on purpose. vendedor-praia (card
  * vendedor-aposentado-arte-8-direcoes, 24/10): the cooler box hangs on the LEFT hip only, at 55–74 % of the figure, so
  * mirrored it jumps sides (0.83–0.9 at 55 %); below the shorts' hem (74 %) only the legs remain (S 0.41–0.42, N 0.36–0.45).
+ * mendigo (card NEW-20261030-ORQ-mendigo-andar-regerar, ORQ 30/10): the blanket hangs down to ~85 % of the figure and is
+ * drawn once (the mirror keeps it, and the bottle, where they are), so only the boots below it change sides (N 0.29).
  */
-export const LEGS_BY_CLASS={'vendedor-praia':.74};
+export const LEGS_BY_CLASS={'vendedor-praia':.74,mendigo:.85};
 
 let sharpLib;
 const sharp=()=>sharpLib??=require('sharp');

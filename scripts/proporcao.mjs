@@ -285,20 +285,13 @@ export const PULL_MIN_HEIGHT=.78;
  * half a stride + mirror (the cooler box put back on his left hip), they change legs, but no 8-pose window of the image
  * tool's cycles ends where the mirror starts: the seam stays ~2× (the jump where the legs swap).
  */
-export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4,
-  // The mendigo's walk (card NEW-20261029-ORQ-mendigo-andar-poses, ORQ 29/10: fix by remount what remount fixes, the rest
-  // goes to card NEW-20261030-ORQ-mendigo-andar-regerar). S and N hold poses (the image tool drew the same pose 2-3 times),
-  // so the median step is small: the seam (S 0.084, N 0.145) is no bigger than the largest inner step (0.102, 0.169).
-  // E's last row is another drawing (dropping 0-2 frames still leaves ≥ 1.46×). Evidence: viagem-board/evidence/
-  // NEW-20261029-ORQ-mendigo-andar-poses/status.md.
-  'mendigo walk16-S':1.5,'mendigo walk16-N':3.2,'mendigo walk16-E':1.8});
+export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
 /**
- * Clips whose head the template cannot read at all (every frame), checked by another measure instead. The mendigo's walk
- * NW and NE (card NEW-20261029-ORQ-mendigo-andar-poses): the hood seen from behind at a diagonal reads 0.77-0.91 on a
- * head the rest's size (the blue hood's box, medir-capuz.py: NW 62 / 61 px wide, NE 79 / 79, rest / walk); the template
- * reads even the rest's own NW poses at 0.68-1.0. The height is still gated.
+ * Clips whose head the template cannot read at all (every frame), checked by another measure instead. The mendigo walk NW
+ * (card NEW-20261030-ORQ-mendigo-andar-regerar, ORQ 30/10): the hood seen from the back diagonal reads 0.91, but measured
+ * by its own box (medir-capuz.py) it is 61 px wide in every frame, the rest pose's 61 px (±1.1 %).
  */
-export const HEAD_UNREAD_CLIPS=Object.freeze(['mendigo walk16-NW','mendigo walk16-NE']);
+export const HEAD_UNREAD_CLIPS=Object.freeze(['mendigo walk16-NW']);
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){

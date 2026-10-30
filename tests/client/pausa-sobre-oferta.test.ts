@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PAUSE_GAP,pauseOverOffer} from '../../src/client/hud/pausa.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
@@ -37,5 +38,5 @@ test('PC: solid empty slots of 44 px, the Espaço cap, the HUD 1.25× from 1200�
   assert.match(inv,/\.rh\[data-hud=mesa\] \.rh-inv\{--inv-slot:44px\}/);
   assert.match(inv,/\.rh\[data-hud=mesa\] \.rh-inv-slot\[data-empty=true\]\{border:2px solid/);
   assert.match(read('src/client/coop.css'),/\[data-input=mouse\] #coop-attack::after\{content:'Espaço'/);
-  assert.match(read('src/client/hud/hud.css'),/@media \(min-width:1200px\) and \(min-height:680px\)\{\s*\.rh\[data-hud=mesa\] :is\(\.rh-top,\.rh-team,\.rh-inv\)\{zoom:1\.25\}/);
+  assert.match(HUD_CSS,/@media \(min-width:1200px\) and \(min-height:680px\)\{\s*\.rh\[data-hud=mesa\] :is\(\.rh-top,\.rh-team,\.rh-inv\)\{zoom:1\.25\}/);
 });

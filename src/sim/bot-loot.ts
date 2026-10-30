@@ -66,7 +66,9 @@ const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 /**
  * NEW-20261025-ORQ-uno-caminho-caixas-vender (c): a bot leaves a crate to a person (online, on the map, not a bot) who
- * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it.
+ * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it. Not a bot with no weapon at all
+ * (planLoot): auditoria-primeira-partida-30-10 item 8, 1p by the car, every crate within LOOT_CAR_LEASH was the person's,
+ * and the two aposentados (no weapon at the start) did 0 damage in 2:12 (seed 1: 0 and 308 in 140 s; with it, 2.7k and 2.5k).
  */
 export const BOT_LEAVES_CRATE=40;
 export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number})[],crate:Pick<PickupState,'x'|'y'|'hiddenFor'>,me:string):boolean{
@@ -116,7 +118,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
     const d=dist(k,at);
     if(d>=goalDist||keep!==undefined&&k.id!==keep)continue;
     if(opts.skip?.(k.id)||opts.leash&&dist(k,opts.leash.at)>opts.leash.r)continue;
-    if(k.kind==='chest'){if(armed&&!opts.anyVerde&&k.value<=1&&d>LOOT_ANY_NEAR||!(k.id===opts.keep&&d<=CRATE_CLAIM)&&claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&!opts.anyVerde&&k.value<=1&&d>LOOT_ANY_NEAR||!(k.id===opts.keep&&d<=CRATE_CLAIM)&&claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||!unarmed&&forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

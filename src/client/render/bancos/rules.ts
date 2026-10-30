@@ -31,8 +31,9 @@ export function notesFromEvents(events:readonly StampedEvent[],lastEventId:numbe
   return out;
 }
 /**
- * The saldo's share of a full ATM, 0..1 (the ring on the ground). `full`: the shift of the room's seats (bicoSaldo: 1p 40,
- * 2p 25, 3–4p 20, 5–6p 15; card anel-caixa-por-assento), so a team's full shop shows a whole ring; the solo's by default.
+ * The saldo's share of a full ATM, 0..1 (the ring on the ground). `full`: what a full one holds (BANCO.saldo). The bicos
+ * never spend it (bico-sem-limite-pix-voando), so a shop's ring is whole in any room, which anel-caixa-por-assento
+ * (whole at bicoSaldo(seats)) was for.
  */
 export const saldoShare=(b:Pick<BankView,'saldo'>,full:number=BANCO.saldo)=>Math.max(0,Math.min(1,b.saldo/Math.max(1,full)));
 /** Seconds until an empty ATM is full again (0 when it is not empty or has no deadline). */
@@ -86,13 +87,15 @@ export class BankTracker {
   tick=0;
   notes:FlyingNote[]=[];
   balloons:Balloon[]=[];
+  /** The hero notes each bank paid in the last push (the PIX swarm pops one "+R$ 5" each over its workers). */
+  paid:{bank:string;count:number}[]=[];
   private last=new Map<string,BankView>();
   private heroNotes=new Map<string,number>();
   private lastEventId=-1;
   /** `events`: the room's view events (bank-cash says who took each note); undefined = guess from the saldo (sandbox). */
   push(banks:readonly BankView[]|undefined,tick:number,now:number,events?:readonly StampedEvent[]){
     this.tick=tick;this.banks=banks?[...banks]:[];
-    const seen=new Set<string>();
+    const seen=new Set<string>();this.paid=[];
     const cash=events&&notesFromEvents(events,this.lastEventId);
     if(events)for(const e of events)if(e.eventId>this.lastEventId)this.lastEventId=e.eventId;
     for(const b of this.banks){
@@ -103,6 +106,7 @@ export class BankTracker {
       const count=Math.min(NOTES_PER_VIEW,took.hero);
       // The hero's notes first, then the critter's, NOTES_PER_VIEW in all.
       for(let slot=0;slot<Math.min(NOTES_PER_VIEW,took.hero+took.enemy);slot++)this.notes.push({bank:b.id,born:now+slot*120,by:slot<count?'hero':'enemy',slot});
+      if(took.hero)this.paid.push({bank:b.id,count:took.hero});
       if(count){
         const n=this.heroNotes.get(b.id)??0;this.heroNotes.set(b.id,n+count);
         this.balloons=this.balloons.filter(x=>x.bank!==b.id);

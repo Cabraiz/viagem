@@ -49,4 +49,18 @@ Na origin/main, 12 dos 13 testes falham. Com o fix, os 13 passam.
 `test:changed`: 1138 de 1140 passam, 0 falhas. tsc ok.
 
 ## Bench ao vivo
-Pendente: aguardando a vaga pesada.
+30/10, `bench/rodar.sh` (chaveiro + ninhos + combate manual, seeds 1–16). "Antes" = main c45f9426, que já tem o conserto
+d9f7008a; "depois" = esta branch (bot sem arma pega caixa perto da pessoa, holdHeading em perigo, e1840577). Saídas em
+`bench/antes.json`, `depois.json`, `antes-log.txt` e `log.txt`.
+
+| | vitórias antes | vitórias depois | bot-s >20u (soma) antes → depois | puxados antes → depois |
+|---|---|---|---|---|
+| 1p | 8/16 | 8/16 | 105 → 105 | 16 → 16 |
+| 3p | 16/16 | 16/16 | 68 → 68 | 6 → 6 |
+| 6p | 16/16 | 16/16 | 533 → 528 | 122 → 112 |
+
+- 1p: as mesmas 8 derrotas, só trocam duas: a seed 13 vira vitória (6.43 min) e a seed 10 vira derrota (team, 6.39 min).
+  As causas não mudam: carro (1, 2, 6, 14, 15) e time (3, 10, 12). A seed 2 cai mais cedo (car, 3.25 min, antes 11.52).
+- Veredito igual nos dois lados: o 1p fica acima da meta (8/16, a meta é 2–6), 6p 16/16 (meta 7–11), banco no 1p em 10 %
+  e no 6p em 51 %. São ajustes de balanço; não vêm deste card.
+- Saldo: neutro no bench. O ganho deste card está nos testes de tique (`bots-tique-aperto`, `bot-nao-trava`).

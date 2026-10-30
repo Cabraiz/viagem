@@ -10,6 +10,7 @@ import {classes} from '../../src/rules/index.ts';
 import {setArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {DEFAULT_FACE,FACE_CROP,FACE_EXPRESSIONS,FULL_FRAME,HURT_FRACTION,faceCrop,faceExpression,faceFrame,faceHtml,faceKey,faceSource,
   faceVars,importedFaceUrl,manifestFace,needsLargePortrait,portrait768,portraitClass,varsText,type ExactFace,type FaceExpression} from '../../src/client/ui/face-crop.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 const src=(path:string)=>readFileSync(new URL(`../../${path}`,import.meta.url),'utf8');
 const close=(a:number,b:number,eps=1e-3)=>Math.abs(a-b)<=eps;
@@ -219,7 +220,7 @@ test('wiring: team strip, result cards, edge arrows and lobby chips draw faces t
   assert.match(lobby,/coop-wait-botmark/);assert.match(lobby,/coop-wait-crown/);
   // CSS: one shared .face rule set, loaded once by style.css (main.ts: the game and every sandbox) before the parts' own
   // CSS; the parts keep only size, ring and filters.
-  const hudCss=src('src/client/hud/hud.css'),coopCss=src('src/client/coop.css'),faceCss=src('src/client/ui/face.css');
+  const hudCss=HUD_CSS,coopCss=src('src/client/coop.css'),faceCss=src('src/client/ui/face.css');
   assert.match(src('src/client/style.css'),/^@import url\('\.\/ui\/tokens\.css'\);\n@import url\('\.\/ui\/face\.css'\);/);
   assert.match(src('src/main.ts'),/^import '\.\/client\/style\.css';/);
   const loads=['src/client/hud/hud.ts','src/client/lobby.ts','src/client/hud/hud.css','src/client/coop.css'].filter(f=>/(import\s*\(?\s*|@import url\()'[^']*face\.css'/.test(src(f)));

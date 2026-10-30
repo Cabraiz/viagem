@@ -384,7 +384,8 @@ export class CharacterSprites {
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda), or a tool in them (animacao-construir-6):
-        // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned: no hand fits.
+        // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned, a hero knocked
+        // down (anim-ser-empurrado) throws its arms out: no hand fits.
         state.hand=pushing||pulling||knocked||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }

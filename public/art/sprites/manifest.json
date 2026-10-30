@@ -27820,6 +27820,186 @@
             ]
           }
         },
+        "shoved16-N": {
+          "file": "viciado-em-bet.shoved16-n.b523f5dcec0d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 28,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-n.b523f5dcec0d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9"
+            }
+          ],
+          "sha256": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9"
+        },
+        "shoved16-NW": {
+          "file": "viciado-em-bet.shoved16-nw.2665aeb3c712.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 19,
+            "top": 29,
+            "right": 77,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-nw.2665aeb3c712.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f"
+            }
+          ],
+          "sha256": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f"
+        },
+        "shoved16-S": {
+          "file": "viciado-em-bet.shoved16-s.a5ffcef2891f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 23,
+            "top": 31,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-s.a5ffcef2891f.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26"
+            }
+          ],
+          "sha256": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26"
+        },
+        "shoved16-SE": {
+          "file": "viciado-em-bet.shoved16-se.94291ccc3c98.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 21,
+            "top": 31,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-se.94291ccc3c98.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025"
+            }
+          ],
+          "sha256": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025"
+        },
+        "shoved16-W": {
+          "file": "viciado-em-bet.shoved16-w.26e8faceed35.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1400,
+          "fps": 11.428571428571429,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 50.5,
+          "pivotX": 48,
+          "figure": {
+            "left": 20,
+            "top": 30,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.shoved16-w.26e8faceed35.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452"
+            }
+          ],
+          "sha256": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452"
+        },
         "walk128-E": {
           "file": "viciado-em-bet.walk128-e.af6573c0b904.webp",
           "cell": [
@@ -28461,7 +28641,7 @@
           "sha256": "051f67a6c14382577c2a2540fc3f5ecaf52a320e5655ce35a8af0d9951aa45aa"
         }
       },
-      "sha256": "1cd11022de96651d9e51f9f7bedb2f51a7e82bba99f01f226156c82fef5c3ad2"
+      "sha256": "333917ed1a9de8f8df9d859536778f366e0c780fe6cfa1fc8d101438fe5d58df"
     },
     "vizinha-fofoqueira": {
       "kind": "dir8",

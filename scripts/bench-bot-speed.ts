@@ -23,11 +23,12 @@ import {clearSegment,heroSpeed,walkable,type Point} from '../src/maps/world.ts';
 import {SIM_HZ} from '../src/contract/types.ts';
 import {cityFlowGrid,cityTerrainOf} from '../src/sim/city/grid.ts';
 import {homeOf,ESCORT_LEASH,LEASH} from '../src/sim/bot-brain.ts';
+import {HEROI_PADRAO} from './elenco-ativo.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
 const cityText=readFileSync(new URL('../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
-const CLASS='cidadao-comum';
+const CLASS=HEROI_PADRAO;
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const say=(room:Room,p:any,m:object,now:number)=>room.receive(p,JSON.stringify(m),now);
 function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};}

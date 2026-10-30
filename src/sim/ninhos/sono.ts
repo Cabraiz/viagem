@@ -74,7 +74,8 @@ export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
  * (memory.visita: the AI's Minerva hold lets them walk). A group with VISIT_ALIVE visitors still standing near it gets
  * none that time. A team that killed something in the last VISIT_QUIET s found its own fight (the bots roam into
  * bands): the visit waits, so the first level-up stays in the 60–120 s of the card in 1p as in 6p. Once Minerva ends
- * they are bodies like any other.
+ * they are bodies like any other. Since missao-proteger-uno-tempo the minute is 30 s and the first wave leaves 35–45 s
+ * after the start, so with the default pace no visit comes (the waves are the early fight); a longer minute keeps them.
  */
 export const VISIT_FROM=60,VISIT_EVERY=15,VISIT_QUIET=10,VISIT_GROUP=10,VISIT_COUNT=2,VISIT_NEAR=7,VISIT_FAR=16,VISIT_ALIVE=3;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */

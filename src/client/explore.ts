@@ -68,6 +68,7 @@ const ECONOMY_TOAST_MS=9000;
 const CAMERA_HINT_MS=1500;
 const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
+import {GL_LOST_TEXT,GL_LOST_BUTTON,watchGlLoss,glLostTarget} from './render/gl-lost.ts';
 import {perfEnabled} from './dev/perf-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
@@ -96,7 +97,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar-camera',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar-camera',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}${wantsGearTag()?'<span class="explore-config-tag" aria-hidden="true">Pausa</span>':''}</button>
-    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
+    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Heróis</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
       <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
@@ -344,7 +345,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   shell.append(settings);
   // The match menu (NEW-20261009-UX-menu-e-conexao): in a room the gear opens Continuar / Configurações / Copiar convite /
   // Sair da partida (with its confirmation) over today's settings, which become the menu's "Configurações" view. The room
-  // code and the connection line head the menu; "Classes" leaves the dialog (leaving the room asks first now).
+  // code and the connection line head the menu; "Heróis" leaves the dialog (leaving the room asks first now).
   let menu:GameMenu|undefined;
   if(net){
     menu=createGameMenu(settings,settings.querySelector<HTMLElement>('.explore-settings-heading h2')!,settingsContent as HTMLElement,{
@@ -912,5 +913,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);
-  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte às classes e tente novamente.':'Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
+    // The phone dropped the WebGL context (gl-lost.ts): a plain panel and a way back instead of a black screen; a room's own window wins, a restore takes ours down.
+    watchGlLoss(controller.game.canvas,{lost:()=>{if(closed||fatalShown)return;const to=glLostTarget(options.solo?undefined:net?.code,inviteQuery(location.search));showFatal(find('.explore-layout'),GL_LOST_TEXT,{action:{label:GL_LOST_BUTTON,run:()=>to?location.assign(to):location.reload()}});shell.dataset.fatal='true';if(hud)hud.el.hidden=true;},
+      restored:()=>{if(closed||fatalShown||find('.explore-layout').querySelector(':scope > .net-fatal .net-fatal-text')?.textContent!==GL_LOST_TEXT)return;hideFatal(find('.explore-layout'));delete shell.dataset.fatal;if(hud)hud.el.hidden=false;}});
+  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte aos heróis e tente novamente.':'Não foi possível carregar a ilha. Volte aos heróis e tente novamente.';}}
 }

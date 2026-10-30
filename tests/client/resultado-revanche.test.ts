@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {defeatLine,rematchLabel} from '../../src/client/hud/result.ts';
-import {shareCard,shareHeight,SHARE_W} from '../../src/client/hud/share-result.ts';
+import {shareCard,shareHeight,SHARE_W,extraPrizes,SHARE_FOOTER} from '../../src/client/hud/share-result.ts';
+import {readFileSync} from 'node:fs';
 import {emptyCauses,recordFall} from '../../src/client/hud/cause.ts';
 
 test('rematch button: an older room keeps its words; the vote counts people online; the majority shows its clock',()=>{
@@ -22,8 +23,8 @@ test('rematch button: an older room keeps its words; the vote counts people onli
 test('defeat line: the team\'s top cause with its falls, and the rounds left before the boss',()=>{
   const log=emptyCauses();recordFall(log,'a','tio-pave');recordFall(log,'b','tio-pave');recordFall(log,'b','bebado');
   recordFall(log,'c','tio-pave');recordFall(log,'d','tio-pave');
-  assert.equal(defeatLine({victory:false,round:7,totalRounds:10},log),'O que derrubou a turma: Tio do Pavê (4 quedas). Faltou 3 rounds pro síndico');
-  assert.equal(defeatLine({victory:false,round:9,totalRounds:10},emptyCauses()),'Faltou 1 round pro síndico');
+  assert.equal(defeatLine({victory:false,round:7,totalRounds:10},log),'O que derrubou a turma: Tio do Pavê (4 quedas). Faltou 3 rodadas pro síndico');
+  assert.equal(defeatLine({victory:false,round:9,totalRounds:10},emptyCauses()),'Faltou 1 rodada pro síndico');
   assert.equal(defeatLine({victory:false,round:10,totalRounds:10},emptyCauses()),undefined);
   assert.equal(defeatLine({victory:true,round:10,totalRounds:10},log),undefined);
   const one=emptyCauses();recordFall(one,'a','bebado');
@@ -38,4 +39,14 @@ test('shared picture: every player with their prizes, the first one big, a line 
   const none=shareCard({title:'VITÓRIA!',subtitle:'x'},[{id:'a',name:'Ana'}],[],'a');
   assert.deepEqual(none.rows[0].prizes,['Participou com garra']);
   assert.ok(shareHeight(6)<=1350&&SHARE_W===1080,'six players fit a 4:5 story picture');
+});
+
+test('shared picture speaks in sentences: the other prizes and the last line have no "A · B" (DSG-voz)',()=>{
+  assert.equal(extraPrizes([]),'');
+  assert.equal(extraPrizes(['Mais caiu']),'+ Mais caiu');
+  assert.equal(extraPrizes(['Mais caiu','Pão-duro']),'+ Mais caiu e Pão-duro');
+  assert.equal(extraPrizes(['Mais caiu','Pão-duro','Sumiu']),'+ Mais caiu, Pão-duro e Sumiu');
+  assert.doesNotMatch(SHARE_FOOTER,/ · /);
+  const src=readFileSync(new URL('../../src/client/hud/share-result.ts',import.meta.url),'utf8');
+  assert.doesNotMatch(src.replace(/\/\*[\s\S]*?\*\//g,''),/ · /,'no separator dot left in what the picture draws');
 });

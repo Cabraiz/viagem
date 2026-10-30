@@ -3,10 +3,10 @@
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
  * explosion; the P1 trio: coach lecture + ally buff (PALESTRA), motoboy warned charge + marmita blast (MOTOBOY),
  * influencer pose (POSE; the reflection itself is in projectiles.ts); the roster roles of D-040: the brutamontes' shove
- * (BRUTE), the invocador's call (SUMMON) and the mini-chefe's stomp (SLAM), every other role on the behavior of its base
+ * (BRUTE) and stomp (BRUTE_SLAM), the invocador's call (SUMMON) and the mini-chefe's stomp (SLAM), every other role on the behavior of its base
  * kind; neighbor separation, terrain collision, contact damage and rare barks. EnemyState.phase of regular enemies (on
  * the wire, EnemyView.phase): 1 while the P1 trio acts (lecturing, aiming/charging, posing) and while an invocador
- * calls or a mini-chefe stomps, 2 while coached and not acting, absent otherwise. A roster entry acting like one of the
+ * calls or a brutamontes or mini-chefe stomps, 2 while coached and not acting, absent otherwise. A roster entry acting like one of the
  * nine says its own (or its role's) reaction lines where the nine have their behavior's lists.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
@@ -18,7 +18,7 @@ import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
+import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BRUTE_SLAM,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
   PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUGAR,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
   hazardOwner,isCoached,isDevendo,isSugared,ENEMY_RADIUS_SCALE,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
@@ -581,15 +581,17 @@ export class EnemyAi implements SimSystem {
             else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
             break;
           }
+          case 'brute':
           case 'minichefe':{
             // The stomp: warned circle around him; he stands still until it lands (plus a short recovery).
+            const slam=def.behavior==='brute'?BRUTE_SLAM:SLAM;
             if(memory.state===STATE.slam){
-              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+SLAM.cooldown;}
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+slam.cooldown;}
               break;
             }
-            if(player&&best<=SLAM.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
-              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:SLAM.radius+e.radius,damage:SLAM.damage*coachMult(e,ctx.tick),owner:e.id,kind:'pancada'},SLAM.delay);
-              memory.state=STATE.slam;memory.until=ctx.tick+SLAM.delay+SLAM.recover;
+            if(player&&best<=slam.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:slam.radius+e.radius,damage:slam.damage*coachMult(e,ctx.tick),owner:e.id,kind:'pancada'},slam.delay);
+              memory.state=STATE.slam;memory.until=ctx.tick+slam.delay+slam.recover;
               this.react(ctx,rng,e,def,1);
               break;
             }
@@ -780,7 +782,7 @@ export class EnemyAi implements SimSystem {
       if(held.coachedUntil!==undefined&&(retreat||!isCoached(held,ctx.tick)))delete held.coachedUntil;
       const behavior=enemyDef(e.kind).behavior,state=m?.state;
       const acting=!retreat&&(behavior==='coach'&&state===STATE.lecture||behavior==='kamikaze'&&(state===STATE.joke||state===STATE.charge)
-        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||behavior==='minichefe'&&state===STATE.slam);
+        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||(behavior==='minichefe'||behavior==='brute')&&state===STATE.slam);
       const phase=acting?ENEMY_PHASE.acting:held.coachedUntil!==undefined?ENEMY_PHASE.coached:undefined;
       if(phase===undefined){if(e.phase!==undefined)delete e.phase;}
       else e.phase=phase;

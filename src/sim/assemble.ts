@@ -33,9 +33,9 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_CLOCK,CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
 import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
@@ -458,10 +458,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
-      // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
-      ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
-      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
-      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
+      // missao-proteger-uno-tempo: in mode 'ninhos' the run is the clock (5:00, each hit on the Uno adds time), then he
+      // rides the last stretch and unlocks; no stops, no ride by room, no nests' ramp to wait for.
+      ...(nestMode?{clock:CHAVEIRO_CLOCK}:{}),
       // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
       ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),

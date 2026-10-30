@@ -20,6 +20,7 @@ import {SelfCorrection} from '../src/client/net/smoothing.ts';
 import {StepLerp,stepClock} from '../src/client/framing.ts';
 import type {PlayerInput,Point} from '../src/contract/index.ts';
 import {setRosterOnlyWithArt} from '../src/rules/enemy-rotation.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 setRosterOnlyWithArt(false);
 
 export interface LinkOptions {
@@ -52,7 +53,7 @@ export interface LabResult {frames:number;walkingFrames:number;recuos:number;wor
 
 export function runLab(o:LinkOptions):LabResult{
   let r=o.seed*7919+13;const rnd=()=>{r=(r*1103515245+12345)%2147483648;return r/2147483648;};
-  const sim=new Simulation();const p=sim.add('p','T','cidadao-comum');sim.resetRun();
+  const sim=new Simulation();const p=sim.add('p','T',PERSONAGEM_PADRAO);sim.resetRun();
   const clock=new TickClock();clock.start(0);
   const b=new InputBatcher();b.reset(0);
   const correction=new SelfCorrection(),steps=new StepLerp();

@@ -51,7 +51,8 @@ test('a smaller copy keeps LITE_TEXELS (0.9) texels per CSS px of its figure as 
     // The 1st wave's chefão (boss-fim-onda-1) draws × WAVE_BOSS.drawScale past his sheet (its own 384 px cell is under
     // that): softer by choice, the lite copy keeps his download; the check stays on his role's height.
     if(WAVE_BOSS_IDS.includes(id))setWaveBossDraw(1);
-    const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*.9;
+    // An elite-only figure (meta.eliteArt: the saci) draws at its own height, never × ELITE_SCALE.
+    const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*(piece.meta?.eliteArt?1:ELITE_SCALE)*.9;
     setWaveBossDraw(WAVE_BOSS.drawScale);
     assert.ok(fig.drawn*f.liteCell[1]/fig.cell[1]>=need-1e-9,`${id}: ${fig.drawn} px × ${f.liteCell[1]}/${fig.cell[1]} < ${need.toFixed(1)}`);
   }

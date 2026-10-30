@@ -196,8 +196,9 @@ const linkOf=(v:unknown)=>{
   return l&&typeof l==='object'&&Number.isSafeInteger(l.round)&&Number.isSafeInteger(l.tick)
     ?{round:l.round as number,tick:l.tick as number,...(Number.isSafeInteger(l.run)?{run:l.run as number}:{})}:undefined;
 };
-/** Every class of the build (a restored roster stays strict about junk); D-053 then seats a hidden one as playable. */
-const classIds=new Set(classes.map(c=>c.id));
+/** Every class of the build (a restored roster stays strict about junk); D-053 then seats a hidden one as playable.
+ *  Plus the Mendigo hero, deleted on 30/10: a room saved before the deploy comes back with him on the playable class. */
+const classIds=new Set([...classes.map(c=>c.id),'mendigo']);
 /** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
  *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
  *  roster stays strict (junk is dropped; that player joins again and lands here). */

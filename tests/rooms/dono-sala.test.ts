@@ -239,7 +239,7 @@ test('room bots are deterministic: same seed, same seats, same run',()=>{
   const play=()=>{
     const sim=new Simulation(4242,{world:'infinito'}),rb=new RoomBots();
     sim.add('ana','Ana','cidadao-comum');
-    for(let i=0;i<5;i++){const id=`bot-${i+1}`;sim.addBot(id,classes[i*7].name,classes[i*7].id);rb.add(id,i);}
+    for(let i=0;i<5;i++){const id=`bot-${i+1}`;sim.addBot(id,classes[i*6].name,classes[i*6].id);rb.add(id,i);}
     sim.resetRun();
     for(let i=0;i<20*90;i++){rb.think(sim);sim.step(i*50);}
     return {hash:sim.stateHash(),at:[...sim.players.values()].map(p=>[p.x,p.y])};
@@ -269,7 +269,7 @@ test('restart keeps the owner, the bots and the kicked seats',()=>{
 });
 
 test('RoomBots thinks on staggered ticks and stays out of the shame moment',()=>{
-  const sim=new Simulation(7);sim.add('p','Ana','cidadao-comum');sim.addBot('bot-1','Robô do Gás','mendigo');sim.resetRun();
+  const sim=new Simulation(7);sim.add('p','Ana','cidadao-comum');sim.addBot('bot-1','Robô do Gás','tio-do-churrasco');sim.resetRun();
   assert.ok(sim.shameOptOut.has('bot-1'));
   const rb=new RoomBots();rb.add('bot-1',0);
   let thought=0;for(let i=0;i<BOT_THINK_EVERY*5;i++){const before=rb.thinks;rb.think(sim);thought+=rb.thinks-before;sim.step();}
@@ -382,7 +382,7 @@ test('kicked: the second sign is the name (no accents, spaces or case), for 10 m
 
 test('stateHash covers the bots minds and step counter, not only their sticks',()=>{
   const sim=new Simulation(4242,{world:'infinito'}),rb=new RoomBots();sim.botState=()=>rb.state();
-  sim.add('ana','Ana','cidadao-comum');sim.addBot('bot-1','Mendigo','mendigo');rb.add('bot-1',0);sim.resetRun();
+  sim.add('ana','Ana','cidadao-comum');sim.addBot('bot-1','Tio do Churrasco','tio-do-churrasco');rb.add('bot-1',0);sim.resetRun();
   for(let i=0;i<40;i++){rb.think(sim);sim.step(i*50);}
   const hash=sim.stateHash();
   (rb.state()[0].memory as {lastCastTick:number}).lastCastTick=-12345;

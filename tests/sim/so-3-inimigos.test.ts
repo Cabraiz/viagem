@@ -6,7 +6,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {INIMIGOS_LIBERADOS} from '../../src/rules/index.ts';
 
-const BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
+const BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
 
 test('3 rounds headless: every enemy spawned is a liberated one (the mendigo), the sleepers included',()=>{
   const sim=new Simulation(4242,{world:'infinito'}),bots=new RoomBots();

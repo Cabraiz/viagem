@@ -41,7 +41,7 @@ test('scrubRetired: builds, timers, offers, ground items, crates and their memor
 });
 
 test('an old checkpoint with a bot holding only the Chinelo resumes, the bot back on its class weapon',()=>{
-  const SEED=4242,BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum']] as const;
+  const SEED=4242,BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum']] as const;
   const seat=(sim:Simulation)=>{for(const [id,name,classId] of BOTS)sim.addBot(id,name,classId);return sim;};
   const sim=seat(new Simulation(SEED,{world:'infinito'})),bots=new RoomBots();
   BOTS.forEach(([id],i)=>bots.add(id,i));
@@ -56,6 +56,6 @@ test('an old checkpoint with a bot holding only the Chinelo resumes, the bot bac
   assert.equal(fresh.resume(cp),true);
   const ids=(id:string)=>fresh.world.players.get(id)!.build.weapons.map(w=>w.id);
   for(const id of ['bot-1','bot-2'])assert.ok(!ids(id).some(isRetired),`${id}: ${ids(id)}`);
-  if(automatic)assert.deepEqual(ids('bot-1'),startingBuild('mendigo').weapons.map(w=>w.id));
+  if(automatic)assert.deepEqual(ids('bot-1'),startingBuild('tio-do-churrasco').weapons.map(w=>w.id));
   for(let i=0;i<20*5;i++){bots.think(fresh);fresh.step(fresh.tick*50);}
 });

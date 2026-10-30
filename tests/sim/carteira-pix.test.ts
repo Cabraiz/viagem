@@ -148,7 +148,7 @@ test('a new run empties the wallets; a seat added later starts at 0',()=>{
   assert.equal(sim.add('e','Edu','cidadao-comum').grana,undefined);
 });
 
-const SEED=4242,BOTS=[['bot-1','Robô do Gás','mendigo'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
+const SEED=4242,BOTS=[['bot-1','Robô do Gás','tio-do-churrasco'],['bot-2','Robô da Feira','cidadao-comum'],['bot-3','Robô do Bar','cidadao-comum']] as const;
 const seat=(sim:Simulation)=>{for(const [id,name,classId] of BOTS)sim.addBot(id,name,classId);return sim;};
 function playTo(round:number){
   const sim=seat(new Simulation(SEED,{world:'infinito'})),bots=new RoomBots();

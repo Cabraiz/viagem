@@ -6,7 +6,6 @@ export interface HeroClass {
 // Atlas: 6 colunas × 6 linhas. A ordem é um contrato com o prompt da arte.
 export const classes: HeroClass[] = [
   {id:'cidadao-comum',name:'Cidadão',subtitle:'O básico também dá crítico.',role:'Linha de frente',skill:'Só Estou de Passagem',stats:[3,3,3,3],art:0},
-  {id:'mendigo',name:'Mendigo',subtitle:'Improviso lendário.',role:'Suporte',skill:'Tesouro do Achados',stats:[2,3,4,3],art:1},
   {id:'viciado-em-bet',name:'Viciado em Bet',subtitle:'A sorte não leu o tutorial.',role:'Dano',skill:'Odd Impossível',stats:[4,2,5,1],art:2},
   {id:'clt-cansado',name:'CLT',subtitle:'Tanque em horário comercial.',role:'Linha de frente',skill:'Hora Extra',stats:[5,1,3,3],art:3},
   {id:'motogirl',name:'Motogirl',subtitle:'Sua salvação saiu para entrega.',role:'Suporte',skill:'Entrega Expressa',stats:[2,5,2,3],art:4},
@@ -46,7 +45,7 @@ export function getClass(id: string): HeroClass | undefined { return classes.fin
  */
 export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
 /**
- * LEGADO: every other class (the Mendigo hero included: the mendigo on screen now is an enemy, art/mendigo.ts). They
+ * LEGADO: every other class (the mendigo on screen is an enemy, art/mendigo.ts; the Mendigo hero was deleted on 30/10). They
  * stay in the code, the data and the art folders, hidden from the player and never preloaded: a room, a save or a link
  * asking for one of them plays a playable class (playableClassId), never an error.
  */

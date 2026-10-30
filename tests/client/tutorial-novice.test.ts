@@ -130,8 +130,8 @@ function playtest(seed:number,team:readonly string[],coach:Coach,{downAlly=false
 }
 
 const SEEDS=[0x056,0x0de1,0x7a2b,0x51d1];
-const SOLO=['cidadao-comum','maromba','universitario','mendigo'];
-const SIX=['universitario','maromba','mendigo','viciado-em-bet','pedreiro','cidadao-comum'];
+const SOLO=['cidadao-comum','maromba','universitario','tio-do-churrasco'];
+const SIX=['universitario','maromba','tio-do-churrasco','viciado-em-bet','pedreiro','cidadao-comum'];
 
 test('novato (stands 15 s, then follows the hints) survives round 1 and learns to walk and tap the chip by the end of round 1 (solo, 4 classes x 4 seeds; D-054: no XP to pick)',t=>{
   const rows:string[]=[];
@@ -177,7 +177,7 @@ test('six players: the novice still sees one hint at a time, learns in round 1, 
 // needs easing (NEW-20261013-ORQ-round1-ilha-infinito-heroi-2x). It still runs and reports.
 test('round 1 is not letal: novices who stop 8 s at every offer still walk out (rooms\' world, 1 and 6 bots)',{todo:'NEW-20261013-ORQ-round1-ilha-infinito-heroi-2x'},t=>{
   let worst=1;
-  for(const team of [['streamer'],['mendigo'],['viciado-em-bet','universitario','maromba','streamer','rei-pastel','coach'],SIX])for(const seed of SEEDS){
+  for(const team of [['streamer'],['tio-do-churrasco'],['viciado-em-bet','universitario','maromba','streamer','rei-pastel','coach'],SIX])for(const seed of SEEDS){
     const r=pauseAtOffers(seed,team);worst=Math.min(worst,r.minHp);
     assert.deepEqual(r.downs,[],`${team.join('+')} seed ${seed}: nobody falls`);
     assert.ok(r.minHp>=.25,`${team.join('+')} seed ${seed}: hp left (${(r.minHp*100).toFixed(0)}%)`);

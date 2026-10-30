@@ -253,7 +253,7 @@ const UI=(()=>{
  * The 29 classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
  * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
  */
-export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl',
+export const FACE_CLASSES=Object.freeze(['cidadao-comum','viciado-em-bet','clt-cansado','motogirl',
   'pedreiro','vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira',
   'concurseira','vendedor-praia','pagodeiro','gambiarreiro','universitario','passageira','porteiro','merendeira',
   'rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','conspiracionista','gato-nada-pra-comer']);
@@ -272,7 +272,7 @@ export function faceIdProblem(id){
   const expression=FACE_EXPRESSIONS.find(e=>id.endsWith(`-${e}`));
   if(!expression){
     const last=id.includes('-')?id.slice(id.lastIndexOf('-')+1):id;
-    return `expressão "${last}" desconhecida. O nome precisa terminar com uma das expressões ${FACE_EXPRESSIONS.join(', ')} (ex.: rostos/mendigo-rindo.png).`;
+    return `expressão "${last}" desconhecida. O nome precisa terminar com uma das expressões ${FACE_EXPRESSIONS.join(', ')} (ex.: rostos/motogirl-rindo.png).`;
   }
   const face=id.slice(0,-expression.length-1);
   return `classe "${face}" desconhecida. Use o id de uma das ${FACE_CLASSES.length} classes antes da expressão (ex.: rostos/cidadao-comum-${expression}.png); a lista está em design/PACOTE-ROSTOS.md.`;

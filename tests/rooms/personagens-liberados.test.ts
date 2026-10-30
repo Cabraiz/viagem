@@ -23,7 +23,7 @@ test('one list: the viciado, the CLT, the gato, the maromba (user, 23/10: releas
   assert.equal(isLiberado('clt-cansado'),true);assert.equal(isLiberado('coach'),false);assert.equal(isLiberado(42),false);
   assert.equal(liberadoId('clt-cansado'),'clt-cansado');assert.equal(liberadoId('gato-nada-pra-comer'),'gato-nada-pra-comer');
   assert.equal(liberadoId('aposentado'),'aposentado');assert.equal(liberadoId('vendedor-praia'),'vendedor-praia');
-  for(const id of ['coach','pedreiro','mendigo','cidadao-comum','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
+  for(const id of ['coach','pedreiro','tio-do-churrasco','cidadao-comum','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
   assert.deepEqual(PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id)),[],'no playable hero is locked any more');
 });
 

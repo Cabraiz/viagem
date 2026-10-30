@@ -11,15 +11,6 @@ export const spriteCatalog:Record<string,{height:number;figure?:FigureBox;dir4?:
       "bottom": 170
     }
   },
-  "mendigo": {
-    "height": 128,
-    "figure": {
-      "left": 44,
-      "top": 41,
-      "right": 172,
-      "bottom": 170
-    }
-  },
   "viciado-em-bet": {
     "height": 129,
     "figure": {

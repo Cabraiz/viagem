@@ -281,7 +281,7 @@
 .coop-wait-members li>span:has(>.coop-wait-class){line-height:1.15;min-width:0}
 .coop-wait-members button:has(>.coop-wait-class){flex-wrap:wrap;row-gap:0}
 .coop-wait-members button>.coop-wait-class{flex:1 0 100%;margin:-4px 0 0}
-/* Nome numerado ("Mendigo 2", bot com o nome da classe): as reticências ficam no começo, o número nunca some. */
+/* Nome numerado ("Aposentado 2", bot com o nome da classe): as reticências ficam no começo, o número nunca some. */
 .coop-wait-members .coop-wait-numbered{display:flex;min-width:0;font-weight:inherit}
 .coop-wait-members .coop-wait-numbered>b{font-weight:inherit}
 .coop-wait-members .coop-wait-numbered>b:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

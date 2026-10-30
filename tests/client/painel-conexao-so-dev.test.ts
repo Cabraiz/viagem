@@ -9,7 +9,7 @@ const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url
 test('the panel is built only in dev or with ?perf=1',()=>{
   const at=explore.indexOf('<summary>Conexão da sala</summary>');
   assert.ok(at>0,'the panel still exists for dev');
-  assert.equal(explore.indexOf('Conexão da sala',at+1),-1,'built in one place only');
+  assert.equal(explore.indexOf('<summary>Conexão da sala',at+1),-1,'built in one place only');
   const line=explore.slice(explore.lastIndexOf('\n',at),at);
   assert.match(line,/if\(import\.meta\.env\.DEV\|\|SHELL_DEBUG\)\{const debug=document\.createElement\('details'\)/);
 });

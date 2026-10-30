@@ -7,7 +7,7 @@ import {FALLBACK_LINES} from '../../src/client/fun/lines.ts';
 import {resultHeadline,defeatLine,manageLabel} from '../../src/client/hud/result.ts';
 import {offerJoke} from '../../src/client/hud/offer.ts';
 import {CHINELO_LINES,LEAVE_TEXT} from '../../src/client/hud/spectator.ts';
-import {WAITING_LINES,OWNER_HINT,SOLO_TEXT,confirmText} from '../../src/client/lobby.ts';
+import {WAITING_LINES,OWNER_HINT,SOLO_TEXT,COMPOSITION_LINES,confirmText} from '../../src/client/lobby.ts';
 import {emptyCauses} from '../../src/client/hud/cause.ts';
 
 /** The legacy cast (auditoria-textos-30-10 §3): none of it may reach these screens; the 6 heroes, saci and sanfoneiro may. */
@@ -34,4 +34,8 @@ test('textos-sem-legado: one verb for a person and a bot ("Expulsar"), "seu" not
   for(const line of CHINELO_LINES)assert.doesNotMatch(line,/\bteu\b/i,line);
   assert.equal(LEAVE_TEXT,'Voltar pra sala');
   assert.doesNotMatch(SOLO_TEXT.noCity,/Tente novamente/);
+  for(const line of Object.values(COMPOSITION_LINES))assert.doesNotMatch(line,/^Time\b/,line);
+  assert.match(COMPOSITION_LINES.Suporte,/^Turma sem suporte/);
+  for(const line of FALLBACK_LINES.down)assert.doesNotMatch(line,/\.\.\./,line);
+  assert.match(readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8'),/'Não deu pra criar a sala\.'/);
 });

@@ -56,9 +56,9 @@ export const waitingLine=(elapsedSeconds:number)=>WAITING_LINES[Number.isFinite(
  * known, the first missing role (support first: someone has to bring the coffee) says so; undefined when all is covered.
  */
 export const COMPOSITION_LINES:Readonly<Record<Role,string>>=Object.freeze({
-  'Suporte':'Time sem suporte: quem vai passar o café?',
+  'Suporte':'Turma sem suporte: quem vai passar o café?',
   'Linha de frente':'Ninguém na linha de frente: quem vai levar a primeira chinelada?',
-  'Dano':'Time sem dano: vão vencer a horda no papo?',
+  'Dano':'Turma sem dano: vão vencer a horda no papo?',
   'Controle':'Ninguém de controle: a horda vai entrar sem pedir licença.',
 });
 const COMPOSITION_ORDER:readonly Role[]=['Suporte','Linha de frente','Dano','Controle'];
@@ -482,7 +482,7 @@ export async function createRoom(endpoint:string,body:object,options:{onRetry?:(
     try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:sent,signal:AbortSignal.timeout(options.timeoutMs??10000)});}
     catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
     const data=await r.json().catch(()=>({}));
-    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
+    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não deu pra criar a sala.');
     return data.code;
   }
 }

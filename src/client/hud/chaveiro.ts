@@ -44,7 +44,7 @@ export const liveObjective=(view:{objective?:ObjectiveView}|undefined)=>view?.ob
 export interface ChaveiroClock {clock:string;seconds:number;aria:string;held:boolean}
 export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>,held=false):ChaveiroClock{
   const seconds=Math.max(0,Math.ceil(objective.etaS)),time=etaClock(seconds),clock=`${CLOCK_LABEL} ${time}`;
-  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${time}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${time}`:`Chaveiro chega em ${time}`;
+  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${time}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o Uno: ${time}`:`Chaveiro chega em ${time}`;
   return {clock,seconds,aria,held};
 }
 
@@ -59,7 +59,7 @@ export const MOTO_REASONS:Readonly<Record<MotoMode,string|undefined>>=Object.fre
   entrega:'Entregando',
   lombada:'Lombada',
   tombo:'Tombou! Bicho na moto',
-  abrindo:'Chegou! Abrindo o carro',
+  abrindo:'Chegou! Abrindo o Uno',
 });
 /** The modes where the team can do something: the row wears Cone (morta: 2 to push; tombo: clear the critter). */
 export const reasonUrgent=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
@@ -190,7 +190,7 @@ export function arrivalBand(objective:Pick<ObjectiveView,'etaS'|'moto'>|undefine
   const seconds=Math.max(0,Math.min(ARRIVAL_SECONDS,Math.ceil(Number.isFinite(objective.etaS)?objective.etaS:0)));
   const fraction=Math.max(0,Math.min(1,1-objective.etaS/ARRIVAL_SECONDS));
   return {title:'O chaveiro chegou!',hold:`Segurem ${seconds} s`,seconds,fraction:Number.isFinite(fraction)?fraction:0,
-    aria:`O chaveiro chegou! Segurem o carro mais ${seconds} segundos`};
+    aria:`O chaveiro chegou! Segurem o Uno mais ${seconds} segundos`};
 }
 
 /** The car's bar of the base ficha (in place of the wall's life): hits it still takes over the limit. */
@@ -199,7 +199,7 @@ export function carBar(objective:Pick<ObjectiveView,'car'>|undefined):CarBar|und
   const car=objective?.car;
   if(!car||!(car.limit>0))return undefined;
   const left=Math.max(0,Math.min(car.limit,Math.round(car.limit-car.hits))),fraction=left/car.limit;
-  return {fraction,left,limit:car.limit,low:fraction<CAR_BAR_LOW,label:`O carro aguenta mais ${left} ${left===1?'pancada':'pancadas'} de ${car.limit}`};
+  return {fraction,left,limit:car.limit,low:fraction<CAR_BAR_LOW,label:`O Uno aguenta mais ${left} ${left===1?'pancada':'pancadas'} de ${car.limit}`};
 }
 
 /** Whether the hero is by the moto now: within CIDA_REACH_U to show, beyond CIDA_LEAVE_U to hide (hysteresis). */
@@ -254,7 +254,7 @@ export const cidaBought=(name:string)=>`${name.trim().split(/\s+/)[0]} na mão!`
 export const OBJECTIVE_CAUSE_TEXT:Readonly<Record<ObjectiveCause,string>>=Object.freeze({
   opened:'Abriu! O carregador era do conector errado.',
   car:'O Uno não aguentou. Perda total.',
-  team:'O time caiu antes do chaveiro chegar.',
+  team:'A turma caiu antes do chaveiro chegar.',
   timeout:'Acabou o tempo. O chaveiro não chegou.',
 });
 /** A win the team's Grana did not pay in full: he opened it anyway and took the steering wheel as a guarantee. */
@@ -268,14 +268,14 @@ export function objectiveBill(result:ObjectiveResult):ObjectiveBill{
   const budget=reais(result.budget),grana=reais(result.grana),paid=reais(result.paid),debt=result.debt>0?reais(result.debt):undefined;
   const wave=`Onda ${Math.max(1,result.wave)}`;
   return {cause:result.cause,reason:debtVictory?DEBT_VICTORY_TEXT:OBJECTIVE_CAUSE_TEXT[result.cause],budget,grana,paid,...(debt?{debt}:{}),debtVictory,wave,
-    aria:`Orçamento ${budget}, grana do time ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
+    aria:`Orçamento ${budget}, grana da turma ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
 }
 
 /**
  * The jokes for whoever put R$ 0 into the vaquinha (board plans/carteira-pix-proposta.md §2: "Tio: R$ 0, pediu
  * recibo"), one per R$ 0 in the line's order, round the list.
  */
-export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no PIX (mentira)'];
+export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no Pix (mentira)'];
 /**
  * The result's vaquinha line (carteira-e-pix, ObjectiveResult.share): each player's part of the bill, in the room's
  * order, "Vaquinha: Ana R$ 12; Bot R$ 8; Zé R$ 0, pediu o recibo"; me as "Você". Undefined with no share.

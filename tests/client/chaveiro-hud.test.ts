@@ -33,7 +33,7 @@ test('the chaveiro clock: whole seconds as m:ss, never negative',()=>{
   assert.equal(reais(120),'R$ 120');
   assert.equal(reais(-5),'R$ 0');
   assert.deepEqual(chaveiroClock({etaS:588,moto:{x:0,y:0,mode:'anda'}}),{clock:'Chaveiro 9:48',seconds:588,aria:'Chaveiro chega em 9:48',held:false});
-  assert.match(chaveiroClock({etaS:12,moto:{x:0,y:0,mode:'abrindo'}}).aria,/abrindo o carro: 0:12/);
+  assert.match(chaveiroClock({etaS:12,moto:{x:0,y:0,mode:'abrindo'}}).aria,/abrindo o Uno: 0:12/);
 });
 
 test("the chefão up (boss-fim-onda-1): the clock is held, padlock and grey on the chip and on the phone's bar; the Síndico does not hold it",()=>{
@@ -141,7 +141,7 @@ test('the car in the base ficha: hits it still takes over the limit, Cone under 
   assert.match(bar!.label,/aguenta mais 90 pancadas de 120/);
   assert.equal(carBar(objective({car:{x:0,y:0,hits:100,limit:120,parts:15}}))?.low,true);
   assert.equal(carBar(objective({car:{x:0,y:0,hits:130,limit:120,parts:15}}))?.left,0);
-  assert.equal(carBar(objective({car:{x:0,y:0,hits:119,limit:120,parts:15}}))?.label,'O carro aguenta mais 1 pancada de 120');
+  assert.equal(carBar(objective({car:{x:0,y:0,hits:119,limit:120,parts:15}}))?.label,'O Uno aguenta mais 1 pancada de 120');
   assert.equal(carBar(undefined),undefined);
   // The ficha: the car replaces the wall's bar and number; without the objective it is the wall as before.
   const v=withObjective(objective());

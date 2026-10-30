@@ -1,0 +1,296 @@
+/* ---------- Minimapa: the slot (ORQ-minimapa) ----------
+   Where the minimap sits (the WC3 one, .rh-mm below, draws itself): portrait under the gear, landscape under the gear
+   too, out of the useful area and away from the skill button; with a window open, the left column. */
+.rh-minimap{position:absolute;top:calc(var(--rh-t) + 64px);right:var(--rh-r);pointer-events:auto}
+.rh-minimap:active{transform:translateY(2px)}
+@media (min-height:501px){
+  /* The announcement slot starts under the top band, which now ends under the minimap (RunHud sets --rh-anuncio). */
+  /* Doubled classes: it must also beat the base ficha's fixed slot rules (camp.css, with and without the boss bar). */
+  .rh.rh:has(>.rh-minimap) .rh-top~.rh-stack.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 144px))}
+  /* The announcement slot starts under the band (RunHud sets --rh-anuncio from the zones; the fallbacks cover pages
+     that never measure, like the sandbox). */
+  .rh .rh-top:has(.rh-camp:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 158px))}
+  .rh .rh-top:has(.rh-camp:not([hidden])):has(.rh-boss:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 200px))}
+}
+@media (max-height:500px){
+  .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
+  /* The offer, the forge (VGM-046B) and the D-052 build tray (obra-hud-ajustes) take the right column: the minimap moves to the left column, under the camera
+     buttons and above the joystick's zone (outside the useful area), so the way to a caído never leaves the screen while
+     a window is open (NEW-20261011-UX-janela-esconde-caido). The arrows stay on the field left beside the window. */
+  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden])),:has(.rh-fort-bandeja:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 48px + 24px)} /* 24 px under the view buttons (explore.css: 48 px at max(12px, safe top)) */
+}
+
+/* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------
+   Fichas na borda de dentro da área útil, com adesivo e distância e um bico que aponta o alvo. Nenhuma recebe toque.
+   Caído e perigo levam o anel Laranja Cone por fora (como a ficha SOS do mapa); o resto é ficha comum. */
+.rh-edges{position:absolute;inset:0;pointer-events:none}
+.rh-edge{position:absolute;left:0;top:0;width:calc(44px + 32px * var(--t-escala));height:36px;display:flex;align-items:center;gap:4px;padding:0 6px 0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);font:700 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:var(--s-texto);white-space:nowrap}
+.rh-edge-face{flex:none;width:26px;height:26px;display:grid;place-items:center}
+.rh-edge-face .ic{width:26px;height:26px}
+.rh-edge-face .face{width:26px;height:26px;border:2px solid var(--c-papel);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)} /* the ally's face crop (ui/face.css) */
+/* Card inimigos-querem-o-uno: the Uno's arrow wears the car itself (its SE view, frame 7 of the 4×2 sheet, uno-art.ts). */
+.rh-edge-uno{width:26px;height:26px;background:url(/art/lite/veiculos/quadradao.webp) -78px -26px/104px 52px no-repeat}
+.rh-edge-num{flex:1;text-align:center;font-size:var(--t-13)}
+.rh-edge-tip{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0}
+.rh-edge-tip::before,.rh-edge-tip::after{content:'';position:absolute;width:0;height:0;border-style:solid;border-color:transparent}
+.rh-edge-tip::before{left:-1px;top:-9px;border-width:9px 0 9px 13px;border-left-color:var(--c-breu)}
+.rh-edge-tip::after{left:-1px;top:-6px;border-width:6px 0 6px 9px;border-left-color:var(--c-papel)}
+.rh-edge:is([data-kind=caido],[data-kind=chefe],[data-kind=spawn]){box-shadow:0 0 0 2px var(--c-cone),var(--s-2)}
+.rh-edge-danger{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+.rh-edge-tag{position:absolute;left:-4px;top:-15px;padding:1px 5px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+.rh-edge[data-kind=caido]{z-index:1} /* a cramped field's last resort may stack the boss on a caído: the caído's clock and name stay on top */
+.rh-edge-name{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);padding:0 4px;border-radius:var(--r-etiqueta);background:var(--c-ficha);color:var(--c-papel);border:1px solid var(--c-papel);font:400 var(--t-13)/1.1 var(--f-cartaz);text-shadow:none} /* the caído's first name, never wider than the ficha (NAME_ROOM) */
+.rh-edge[data-tag=right] :is(.rh-edge-tag){left:auto;right:-4px} /* always on top (TAG_ROOM is reserved there); on the area's right half it grows leftwards */
+.rh-edge-count{position:absolute;right:-4px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+/* A fresh "Me salva": two short bumps, then still (no infinite loop, design §2.5). */
+.rh-edge-ping{animation:rh-edge-bump .22s ease-out 2;box-shadow:0 0 0 2px var(--c-cone),0 0 0 4px var(--c-papel),var(--s-2)} /* lit "Me salva": a second Papel ring, also when the tag is squeezed to its clock */
+@keyframes rh-edge-bump{50%{scale:1.14}}
+@media (prefers-reduced-motion:reduce){.rh-edge-ping{animation:none}}
+/* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
+.rh-member-bot{position:absolute;top:-6px;left:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato, como o adesivo de estado */
+.rh-member-bot[hidden]{display:none}
+/* D-051 combate manual: a arma na mão, adesivo de 24 px no canto de baixo oposto ao do KKKK (team.ts handWeapon). */
+.rh-member-arma{position:absolute;top:18px;left:calc(50% - 31px);display:flex;line-height:0}
+.rh-member-arma[hidden]{display:none}
+/* KKKK (rostos-kkkk): the laugh sticker at the portrait's lower corner while the ring says data-mood=rindo (2.2 s, set by
+   the team strip). Out of the flow, so the ring and the column keep their size; one pop in, no loop. */
+.rh-member-mood{position:absolute;top:18px;right:calc(50% - 31px);display:none;line-height:0}
+.rh-member-ring[data-mood=rindo]~.rh-member-mood{display:flex;animation:rh-pop .35s ease-out}
+@media (prefers-reduced-motion:reduce){.rh-member-ring[data-mood=rindo]~.rh-member-mood{animation:none}}
+/* Resultado: robô e coroa de papel ao lado do nome; o dono arruma a sala (Expulsar / Tirar bot / Adicionar bot).
+   "Tirar bot" é o botão neutro, cheio; "Expulsar" é só contorno Laranja (borda dupla: Cone por dentro, Breu por fora) e
+   sem sombra, mais leve. Armado: Laranja cheio, borda Breu 2 px e contorno Papel 1 px, sem transição, com
+   "Expulsar Wagner? Toca de novo.". No retrato, com o botão do dono, as ações viram duas linhas (Revanche em cima). */
+.rh-rcard-mark{flex:none;display:flex;line-height:0}
+.rh-result .rh-result-manage{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 10px;background:var(--c-ficha);color:var(--c-papel);border-color:var(--c-papel);white-space:nowrap}
+.rh-result .rh-result-manage[hidden]{display:none}
+.rh-result .rh-result-manage[aria-pressed=true]{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
+/* BUG-resultado-dono-6p-rola: in portrait the three buttons share one row (Revanche, crown + "Arrumar", Sair); the second
+   row of buttons ate the 56 px that six cards need. Landscape and the "Feito" state keep the whole verb. */
+.rh-result .rh-result-manage .rh-manage-short{display:none}
+@media (min-height:501px){
+  .rh-result .rh-result-manage .rh-manage-long{display:none}
+  .rh-result .rh-result-manage .rh-manage-short{display:inline}
+  .rh-result .rh-result-actions.has-manage .rh-result-btn{padding-inline:10px}
+  .rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto}
+  .rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}
+}
+/* Landscape at 125%: the whole verb pushed the three stat fichas into three rows and the cards out of view; the crown and
+   "Arrumar" leave them two. While the owner arranges the room the cards trade their numbers for the button (the prizes
+   already go), so six cards with a 48 px button fit the 3×2 grid. */
+@media (max-height:500px){
+  :root[data-texto="125"] .rh-result .rh-result-manage .rh-manage-long{display:none}
+  :root[data-texto="125"] .rh-result .rh-result-manage .rh-manage-short{display:inline}
+  .rh-result.is-managing .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard-stats{display:none}
+}
+@media (max-height:500px){.rh-result .rh-result-btn{min-height:48px}}
+/* "Arrumar a sala" keeps its words (it overflowed into Revanche and Sair in landscape: flex:1 with min-width:44px let it
+   shrink below its text). It takes its own width; in portrait Sair fills the rest of its row, in landscape Revanche
+   takes what is left, never below 132 px, and Sair keeps its word. */
+.rh-result .rh-result-actions.has-manage .rh-result-manage{flex:0 0 auto}
+@media (max-height:500px){.rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto;min-width:132px}}
+.rh-result.is-managing .rh-rcard-awards{display:none}
+/* A room bot's card (D-025) is shorter with 3+ cards: one prize, title only (bots take no person prizes, and its joke
+   line is the one a reader skips first). BUG-resultado-dono-6p-rola. The other prizes fold like the 5-6 ones above. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true]:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true] .rh-award-line{display:none}
+.rh-rcard-manage{display:flex;align-items:center;justify-content:center;gap:4px;min-height:48px;padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-breu);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
+.rh-rcard-manage:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+.rh-rcard-manage.is-person{background:transparent;border-color:var(--c-cone);box-shadow:0 0 0 1px var(--c-breu);font-weight:700}
+.rh-rcard-manage.is-person:active{box-shadow:0 0 0 1px var(--c-breu)}
+.rh-rcard-manage.is-asking{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);font-weight:800;transition:none}
+.rh-rcard-manage:disabled{opacity:.6}
+.rh-rcard-add{justify-content:center;background:var(--c-lilas-escuro);border-color:var(--c-papel)}
+.rh-rcard-add .rh-rcard-addbot{flex:1;flex-direction:column;font-size:var(--t-16)}
+
+/* ---------- First-run coach (VGM-056, hud/coach.ts) ----------
+   One hint at a time, as the last row of the announcement slot (top band, UX-zonas-tela): a calm ficha like the
+   notices (Breu body, Papel edge), a sticker of the control it talks about (the joystick with its Amarelo knob, the
+   XP drop, the chip's own "+N", the boia) and one short line, with an optional second one. Never over the hero or the
+   thumbs; any other row of the slot outranks it. Done: the check sticker and a Cartolina edge, then it goes. No motion.
+   BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (an 18 px sticker, the line at 13 px cut with
+   an ellipsis; the second line goes), as wide as its words. */
+.rh-coach{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:2px 10px 2px 6px;white-space:nowrap;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
+  pointer-events:auto;touch-action:none}
+.rh-coach-mark{display:inline-flex;flex:none;align-items:center;justify-content:center;width:18px;height:18px}
+.rh-coach-mark .ic{width:18px;height:18px}
+.rh-coach-body{display:flex;flex-direction:column;min-width:0}
+.rh-coach-text{overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-coach-sub{display:none;font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:18px;height:18px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
+  background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);font:400 var(--t-13)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
+.rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
+/* One call at a time (design review): while the joystick is lit for "andar" it is the only Amarelo, so a "+N" chip that came early
+   (a teammate's level) waits as plain Papel; with the chip's own hint up, the chip gets a 3 px Breu edge. Static. */
+.rh[data-coach-stick] .rh-offer-chip{background:var(--c-papel)}
+.rh[data-coach=chip] .rh-offer-chip{border-width:3px}
+.rh-ended .rh-coach{display:none}
+/* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */
+.rh-coach.rh-coach-yield{visibility:hidden}
+@media (max-height:500px){
+  .rh-coach{max-width:min(100%,300px);padding:1px 10px 1px 6px}
+}
+
+/* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
+   A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
+   praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
+   (its inline transform, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
+   BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (18 px stickers, "Vai pra praça!" at 13 px,
+   the joke line goes) for OBJECTIVE_FULL_MS; then it folds to the distance and the arrow only (data-compact, a small
+   ficha), and goes when there is no arrow to show (objective.ts). */
+.rh-objetivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:2px 8px;white-space:nowrap;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
+  pointer-events:auto;touch-action:none}
+.rh-objetivo-mark,.rh-objetivo-arrow{display:inline-flex;flex:none;align-items:center;justify-content:center;width:18px;height:18px}
+.rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:18px;height:18px}
+.rh-objetivo-body{display:flex;flex:1;flex-direction:column;min-width:0}
+.rh-objetivo-text{overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-objetivo-sub{display:none;font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-objetivo[data-compact=true]{gap:4px;padding:2px 6px}
+.rh-objetivo[data-compact=true] :is(.rh-objetivo-mark,.rh-objetivo-body){display:none}
+.rh-objetivo[data-compact=true] .rh-objetivo-m{min-width:0}
+.rh-objetivo-m:empty{display:none}
+.rh-objetivo-arrow{will-change:transform} /* turned by its inline transform (city/objective.ts) */
+.rh-objetivo-arrow[hidden]{display:none}
+.rh-ended .rh-objetivo{display:none}
+/* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */
+.rh-objetivo.rh-objetivo-yield{visibility:hidden}
+/* Landscape: the row may be wider (the slot is short, never two lines). */
+@media (max-height:500px){
+  .rh-objetivo{max-width:min(100%,400px)}
+}
+
+/* ---------- Minimap WC3 (card NEW-20261013-ORQ-minimapa-wc3, hud/wc-minimap/*) ----------
+   A square in the minimap's corner (under the gear): ~112 px on a phone, up to 210 px on a desktop. A Papel frame on
+   Breu, the terrain and the marks on one canvas, pings as pulsing rings (CSS: smooth at the 10 Hz draw rate). */
+.rh .rh-minimap.rh-mm{--mm-side:clamp(124px,30vmin,210px);width:var(--mm-side);height:var(--mm-side);padding:0;border-radius:var(--r-etiqueta);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);overflow:hidden;cursor:crosshair;touch-action:none}
+/* Narrow screens (portrait phones): no room beside the hero up top, so bottom-left as in Warcraft 3, 24 px above the
+   joystick (112 px at 24 px from the bottom: explore.css), below the hero's zone and the team column. */
+@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px)}}
+.rh-mm-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.rh-mm-ping{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu);pointer-events:none;animation:rh-mm-ping 1.6s ease-out forwards}
+@keyframes rh-mm-ping{0%{transform:scale(.4);opacity:1}70%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rh-mm-ping{animation:none;transform:scale(1.6)}}
+/* Each teammate's colour (their dot on the WC3 minimap) as an outer ring of the portrait. */
+.rh-member:not(.rh-me) .rh-member-ring{box-shadow:0 0 0 2px var(--c-breu),0 0 0 4px var(--rh-cor,var(--c-breu)),var(--s-2)}
+
+/* ---------- The chaveiro objective (D-047, card chaveiro-hud, hud/chaveiro.ts) ----------
+   The round chip says "Onda 3 · [moto] 9:48": his clock in the poster face, the moto sticker (the same as his edge arrow
+   and his minimap mark). While he stops, one row of the announcement slot says why for 2.5 s, one line ("Lombada",
+   "Moto morta: empurra!"): Breu ficha like the walk to the plaza, Cone when the team can help (2 to push, a critter on
+   the moto). */
+.rh-round-eta{display:inline-flex;align-items:center;white-space:nowrap}
+.rh-round-eta[hidden]{display:none}
+.rh-round-eta>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
+.rh-round-eta .ic{width:20px;height:20px}
+.rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+/* The chefão up (boss-fim-onda-1): the chaveiro's clock is stopped, a padlock and the number grey (topbar.ts, camp.ts). */
+.rh-round-eta[data-parado] b,.rh-camp-relogio[data-parado] b{color:var(--c-pedra)}
+.rh-round-sep{display:inline-block;width:6px}
+/* D-051 nests: the chip is the clock alone (no "Onda N" before it), so no separator. */
+.rh-round[data-modo="ninhos"] .rh-round-sep{display:none}
+/* Portrait: the chip's slot is 166 px at 390 (beside the camera buttons): "Onda 15 · 10:00 · 123" still fits in one line. */
+@media (max-width:599px){
+  .rh .rh-round[data-objetivo=chaveiro]{gap:3px;padding-inline:4px}
+  .rh-round-eta b{font-size:var(--t-16)}
+  .rh-round[data-objetivo=chaveiro] .ic{width:16px;height:16px}
+}
+.rh-chaveiro-motivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:3px 10px;white-space:nowrap;
+  border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);
+  font:700 var(--t-13)/1.2 var(--f-sistema);pointer-events:none}
+.rh-chaveiro-motivo[hidden]{display:none}
+.rh-chaveiro-motivo .ic{flex:none;width:18px;height:18px}
+.rh-chaveiro-motivo[data-urgente=true]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+.rh-ended .rh-chaveiro-motivo{display:none}
+/* The chaveiro's bill on the result (D-047): one more stat ficha, the budget and the team's Grana; on a win he was not
+   paid in full it turns Cone and adds what was missing (the subtitle says "Vitória com dívida: abriu e levou o volante."). */
+.rh-result-conta[hidden]{display:none}
+.rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
+/* D-051 nests (ninhos-rounds-fora): the nests still standing after the chaveiro's clock, "[ninho] 6/8" (chip and phone bar). */
+
+/* UX-resultado-revanche: the prize first, two numbers (dano, salvou), the other two with a tap on the card. */
+.rh-rcard{position:relative;cursor:pointer}
+.rh-rcard:not(.is-open) .rh-rstat-more{display:none}
+.rh-rcard:not(.is-open) .rh-rcard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rh-award-top .rh-award-title{font-size:var(--t-16)}
+/* "✓ topa": the room's rematch vote, a yellow sticker on the card's corner (Amarelo is choice/CTA: the rematch). */
+.rh-rcard-topa{position:absolute;top:-13px;right:-5px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-amarelo);border:2px solid var(--c-breu);color:var(--c-breu);font:800 var(--t-13)/1.2 var(--f-sistema);transform:rotate(4deg);box-shadow:0 2px 0 var(--c-breu);pointer-events:none}
+/* The defeat's "O que derrubou a turma … Faltou N rounds pro síndico". */
+.rh-result-lost{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-amarelo)}
+/* The defeat's "Da próxima: …" (nextTip): paper white under the yellow line, kept when that one goes. */
+.rh-result-tip{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+/* "Foto" (camera sticker): the same word on every screen (resultado-e-topo-com-rotulo), beside the sticker. */
+.rh-result .rh-result-share{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
+.rh-result .rh-result-rematch.rh-waiting:disabled{opacity:1}
+.rh-result .rh-result-rematch{white-space:nowrap}
+/* Landscape: the two numbers read in one line ("18,4k dano  1 salvou"), which pays for the defeat's extra line. */
+@media (max-height:500px){
+  .rh-rcard:not(.is-open) .rh-rstat{flex-direction:row;align-items:baseline;justify-content:center;column-gap:4px}
+  .rh-rcard-topa{top:-11px}
+}
+/* The first row's "✓ topa" sticks out of its card: the grid keeps room for it above (it scrolls, so it would clip). */
+.rh-result-grid{padding-top:12px}
+@media (max-height:500px){.rh-result-grid{padding-top:10px}}
+/* The owner's row has four buttons: "Foto" goes under its sticker, small, and in portrait the rest tighten. */
+.rh-result .rh-result-actions.has-manage .rh-result-share{flex-direction:column;gap:0;padding:2px 8px;font-size:var(--t-13);line-height:1}
+@media (min-height:501px){
+  .rh-result .rh-result-actions.has-manage{gap:6px}
+  .rh-result .rh-result-actions.has-manage .rh-result-btn{padding-inline:8px}
+  .rh-result .rh-result-actions.has-manage .rh-result-rematch{font-size:15px}
+}
+/* Last resort when the cards would scroll (fitCards): the defeat's extra line goes. */
+.rh-result.rh-result-nolost .rh-result-lost{display:none}
+/* The rest of the result's ladder (result.ts fitCards), each step only while the cards still scroll. */
+.rh-result.rh-result-novaca .rh-vaca-joke{display:none}
+.rh-result.rh-result-nostats .rh-rcard:not(.is-open) .rh-rcard-stats{display:none}
+.rh-result.rh-result-nosub .rh-result-sub{display:none}
+/* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
+@media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}
+
+/* ---------- O Uno apanhando: a janela ao vivo (card inimigos-querem-o-uno, etapa 3; render/chaveiro/pip.ts) ----------
+   A moldura é vazia no meio (.rh-pip-view): a 2ª câmera do Phaser desenha ali embaixo. Computador: à direita, logo
+   abaixo do minimapa (o botão de ataque fica embaixo). Celular (data-hud=fone): em cima à direita, abaixo da engrenagem
+   e da faixa do time. Toque: a câmera olha o Uno por um instante. */
+.rh-pip{--pip-w:240px;--pip-h:150px;position:absolute;right:var(--rh-r);top:calc(var(--rh-t) + 64px + clamp(124px,30vmin,210px) + 16px);
+  display:flex;flex-direction:column;gap:4px;padding:3px;margin:0;width:calc(var(--pip-w) + 6px);background:transparent;
+  border:2px solid var(--c-papel);border-radius:var(--r-etiqueta);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);pointer-events:auto;cursor:pointer;touch-action:none}
+.rh-pip[hidden]{display:none}
+.rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:0 0 0 3px var(--c-breu),inset 0 0 0 2px var(--c-cone)}
+.rh-pip-bar{display:block;height:8px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:inset 0 0 0 1px var(--c-papel);overflow:hidden}
+.rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--rh-hp)}
+.rh-pip-low .rh-pip-bar>i{background:var(--rh-hp-low-fill)}
+.rh[data-hud=fone] .rh-pip{--pip-w:150px;--pip-h:96px;top:calc(var(--rh-t) + 112px)}
+@media (max-height:500px){.rh[data-hud=fone] .rh-pip{--pip-w:168px;--pip-h:96px;top:calc(var(--rh-t) + 60px)}}
+/* Fear (card fear-escuridao-sozinho, hud/fear.ts): the notice in the slot, a ficha like the others ("Não se afaste do
+   bando"); the last stretch has none (card heroi-fala-cade-amigos: the hero says it in a balloon); the allies out of
+   reach while alone go dark on the strip (their status sticker stays whole). */
+.rh-medo{box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:4px 12px;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);
+  font:800 var(--t-16)/1.2 var(--f-sistema);white-space:nowrap;pointer-events:none}
+.rh-medo[hidden]{display:none}
+.rh-ended .rh-medo{display:none}
+.rh-member[data-longe]>:not(.rh-member-badge){opacity:.4;filter:grayscale(.7) brightness(.7);transition:opacity .6s,filter .6s}
+/* PC on a big screen (data-hud=mesa, auditoria-ui 28/10 item 17): at 1280×720 the top band, the team column and the
+   inventory read small (11–13 px labels); they grow 1.25× (CSS zoom: the hit areas and the measures with them). The
+   inventory's offsets are divided back, so it keeps its place by the attack button (not zoomed: the shell's). */
+@media (min-width:1200px) and (min-height:680px){
+  .rh[data-hud=mesa] :is(.rh-top,.rh-team,.rh-inv){zoom:1.25}
+  .rh[data-hud=mesa] .rh-inv{right:calc((max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px) / 1.25);bottom:calc(max(24px,env(safe-area-inset-bottom)) / 1.25)}
+}
+/* resultado-e-topo-com-rotulo, portrait and the PC (not landscape phones): the block (head, notice, cards, buttons) sits in
+   the middle of the screen, so one or two cards leave no purple hole between them and the buttons; six cards still fill
+   it and scroll inside the grid as before (its row shrinks to what is left). The buttons stop at 520 px on a wide screen. */
+@media (min-height:501px){
+  .rh-result{grid-template-rows:auto auto minmax(0,auto) auto;align-content:safe center}
+  .rh-result-actions{justify-self:center;width:min(100%,520px)}
+}
+/* The PC: one or two cards grow (their words were 13 px in a 1280 px screen). */
+@media (min-height:501px) and (min-width:900px){
+  .rh-result-grid:is([data-count="1"],[data-count="2"]){grid-template-columns:minmax(0,470px)}
+  .rh-result-grid[data-count="2"]{grid-template-columns:repeat(2,minmax(0,470px))}
+  .rh-result-grid:is([data-count="1"],[data-count="2"]) .rh-rcard{zoom:1.3}
+  .rh-result-shame{width:min(100%,640px)}
+}

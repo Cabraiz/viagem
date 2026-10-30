@@ -16,10 +16,11 @@ import {barClock} from '../../src/client/hud/camp.ts';
 import {SIM_HZ,type RunView} from '../../src/contract/index.ts';
 import {auditBoxes,crosses,bottom,right,EDGE_COLUMN,HERO_MARGIN,MIN_PLAY_SIDE,THUMB_GAP,type AuditBox,type Rect} from '../../src/client/hud/zones.ts';
 import {NAME_TAP_MS} from '../../src/client/hud/team.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 type Decl={selector:string;prop:string;value:string};
 const read=(file:string)=>declarations(readFileSync(new URL(`../../${file}`,import.meta.url),'utf8')) as Decl[];
-const FONE_CSS=read('src/client/hud/fone.css'),HUD=read('src/client/hud/hud.css'),EXPLORE=read('src/client/explore.css'),CAMP=read('src/client/hud/camp.css');
+const FONE_CSS=read('src/client/hud/fone.css'),HUD=declarations(HUD_CSS) as Decl[],EXPLORE=read('src/client/explore.css'),CAMP=read('src/client/hud/camp.css');
 const value=(decls:Decl[],selector:string,prop:string)=>{
   const found=decls.filter(d=>d.selector===selector&&d.prop===prop).at(-1);
   assert.ok(found,`${selector} { ${prop} }`);return found.value;

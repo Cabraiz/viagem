@@ -10,10 +10,11 @@ import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
 import {declarations} from '../../scripts/lint-design.mjs';
 import {OBJECTIVE_FULL_MS,createObjectiveRow} from '../../src/client/hud/city/objective.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 type Decl={selector:string;prop:string;value:string};
 const read=(file:string)=>declarations(readFileSync(new URL(`../../${file}`,import.meta.url),'utf8')) as Decl[];
-const HUD=read('src/client/hud/hud.css'),EXPLORE=read('src/client/explore.css'),OBRA=read('src/client/hud/towers/obra.css');
+const HUD=declarations(HUD_CSS) as Decl[],EXPLORE=read('src/client/explore.css'),OBRA=read('src/client/hud/towers/obra.css');
 const value=(decls:Decl[],selector:string,prop:string)=>{
   const found=decls.filter(d=>d.selector===selector&&d.prop===prop).at(-1);
   assert.ok(found,`${selector} { ${prop} }`);return found.value;

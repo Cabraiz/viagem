@@ -2,6 +2,7 @@
 // the asset with its `decor` list and the cells the new places with life take off the walkable grid, as a new version
 // (manifest).
 //   node --experimental-strip-types scripts/cenario-cidade.ts [--seed N] [--check]
+//   node --experimental-strip-types scripts/cenario-cidade.ts --bocas   (only chaoLivreNasBocas, on the asset as it is)
 // Re-running first undoes the previous run (undecorate), so the result depends only on the seed.
 // --check: only verify that public/ holds exactly what this script writes, write nothing.
 import {readFileSync,writeFileSync} from 'node:fs';
@@ -12,7 +13,8 @@ import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint,railRect} from '../src/maps/build-sites.ts';
 import {CITY_NEST_SPOTS,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {LUGARES,OBJETOS_1,OBJETOS_2,placeCityDecor,type DecorKeepOut} from '../src/maps/city-decor.ts';
-import {entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {bocaChao,entradasEstreitas,estreitaBoca} from '../src/maps/city/entradas.ts';
+import {semPropsNasBocas} from './becos-cidade.ts';
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -80,6 +82,27 @@ export function semDecorNasBocas(data:CityAssetData):CityDecor[]{
 }
 
 /**
+ * NEW-20261030-ORQ-bocas-sem-muro-pedra-decor (the user, 30/10: "obstáculos em entradas são horríveis", a poste, a
+ * cacamba or a ruin standing in a mouth): no scenery on the ground of an entrance, of any width (maps/city/entradas.ts
+ * bocaChao): every drawn piece with a cell there goes (postes and sidewalk objects: the walls and cliffs stand on solid
+ * cells only), and the props there go as PROP_REMOVED (becos-cidade.ts semPropsNasBocas). Nothing there is solid, so
+ * the walkable grid stays as it is. Changes `data`, returns what it took.
+ */
+export function chaoLivreNasBocas(data:CityAssetData):{decor:CityDecor[];props:number[]}{
+  const d=decodeCityAsset(encodeCityAsset(data));
+  if(!d.ok)throw new Error(d.error);
+  const a=d.asset,W=a.cells.w,chao=bocaChao(a);
+  const onIt=(q:CityDecor)=>{
+    if(q.cover)return false;
+    for(let r=q.r;r<q.r+q.h;r++)for(let c=q.c;c<q.c+q.w;c++)if(chao.has(r*W+c))return true;
+    return false;
+  };
+  const decor=(data.decor??[]).filter(onIt);
+  data.decor=(data.decor??[]).filter(q=>!onIt(q));
+  return {decor,props:semPropsNasBocas(data)};
+}
+
+/**
  * The asset as it was before decorate: no decor, and the cells the open-ground places took walkable again (decorate
  * blocks no other cell: a place on a block stands on cells that were never walkable).
  */
@@ -98,7 +121,19 @@ export function undecorate(text:string):string{
   return encodeCityAsset(data);
 }
 
-if(process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/cenario-cidade.ts')){
+const isMain=process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/cenario-cidade.ts');
+if(isMain&&args.includes('--bocas')){
+  const now=decodeCityAsset(readFileSync(JSON_PATH,'utf8'));
+  if(!now.ok)throw new Error(now.error);
+  const data=cityAssetToData(now.asset),taken=chaoLivreNasBocas(data);data.version++;
+  const out=encodeCityAsset(data),hash=createHash('sha256').update(out).digest('hex'),bytes=Buffer.byteLength(out);
+  writeFileSync(JSON_PATH,out);
+  writeFileSync(MANIFEST_PATH,JSON.stringify({id:now.asset.id,version:data.version,hash,bytes},null,2)+'\n');
+  const byKind=new Map<string,number>();
+  for(const q of taken.decor){const k=q.id.replace(/-\d$/,'');byKind.set(k,(byKind.get(k)??0)+1);}
+  console.log(`written: version ${data.version}, ${taken.decor.length} pieces and ${taken.props.length} props off the entrances, ${bytes} bytes, ${hash}`);
+  console.log([...byKind].sort((x,y)=>y[1]-x[1]).map(([k,n])=>`${k} ${n}`).join(', '));
+}else if(isMain){
   const now=readFileSync(JSON_PATH,'utf8');
   const out=decorate(undecorate(now),Number(flag('--seed')??DECOR_SEED));
   const decoded=decodeCityAsset(out);

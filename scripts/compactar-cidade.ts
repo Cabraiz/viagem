@@ -509,10 +509,11 @@ export const BOCA_NORDESTE:readonly (readonly [number,number])[]=[[67,88],[67,89
  * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo), then the narrow ways into the hero's ground widen for
  * the Uno's body and the loose fences in the open go (becos-cidade.ts alargarAreaUno, tirarCercasSoltas, version + 1:
  * uno-atravessa-tralha), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
- * version + 1: sem-tralha-nas-entradas).
+ * version + 1: sem-tralha-nas-entradas), and then all scenery and props on the ground of any entrance (cenario-cidade.ts
+ * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
-  const {decorate,semDecorNasBocas}=await import('./cenario-cidade.ts');
+  const {decorate,semDecorNasBocas,chaoLivreNasBocas}=await import('./cenario-cidade.ts');
   const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno,openCells}=await import('./becos-cidade.ts');
   const {text,log}=await compactText();
   const decorated=decodeCityAsset(decorate(text));
@@ -534,6 +535,9 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
   // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
   const bocas=semDecorNasBocas(opened.data);opened.data.version++;
   Object.assign(log,{decorNasBocas:bocas.length});
+  // Then no scenery on the ground of any entrance, postes and props too (version + 1: bocas-sem-muro-pedra-decor).
+  const chao=chaoLivreNasBocas(opened.data);opened.data.version++;
+  Object.assign(log,{decorNoChaoDasBocas:chao.decor.length,propsNasBocas:chao.props.length});
   return {text:encodeCityAsset(opened.data),log};
 }
 

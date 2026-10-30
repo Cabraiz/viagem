@@ -87,6 +87,25 @@ export class HurtGate {
     return t;
   }
 }
+/**
+ * Pushed by a hero (card anim-ser-empurrado, the room's colisao-entre-herois marks): its shoved16 plays once from the
+ * push's start, facing back along it (toward the pusher), up again to its rest; a push still held does not restart it.
+ * In the middle of a line (pushing too) it walks on, it does not fall.
+ */
+/** `pushing`: this figure's walk pushes a body (it plays its push16); `pushed`: a hero pushes it (from the pusher). */
+export interface ShoveMarks {pushing?:{x:number;y:number};pushed?:{x:number;y:number}}
+export class ShoveGate {
+  private since?:number;
+  /** Where the knocked figure faces: back along the push. */
+  face?:{x:number;y:number};
+  /** The shoved's progress (0..1) after `ms`, undefined when none plays (or `can` is false: swinging, no sheet...). */
+  update(now:number,shove:ShoveMarks|undefined,ms:number,can:boolean):number|undefined{
+    if(shove?.pushed&&!shove.pushing&&this.since===undefined){this.since=now;this.face={x:-shove.pushed.x,y:-shove.pushed.y};}
+    else if(this.since!==undefined&&!shove?.pushed&&(now-this.since>=ms||now<this.since))this.since=undefined;
+    const t=this.since===undefined?1:(now-this.since)/ms;
+    return can&&t<1?t:undefined;
+  }
+}
 /** A figure without an input (teammates, enemies' riders) keeps walking this long after its drawing last moved. */
 export const WALK_HOLD_MS=120;
 /**

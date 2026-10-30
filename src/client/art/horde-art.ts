@@ -22,7 +22,7 @@ import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
-import {gameEnemyArt} from './mendigo.ts';
+import {forgetEnemyShoved,gameEnemyArt,onPushEnemyFile,queueEnemyShoved,queueSheets} from './mendigo.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -238,21 +238,11 @@ export function artLoads():ArtLoad[]{
  * costume layers (the nests' card draws them).
  */
 export const unusedEnemyFile=(name:string)=>/^(elite\/([a-z0-9]+-)?)?(sleep|wake)$/.test(name);
-/**
- * Files only a hero's push plays (card anim-ser-empurrado: the mendigo's shoved, 8 pages of 768², ~19 MB of video
- * memory): left out of the round's loads and asked on the first push (queueEnemyShoved); a run nobody pushes in never
- * loads them.
- */
-export const onPushEnemyFile=(name:string)=>/^(elite\/)?shoved$/.test(name);
-/**
- * Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. `which`:
- * the round's ('round', without the push-only files), the push-only ones ('push') or both ('all', to release them).
- */
+/** Every page of every drawn file of enemy art `id`; [] without its piece. 'round' leaves out onPushEnemyFile's. */
 export function enemyPieceLoads(id:string,which:'round'|'push'|'all'='round'):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
-    if(unusedEnemyFile(name))continue;
-    if(which!=='all'&&onPushEnemyFile(name)!==(which==='push'))continue;
+    if(unusedEnemyFile(name)||which!=='all'&&onPushEnemyFile(name)!==(which==='push'))continue;
     // An elite layer that is its base's own file (mendigo.ts: the elite keeps the loop) loads nothing: drawing the same
     // sheet over itself shows nothing new, and a second texture would double its video memory.
     if(name.startsWith('elite/')&&piece.files[name.slice(6)]===file)continue;
@@ -315,37 +305,14 @@ export function queueEnemyArt(scene:Phaser.Scene,requested:string):boolean{
   let seen=asked.get(scene);if(!seen){seen=new Set();asked.set(scene,seen);}
   if(seen.has(id))return false;
   seen.add(id);
-  let queued=false;
-  for(const l of enemyPieceLoads(id)){
-    if(scene.textures.exists(l.key))continue;
-    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
-  }
-  if(queued&&!scene.load.isLoading())scene.load.start();
-  return queued;
-}
-/**
- * The push-only sheets of enemy art `id` (onPushEnemyFile), asked by applyEnemyArt on the first push that finds them
- * missing; once per scene. Until they load the pushed enemy keeps walking (its shoved drops, like any sheet on its way).
- */
-const askedPush=new WeakMap<object,Set<string>>();
-export function queueEnemyShoved(scene:Phaser.Scene,id:string):boolean{
-  let seen=askedPush.get(scene);if(!seen){seen=new Set();askedPush.set(scene,seen);}
-  if(seen.has(id)||!scene.load)return false;
-  seen.add(id);
-  let queued=false;
-  for(const l of enemyPieceLoads(id,'push')){
-    if(scene.textures.exists(l.key))continue;
-    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
-  }
-  if(queued&&!scene.load.isLoading())scene.load.start();
-  return queued;
+  return queueSheets(scene,enemyPieceLoads(id));
 }
 /**
  * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
  * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
  */
 export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
-  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);askedPush.get(scene)?.delete(id);
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);forgetEnemyShoved(scene,id);
   let removed=false;
   for(const l of enemyPieceLoads(id,'all'))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
   return removed;
@@ -694,11 +661,9 @@ export function pieceAction(piece:ArtPiece,action:string):string|undefined{
 }
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
-  // A hit never starts while another action plays, and the same action already playing is not restarted (but a
-  // swing that comes back near its end, SWING_RESTART).
-  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
-  // A body knocked down (shoved, card anim-ser-empurrado) gets up before it swings again; a new shove waits for its end.
-  if(s.action==='shoved'&&now<s.end)return false;
+  // A hit never starts while another action plays (nothing over a shoved), and the same action already playing is not
+  // restarted (but a swing that comes back near its end, SWING_RESTART).
+  if(s.action!==undefined&&now<s.end&&(action==='hit'||s.action==='shoved'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
   const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
   if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
   const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
@@ -714,9 +679,7 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 }
 
 // ---------- Phaser side: per-enemy state, kept off the actor so layers.ts changes stay tiny ----------
-interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
-  /** Whether the actor carried a push mark (EnemyView.pushed) on its last draw: a new one starts its shoved. */
-  pushedOn?:boolean;
+interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;pushedOn?:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
@@ -842,14 +805,11 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // An elite-only figure (ownElite) is its own elite: no elite layer to wait for, its own height.
   const elite=actor.elite&&!ownElite(piece);
   const s=stateOf(image),loop=loopAnim(piece,moving,elite,actor.bossPhase,actor.act);
-  // Card anim-ser-empurrado: a hero's walk pushing it (actor.pushed, from the pusher to it) plays its shoved once from
-  // the push's start, facing the pusher, and holds that row while it plays (the push walks it backwards).
-  const pushed=actor.pushed;
-  // The sheet loads on the first push (queueEnemyShoved): that one drops below, the next ones play.
-  if(pushed&&!s.pushedOn&&piece.files.shoved&&!image.scene.textures.exists(enemyArtKey(id,'shoved',0,artPages(piece.files.shoved).length)))queueEnemyShoved(image.scene,id);
-  if(pushed&&!s.pushedOn&&loop&&startAction(s,piece,'shoved',now))s.row=facingRow(-pushed.x,-pushed.y,view,s.row);
-  s.pushedOn=!!pushed;
-  const shoved=s.action==='shoved'&&now<s.end;
+  // Card anim-ser-empurrado: a new push (actor.pushed, pusher → it) loads its shoved (the first drops) and plays it once,
+  // facing the pusher, holding that row while it plays (the push walks it backwards).
+  const pushed=actor.pushed,push=pushed&&!s.pushedOn;s.pushedOn=!!pushed;
+  if(push&&piece.files.shoved)queueEnemyShoved(image.scene,id,enemyPieceLoads(id,'push'));
+  if(push&&loop&&startAction(s,piece,'shoved',now))s.row=facingRow(-pushed.x,-pushed.y,view,s.row);const shoved=s.action==='shoved'&&now<s.end;
   if(!shoved&&(moving||s.row<0))s.row=facingRow(dx,dy,view,s.row);
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.

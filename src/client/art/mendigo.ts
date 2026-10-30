@@ -8,6 +8,7 @@
  * renderer cai no laço (golpe) e no poof (morte). Empurrado por um herói: shoved nas 8 direções (cai e levanta). As mesmas folhas servem de camada de elite (mesma textura, sem
  * memória a mais), para a elite ter laço. Uma peça só: a horda inteira carrega UMA arte (a textura GPU cai).
  */
+import type Phaser from 'phaser';
 import {WAVE_BOSS_IDS,roleOf} from '../../rules/index.ts';
 import {artPiece,type ArtFile,type ArtIndex,type ArtPiece} from './manifest.ts';
 
@@ -45,3 +46,31 @@ export function withMendigo(index:ArtIndex):ArtIndex{
   const piece:ArtPiece={kind:'animations',files:Object.fromEntries(Object.entries(FILES).flatMap(([a,f])=>[[a,f],[`elite/${a}`,f]]))};
   return {...index,groups:{...index.groups,inimigos:{...g,pieces:{...g.pieces,[MENDIGO]:piece}}}};
 }
+
+/**
+ * Arquivos que só o empurrão toca (card anim-ser-empurrado: o shoved do mendigo, 8 páginas de 768², ~19 MB de memória
+ * de vídeo): fora das cargas da rodada (horde-art.ts enemyPieceLoads) e pedidos no primeiro empurrão (queueEnemyShoved).
+ */
+export const onPushEnemyFile=(name:string)=>/^(elite\/)?shoved$/.test(name);
+interface SheetLoad {key:string;url:string;cell:[number,number]}
+/** Enfileira as folhas que ainda não existem e liga o loader; true quando enfileirou alguma. */
+export function queueSheets(scene:Phaser.Scene,loads:readonly SheetLoad[]):boolean{
+  let queued=false;
+  for(const l of loads){
+    if(scene.textures.exists(l.key))continue;
+    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
+  }
+  if(queued&&!scene.load.isLoading())scene.load.start();
+  return queued;
+}
+/** As folhas do empurrão do inimigo `id` (`loads`: enemyPieceLoads(id,'push')), uma vez por cena. Até carregarem, o
+ * empurrado segue andando (o shoved cai, como qualquer folha a caminho). */
+const askedPush=new WeakMap<object,Set<string>>();
+export function queueEnemyShoved(scene:Phaser.Scene,id:string,loads:readonly SheetLoad[]):boolean{
+  let seen=askedPush.get(scene);if(!seen){seen=new Set();askedPush.set(scene,seen);}
+  if(seen.has(id)||!scene.load)return false;
+  seen.add(id);
+  return queueSheets(scene,loads);
+}
+/** horde-art.ts releaseEnemyArt: o `id` pode pedir o empurrão de novo. */
+export const forgetEnemyShoved=(scene:Phaser.Scene,id:string)=>{askedPush.get(scene)?.delete(id);};

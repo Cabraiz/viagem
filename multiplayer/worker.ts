@@ -4,8 +4,6 @@ import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOption
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
 /** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78. */
 const CREATE_BODY_MAX=256;
-/** The 403 for a page outside the allowed origins, read by the lobby as `error`. */
-export const ORIGIN_REFUSED='Este endereço não pode abrir salas. Abre o jogo pelo viagem.cyou.';
 /**
  * A stored row's options as they were created (sala-solo-privada; anything else is dropped). Only for a room restored
  * after a deploy: one created before rodada-legado keeps its waves, wall or automatic weapons to its end.
@@ -33,7 +31,7 @@ export function createDevice(v:unknown):string|undefined{
   const d=(v as {device?:unknown}|null)?.device;
   return typeof d==='string'&&/^[\w-]{8,64}$/.test(d)?d:undefined;
 }
-import { isAllowedOrigin } from './origins.ts';
+import { isAllowedOrigin, ORIGIN_REFUSED } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
 import {RoomIndex,type IndexRow} from './room-index.ts';

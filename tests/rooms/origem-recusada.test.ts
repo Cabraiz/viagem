@@ -4,13 +4,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {register} from 'node:module';
 import {createRoom,lobbyErrorText} from '../../src/client/lobby.ts';
+import {ORIGIN_REFUSED} from '../../multiplayer/origins.ts';
 
 const hooks=`export async function resolve(spec,ctx,next){
   if(spec==='cloudflare:workers')return {url:'data:text/javascript,export class DurableObject{constructor(ctx,env){this.ctx=ctx;this.env=env}}',shortCircuit:true};
   return next(spec,ctx);
 }`;
 register('data:text/javascript,'+encodeURIComponent(hooks));
-const {default:worker,ORIGIN_REFUSED}=await import('../../multiplayer/worker.ts');
+const {default:worker}=await import('../../multiplayer/worker.ts');
 
 const env={ALLOW_LOCAL:'false'} as any;
 const ENDPOINT='https://viagem-salas.viagem.workers.dev';

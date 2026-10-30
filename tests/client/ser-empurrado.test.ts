@@ -7,7 +7,7 @@ import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {artPiece,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {MENDIGO,withMendigo} from '../../src/client/art/mendigo.ts';
-import {applyEnemyArt,enemyArtKey,facingRow,playEnemyAction} from '../../src/client/art/horde-art.ts';
+import {applyEnemyArt,enemyArtKey,enemyPieceLoads,facingRow,playEnemyAction} from '../../src/client/art/horde-art.ts';
 import {hasShoved16,shovedPlan,hasPush16,pushPlan,MOVEMENT16_DURATION} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
@@ -127,4 +127,22 @@ test('the mendigo enemy pushed by a hero plays its shoved once (8 directions), f
   // A swing while it is down waits for it to get up; the held mark does not restart it.
   assert.equal(playEnemyAction(img,MENDIGO,'attack',1400),false);
   a.pushed=undefined;applyEnemyArt(img,a,true,.02,0,1700);assert.match(m.texture.key,/:walk/,'up again: walks');
+});
+
+test('the mendigo shoved is not in the round loads: the first push asks for its 8 lite pages, once',()=>{
+  setArtIndex(withMendigo(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{}}}})));
+  assert.ok(enemyPieceLoads(MENDIGO).every(l=>!l.key.includes(':shoved')),'not preloaded with the round');
+  const m=mockImage(),loaded=new Set<string>(),asked:string[]=[],coming:string[]=[];
+  const walkKeys=enemyPieceLoads(MENDIGO).map(l=>l.key);for(const k of walkKeys)loaded.add(k);
+  Object.assign(m.scene as object,{textures:{exists:(k:string)=>loaded.has(k)},
+    load:{spritesheet:(key:string,url:string)=>{asked.push(url);coming.push(key);},isLoading:()=>true,start(){}}});
+  const img=m as never as Img,a:Parameters<typeof applyEnemyArt>[1]={kind:'bebado',art:MENDIGO,elite:false,phase:0,x:0,y:0};
+  applyEnemyArt(img,a,true,.02,0,0);assert.equal(asked.length,0,'walking: nothing asked');
+  a.pushed={x:1,y:0};applyEnemyArt(img,a,true,.02,0,100);
+  assert.deepEqual(asked,['S','SW','W','NW','N','NE','E','SE'].map(d=>`/art/lite/enemies/mendigo/shoved-${d}.webp`));
+  assert.match(m.texture.key,/:walk/,'that push: the sheet still on its way, it walks');
+  for(const k of coming)loaded.add(k); // the pages arrive
+  a.pushed=undefined;applyEnemyArt(img,a,true,.02,0,300);
+  a.pushed={x:1,y:0};applyEnemyArt(img,a,true,.02,0,400);
+  assert.equal(asked.length,8,'asked once');assert.match(m.texture.key,/:shoved/,'the next push plays it');
 });

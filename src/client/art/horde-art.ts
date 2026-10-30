@@ -238,11 +238,21 @@ export function artLoads():ArtLoad[]{
  * costume layers (the nests' card draws them).
  */
 export const unusedEnemyFile=(name:string)=>/^(elite\/([a-z0-9]+-)?)?(sleep|wake)$/.test(name);
-/** Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
-export function enemyPieceLoads(id:string):ArtLoad[]{
+/**
+ * Files only a hero's push plays (card anim-ser-empurrado: the mendigo's shoved, 8 pages of 768², ~19 MB of video
+ * memory): left out of the round's loads and asked on the first push (queueEnemyShoved); a run nobody pushes in never
+ * loads them.
+ */
+export const onPushEnemyFile=(name:string)=>/^(elite\/)?shoved$/.test(name);
+/**
+ * Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. `which`:
+ * the round's ('round', without the push-only files), the push-only ones ('push') or both ('all', to release them).
+ */
+export function enemyPieceLoads(id:string,which:'round'|'push'|'all'='round'):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue;
+    if(which!=='all'&&onPushEnemyFile(name)!==(which==='push'))continue;
     // An elite layer that is its base's own file (mendigo.ts: the elite keeps the loop) loads nothing: drawing the same
     // sheet over itself shows nothing new, and a second texture would double its video memory.
     if(name.startsWith('elite/')&&piece.files[name.slice(6)]===file)continue;
@@ -314,13 +324,30 @@ export function queueEnemyArt(scene:Phaser.Scene,requested:string):boolean{
   return queued;
 }
 /**
+ * The push-only sheets of enemy art `id` (onPushEnemyFile), asked by applyEnemyArt on the first push that finds them
+ * missing; once per scene. Until they load the pushed enemy keeps walking (its shoved drops, like any sheet on its way).
+ */
+const askedPush=new WeakMap<object,Set<string>>();
+export function queueEnemyShoved(scene:Phaser.Scene,id:string):boolean{
+  let seen=askedPush.get(scene);if(!seen){seen=new Set();askedPush.set(scene,seen);}
+  if(seen.has(id)||!scene.load)return false;
+  seen.add(id);
+  let queued=false;
+  for(const l of enemyPieceLoads(id,'push')){
+    if(scene.textures.exists(l.key))continue;
+    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
+  }
+  if(queued&&!scene.load.isLoading())scene.load.start();
+  return queued;
+}
+/**
  * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
  * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
  */
 export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
-  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);askedPush.get(scene)?.delete(id);
   let removed=false;
-  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  for(const l of enemyPieceLoads(id,'all'))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
   return removed;
 }
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
@@ -818,6 +845,8 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // Card anim-ser-empurrado: a hero's walk pushing it (actor.pushed, from the pusher to it) plays its shoved once from
   // the push's start, facing the pusher, and holds that row while it plays (the push walks it backwards).
   const pushed=actor.pushed;
+  // The sheet loads on the first push (queueEnemyShoved): that one drops below, the next ones play.
+  if(pushed&&!s.pushedOn&&piece.files.shoved&&!image.scene.textures.exists(enemyArtKey(id,'shoved',0,artPages(piece.files.shoved).length)))queueEnemyShoved(image.scene,id);
   if(pushed&&!s.pushedOn&&loop&&startAction(s,piece,'shoved',now))s.row=facingRow(-pushed.x,-pushed.y,view,s.row);
   s.pushedOn=!!pushed;
   const shoved=s.action==='shoved'&&now<s.end;

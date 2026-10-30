@@ -887,3 +887,9 @@ test('velocidade: Só Estou de Passagem keeps its tuned 1.24 u (4 × 0.1 s at th
   assert.equal(heroSpeed(ctx.terrain),2*SPEED,'the walk is 2×');
   assert.ok(dist({x:10,y:10},res.movedTo)<4*.1*heroSpeed(ctx.terrain)-.5,'not stretched by the 2× walk');
 });
+
+test('kits: skill texts call the enemies bichos, never "inimigos" (texto-kits-tiros-dos-bichos)',()=>{
+  assert.match(kitFor('pedreiro')!.skill.effect,/derruba os tiros dos bichos ali/);
+  assert.match(kitFor('faxineira')!.skill.effect,/limpeza dos tiros dos bichos ali/);
+  for(const kit of KITS)assert.doesNotMatch(kit.skill.effect,/inimig/i,kit.classId);
+});

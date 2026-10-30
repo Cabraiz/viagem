@@ -28,8 +28,8 @@ export type PixRefusal='amount'|'grana'|'self'|'target'|'phase'|'pause'|'rate'|'
 export type PixResult={ok:true;to:string;amount:number;grana:number}|{ok:false;reason:PixRefusal};
 /** The refusals in the player's words (the balloon's line). */
 export const PIX_REFUSALS:Readonly<Record<PixRefusal,string>>={
-  amount:'Valor inválido.',grana:'Saldo insuficiente.',self:'PIX pra você mesmo não rola.',target:'Essa pessoa não tá na partida.',
-  phase:'Agora não dá.',pause:'Espera todo mundo escolher a carta.',rate:'Calma, um PIX de cada vez.',duplicate:'Esse PIX já foi.',
+  amount:'Valor inválido.',grana:'Saldo insuficiente.',self:'Pix pra você mesmo não rola.',target:'Essa pessoa não tá na partida.',
+  phase:'Agora não dá.',pause:'Espera todo mundo escolher a carta.',rate:'Calma, um Pix de cada vez.',duplicate:'Esse Pix já foi.',
 };
 
 /**

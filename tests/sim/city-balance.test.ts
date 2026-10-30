@@ -340,9 +340,10 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // The city again for comeca-armado-e-levanta-seguro (a verde crate by each hero's spawn, the start grace, only crates
 // reached on foot, the revive's shove).
 // The city again for economia-caixa-e-forja (the bico's shift by seat, bicoSaldo: 4 heroes hold R$ 20, not 40).
+// bico-sem-limite-pix-voando drops that limit (the shops never close): the bico pays as long as someone works.
 // levelup-espalhado (levels 2/3 cheaper, a solo run's XP ×1.5 below level 3) leaves it: the 4-player neutral run to
 // tick 4000 hashes the same with the old curve.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a98f622f0ffe608d',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'f3272f8a67e8e11f',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

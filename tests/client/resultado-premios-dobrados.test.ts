@@ -4,8 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {HUD_CSS} from './hud-css.ts';
 
-const css=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8');
+const css=HUD_CSS;
 const rules=[...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m=>({sel:m[1].replace(/\/\*[\s\S]*?\*\//g,'').trim(),body:m[2]}));
 
 test('result prizes: none is display:none; the folded ones stay readable and open with a tap',()=>{

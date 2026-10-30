@@ -5,10 +5,13 @@
  *   leaving the slot (`-sacando`) while money leaves (hero or critter); else the provisional figure (figures.ts);
  * - on the ground, the area where a hero holds it (BANCO.holdR) and a ring with the saldo left;
  * - over it, a tag: the bank's short name and its saldo, "bicho sacando!" (Cone) or "SEM CÉDULAS m:ss";
- * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, dark away for a critter) and the
+ * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, darker away for a critter) and the
  *   "RETIRE SEU DINHEIRO" beep, now and then one of the screen's lines instead (rules.ts BankTracker).
  * Bicos (card bancos-viram-bicos, etapa 2): when the manifest has the bank's shop (bico-art.ts), the pixel-art building
  * stands behind the rings instead of the kiosk, its door lit while a hero works inside.
+ * PIX voando (card bico-sem-limite-pix-voando): with `playerAt`, notes and PIX diamonds spiral around each hero on a
+ * shift and every note paid pops a "+R$ 5" over them (pix.ts); the hero's note out of the screen gives way to them.
+ * Every flying note, diamond and pop is a pooled sprite of the ChatGPT painting (pix.ts PIX_KEY), none drawn in code.
  * Each kiosk draws at its own actor depth and fades while it covers the hero, like the chaveiro's figures. Pure
  * drawing: the scene pushes each view's banks and calls update every frame.
  */
@@ -18,15 +21,16 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
-import {BANCO,bicoSaldo} from '../../../rules/index.ts';
-import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
+import {BANCO} from '../../../rules/index.ts';
+import {ATM_HALF,ATM_TOP,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
-import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {BankTracker,BEEP_MS,LINE_MS,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
 import {bicoTag,type BicoTagLook} from '../../hud/bicos.ts';
+import {MoneyFx} from './money-fx.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -44,8 +48,8 @@ const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined;
   /** Bicos: a player's name on the shop's tag ("Você" for the local one); absent: "1 no turno". */
   nameOf?:(id:string)=>string;
-  /** The room's seats (bots count): the saldo ring is whole at bicoSaldo(seats); absent: the solo's shift. */
-  seats?:()=>number}
+  /** A player's foot in the world (the local one predicted): the PIX fly around who is on a shift; absent: no PIX. */
+  playerAt?:(id:string)=>Pt|undefined}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
@@ -64,12 +68,13 @@ interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Te
 export class BankRenderer {
   private scene:Phaser.Scene;
   private options:BankRendererOptions;
-  private fx:Phaser.GameObjects.Graphics;
   private draws=new Map<string,BankDraw>();
   private state=new BankTracker();
   private now=0;
   private q:Pt={x:0,y:0};
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+  /** The flying money: the banks' notes and the PIX around the heroes on a shift (money-fx.ts). */
+  private fx:MoneyFx;
   /** Reused every frame (no allocation per frame): the banks in view. */
   private live=new Set<string>();
   /** The ATM's faces per name, screen look and view (boxFaces is pure). */
@@ -84,10 +89,10 @@ export class BankRenderer {
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
-    this.fx=scene.add.graphics().setDepth(FX_DEPTH);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
+    this.fx=new MoneyFx(scene,options,FX_DEPTH,mix(0xffffff,c.breu,.45));
     // The fonts came: the tag and the balloon take their style again on the next frame (the balloon by its text).
     whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}});
     this.queueArt();
@@ -103,6 +108,7 @@ export class BankRenderer {
     for(const s of bankSheets(index))if(!this.scene.textures.exists(s.key)){
       this.scene.load.spritesheet(s.key,s.url,{frameWidth:s.cell[0],frameHeight:s.cell[1]});queued=true;
     }
+    if(this.fx.queue())queued=true;
     if(queued&&!this.scene.load.isLoading())this.scene.load.start();
   }
   /** The bank's art once all its textures are in. */
@@ -125,7 +131,9 @@ export class BankRenderer {
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
   /** `events`: the room's view events (bank-cash); the sandbox's fake banks have none (the saldo's drop stands in). */
-  push(banks:readonly BankView[]|undefined,tick:number,events?:readonly StampedEvent[]){this.state.push(banks,tick,this.now,events);}
+  push(banks:readonly BankView[]|undefined,tick:number,events?:readonly StampedEvent[]){
+    this.state.push(banks,tick,this.now,events);this.fx.cash(this.state,this.now);
+  }
 
   /** After a view turn or a depth re-base. */
   refresh(){this.update(this.now);}
@@ -133,7 +141,7 @@ export class BankRenderer {
   update(time:number){
     this.now=time;
     const st=this.state;st.settle(time);
-    this.fx.clear();
+    this.fx.begin();
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     const live=this.live;live.clear();
     for(const b of st.banks){
@@ -156,6 +164,7 @@ export class BankRenderer {
       this.drawBalloon(b,d,k);
     }
     for(const n of st.notes)this.drawNote(n,k);
+    this.fx.end(st.banks,time,k);
     for(const [id,d] of this.draws)if(!live.has(id)){this.destroyDraw(d);this.draws.delete(id);}
   }
 
@@ -286,7 +295,7 @@ export class BankRenderer {
    * piece is drawn once in the bank's local space and frozen (TriBand); per frame it only moves and the saldo ring scales.
    */
   private drawGround(b:BankView,d:BankDraw,k:number,shadow=true){
-    const full=bicoSaldo(this.options.seats?.()??1),g=d.ground,keys=groundKeys(b,k,this.options.projector.view,full),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
+    const g=d.ground,keys=groundKeys(b,k,this.options.projector.view),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
     if(g.keys.hold!==keys.hold||!g.hold){
       g.keys.hold=keys.hold;g.hold?.destroy();
       const hold=BANCO.holdR*42,paying=b.state==='sacando';
@@ -294,7 +303,7 @@ export class BankRenderer {
     }
     if(g.keys.ring!==keys.ring||!g.ring){
       g.keys.ring=keys.ring;g.ring?.destroy();
-      const r=1.25*M*42,share=saldoShare(b,full),color=b.state==='bicho'?c.cone:c.cartolina;
+      const r=1.25*M*42,share=saldoShare(b),color=b.state==='bicho'?c.cone:c.cartolina;
       g.ring=TriBand.make(this.scene,gr=>{
         gr.lineStyle(7*k,c.breu,.55).strokeEllipse(0,0,r*2,r);
         if(share<=0)return;
@@ -333,7 +342,7 @@ export class BankRenderer {
   /** The tag over the shop (hud/bicos.ts bicoTag): its gig and saldo, who is on the shift, the robbery, the closed sign. */
   private drawTag(b:BankView,d:BankDraw,k:number){
     const nameOf=this.options.nameOf;
-    const {look,text}=bicoTag(b,emptySeconds(b,this.state.tick),id=>nameOf?.(id)??'1');
+    const {look,text}=bicoTag(b,id=>nameOf?.(id)??'1');
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
     const p=this.topAt(b,-.2*M,.5*M);
@@ -348,19 +357,9 @@ export class BankRenderer {
     const p=this.topAt(b,0,0),lift=(this.options.reduced?0:6*Math.min(1,t*4))*k;
     d.balloon.setPosition(p.x,p.y-(d.tag.displayHeight+6*k)-lift).setScale(k).setAlpha(t>.8?Math.max(0,(1-t)*5):1).setVisible(true);
   }
-  /** A R$ 2 note out of the screen: up and fading for a hero, away and down, darker, for a critter. */
+  /** A R$ 2 note out of the screen: up and fading for a hero, away and down, darker, for a critter (money-fx.ts). */
   private drawNote(n:FlyingNote,k:number){
     const b=this.state.banks.find(x=>x.id===n.bank);if(!b)return;
-    const t=(this.now-n.born)/NOTE_MS;if(t<0||t>=1)return;
-    const start=this.screenAt(b),hero=n.by==='hero',reduced=this.options.reduced;
-    const dx=(hero?(n.slot-1)*14:28+n.slot*10)*k*t,dy=(hero?-70*t:-24*t+50*t*t)*k;
-    const x=start.x+dx,y=start.y+dy,w=20*k,h=11*k,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
-    const g=this.fx,cos=Math.cos(tilt),sin=Math.sin(tilt);
-    const corner=(u:number,v:number)=>({x:x+u*cos-v*sin,y:y+u*sin+v*cos});
-    const quad=[corner(-w/2,-h/2),corner(w/2,-h/2),corner(w/2,h/2),corner(-w/2,h/2)];
-    g.fillStyle(hero?BANK_COLORS.note:mix(BANK_COLORS.note,this.c.breu,.45),a).fillPoints(quad,true);
-    g.lineStyle(1.4*k,this.c.breu,a).strokePoints(quad,true);
-    // the "2" in the middle: two strokes are enough at this size
-    g.fillStyle(this.c.breu,a).fillCircle(x,y,2.6*k);
+    const t=this.fx.noteAt(n,b,this.now);if(t>=0)this.fx.note(n,t,this.screenAt(b),this.now,k);
   }
 }

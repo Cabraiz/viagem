@@ -35,7 +35,8 @@ test('the delivered atlas has every effect cell at its bake size, inside the ima
   const art=JSON.parse(readFileSync(FX+'torres-fx.json','utf8')) as FxArtFrames;
   const meta=await sharp(FX+'torres-fx.webp').metadata();
   assert.deepEqual(Object.keys(art.frames).sort(),FRAMES.map(f=>f.name).sort());
-  const src=readFileSync('src/client/render/towers/towers.ts','utf8');
+  // corte C2: the effect and crater frame names moved from towers.ts to tower-tuning.ts and tower-base.ts
+  const src=['tower-tuning.ts','tower-base.ts'].map(f=>readFileSync('src/client/render/towers/'+f,'utf8')).join('\n');
   for(const f of FRAMES){
     const r=art.frames[f.name]!;
     assert.deepEqual([r.w,r.h],[f.w,f.h],f.name);

@@ -5,11 +5,12 @@
  * standing hero in the ring taps Trabalhar (PlayerInput.work) and goes in; inside he earns R$/s, does not fire and takes
  * no hit; moving (or letting go of Trabalhar) is quitting. Every name, line and number lives here so the user can veto
  * one by changing one line.
- * - A shift (expediente) is BICO.saldo R$; spent, the shop closes ("O dono fugiu com o caixa") for BANCO.recargaS and
- *   opens again with ANOTHER gig.
+ * - A shift has no limit (card NEW-20261029-ORQ-bico-sem-limite-pix-voando; user, 29/10: "E trabalhar não deveria ter
+ *   limite, foco é que quando trabalha aparece dinheiros (pix) em volta"): the shop never runs out nor closes; the brakes
+ *   are the queue, the manager, not firing and leaving when moving. The PIX fly around whoever works (render/bancos/pix.ts).
  * - Each critter in the queue (within BANCO.filaR of the door) cuts the pay by BICO.filaCorte; at BICO.filaExpulsa the
  *   manager throws everyone out, slowed for BICO.expulsoS and kept out for BICO.banidoS.
- * - A critter alone at the shop takes the shift's money like at the ATM (BANCO.bichoR, bichoSaqueS, Cliente Prime).
+ * - A critter alone at the shop withdraws like at the ATM (BANCO.bichoR, bichoSaqueS, Cliente Prime); the shop stays open.
  */
 
 import type {BicoId} from '../contract/index.ts';
@@ -37,8 +38,6 @@ export const BICOS:Readonly<Record<BicoId,BicoDef>>=Object.freeze({
   influencer:{nome:'Influencer de Cupom',frase:'Grava "link na bio" pra 3 seguidores. Dois são bichos.',arte:'24-7'},
   pesquisa:{nome:'Pesquisa de Satisfação',frase:'De 0 a 10, quanto você recomendaria ser mordido?',arte:'call-center'},
 });
-/** The closed shop's sign while it waits to open with another gig. */
-export const BICO_FECHADO='O dono fugiu com o caixa';
 export const BICO_EXPULSO='O gerente te botou pra fora';
 
 /**
@@ -48,26 +47,19 @@ export const BICO_EXPULSO='O gerente te botou pra fora';
  * so porSegundo went 1 → 2 (dupla .6 → 1.2). Production mode (chaveiro + ninhos + manual) 31.4/23.2/23.8 % of the Grana
  * (1p/3p/6p) against the ATMs' 25/21/28.3 %; the default flags 13.5/34.7/27.6 % against 9.2/18.5/20.7 %
  * (evidence/NEW-20261024-ORQ-bancos-viram-bicos/bench-bicos*.json; 1, 1.5 and 1.8 R$/s beside it).
+ * No limit (bico-sem-limite-pix-voando, same bench, default flags): 15.9/31.8/40.6 % (was 16.1/19.6/17.1 %), wins
+ * 5/15/6 of 16 (was 5/14/4). 6p is over only in the runs it loses by round ~5 (55 %; the won ones 31 %), and a lower
+ * rate does not bring it down: 2/.9 gave 41.1 % (3p wins 13), 1.6/1 gave 45.3 % (6p wins 2). So 2/1.2 stays.
  * - porSegundo: R$/s of one hero alone in a shift; dupla: R$/s EACH when two or more work it ("o chefe divide o salário").
  * - nota: the pay goes into the wallet in notes of this much (and each note lures the critters around, BANCO.iscaR).
- * - saldo: R$ in a shift; spent, the shop closes for BANCO.recargaS and opens with another gig. The solo's
- *   shift: a team gets bicoSaldo(seats) (NEW-20261029-ORQ-economia-caixa-e-forja, auditoria-economia-29-10).
- *   Keep BANCO.saldo equal (the client's ring reads it).
  * - filaCorte: pay × (1 − filaCorte × critters in the queue); filaExpulsa critters in it throw everyone out.
  * - expulsoS: an expelled hero walks slowed (PLAYER_SLOW_MULT) this long; banidoS: he cannot clock in again this long.
  * - lote: the shop needs this clear (u, a disc around the ring: the building stands behind it, door to the camera, in
  *   any of its 4 turns); the ring points with it come first (sim/bancos planBanks), the others only as a fallback.
  */
 export const BICO=Object.freeze({
-  porSegundo:2,dupla:1.2,nota:5,saldo:40,
+  porSegundo:2,dupla:1.2,nota:5,
   filaCorte:.25,filaExpulsa:3,
   expulsoS:1,banidoS:3,
   lote:4,
 });
-/**
- * R$ in a shift for a team of `seats` heroes (bots count): BICO.saldo/√seats, down to whole notes (1p 40, 2p 25, 3–4p 20,
- * 5–6p 15). At 40 for everyone the shops gave 48–53 % of the 3p/6p Grana (every bot drains one each reopen) and 31 % of
- * the 1p's; a flat 20 brought the 3p to 30 % but the 1p to 17 % and its wins 1/4 → 0/4 (the solo drains them too).
- */
-export const bicoSaldo=(seats:number)=>Math.max(BICO.nota,Math.floor(BICO.saldo/Math.sqrt(Math.max(1,seats))/BICO.nota)*BICO.nota);
-

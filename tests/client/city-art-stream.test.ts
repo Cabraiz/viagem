@@ -120,7 +120,8 @@ test('relief albedo joins the running loader (the stream never lets it reach COM
 test('towers.ts: a defense made before its sheet is not drawn until it lands (fetched first), procedural only after TOWER_ART_WAIT_MS',()=>{
   const src=read('render/towers/towers.ts');
   assert.match(src,/if\(t\.artWait\)\{t\.hideUntil=this\.now\+TOWER_ART_WAIT_MS;this\.o\.needArt\?\.\(view\.kind\);\}/);
-  const draw=src.slice(src.indexOf('  private drawTower('),src.indexOf('  private sortTower('));
+  const drawSrc=read('render/towers/tower-draw.ts'); // corte C2: drawing a defense moved out of towers.ts
+  const draw=drawSrc.slice(drawSrc.indexOf('  protected drawTower('),drawSrc.indexOf('  protected sortTower('));
   assert.match(draw,/if\(this\.scene\.textures\.exists\(towerBaseKey\(v\.kind\)\)\)\{t\.artWait=false;t\.art=true;t\.drawnPhase='';\}/,'adopts the sheet when it lands');
   assert.match(draw,/else if\(this\.now<t\.hideUntil\)\{if\(t\.base\.visible\)\{t\.base\.setVisible\(false\);t\.weapon\.setVisible\(false\);\}return;\}/,'unseen meanwhile');
   const scene=read('scene.ts');

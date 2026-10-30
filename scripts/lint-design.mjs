@@ -16,7 +16,7 @@ import {fileURLToPath} from 'node:url';
 
 const TOKENS='src/client/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
-const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css','src/client/hud/fone.css','src/client/hud/pausa.css']);
+const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/hud/css/topo.css','src/client/hud/css/oferta.css','src/client/hud/css/resultado.css','src/client/hud/css/bordas.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css','src/client/hud/fone.css','src/client/hud/pausa.css']);
 /**
  * O resto do que aparece na partida (inventário, oferta, missão, chefão, perfis, Minerva, Pix, HUD da cidade, fortify;
  * auditoria-legibilidade L6): piso de 12 px, o que essas telas já usam (max(12px,…)).

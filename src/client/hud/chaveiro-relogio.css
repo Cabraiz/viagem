@@ -27,3 +27,6 @@
    phone's team column steps down under it as it does under the boss bar. */
 .rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden])){flex-wrap:wrap}
 @media (min-height:501px){.rh .rh-top:has(>.rh-chaveiro-chegou:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 180px)}}
+/* Card relogio-do-chaveiro-com-legenda: the phone's bar now reads "Chaveiro 7:03"; on a narrow phone the "+216 s" after
+   it would burst the bar, so there it goes (the bar's screen-reader words keep "Uno apanhou: chaveiro +N s"). */
+@media (max-width:419px){.rh[data-hud=fone] .rh-camp-relogio-mais{display:none}}

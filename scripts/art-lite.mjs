@@ -317,13 +317,19 @@ if(kinds.includes('sprites-nivel')){
     for(const job of levelJobs(f)){
       const key=`${job.dir}/${f.file}`,out=join(ROOT,'public/art/lite',key),entry=manifest.files[key];wanted.add(key);
       const source=readFileSync(join(ROOT,'public/art/sprites',f.file));
-      if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(job.lite)&&entry.frames===job.frames&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+      if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(job.lite)&&entry.frames===job.frames&&entry.shownPsnr>=CITY_MIN_PSNR&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
       stale.push(key);
       if(args.has('--check'))continue;
       const s=await levelSheet(await decode(join(ROOT,'public/art/sprites',f.file)),job);
-      const lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer();
+      // The copy is at the size a phone draws it already: its psnr is the shown one. A busy 64 px pose (dance128,
+      // vendedor-praia) loses more at quality 90: the next setting up to CITY_MIN_PSNR, lossless last (as the city).
+      let lite,shown;
+      for(const webp of [WEBP,{...WEBP,quality:95},{lossless:true,effort:WEBP.effort}]){
+        lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(webp).toBuffer();
+        shown=psnr(s.data,await rgba(lite));
+        if(shown>=CITY_MIN_PSNR)break;
+      }
       mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
-      const shown=psnr(s.data,await rgba(lite)); // the copy is at the size a phone draws it already
       manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,liteCell:job.lite,frames:job.frames,psnr:shown,shownPsnr:shown};
       console.error(key,`${Math.round(source.length/1024)} → ${Math.round(lite.length/1024)} KB`,`cell ${job.lite.join('×')}, ${job.frames} frames`,`psnr ${shown} dB`);
       save();

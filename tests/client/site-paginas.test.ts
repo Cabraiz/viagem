@@ -75,7 +75,7 @@ test('privacy pages: /sobre/ in the footer and the sitemap, og and twitter in th
     assert.match(html,/<a class="back" href="\/sobre\/">/,dir);
     assert.match(html,new RegExp(`<meta property="og:url" content="https://viagem\.cyou/${dir}/">`),dir);
     assert.match(html,/<meta property="og:title" content="viagem · [^"]+">/,dir);
-    assert.match(html,/<meta property="og:image" content="https:\/\/viagem\.cyou\/og\.jpg\?v=2b">/,dir);
+    assert.match(html,/<meta property="og:image" content="https:\/\/viagem\.cyou\/og\.jpg\?v=2c">/,dir);
     assert.match(html,/<meta name="twitter:card" content="summary_large_image">/,dir);
   }
   assert.match(fs.readFileSync('public/privacidade/index.html','utf8'),/<meta property="og:locale" content="pt_BR">/);

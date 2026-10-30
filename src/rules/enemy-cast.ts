@@ -2,10 +2,11 @@
  * Lookups over the roster (enemy-roster.ts) and the role profiles (enemy-roles.ts), shared by the sim (enemy defs, the
  * director's rotation) and the client (fallback texture, death pop, cause copy, kill-cam). Pure.
  */
-import {ROSTER,type RosterEntry} from './enemy-roster.ts';
+import {HELD_ROSTER,ROSTER,type RosterEntry} from './enemy-roster.ts';
 import {ROLE_PROFILES,isLegacyKind,type EnemyRole,type LegacyKind,type RoleProfile} from './enemy-roles.ts';
 
-const BY_ID:ReadonlyMap<string,RosterEntry>=new Map(ROSTER.map(e=>[e.id,e]));
+// The held entries (out of the wave draw) are found by id too, so the sim can spawn them (tests, debug, a flag).
+const BY_ID:ReadonlyMap<string,RosterEntry>=new Map([...ROSTER,...HELD_ROSTER].map(e=>[e.id,e]));
 /** Every roster id, the nine hand-tuned kinds first, then the packs in order. */
 export const ROSTER_IDS:readonly string[]=Object.freeze(ROSTER.map(e=>e.id));
 export const rosterEntry=(id:string):RosterEntry|undefined=>BY_ID.get(id);

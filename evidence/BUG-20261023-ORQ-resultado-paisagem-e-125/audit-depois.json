@@ -1,0 +1,2280 @@
+[
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta do round, 6p, 4 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta de nível no intervalo, 1p, 3 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta de nível no intervalo, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate com 2 níveis no chip, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, painel compacto aberto, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud intervalo com 2 caídos (o último do time)",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, faixa aberta com 2 caídos",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta de coxinha",
+  "problems": [
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud caído, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud chefe, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, conta e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, conta paga e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud setas na borda e minimapa (bordas), 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud setas na borda, vista 2",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + forja aberta",
+  "problems": [
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + corneta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + oferta do round",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: forja aberta + caídos e chefe fora da tela",
+  "problems": [
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: oferta de nível no intervalo + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: painel de nível aberto em combate + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: kill-cam + caídos e chefe fora",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud forja no acampamento, 6p",
+  "problems": [
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud corneta longe da base, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud muralha baixa no round, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud faixa do apagão, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud kill-cam do último bicho, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica andar (6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica XP (6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica chip (6p, 2 níveis)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica resgatar (6p, 1 caído)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica coleta (intervalo, 6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "dica andar + setas e minimapa",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "emotes abertos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "balões",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta, 4 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud oferta, 3 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, painel compacto, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud carimbo LEVEI no intervalo",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud carimbo LEVEI em combate",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com forja aberta",
+  "problems": [
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com painel de nível aberta",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com combate (round) aberta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com muralha baixa aberta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, combate",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, dica andar na vaga",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, muralha baixa",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud setas na borda, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "botão de habilidade",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "botão de habilidade, recarga",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "botão de habilidade, nota",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta do round, 6p, 4 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta de nível no intervalo, 1p, 3 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta de nível no intervalo, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate com 2 níveis no chip, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, painel compacto aberto, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud intervalo com 2 caídos (o último do time)",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, faixa aberta com 2 caídos",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta de coxinha",
+  "problems": [
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud caído, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud chefe, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, conta e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, conta paga e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud setas na borda e minimapa (bordas), 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud setas na borda, vista 2",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + forja aberta",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 155x21)",
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + corneta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + oferta do round",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: forja aberta + caídos e chefe fora da tela",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 155x21)",
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: oferta de nível no intervalo + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: painel de nível aberto em combate + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: kill-cam + caídos e chefe fora",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud forja no acampamento, 6p",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 155x21)",
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud corneta longe da base, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud muralha baixa no round, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud faixa do apagão, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud kill-cam do último bicho, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica andar (6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica XP (6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica chip (6p, 2 níveis)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica resgatar (6p, 1 caído)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica coleta (intervalo, 6p)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "dica andar + setas e minimapa",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "emotes abertos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "balões",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta, 4 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud oferta, 3 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, painel compacto, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud carimbo LEVEI no intervalo",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "janela do intervalo com 100% da altura (> 32%)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud carimbo LEVEI em combate",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com forja aberta",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 155x21)",
+   "alvo de toque 354x40: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 354x40: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 354x40: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com painel de nível aberta",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com combate (round) aberta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com muralha baixa aberta",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, combate",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, dica andar na vaga",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, muralha baixa",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud setas na borda, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "botão de habilidade",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "botão de habilidade, recarga",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "botão de habilidade, nota",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta do round, 6p, 4 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta de nível no intervalo, 1p, 3 cartas",
+  "problems": [
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12.6923px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta de nível no intervalo, 6p",
+  "problems": [
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12.6923px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate com 2 níveis no chip, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, painel compacto aberto, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud intervalo com 2 caídos (o último do time)",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, faixa aberta com 2 caídos",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta de coxinha",
+  "problems": [
+   "alvo de toque 62x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud caído, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud chefe, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, conta e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, conta paga e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud setas na borda e minimapa (bordas), 6p",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud setas na borda, vista 2",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + forja aberta",
+  "problems": [
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + corneta",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "soma: minimapa + base + setas + oferta do round",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12.1402px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12.1402px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12.1402px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: forja aberta + caídos e chefe fora da tela",
+  "problems": [
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: oferta de nível no intervalo + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: painel de nível aberto em combate + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: kill-cam + caídos e chefe fora",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud forja no acampamento, 6p",
+  "problems": [
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud corneta longe da base, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud muralha baixa no round, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud faixa do apagão, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud kill-cam do último bicho, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica andar (6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica XP (6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica chip (6p, 2 níveis)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica resgatar (6p, 1 caído)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica coleta (intervalo, 6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "dica andar + setas e minimapa",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "emotes abertos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "balões",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta, 4 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud oferta, 3 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, painel compacto, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud carimbo LEVEI no intervalo",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "alvo de toque 62x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud carimbo LEVEI em combate",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com forja aberta",
+  "problems": [
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com painel de nível aberta",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com combate (round) aberta",
+  "problems": [
+   "fichas do topo se cruzam: explore-camera-hint × rh-minimap",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "janela: balão \"Gira no intervalo\" com muralha baixa aberta",
+  "problems": [
+   "fichas do topo se cruzam: explore-camera-hint × rh-minimap",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, combate",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, dica andar na vaga",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, muralha baixa",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "botão de habilidade",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "botão de habilidade, recarga",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "botão de habilidade, nota",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta do round, 6p, 4 cartas",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta de nível no intervalo, 1p, 3 cartas",
+  "problems": [
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12.6923px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta de nível no intervalo, 6p",
+  "problems": [
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12.6923px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12.6923px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12.6923px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate com 2 níveis no chip, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, painel compacto aberto, 6p",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud intervalo com 2 caídos (o último do time)",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, faixa aberta com 2 caídos",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"13 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"17 sKaique\"",
+   "aviso de queda atrás da oferta: rh-alert: \"Zé do Pix e Kaique Mil Grau \""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta de coxinha",
+  "problems": [
+   "alvo de toque 73x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud caído, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud chefe, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, conta e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, conta paga e vaquinha",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud setas na borda e minimapa (bordas), 6p",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud setas na borda, vista 2",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + forja aberta",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 135x21)",
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + corneta",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "soma: minimapa + base + setas + oferta do round",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: forja aberta + caídos e chefe fora da tela",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 135x21)",
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: oferta de nível no intervalo + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: painel de nível aberto em combate + caídos e chefe fora",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: kill-cam + caídos e chefe fora",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud forja no acampamento, 6p",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 135x21)",
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud corneta longe da base, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud muralha baixa no round, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud faixa do apagão, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud kill-cam do último bicho, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica andar (6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica XP (6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica chip (6p, 2 níveis)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica resgatar (6p, 1 caído)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica coleta (intervalo, 6p)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "dica andar + setas e minimapa",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "emotes abertos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "balões",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta, 4 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud oferta, 3 cartas, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, painel compacto, textos mais longos",
+  "problems": [
+   "cena não montou: page.evaluate: TypeError: Cannot set properties of null (setting 'textContent')"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud carimbo LEVEI no intervalo",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 3\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Persegue o bicho mais perto.\"",
+   "alvo de toque 73x24: rh-offer-later: \"Depois\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud carimbo LEVEI em combate",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\""
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com forja aberta",
+  "problems": [
+   "reticência: rh-forge-name: \"Torre de Chinelo da Vó\"",
+   "overflow escondendo texto: rh-forge-name: \"Torre de Chinelo da Vó\" (164x22 > 135x21)",
+   "alvo de toque 335x42: rh-forge-tag: \"Massa Corrida e Fé+25%R$ 10L\"",
+   "alvo de toque 335x41: rh-forge-tag: \"Gambiarra+1 nívelR$ 45LEVEI\"",
+   "alvo de toque 335x42: rh-forge-tag rh-forge-blocked: \"Torre de Chinelo da Vó45 sR$\"",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com painel de nível aberta",
+  "problems": [
+   "texto de 12px (< 13): rh-card-rarity: \"Nova\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 1\"",
+   "texto de 12px (< 13): rh-card-value: \"Atravessa uma fila de bichos\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Comum\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 2\"",
+   "texto de 12px (< 13): rh-card-rarity: \"Épica\"",
+   "texto de 12px (< 13): rh-card-level: \"Nív. 6\"",
+   "texto de 12px (< 13): rh-card-value: \"Empurra bichos e bloqueia ti\"",
+   "oferta cobre aliado caído: rh-member: \"14 sZé\"",
+   "oferta cobre aliado caído: rh-member: \"6 sSeu\"",
+   "sem seta: caido",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com combate (round) aberta",
+  "problems": [
+   "fichas do topo se cruzam: explore-camera-hint × rh-minimap",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "janela: balão \"Gira no intervalo\" com muralha baixa aberta",
+  "problems": [
+   "fichas do topo se cruzam: explore-camera-hint × rh-minimap",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, combate",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, dica andar na vaga",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "\"Gira no intervalo\" na vaga de anúncio, muralha baixa",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "botão de habilidade",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "botão de habilidade, recarga",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "botão de habilidade, nota",
+  "problems": []
+ }
+]

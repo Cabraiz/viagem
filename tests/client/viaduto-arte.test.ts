@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CONCRETE_TILE_CELLS,FACES_BARRIER,FACES_BEAM,FACES_CONCRETE,FACES_PILLAR,FACES_ROAD,FACES_SIZE,bandST,ROAD_TILE_CELLS,VIADUCT_PROP_IDS,concreteST,crosswalkTiles,
+import {CONCRETE_TILE_CELLS,FACES_BARRIER,FACES_BEAM,FACES_CAP,FACES_CONCRETE,FACES_PILLAR,capST,FACES_ROAD,FACES_SIZE,bandST,ROAD_TILE_CELLS,VIADUCT_PROP_IDS,concreteST,crosswalkTiles,
   regionUv,roadST,viaductPieces,viaductProps} from '../../src/client/render/city/viaduct.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {overDeck,onRamp,type CityViaduct} from '../../src/maps/index.ts';
@@ -55,8 +55,18 @@ test('a band (barrier, beam, pillar face) runs from the top of its piece to the 
   }
 });
 
+test('the barrier top: s across each parapet and pier cap, t along it inside one tile; a cap reads one segment',()=>{
+  const p=viaductPieces(V,U);
+  for(const q of p.filter(r=>r.kind==='parapet'||r.kind==='cap')){
+    const st=capST(q,U);
+    for(const [s,t] of st)assert.ok(s>=0&&s<=1&&t>=0&&t<=1+1e-9,`${q.kind}: (${s}, ${t}) inside the region`);
+    assert.deepEqual([...new Set(st.map(x=>+x[0].toFixed(6)))].sort(),[0,1],`${q.kind}: s across the piece`);
+    if(q.kind==='cap')for(const [,t] of st)assert.ok(t>0&&t<.25,'a cap stays between two joints');
+  }
+});
+
 test('the atlas regions do not overlap and fit the atlas; coordinates stay inside their region',()=>{
-  const regions=[FACES_ROAD,FACES_CONCRETE,FACES_BARRIER,FACES_BEAM,FACES_PILLAR];
+  const regions=[FACES_ROAD,FACES_CONCRETE,FACES_BARRIER,FACES_BEAM,FACES_PILLAR,FACES_CAP];
   for(const [i,a] of regions.entries()){
     assert.ok(a[0]+a[2]<=FACES_SIZE[0]&&a[1]+a[3]<=FACES_SIZE[1]);
     for(const b of regions.slice(i+1))assert.ok(a[0]+a[2]<=b[0]||b[0]+b[2]<=a[0]||a[1]+a[3]<=b[1]||b[1]+b[3]<=a[1],`${a} × ${b}`);

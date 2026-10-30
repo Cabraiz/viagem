@@ -342,3 +342,10 @@ export const ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
   {id:'aberracao-saci',name:'Saci Aberração',role:'mini-chefe',cell:256,priority:'P1',pack:5,accent:0xc8322c,gag:'Some num redemoinho e só sobra o cachimbo quicando'},
   {id:'mendigo',name:'Mendigo',role:'corredor',cell:128,priority:'P1',pack:5,accent:0x8a6a3c,gag:'Pede um trocado e cobra juros no abraço'},
 ]);
+
+/** Defined but kept out of the wave draw (enemy-rotation.ts reads ROSTER only) until their art and the user's go land. */
+export const HELD_ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
+  {id:'sanfoneiro',name:'Sanfoneiro Arrasta-Pé',role:'brutamontes',cell:128,priority:'P0',pack:0,accent:0xc68e3a,gag:'A sanfona dá um último fom-fom e se fecha sozinha',
+    barks:['Bora arrastar o pé, meu povo!','Anarriê! Pro meio do salão!','Quadrilha não tem saída!','Ninguém sai antes do forró'],
+    deathLines:['Furou o fole, acabou o forró','Desafinei pra sempre...','Quem toca no São João agora?'],pop:'FOLE FURADO!'},
+]);

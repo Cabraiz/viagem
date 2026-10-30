@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,HurtGate,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,HurtGate,ShoveGate,type ShoveMarks,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
@@ -140,7 +140,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite;downSince?:number;shoveSince?:number;shoveFace?:{x:number;y:number}}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite;downSince?:number;shove:ShoveGate}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -298,23 +298,19 @@ export class CharacterSprites {
    * stuck); the others keep their walk. With `pull` (card puxar-uno-corda) it holds the rope instead: the direction is
    * away from the car and a class with a pull16 plays it the same way (the fists behind its hips, the rope from them).
    * `hp` (card animacao-receber-dano): the hero's hit points; a drop while it rests plays its hurt16 flinch (HurtGate).
-   * `build` (card animacao-construir-6): the world direction to an obra going up next to the hero (buildFacing); a class
-   * with a build16 standing still faces it and loops its build, the weapon put away. Walking drops it at once.
+   * `build` (card animacao-construir-6): the world direction to an obra going up next to the hero (buildFacing); a
+   * class with a build16 standing still faces it and loops its build, the weapon put away. Walking drops it at once.
    * With `work` (card animacao-trabalhar-6: on a bico's shift, workFacing) the same with its work16 loop instead.
    * `downed` (card queda-6-herois): the hero is caído (not out, not offline); a class with a downed16 plays its fall from
    * the moment it went down and holds the last pose, lying, until lifted (the scene turns only the classes without one).
-   * `shove` (card anim-ser-empurrado: the room's colisao-entre-herois marks): `pushing`, this hero's walk pushes a hero
-   * or a mendigo and it plays its push16 facing them; `pushed`, a hero pushes this one, which plays its shoved16 once
-   * from the push's start (knocked back along it, facing the pusher, up again to its rest), not over while it is held.
-   * A class without the sheet (saci, sanfoneiro, the hidden legacy) shows neither.
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number;pull?:boolean},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean},downed=false,shove?:{pushing?:{x:number;y:number};pushed?:{x:number;y:number}}){
+    look?:{x:number;y:number},build?:{x:number;y:number;work?:boolean},downed=false,shove?:ShoveMarks){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),hurt:new HurtGate(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0,dance:new DanceGate()};this.states.set(sprite,state);}
+    if(!state){state={motion:new SpriteMotion(),hurt:new HurtGate(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0,dance:new DanceGate(),shove:new ShoveGate()};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
@@ -322,19 +318,11 @@ export class CharacterSprites {
     const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
-    // The Uno's push or rope first; else a hero's walk into a body pushes it with the same clip (anim-ser-empurrado).
-    if(!push&&shove?.pushing)push=shove.pushing;
+    if(!push&&shove?.pushing)push=shove.pushing; // the Uno's push or rope first; else a walk into a body (same clip)
     const pulling=!!push?.pull&&alive&&motion!=='attack'&&hasPull16(id),pushing=!!push&&!push.pull&&alive&&motion!=='attack'&&hasPush16(id);
-    // Pushed: once from the push's start, facing back along it (toward the pusher); a push still held does not restart it.
-    // In the middle of a line (pushing too) it walks on, it does not fall.
-    const now=this.scene.time.now,shovedMs=MOVEMENT16_DURATION.shoved;
-    if(shove?.pushed&&!shove.pushing&&state.shoveSince===undefined){state.shoveSince=now;state.shoveFace={x:-shove.pushed.x,y:-shove.pushed.y};}
-    else if(state.shoveSince!==undefined&&!shove?.pushed&&(now-state.shoveSince>=shovedMs||now<state.shoveSince))state.shoveSince=undefined;
-    const shoved=state.shoveSince!==undefined&&now-state.shoveSince<shovedMs&&alive&&motion!=='attack'&&!pushing&&!pulling&&hasShoved16(id);
-    const building=!!build&&alive&&motion==='idle'&&!pushing&&!pulling&&!shoved&&(build.work?hasWork16(id):hasBuild16(id));
-    const face=pushing||pulling?push:shoved?state.shoveFace:building?build:look??intent;
-    const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
-    const seen=movement128Visible(sprite,this.scene);
+    const knock=state.shove.update(this.scene.time.now,shove,MOVEMENT16_DURATION.shoved,alive&&motion!=='attack'&&!pushing&&!pulling&&hasShoved16(id)),shoved=knock!==undefined;
+    const building=!!build&&alive&&motion==='idle'&&!pushing&&!pulling&&!shoved&&(build.work?hasWork16(id):hasBuild16(id)),face=pushing||pulling?push:shoved?state.shove.face:building?build:look??intent;
+    const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face),seen=movement128Visible(sprite,this.scene);
     // A hit while resting flinches (its first and last poses are the rest's); the rest then starts over from its pose 0.
     const hurt=state.hurt.update(this.scene.time.now,hp,alive&&motion==='idle'&&!pushing&&!pulling&&!shoved),flinch=hurt!==undefined&&seen?hurtPlan(id,direction):undefined;
     if(flinch)state.phaseStarted=this.scene.time.now;
@@ -345,12 +333,11 @@ export class CharacterSprites {
     // breathing, turned −90° by the scene (parado-respiracao-herois: the legacy sheet it fell back to was older art).
     if(downed&&!alive)state.downSince??=this.scene.time.now;else state.downSince=undefined;
     const fall=seen&&state.downSince!==undefined?downedPlan(id,direction):undefined;
-    const knocked=seen&&shoved?shovedPlan(id,direction):undefined;
-    const detailed=!seen?undefined:alive?knocked??dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):fall??movementPlan(id,'idle',direction);
-    // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
-    // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
-    // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
-    // the clip has one, else RUN_STRIDE.
+    const knocked=seen&&shoved?shovedPlan(id,direction):undefined,detailed=!seen?undefined:alive?knocked??dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):building?(build!.work?workPlan:buildPlan)(id,direction):movementPlan(id,motion,direction)):fall??movementPlan(id,'idle',direction);
+    // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall ×
+    // the view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip
+    // loads. A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's
+    // stride when the clip has one, else RUN_STRIDE.
     if(motion==='walk'){
       const figurePx=96*this.viewScale*HERO_DRAW_SCALE,phase=detailed?.phase;
       state.cycles+=phase?walkCycles(dx,dy,view,figurePx,phaseStride(phase),1):heroRuns(id)?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx);
@@ -365,7 +352,7 @@ export class CharacterSprites {
         // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move; the pull too.
         const run=(motion==='walk'||pushing||pulling)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
-          fall?swingFrame(fall,(this.scene.time.now-state.downSince!)/fall.durationMs):knocked?swingFrame(knocked,(now-state.shoveSince!)/knocked.durationMs):dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+          fall?swingFrame(fall,(this.scene.time.now-state.downSince!)/fall.durationMs):knocked?swingFrame(knocked,knock!):dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -384,8 +371,7 @@ export class CharacterSprites {
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda), or a tool in them (animacao-construir-6):
-        // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído lies turned, a hero knocked
-        // down (anim-ser-empurrado) throws its arms out: no hand fits.
+        // the weapon is put away at the hero's side (arsenal-fx), measured or not. A caído or knocked hero: no hand fits.
         state.hand=pushing||pulling||knocked||building&&(detailed.motion==='build'||detailed.motion==='work')||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }

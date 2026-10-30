@@ -29,7 +29,7 @@ import {cityLoot} from '../../src/sim/stonewards/loot.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {planChaveiro} from '../../src/sim/chaveiro/system.ts';
-import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
+import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,lotInMouth,planBanks,shopCandidates,SHOP_MOUTH_REACH,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
 import {BICO,BICOS,bicoSaldo} from '../../src/rules/bicos.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
@@ -43,8 +43,8 @@ const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city),PLAZA=PTS.praca;
 /** The bank candidates exactly as assemble.ts hands them: the city's reachable loot points. */
 const LOOT=cityLoot(city)!.crates.map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}));
-/** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback. */
-const CANDIDATES=[...ringCandidates(CAR,(x,y,r)=>city.clearDisc(x,y,r)),...LOOT];
+/** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback, off the mouths. */
+const CANDIDATES=shopCandidates(city,CAR,LOOT);
 /** Ticks per R$ 5 note of one hero alone in a shift (R$ 1/s). */
 const NOTA=Math.ceil(BICO.nota*1000/bicoPay('telemarketing',1,0));
 const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
@@ -94,7 +94,7 @@ function onePerThird(points:readonly Point[],c:Point){
 // ---------- Placement ----------
 test('placement: 3 banks per seed, deterministic, ids and names, one per third, on the streets distCarro..distCarroMax from the car, desvio from the moto route (chaveiro) or the plaza (wall)',()=>{
   assert.equal(BANCO.count,3);
-  const seen=new Set<string>(),relaxed:string[]=[],noLot:string[]=[],noDesvio:string[]=[];
+  const seen=new Set<string>(),relaxed:string[]=[],noDesvio:string[]=[];
   for(let seed=1;seed<=24;seed++){
     const route=planChaveiro(seed,OPEN,ENTRANCES,CAR).route.points;
     for(const [mode,anchor] of [['chaveiro',{route}],['muralha',{plaza:PLAZA}]] as const){
@@ -105,8 +105,8 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
       assert.deepEqual([...a.map(p=>p.name)].sort(),[...BANK_IDS].sort());
       assert.equal(new Set(a.map(p=>`${p.x},${p.y}`)).size,3,'three different spots');
       for(const p of a)assert.ok(city.clearDisc(p.x,p.y,1.5),'on open street ground');
-      // Bicos: the whole shop fits (a BICO.lote disc clear) wherever the ring has such a spot in that third.
-      for(const p of a)if(!city.clearDisc(p.x,p.y,BICO.lote))noLot.push(`${mode} seed ${seed} ${p.id}`);
+      // Bicos: never a shop in a street mouth (lojas-bico-fora-das-bocas); the whole lot clear is rare off the mouths.
+      for(const p of a)assert.ok(!lotInMouth(city,p.x,p.y),`${mode} seed ${seed} ${p.id}: the shop's lot is off every mouth`);
       assert.ok(onePerThird(a,CAR),`one per third of the map around the car (${mode} ${seed})`);
       for(const p of a){
         const fromAnchor='route' in anchor?distanceToPolyline(p,anchor.route):dist(p,anchor.plaza);
@@ -118,14 +118,13 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
     }
   }
   assert.ok(seen.size>=12,`the seed moves the banks: ${seen.size} different layouts in 48`);
-  // The fallback tiers (a third with no candidate that fits) must stay the exception on the real city.
-  assert.deepEqual(relaxed,[],'every bank keeps the car ring on the real city');
+  // Off the mouths the car ring around the plaza is nearly all street mouth (E2 30/10: 36 of 144 shops past it); those
+  // take the nearest free ground of their third, never farther than a ring's width past the nearest.
+  assert.ok(relaxed.length<=48,`most shops keep the car ring: ${relaxed.length} of 144 past it`);
+  for(const r of relaxed)assert.ok(Number(r.split('car ')[1])<=BANCO.distCarroMax+SHOP_MOUTH_REACH,`a shop past the ring stays near: ${r}`);
   // Bicos: the shop's lot comes before the desvio rule; on the 1.75× shorter city (mapa-175-com-viaduto) a third rarely
   // has a lot off the route (chaveiro seed 7). It stays rare: at most 2 of the 144 banks.
   assert.ok(noDesvio.length<=2,`the desvio rule drops only for a lot, rarely: ${noDesvio.join('; ')}`);
-  // On the 1.75× shorter city a few thirds have no clear BICO.lote disc on the ring at all (8 of 144 at lote 4, still 4
-  // at lote 3); those shops stand on the fallback spot. Keep it the exception.
-  assert.ok(noLot.length<=8,`the shop has its lot on the real city but rarely: ${noLot.length} without (${noLot.join('; ')})`);
 });
 
 test('placement in a run: the city has banks in both modes (route anchor with the chaveiro), the island and the endless world have none',()=>{

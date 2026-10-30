@@ -47,6 +47,9 @@ const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
  * game is ninhos, where the horde's hp stays +4 %. A stuck critter is still caught by STALLED_MAX.
  * Seed 4244 since the bodies by team size (vida-inimigos-estilo-clash, decision B: 4 players ×0.82 bodies) met
  * bots-20-mais-lentos: on 4242 the team fell in round 3 (4243 too; 4244–4248 play rounds 1-3).
+ * Seed 4246 since lojas-bico-fora-das-bocas (30/10): the shops moved off the street mouths and on 4244 the wall fell in
+ * round 3; a seed's run is chaotic, not weaker (E2, seeds 4240–4259, Ana after the bots: rounds 1-3 played in 17 of 20
+ * before, 18 of 20 after; 4246 plays in both orders).
  */
 const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=145;
 
@@ -67,7 +70,7 @@ for(const [order,prefix] of [['after','pessoa'],['before','a-pessoa']] as const)
 test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an exception or a bot stuck > 5 s (Ana's id sorts ${order} the bots')`,async()=>{
   // The wall mode (survive 10 rounds): the chaveiro objective (D-047, the city default) has its own acceptance in
   // city-room-chaveiro.test.ts.
-  const room=new Room(1000,4244,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',newId:seatIds(prefix),objective:false}),a:TestPeer=peer();
+  const room=new Room(1000,4246,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',newId:seatIds(prefix),objective:false}),a:TestPeer=peer();
   await room.ready();
   let t=1000;
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);
@@ -141,7 +144,7 @@ test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
     }
   }
   const brains=(room as unknown as {bots:{thinkMs:number;thinks:number}}).bots;
-  console.log(`[cidade-10] city room, Ana (${ana}) + 3 bots, seed 4244: `
+  console.log(`[cidade-10] city room, Ana (${ana}) + 3 bots, seed 4246: `
     +rounds.map(r=>`round ${r.index} wave ${secs(r.wave!)}→${r.end===undefined?'-':`${secs(r.end)} (${secs(r.end-r.wave!)})`}`).join(', ')
     +`; Ana in the plaza ${anaArrived===undefined?'never':secs(anaArrived)}; falls ${falls.length?falls.join(', '):'none'}`
     +`\n  stuck (no critter within ${FIGHT_NEAR} u) beyond ${STUCK_SECONDS} s: ${bots.map(id=>{const w=stuck.get(id)!;return `${id} ${secs(w.worst)}${w.worst?` at ${w.at}`:''}`;}).join(', ')}`

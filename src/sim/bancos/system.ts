@@ -12,8 +12,11 @@
  *    per third of the map (three 120° sectors around the car, their start angle drawn), BANCO.distCarro..distCarroMax from the car,
  *    and BANCO.desvio[0]..[1] from the anchor: the moto's route (anchor.route, chaveiro) or the plaza (anchor.plaza,
  *    wall mode). In each sector a spot where the whole shop fits (candidate.lot: a BICO.lote disc clear; ringCandidates
- *    marks it) comes first; with none, the desvio rule drops, then the car rule. Ids 'banco-1'..,
- *    names BANK_IDS in sector order.
+ *    marks it) comes first; with none, the desvio rule drops, then the sector (a ring spot of any sector), then the car
+ *    rule (a band as wide as the ring from the sector's nearest spot, then anywhere in it). Shops stay BANK_SPACING apart while the candidates allow. Ids
+ *    'banco-1'.., names BANK_IDS in sector order.
+ *  - shopCandidates(city, car, crates): what a run hands planBanks, the ring and the loot points with none whose lot
+ *    is in a street mouth (lojasForaDasBocas, card NEW-20261030-ORQ-lojas-bico-fora-das-bocas).
  *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)},
  *    work?(id)}: work is a player's Trabalhar this tick (assemble.ts: the input, held and standing still; undefined
  *    with no input this tick).
@@ -56,7 +59,7 @@
  *  - saldo 0 after a note: 'sem-cedulas' until now + recargaS, the shift out (bico 'saiu'), event bank-empty.
  * Deterministic: the placement stream is forked from the seed, the step reads ctx (players and enemies in their order).
  */
-import type {Point} from '../../maps/index.ts';
+import {bocaFaixa,cityEntradas,type CityTerrain,type Point,type Rect} from '../../maps/index.ts';
 import {BANK_IDS,BICO_IDS,Rng,SIM_HZ,ticks,type BankName,type BankState,type BankView,type BicoId,type EnemyState,type SimPlayer} from '../../contract/index.ts';
 import {BANCO,BICO,BICOS,bicoSaldo} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
@@ -143,6 +146,80 @@ export function ringCandidates(car:Point,clear:(x:number,y:number,r:number)=>boo
   return out;
 }
 
+/**
+ * Shops off the street mouths (NEW-20261030-ORQ-lojas-bico-fora-das-bocas; E2 30/10: 594 of 600 shops in 200 seeds had
+ * their lot on an entrance's free strip, maps/city/entradas.ts bocaFaixa; not solid, but a whole building in the mouth).
+ * A candidate whose lot (the BICO.lote disc the shop stands in, any turn) overlaps a strip moves to the nearest spot where
+ * a hero fits (RING_CLEAR) and the whole lot is off every strip: rings SHOP_MOUTH_STEP u apart out to SHOP_MOUTH_REACH u,
+ * SHOP_MOUTH_ANGLES each, SHOP_SPACING u from the other candidates when it can (else the nearest at all). It keeps its
+ * order and crate id; a ring spot's `lot` is measured again. None found, it is dropped. Same method as the crates
+ * (sim/crates.ts foraDasBocas).
+ */
+export const SHOP_MOUTH_REACH=24,SHOP_MOUTH_STEP=.5,SHOP_MOUTH_ANGLES=48,SHOP_SPACING=4;
+/** Grid cell (u) of the strips' lookup: each cell lists the strips a lot centred in it may touch. */
+const STRIP_CELL=4;
+interface StripGrid {cells:Map<number,Rect[]>}
+const stripsMemo=new WeakMap<object,StripGrid>();
+const cellKey=(i:number,j:number)=>i*65536+j;
+function stripGrid(city:CityTerrain):StripGrid{
+  const a=city.asset,R=BICO.lote;
+  let g=stripsMemo.get(a);
+  if(g)return g;
+  g={cells:new Map()};
+  for(const f of cityEntradas(a).map(e=>bocaFaixa(a,e))){
+    for(let i=Math.floor((f.x-R)/STRIP_CELL);i<=Math.floor((f.x+f.w+R)/STRIP_CELL);i++)
+      for(let j=Math.floor((f.y-R)/STRIP_CELL);j<=Math.floor((f.y+f.h+R)/STRIP_CELL);j++){
+        const k=cellKey(i,j),list=g.cells.get(k);
+        if(list)list.push(f);else g.cells.set(k,[f]);
+      }
+  }
+  stripsMemo.set(a,g);
+  return g;
+}
+/** Whether a shop's lot (a BICO.lote disc) at (x, y) overlaps an entrance's free strip. */
+export function lotInMouth(city:CityTerrain,x:number,y:number):boolean{
+  const list=stripGrid(city).cells.get(cellKey(Math.floor(x/STRIP_CELL),Math.floor(y/STRIP_CELL)));
+  return !!list&&list.some(f=>Math.hypot(x-Math.max(f.x,Math.min(x,f.x+f.w)),y-Math.max(f.y,Math.min(y,f.y+f.h)))<BICO.lote);
+}
+/**
+ * The bank candidates with every lot in a mouth's strip moved out of it (see SHOP_MOUTH_REACH); the others as they were.
+ * A moved loot point is no longer that crate's place (no id: the crate stays in the run, CRATE_CLEAR still applies).
+ */
+export function lojasForaDasBocas(city:CityTerrain,candidates:readonly BankCandidate[]):BankCandidate[]{
+  const out:BankCandidate[]=[],taken=candidates.filter(p=>!lotInMouth(city,p.x,p.y));
+  for(const p of candidates){
+    if(!lotInMouth(city,p.x,p.y)){out.push(p);continue;}
+    let near:Point|undefined;
+    search:for(let n=1;n*SHOP_MOUTH_STEP<=SHOP_MOUTH_REACH;n++)for(let k=0;k<SHOP_MOUTH_ANGLES;k++){
+      const r=n*SHOP_MOUTH_STEP,a=k*TAU/SHOP_MOUTH_ANGLES;
+      const x=Math.round((p.x+Math.cos(a)*r)*100)/100,y=Math.round((p.y+Math.sin(a)*r)*100)/100;
+      if(lotInMouth(city,x,y)||!city.clearDisc(x,y,RING_CLEAR))continue;
+      near??={x,y};
+      if(taken.some(q=>Math.hypot(q.x-x,q.y-y)<SHOP_SPACING))continue;
+      near={x,y};break search;
+    }
+    if(!near)continue;
+    const moved:BankCandidate=city.clearDisc(near.x,near.y,BICO.lote)?{x:near.x,y:near.y,lot:true}:{x:near.x,y:near.y};
+    out.push(moved);taken.push(moved);
+  }
+  return out;
+}
+
+const candidatesMemo=new WeakMap<object,Map<string,readonly BankCandidate[]>>();
+/**
+ * What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points (`crates`, cityLoot
+ * nodes) as a fallback, all off the mouths (lojasForaDasBocas). The same city, car and crates give the same list (memo).
+ */
+export function shopCandidates(city:CityTerrain,car:Point,crates:readonly BankCandidate[]):readonly BankCandidate[]{
+  let memo=candidatesMemo.get(city.asset);
+  if(!memo)candidatesMemo.set(city.asset,memo=new Map());
+  const key=`${car.x},${car.y}|${crates.map(c=>`${c.id}@${c.x},${c.y}`).join(';')}`;
+  let out=memo.get(key);
+  if(!out)memo.set(key,out=lojasForaDasBocas(city,[...ringCandidates(car,(x,y,r)=>city.clearDisc(x,y,r)),...crates]));
+  return out;
+}
+/** Two shops' points stay this far apart (u: two lots side by side) while the candidates allow it. */
+export const BANK_SPACING=2*BICO.lote;
 /** The run's banks: a pure function of the seed, the candidates, the car and the anchor (see the module doc). */
 export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Point,anchor:BankAnchor):BankPlace[]{
   const rng=new Rng(seed>>>0).fork('bancos'),count=Math.max(0,Math.min(BANCO.count,BANK_IDS.length));
@@ -153,16 +230,26 @@ export function planBanks(seed:number,candidates:readonly BankCandidate[],car:Po
   const [lo,hi]=BANCO.desvio;
   const taken=new Set<number>(),out:BankPlace[]=[];
   for(let k=0;k<count;k++){
-    const pool=candidates.map((p,i)=>({p,i})).filter(c=>!taken.has(c.i));
+    const free=candidates.map((p,i)=>({p,i})).filter(c=>!taken.has(c.i));
+    // Not crowded: a lot apart from the shops already drawn, when the map leaves room.
+    const apart=free.filter(c=>out.every(q=>Math.hypot(q.x-c.p.x,q.y-c.p.y)>=BANK_SPACING));
+    const pool=apart.length?apart:free;
     const inSector=pool.filter(c=>sectorOf(c.p)===k);
     const ring=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
+    // No ring spot in the sector (the mouths take most of the ring, lojasForaDasBocas): a ring spot of another sector
+    // first (a far shop sends the bots on long trips in the prepare phase), then a band as wide as the ring from the
+    // sector's nearest spot.
+    const anyRing=pool.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax);
+    const outer=inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),nearest=Math.min(...outer.map(c=>fromCar(c.p)));
     const tiers=[
       // Bicos: a spot where the whole shop fits first (the desvio rule, then without it).
       ring.filter(c=>c.p.lot&&fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
       ring.filter(c=>c.p.lot),
       ring.filter(c=>fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
       ring,
-      inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),
+      anyRing,
+      outer.filter(c=>fromCar(c.p)<=nearest+BANCO.distCarroMax-BANCO.distCarro),
+      outer,
       inSector,
       pool,
     ];

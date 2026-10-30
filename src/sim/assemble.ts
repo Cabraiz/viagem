@@ -39,7 +39,7 @@ import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} fr
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
 import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
-import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {createBanks,shopCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
@@ -537,9 +537,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
   if(cityTerrain){
     const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
-    // The streets around the car first (an intermission trip away), the loot points as a fallback.
-    const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
-    banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
+    // The streets around the car first (an intermission trip away), the loot points as a fallback; none in a street mouth.
+    const candidates=shopCandidates(cityTerrain,{x:wall.x,y:wall.y},(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y})));
+    banks=createBanks({seed:world.seed,candidates,car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
       wallet:{add:(n,to)=>{addGrana(to,n);}},work:id=>work.get(id)},cp?.banks);
     // Veículos: in both city modes too (a ride ends on moving the car).

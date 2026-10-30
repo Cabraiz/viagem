@@ -20,6 +20,11 @@ export const REASON_MS=2500;
 /** The car's bar turns Cone under this share of hits left (render/chaveiro/rules.ts CAR_LOW, the base's 30%). */
 export const CAR_BAR_LOW=.3;
 
+/**
+ * The clock's name before its time (card relogio-do-chaveiro-com-legenda: the novice did not know it is his arrival):
+ * "Chaveiro 3:59" on the round chip and on the phone's bar, which both write ChaveiroClock.clock.
+ */
+export const CLOCK_LABEL='Chaveiro';
 /** The chaveiro's clock: whole seconds as "m:ss" ("10:00", "0:07"); never negative. */
 export function etaClock(seconds:number){
   const s=Math.max(0,Math.ceil(Number.isFinite(seconds)?seconds:0));
@@ -38,8 +43,8 @@ export const liveObjective=(view:{objective?:ObjectiveView}|undefined)=>view?.ob
  */
 export interface ChaveiroClock {clock:string;seconds:number;aria:string;held:boolean}
 export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>,held=false):ChaveiroClock{
-  const seconds=Math.max(0,Math.ceil(objective.etaS)),clock=etaClock(seconds);
-  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${clock}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`;
+  const seconds=Math.max(0,Math.ceil(objective.etaS)),time=etaClock(seconds),clock=`${CLOCK_LABEL} ${time}`;
+  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${time}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${time}`:`Chaveiro chega em ${time}`;
   return {clock,seconds,aria,held};
 }
 
@@ -126,25 +131,33 @@ export class ClockStopTracker {
   reset(){this.start=this.shown=undefined;this.until=-1;}
 }
 
-/** Card missao-proteger-uno-tempo: the clock's say when an enemy's hit on the Uno pushed the unlocking back. */
-export const CLOCK_HIT_LABEL='Batida no Uno';
 /**
- * Each hit on the Uno adds time to the run's clock (the sim's CHAVEIRO_CLOCK): the clock says how much ("Batida no
- * Uno: +3 s"). A burst of hits within CLOCK_ADDED_HOLD_S adds into one number, from the clock before its first hit.
+ * Card missao-proteger-uno-tempo: the clock's say when an enemy's hit on the Uno pushed the unlocking back. Card
+ * relogio-do-chaveiro-com-legenda (auditoria primeira-partida, item 3: the novice did not see that a hit delays him):
+ * the run's first burst says it whole ("Uno apanhou, chaveiro atrasa: +3 s"), the next ones short ("Uno apanhou: +3 s").
+ */
+export const CLOCK_HIT_LABEL='Uno apanhou';
+export const CLOCK_HIT_FIRST_LABEL='Uno apanhou, chaveiro atrasa';
+/**
+ * Each hit on the Uno adds time to the run's clock (the sim's CHAVEIRO_CLOCK): the clock says how much ("Uno apanhou:
+ * chaveiro +3 s"). A burst of hits within CLOCK_ADDED_HOLD_S adds into one number, from the clock before its first hit.
  * Fed every view with the mode, the ETA, the tick and the car's hits; a stop mode is ClockStopTracker's, not this.
  */
 export class ClockHitTracker {
   private last?:{etaS:number;tick:number;hits:number};
   private base?:{etaS:number;tick:number};
   private shown?:ClockStop;private until=-1;
+  /** The burst's label; `explained`: the first one was shown (kept across reset(): the chefão's hold is the same run). */
+  private label?:string;private explained=false;
   step(mode:MotoMode|undefined,etaS:number,tick:number,hits:number):ClockStop|undefined{
     const last=this.last;this.last={etaS,tick,hits};
     if(!last||tick<last.tick||!mode||CLOCK_STOPS[mode]){this.base=this.shown=undefined;return undefined;}
     if(hits>last.hits){
-      if(!this.base||tick>this.until)this.base={etaS:last.etaS,tick:last.tick};
+      if(!this.base||tick>this.until){this.base={etaS:last.etaS,tick:last.tick};this.label=undefined;}
       const added=Math.round(etaS-(this.base.etaS-(tick-this.base.tick)/SIM_HZ));
       if(added>=1){
-        this.shown={mode,label:CLOCK_HIT_LABEL,text:`${CLOCK_HIT_LABEL}: +${added} s`,added,urgent:true};
+        this.label??=this.explained?CLOCK_HIT_LABEL:CLOCK_HIT_FIRST_LABEL;this.explained=true;
+        this.shown={mode,label:this.label,text:`${CLOCK_HIT_LABEL}: chaveiro +${added} s`,added,urgent:true};
         this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
       }
     }

@@ -24,7 +24,7 @@ export const UPDATE_TEXT={
   reloading:'Achei! Atualizando…',
   button:'Atualizar agora',
   stuckTitle:'A conexão com a sala caiu.',
-  stuck:(s:number)=>`O jogo já está na versão certa. Toca em Reconectar. Confiro o site de novo em ${s} s.`,
+  stuck:(s:number)=>`Jogo atualizado: toca em Reconectar. Confiro de novo em ${s} s.`,
   reconnect:'Reconectar',
 } as const;
 

@@ -543,7 +543,7 @@ export class CoopClient {
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
         if(this.initialized)this.fatal=LINK_LOST;
-        this.onStatus(this.fatal??'Conexão indisponível. Volte aos heróis e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
+        this.onStatus(this.fatal??'Conexão indisponível. Volte ao menu e entre de novo.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
       const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;
@@ -761,7 +761,7 @@ export class CoopClient {
     if(this.hiddenAt===undefined&&this.hidden())this.hiddenAt=now;
     if(this.hiddenAt===undefined||now-this.hiddenAt<this.awayMs||ws!==this.socket)return false;
     this.away=true;clearTimeout(this.retry);this.retry=undefined;
-    try{ws.close(AWAY_CLOSE,'App em segundo plano.');}catch{}
+    try{ws.close(AWAY_CLOSE,'Jogo em segundo plano.');}catch{}
     return true;
   }
   /** The app went to the background or came back (visibilitychange). */
@@ -822,7 +822,7 @@ export class CoopClient {
     if(!result.ok){
       if(result.error==='stale frame')return;
       // Even a full frame does not decode, again and again (after a stall): a fresh link, not "versão nova".
-      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.renewLink(ws,`quadro cheio: ${result.error}`);return;}
+      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.renewLink(ws,`quadro completo que não encaixa (${result.error})`);return;}
       // A frame we cannot place (lost baseline, garbage): ask for a full one, once per RESYNC_EVERY_MS.
       const now=performance.now();
       if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;this.out(ws,{t:'resync'});}
@@ -1017,7 +1017,7 @@ export class CoopClient {
     })};
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
-  reconnect(){this.socket?.close(4000,'Teste de reconexão');}
+  reconnect(){this.socket?.close(4000,'Reconectar');}
   leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);
     // Replaced (4009): the seat lives on in the newer tab, which shares this device's token.
     if(this.fatal!==REPLACED_MESSAGE)this.forgetToken();

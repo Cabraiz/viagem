@@ -23,7 +23,7 @@ export type Tip='aim'|'zoom'|'drop';
 export const TIP_ORDER:readonly Tip[]=['aim','zoom','drop'];
 /** House voice: short, informal imperative, sentence case. One row of the etiqueta at 390 px. */
 export const TIPS:Readonly<Record<InputKind,Readonly<Partial<Record<Tip,string>>>>>={
-  touch:{aim:'Arrasta o Atacar pra mirar',zoom:'Dois dedos no mapa: zoom',drop:'Segura o item pra largar'},
+  touch:{aim:'Mira arrastando o botão de atacar',zoom:'Dois dedos no mapa: zoom',drop:'Segura o item pra largar'},
   mouse:{drop:'Segura o clique no item pra largar'},
 };
 /** Most time a tip stays on screen (ms, unblocked time only). */

@@ -15,7 +15,7 @@ export const MANIFEST_TIMEOUT_MS=4000;
 /** The city download on a bad 4G (392 KB): past this the attempt fails and the selector says so. */
 export const CITY_TIMEOUT_MS=30_000;
 /** Shown when the city does not arrive (selector subtitle and the room's news strip). */
-export const CITY_FAILED='A cidade não baixou (o 4G congelou). Pede pro dono voltar pro infinito ou atualiza a página.';
+export const CITY_FAILED='A cidade não baixou. Atualiza a página.';
 
 type Fetch=(url:string,init?:RequestInit)=>Promise<Response>;
 

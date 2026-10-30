@@ -580,7 +580,7 @@ test('§3 count text caps at "99+"; §4 download and news texts',()=>{
   assert.equal(city.downloadText(.4),'Baixando a cidade: 40%');assert.equal(city.downloadText(0),'Baixando a cidade: 0%');
   assert.equal(city.downloadText(1),'Baixando a cidade: 100%');assert.equal(city.downloadText(1.7),'Baixando a cidade: 100%');
   assert.equal(city.downloadText(-.2),'Baixando a cidade: 0%');assert.equal(city.downloadText(.404),'Baixando a cidade: 40%');
-  assert.equal(city.mapChangedNews('cidade-nevada'),'Mapa trocado: Cidade Nevada. Todo mundo confirma de novo.');
+  assert.equal(city.mapChangedNews('cidade-nevada'),'Mapa trocado: Cidade Nevada. Confirmem de novo.');
   assert.equal(city.SELECTOR_TEXT.failed,'Não chegou. Toca de novo.');assert.equal(city.NEWS_MS,4000);
 });
 

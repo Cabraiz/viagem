@@ -34,7 +34,7 @@ export const SELECTOR_TEXT={
   soon:'em breve',
 } as const;
 /** The room's news after the server changed the map (the server resets everyone's ready). */
-export const mapChangedNews=(map:MapId)=>`Mapa trocado: ${MAP_OPTIONS.find(o=>o.id===map)?.name??map}. Todo mundo confirma de novo.`;
+export const mapChangedNews=(map:MapId)=>`Mapa trocado: ${MAP_OPTIONS.find(o=>o.id===map)?.name??map}. Confirmem de novo.`;
 /** The selected option's subtitle while the city downloads ("Baixando a cidade: 40%"); feed it as a 'download' event. */
 export const downloadText=(fraction:number)=>`Baixando a cidade: ${Math.round(Math.min(1,Math.max(0,fraction))*100)}%`;
 

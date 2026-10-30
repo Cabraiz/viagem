@@ -13,7 +13,7 @@ const ALL=new Set<Tip>(TIP_ORDER);
 const input=(now:number,over:Partial<TipInput>={}):TipInput=>({now,kind:'touch',blocked:false,ready:true,can:ALL,...over});
 
 test('copy: pt-BR, one short row each, the phone has all three, the desktop only the drop',()=>{
-  assert.deepEqual(TIPS.touch,{aim:'Arrasta o Atacar pra mirar',zoom:'Dois dedos no mapa: zoom',drop:'Segura o item pra largar'});
+  assert.deepEqual(TIPS.touch,{aim:'Mira arrastando o botão de atacar',zoom:'Dois dedos no mapa: zoom',drop:'Segura o item pra largar'});
   assert.deepEqual(Object.keys(TIPS.mouse),['drop']);
   for(const kind of ['touch','mouse'] as const)for(const text of Object.values(TIPS[kind]))assert.ok(text.length<=34,text);
 });

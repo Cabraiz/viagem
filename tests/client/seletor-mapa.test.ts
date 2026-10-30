@@ -99,8 +99,8 @@ test('with "em breve" on, random events never send the locked city and never lea
 // ---------- Lobby helpers ----------
 
 test('lobby helpers: news, download text, the room\'s map while downloading, orientation',()=>{
-  assert.equal(mapNews('infinito'),'Mapa trocado: Mapa infinito. Todo mundo confirma de novo.');
-  assert.equal(mapNews('cidade-nevada'),'Mapa trocado: Cidade Nevada. Todo mundo confirma de novo.');
+  assert.equal(mapNews('infinito'),'Mapa trocado: Mapa infinito. Confirmem de novo.');
+  assert.equal(mapNews('cidade-nevada'),'Mapa trocado: Cidade Nevada. Confirmem de novo.');
   assert.equal(mapLoadText(undefined),undefined);
   assert.equal(mapLoadText({progress:.4}),'Baixando a cidade: 40%');
   assert.equal(mapLoadText({progress:.4,failed:CITY_FAILED}),CITY_NOT_ARRIVED);

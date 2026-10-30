@@ -40,7 +40,7 @@ export const LESSONS:Readonly<Record<RowLesson,LessonCopy>>={
   chip:{text:'Toca no +{n} pra escolher',icon:'chip',maxMs:9000},
   // Two short lines: one line plus "Leva 3 s" wrapped to three rows in portrait at 125%.
   rescue:{text:'Encosta em quem caiu',sub:'Fica 3 s pra resgatar',icon:'boia'},
-  gather:{text:'Encosta num coqueiro',sub:'Ou numa pedra, pra catar',icon:'coco',maxMs:10000},
+  gather:{text:'Encosta numa árvore',sub:'Ou numa pedra, pra catar',icon:'coco',maxMs:10000},
 };
 /** The check after the action, then the row goes. */
 export const DONE_MS=900;

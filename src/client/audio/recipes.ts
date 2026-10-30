@@ -118,7 +118,86 @@ const list:SoundRecipe[]=[
     {wave:'sine',from:95,to:48,at:0,dur:0.18,gain:0.3,attack:0.002},
     {wave:'noise',from:900,to:500,at:0,dur:0.06,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:1400}},
   ],[15]),
+  // "Ufa" (NEW-20261029-ORQ-som-golpe-e-resgate): the rescued's breath of relief, a breathy fall under a soft sigh.
+  recipe('ufa','Ufa!',400,2,[
+    {wave:'noise',from:1400,to:500,at:0,dur:0.32,gain:0.18,attack:0.03,filter:{type:'bandpass',freq:900,q:0.9}},
+    {wave:'sine',from:440,to:300,at:0.02,dur:0.34,gain:0.2,attack:0.04,vibrato:{rate:5,depth:6}},
+  ]),
+  // "Tsc" (NEW-20261029-ORQ-som-golpe-e-resgate): the skill with no target, a low dry tut instead of a silent "sem alvo".
+  recipe('tsc','Sem alvo',300,1,[
+    {wave:'noise',from:700,to:400,at:0,dur:0.05,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:900}},
+    {wave:'triangle',from:180,to:120,at:0,dur:0.07,gain:0.3,attack:0.002},
+  ]),
+  // The run's end, won (NEW-20261030-ORQ-sons-ganhos-e-receitas): a climbing fanfare G-C-E into a held G chord with a cymbal.
+  recipe('vitoria','Vitória',3000,3,[
+    note('square',392,0,0.12,0.14,{filter:LOW}),
+    note('square',523,0.12,0.12,0.14,{filter:LOW}),
+    note('square',659,0.24,0.12,0.14,{filter:LOW}),
+    note('square',784,0.36,1,0.15,{filter:LOW,vibrato:{rate:6,depth:9}}),
+    note('triangle',1047,0.36,1,0.12),
+    note('triangle',523,0.36,1,0.12),
+    {wave:'noise',from:7000,to:7000,at:0.36,dur:0.8,gain:0.07,attack:0.005,filter:{type:'highpass',freq:5500}},
+    note('sine',2093,0.4,0.7,0.06),
+  ],[40,40,120]),
+  // The run's end, lost: the sad trombone "wah wah wah waaah", four drooping brass notes over a soft octave below.
+  recipe('derrota','Derrota',3000,3,[
+    ...[[233,226],[220,214],[208,202],[196,185]].flatMap(([from,to],i):Tone[]=>{
+      const at=i*0.3,dur=i===3?0.55:0.26,vibrato=i===3?{vibrato:{rate:5,depth:6}}:{};
+      return [
+        {wave:'sawtooth',from,to,at,dur,gain:0.28,attack:0.03,filter:{type:'lowpass',freq:900},...vibrato},
+        {wave:'triangle',from:from/2,to:to/2,at,dur,gain:0.12,attack:0.03},
+      ];
+    }),
+  ],[80,60,240]),
+  // The chaveiro arrives: a jingle of keys (high metallic pings and a shimmer), then his van's "bi-bi".
+  recipe('chaveiro-chega','Chaveiro chegou',2000,2,[
+    ...[3520,4186,3729,4699].map((freq,i)=>note('sine',freq,[0,0.06,0.13,0.19][i],0.12,0.1,{attack:0.002})),
+    {wave:'noise',from:7000,to:7000,at:0,dur:0.3,gain:0.05,attack:0.005,filter:{type:'highpass',freq:7000}},
+    note('sawtooth',440,0.34,0.12,0.22,{attack:0.008,filter:{type:'bandpass',freq:1000,q:2}}),
+    note('sawtooth',440,0.5,0.2,0.22,{attack:0.008,filter:{type:'bandpass',freq:1000,q:2}}),
+    note('square',554,0.5,0.2,0.11,{attack:0.008,filter:{type:'bandpass',freq:1300,q:2}}),
+  ]),
+  // A critter's bite: a dry snap and a low growl, shorter than the hero's hit. Fires with the crowd, so no buzz.
+  // Recipes play centred: the bite's place is its gain until the engine pans recipes (the events card).
+  recipe('bicho-ataque','Bicho ataca',120,1,[
+    {wave:'noise',from:900,to:400,at:0,dur:0.09,gain:0.25,attack:0.002,filter:{type:'bandpass',freq:700,q:1.2}},
+    {wave:'sawtooth',from:160,to:90,at:0,dur:0.12,gain:0.22,attack:0.003,filter:{type:'lowpass',freq:700}},
+    {wave:'triangle',from:700,to:300,at:0,dur:0.03,gain:0.2,attack:0.001},
+  ]),
+  // The saci's whistle "fiu-fiuuu": a wavering rise then a long fall, over a breath.
+  recipe('saci-assobio','Saci assobia',1500,2,[
+    {wave:'sine',from:1800,to:2400,at:0,dur:0.35,gain:0.3,attack:0.03,vibrato:{rate:9,depth:40}},
+    {wave:'sine',from:2400,to:1500,at:0.42,dur:0.5,gain:0.3,attack:0.02,vibrato:{rate:9,depth:50}},
+    {wave:'noise',from:2200,to:2200,at:0,dur:0.9,gain:0.05,attack:0.05,filter:{type:'bandpass',freq:2200,q:1.5}},
+  ]),
+  // A short sanfona bellows: two puffs, A then D, each two reeds a little apart (the musette beat) and a third over a bass.
+  recipe('sanfona','Sanfona',800,1,[
+    ...[[0,0.28,220,277,110],[0.3,0.45,294,370,147]].flatMap(([at,dur,root,third,bass]):Tone[]=>[
+      note('sawtooth',root,at,dur,0.16,{attack:0.04,filter:{type:'lowpass',freq:1800,q:0.7}}),
+      note('sawtooth',root*1.0073,at,dur,0.12,{attack:0.04,filter:{type:'lowpass',freq:1800,q:0.7}}),
+      note('square',third,at,dur,0.1,{attack:0.04,filter:{type:'lowpass',freq:1800,q:0.7}}),
+      note('triangle',bass,at,dur,0.12,{attack:0.04}),
+    ]),
+  ]),
 ];
+
+/**
+ * The gem's combo (card som-alarme-gema-e-chefe, auditoria som-impacto item 7): each gem (the kill's cédula) caught
+ * within GEM_COMBO_MS of the last plays a semitone above it, up to GEM_COMBO_MAX; after a pause it is back at the base.
+ */
+export const GEM_COMBO_MS=1000,GEM_COMBO_MAX=12;
+/** The gem's playback rate `step` semitones up (≤ 2, the engine's top). */
+export function gemRate(step:number){return 2**(Math.max(0,Math.min(GEM_COMBO_MAX,step))/12);}
+export class GemCombo {
+  private step=0;
+  private last=-Infinity;
+  /** The rate of a gem caught at `now` (ms). */
+  next(now:number){
+    this.step=now-this.last<=GEM_COMBO_MS?Math.min(GEM_COMBO_MAX,this.step+1):0;
+    this.last=now;
+    return gemRate(this.step);
+  }
+}
 
 export const RECIPES:Readonly<Record<ProceduralId,SoundRecipe>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>{
@@ -142,4 +221,7 @@ export const SOUND_ART:Readonly<Record<ProceduralId,SoundArt>>=Object.freeze({
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
   boing:{sticker:'galo'},risada:{icon:'risada'},
   carimbo:{word:'tum'},sos:{icon:'chamar'},
+  ufa:{word:'ufa'},tsc:{word:'tsc'},
+  vitoria:{icon:'coroa'},derrota:{icon:'saiu'},'chaveiro-chega':{sticker:'chaveiro'},'bicho-ataque':{icon:'onda'},
+  'saci-assobio':{sticker:'gorro-do-saci'},sanfona:{icon:'som'},
 });

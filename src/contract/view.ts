@@ -22,7 +22,12 @@ export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;ma
    * Card heroi-empurra-inimigos: the body's radius (u) when it is solid to the heroes (maps bodies.ts: the phone's
    * prediction pushes it like the room); absent for the flying and the asleep, which a hero walks through.
    */
-  radius?:number}
+  radius?:number;
+  /**
+   * Card colisao-entre-herois ("empurrado", the animation's: E1's anim-ser-empurrado): a hero's walk is pushing this
+   * mendigo, along the unit (x, y); absent otherwise (sim/bodies.ts PUSH_HOLD keeps it a few ticks past the last push).
+   */
+  pushed?:{x:number;y:number}}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;
   /** The viaduct: flying on a deck (floor 1); absent on the ground. */
@@ -90,6 +95,12 @@ export interface PlayerRunView {
   moveSpeed?:number;
   /** Fear (rules/fear.ts): the dark around this hero, 0..1 (1 = consumed); absent = 0. The client's vignette draws it. */
   fear?:number;
+  /**
+   * Card colisao-entre-herois (the animation's state, E1's anim-ser-empurrado): "empurrando", this hero walks into a
+   * hero or a mendigo and pushes them, and "empurrado", a hero's walk pushes this one; each along the unit (x, y) of
+   * the push (from the pusher to the pushed), absent otherwise. Both at once in the middle of a line.
+   */
+  pushing?:{x:number;y:number};pushed?:{x:number;y:number};
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

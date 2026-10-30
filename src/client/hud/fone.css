@@ -37,6 +37,10 @@
 .rh[data-hud=fone] .rh-camp-relogio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .rh[data-hud=fone] .rh-camp-relogio-ficha{display:flex;align-items:center;gap:1px;line-height:0;white-space:nowrap}
 .rh[data-hud=fone] .rh-camp .rh-camp-relogio .ic{width:16px;height:16px}
+/* The round chip's "+N s" after the clock (camp.ts clockMore): Laranja Cone for a hit on the Uno, Breu for a moto stop. */
+.rh[data-hud=fone] .rh-camp-relogio-mais{margin-left:4px;padding:0 4px;border-radius:var(--r-etiqueta);font:400 var(--t-13)/16px var(--f-cartaz);white-space:nowrap;background:var(--c-breu);color:var(--c-papel);box-shadow:0 0 0 1px var(--c-pedra)}
+.rh[data-hud=fone] .rh-camp-relogio-mais[data-motivo=urgente]{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
+.rh[data-hud=fone] .rh-camp-relogio-mais[hidden]{display:none}
 .rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic){display:none}
 /* The last 5 s of the intermission: Laranja Cone with Breu text and the round chip's pulse (topbar.ts rh-urgent). */
 .rh[data-hud=fone] .rh-camp-relogio[data-urgente] b{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
@@ -81,6 +85,11 @@
   /* The combat strip too: no team column to keep clear of (hud.css keeps 70–94 px for it, 125 % included). */
   .rh.rh[data-hud=fone] .rh-offer[data-mode=combat]{max-width:calc(100vw - var(--rh-l) - var(--rh-r))}
   .rh.rh[data-hud=fone] :is(.rh-forge,.rh-cida){left:var(--rh-l)}
+}
+/* Lying down over 500 px tall (1335×620, card hud-deitado-sem-tapar-heroi): the minimap is beside the band, not a row of
+   it (zones.ts minimapInBand), so the announcement slot starts under the band and keeps clear of the minimap's column. */
+@media (min-height:501px) and (orientation:landscape){
+  .rh.rh[data-hud=fone] .rh-stack{left:calc(var(--rh-l) + var(--rh-mm) + 8px)}
 }
 @media (max-height:500px){
   /* Landscape: one row (level + bar, then the fan beside them), the boss bar under it in a boss fight. */

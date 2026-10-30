@@ -3,10 +3,10 @@
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
  * explosion; the P1 trio: coach lecture + ally buff (PALESTRA), motoboy warned charge + marmita blast (MOTOBOY),
  * influencer pose (POSE; the reflection itself is in projectiles.ts); the roster roles of D-040: the brutamontes' shove
- * (BRUTE), the invocador's call (SUMMON) and the mini-chefe's stomp (SLAM), every other role on the behavior of its base
+ * (BRUTE) and stomp (BRUTE_SLAM), the invocador's call (SUMMON) and the mini-chefe's stomp (SLAM), every other role on the behavior of its base
  * kind; neighbor separation, terrain collision, contact damage and rare barks. EnemyState.phase of regular enemies (on
  * the wire, EnemyView.phase): 1 while the P1 trio acts (lecturing, aiming/charging, posing) and while an invocador
- * calls or a mini-chefe stomps, 2 while coached and not acting, absent otherwise. A roster entry acting like one of the
+ * calls or a brutamontes or mini-chefe stomps, 2 while coached and not acting, absent otherwise. A roster entry acting like one of the
  * nine says its own (or its role's) reaction lines where the nine have their behavior's lists.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
@@ -18,7 +18,7 @@ import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
+import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BRUTE_SLAM,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
   PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUGAR,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
   hazardOwner,isCoached,isDevendo,isSugared,ENEMY_RADIUS_SCALE,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
@@ -26,6 +26,7 @@ import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
 import {AGGRO,AGGRO_PER_PLAYER,AGGRO_SECONDS,FOCO,FOCO_CACADOR,FOCO_UNO,type ProvokedEnemy} from './foco.ts';
+import {hushSanfoneiro,isPlaying,isSanfoneiro,stepSanfoneiro} from './sanfoneiro.ts';
 
 /**
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
@@ -339,6 +340,8 @@ export class EnemyAi implements SimSystem {
       // A retreating enemy never comes back for a taunt; drop it so checkpoints stay clean.
       // Its pending burp is cancelled too (D-010: retreaters deal no damage), and so is the influencer's pose (a
       // retreater reflects nothing, catalog.ts isReflecting).
+      // The sanfoneiro (sanfoneiro.ts) never plays fleeing, scared (frozen) or knocked silly.
+      if(isSanfoneiro(e)&&(e.memory?.retreat===1||ctx.tick<(e.frozenUntil??-1)||!!e.knock&&Math.hypot(e.knock.x,e.knock.y)>KNOCK_STUN))hushSanfoneiro(ctx,e);
       if(e.memory?.retreat===1){
         delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);
         if(e.memory.state===STATE.pose){e.memory.state=STATE.walk;delete e.memory.reflectSay;}
@@ -372,7 +375,7 @@ export class EnemyAi implements SimSystem {
       const huntPlayers=!(foco===FOCO_UNO&&openStructure),huntStructures=!(foco===FOCO_CACADOR&&targets.length>0);
       let goal=taunter?undefined:this.options.goal?.(ctx,e);
       // The viaduct: a hero on the other floor is as far as the walk through the ramp (crossing); bait and structures
-      // are on the ground.
+      // are on the ground (a deck body walks down to a structure, never to a bait).
       const floor=floorOf(e),decks=decksOf(ctx.terrain);
       const reach=(p:SimPlayer)=>decks&&floorOf(p)!==floor?crossing(decks,e,p,floorOf(p)).length:Math.hypot(p.x-e.x,p.y-e.y);
       if(taunter){player=taunter;best=reach(taunter);}
@@ -381,17 +384,28 @@ export class EnemyAi implements SimSystem {
         // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
         bait=floor===0?baitOf(memory,ctx.tick):undefined;
         if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
-        else if(memory[SIEGE]===1&&huntStructures&&floor===0)for(const s of structures){if(s.blocking)continue;const d=structureGap(s,e);if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        // A siege body on a deck (ritmo-morto-e-viaduto: it slept there, a recruit woke it) weighs a structure by the
+        // walk down the ramp to it (its reach too), like a hero on the other floor.
+        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){
+          if(s.blocking)continue;
+          const d=floor===0||!decks?structureGap(s,e):crossing(decks,e,s,0).length;
+          if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}
+        }
       }
-      // Its hero is on the other floor: it walks to the ramp (a goal, hitting nobody on the way) and hunts from there.
+      // Its hero (or its structure, on the ground) is on the other floor: it walks to the ramp (a goal, hitting nobody
+      // on the way) and hunts from there.
       if(player&&decks&&floorOf(player)!==floor){
         const q=crossing(decks,e,player,floorOf(player));
         goal={x:q.x,y:q.y,pace:1};player=undefined;best=Infinity;
+      }else if(structure&&decks&&floor!==0){
+        const q=crossing(decks,e,structure,0);
+        goal={x:q.x,y:q.y,pace:1};structure=undefined;best=Infinity;
       }
       const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
       // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
       if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
+        if(isSanfoneiro(e))hushSanfoneiro(ctx,e);
         if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
         memory.state=STATE.walk;
       }
@@ -571,15 +585,24 @@ export class EnemyAi implements SimSystem {
             else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
             break;
           }
+          case 'brute':
           case 'minichefe':{
-            // The stomp: warned circle around him; he stands still until it lands (plus a short recovery).
-            if(memory.state===STATE.slam){
-              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+SLAM.cooldown;}
+            // The sanfoneiro plays (drags heroes in) and hits with the fole instead (sanfoneiro.ts).
+            if(isSanfoneiro(e)){
+              const move=stepSanfoneiro(ctx,e,memory,player,best,this.heroSpeed,this.hazardRoom(ctx));
+              if(move==='start')this.react(ctx,rng,e,def,1);
+              else if(move==='walk'){dirX=ux;dirY=uy;}
               break;
             }
-            if(player&&best<=SLAM.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
-              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:SLAM.radius+e.radius,damage:SLAM.damage*coachMult(e,ctx.tick),owner:e.id,kind:'pancada'},SLAM.delay);
-              memory.state=STATE.slam;memory.until=ctx.tick+SLAM.delay+SLAM.recover;
+            // The stomp: warned circle around him; he stands still until it lands (plus a short recovery).
+            const slam=def.behavior==='brute'?BRUTE_SLAM:SLAM;
+            if(memory.state===STATE.slam){
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+slam.cooldown;}
+              break;
+            }
+            if(player&&best<=slam.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:slam.radius+e.radius,damage:slam.damage*coachMult(e,ctx.tick),owner:e.id,kind:'pancada'},slam.delay);
+              memory.state=STATE.slam;memory.until=ctx.tick+slam.delay+slam.recover;
               this.react(ctx,rng,e,def,1);
               break;
             }
@@ -592,7 +615,8 @@ export class EnemyAi implements SimSystem {
         // do not hit mid wind-up; the coach never hits (no melee). A coached enemy hits for PALESTRA.damageMult × damage.
         if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
         // At a bait point (Bancos) there is nobody to hit.
-        if(touching&&(player||structure)&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&noMelee(def))&&ctx.tick>=memory.hitReady){
+        // The sanfoneiro's only melee is his warned fole (sanfoneiro.ts).
+        if(touching&&(player||structure)&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&(noMelee(def)||isSanfoneiro(e)))&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           const charging=memory.state===STATE.charge;
           const amount=(def.behavior==='kamikaze'&&charging?MOTOBOY.hitDamage:e.damage)*coachMult(e,ctx.tick);
@@ -770,7 +794,7 @@ export class EnemyAi implements SimSystem {
       if(held.coachedUntil!==undefined&&(retreat||!isCoached(held,ctx.tick)))delete held.coachedUntil;
       const behavior=enemyDef(e.kind).behavior,state=m?.state;
       const acting=!retreat&&(behavior==='coach'&&state===STATE.lecture||behavior==='kamikaze'&&(state===STATE.joke||state===STATE.charge)
-        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||behavior==='minichefe'&&state===STATE.slam);
+        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||(behavior==='minichefe'||behavior==='brute')&&state===STATE.slam||behavior==='brute'&&isPlaying(state));
       const phase=acting?ENEMY_PHASE.acting:held.coachedUntil!==undefined?ENEMY_PHASE.coached:undefined;
       if(phase===undefined){if(e.phase!==undefined)delete e.phase;}
       else e.phase=phase;

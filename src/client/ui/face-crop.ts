@@ -45,7 +45,6 @@ export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze
   'gato-nada-pra-comer':{cx:.48,cy:.25,size:.5},
   'mae-pet':{cx:.42,cy:.214,size:.429},
   'maromba':{cx:.475,cy:.227,size:.454},
-  'mendigo':{cx:.505,cy:.224,size:.447},
   'merendeira':{cx:.462,cy:.198,size:.397},
   'motogirl':{cx:.518,cy:.17,size:.34},
   'pagodeiro':{cx:.46,cy:.214,size:.428},

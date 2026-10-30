@@ -2,7 +2,7 @@
  * The "Minuto de Minerva" clock (card NEW-20261022-ORQ-relogio-minerva, src/client/hud/minerva.ts): it shows while the
  * sim tick is before RunState.minervaAteTick, its hand follows the sim time (not the local clock), the last
  * MINERVA_URGENT_SECONDS are urgent, the wake flash shows right after and then the clock goes away.
- * Card inicio-no-uno-caixas-120: 120 s, ONLY the clock (no title, no seconds written), the hand walking BACK to 12 (the
+ * Card inicio-no-uno-caixas-120: ONLY the clock (30 s since missao-proteger-uno-tempo) (no title, no seconds written), the hand walking BACK to 12 (the
  * sector of the time left shrinks), the last 10 s pulsing; the same clock for the time to explore after a wave.
  */
 import test from 'node:test';
@@ -29,20 +29,20 @@ test('the explore window field: [from, until] when both are ticks and until is a
   assert.equal(exploraOf({exploraDesdeTick:'1',exploraAteTick:2500}),undefined);
 });
 
-test('field in the future: 120 s, the hand on a full turn (the whole sector lit)',()=>{
-  assert.equal(MINERVA_SECONDS,120);assert.equal(MINERVA_URGENT_SECONDS,10);
+test('field in the future: 30 s, the hand on a full turn (the whole sector lit)',()=>{
+  assert.equal(MINERVA_SECONDS,30);assert.equal(MINERVA_URGENT_SECONDS,10);
   const v=minervaView(START,END);
-  assert.deepEqual(v,{phase:'clock',seconds:120,angle:360,urgent:false});
+  assert.deepEqual(v,{phase:'clock',seconds:30,angle:360,urgent:false});
 });
 
-test('the hand walks BACK by the sim tick: 3/4 of the turn left at 30 s, half at 60 s, seconds rounded up',()=>{
-  assert.equal(minervaView(START+30*SIM_HZ,END)?.angle,270);
-  assert.equal(minervaView(START+60*SIM_HZ,END)?.angle,180);
-  assert.equal(minervaView(START+90*SIM_HZ,END)?.seconds,30);
-  assert.equal(minervaView(START+90*SIM_HZ+1,END)?.seconds,30);
+test('the hand walks BACK by the sim tick: 3/4 of the turn left at 7.5 s, half at 15 s, seconds rounded up',()=>{
+  assert.equal(minervaView(START+7.5*SIM_HZ,END)?.angle,270);
+  assert.equal(minervaView(START+15*SIM_HZ,END)?.angle,180);
+  assert.equal(minervaView(START+20*SIM_HZ,END)?.seconds,10);
+  assert.equal(minervaView(START+20*SIM_HZ+1,END)?.seconds,10);
   assert.equal(minervaView(END-1,END)?.seconds,1);
   // A player who joins late sees the same hand as everyone (same ticks, same angle).
-  assert.equal(minervaView(START+45*SIM_HZ,END)?.angle,minervaView(START+45*SIM_HZ,END,false)?.angle);
+  assert.equal(minervaView(START+12*SIM_HZ,END)?.angle,minervaView(START+12*SIM_HZ,END,false)?.angle);
 });
 
 test('the last 10 s are urgent (they pulse), the 11th is not',()=>{
@@ -64,8 +64,8 @@ test('who never saw the clock (joined after the minute) gets no notice; no field
   assert.equal(minervaView(START,undefined),undefined);
 });
 
-test('more than the full turn left (a longer room minute) keeps the hand on the full turn and the count at 120',()=>{
-  assert.deepEqual(minervaView(START,END+20*SIM_HZ),{phase:'clock',seconds:120,angle:360,urgent:false});
+test('more than the full turn left (a longer room minute) keeps the hand on the full turn and the count at 30',()=>{
+  assert.deepEqual(minervaView(START,END+20*SIM_HZ),{phase:'clock',seconds:30,angle:360,urgent:false});
 });
 
 test('the time to explore: the same clock, its full turn the window (90 s: half the turn left at 45 s)',()=>{
@@ -93,13 +93,24 @@ test('the HUD mounts the clock first in the announcement slot and the explore wi
   assert.match(css,/\.rh-minerva\{[^}]*pointer-events:none/);
 });
 
-test('the phone lying down moves the clock under the minimap, off the hero (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem)',()=>{
+test('the phone lying down puts the clock beside the mission line, at the top of the slot, off the hero (card hud-deitado-sem-tapar-heroi)',()=>{
   const css=readFileSync(new URL('../../src/client/hud/minerva.css',import.meta.url),'utf8');
-  const landscape=css.slice(css.indexOf('@media (max-height:500px){'));
+  const landscape=css.slice(css.indexOf('@media (orientation:landscape){'));
   assert.ok(landscape.length<css.length,'a landscape block');
-  // Only the phone (data-hud=fone) in landscape: PC and portrait keep the announcement slot.
-  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-minerva\{position:fixed;top:calc\(var\(--rh-t\) \+ var\(--rh-mm\) \+ 8px\);left:calc\(var\(--rh-l\) \+ var\(--rh-mm\) \/ 2/);
-  assert.doesNotMatch(css.slice(0,css.indexOf('@media (max-height:500px){')),/position:fixed/);
+  // Only the phone (data-hud=fone) lying down: one row, the clock (column 2) then the line (column 3), centred by the
+  // flexible columns on both sides; every other row of the slot spans it, under them. PC and portrait keep the column.
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,auto\) minmax\(0,1fr\)/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\*\{grid-column:1\/-1\}/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>\.rh-minerva\{grid-column:2;/);
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-stack>:is\(\.rh-missao,\.rh-missao-grande\)\{grid-column:3\}/);
+  // At ≤500 px tall the line keeps the stack's top (not centred on the clock, 12 px lower): there the hero's guard
+  // (hud.ts avoidHero) sent the stack to its low slot, on the hero, once the hero spoke (640×296 in the match).
+  assert.match(css,/@media \(max-height:500px\) and \(orientation:landscape\)\{[^}]*\.rh\[data-hud=fone\] \.rh-stack\{align-items:start\}/);
+  // No more fixed clock under the minimap: at 296 px tall it sat on the joystick.
+  assert.doesNotMatch(css,/position:fixed/);
   // inicio-no-uno-caixas-120: only the disc, no words: the face stays on the wake flash too (it is all there is).
   assert.doesNotMatch(landscape,/\.rh-minerva-face\{display:none\}/);
+  // The mission line is built right after the clock, so the two share the first row (hud.ts stack order).
+  const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8');
+  assert.match(hud,/stack\.append\(minerva\.el,mission\.band,mission\.row,/);
 });

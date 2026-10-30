@@ -1,61 +1,67 @@
 export type Role = 'Linha de frente' | 'Dano' | 'Suporte' | 'Controle';
 export interface HeroClass {
-  id: string; name: string; subtitle: string; role: Role; description: string;
-  skill: string; skillDescription: string; stats: [number, number, number, number];
-  quote: string; art: number;
+  id: string; name: string; subtitle: string; role: Role;
+  skill: string; stats: [number, number, number, number]; art: number;
 }
 // Atlas: 6 colunas × 6 linhas. A ordem é um contrato com o prompt da arte.
 export const classes: HeroClass[] = [
-  {id:'cidadao-comum',name:'Cidadão',subtitle:'O básico também dá crítico.',role:'Linha de frente',description:'Saiu para comprar pão e entrou numa missão de nível impossível. Não tem superpoder, mas trouxe uma sacola.',skill:'Só Estou de Passagem',skillDescription:'Avança protegendo aliados próximos. Quanto mais confusão, maior sua resistência.',stats:[3,3,3,3],quote:'Eu só queria chegar em casa.',art:0},
-  {id:'mendigo',name:'Mendigo',subtitle:'Improviso lendário.',role:'Suporte',description:'Conhece cada atalho e transforma o que o resto do mundo ignora em equipamento indispensável para a turma.',skill:'Tesouro do Achados',skillDescription:'Monta um abrigo improvisado que protege e recupera aliados na área.',stats:[2,3,4,3],quote:'Isso aqui ainda dá jogo.',art:1},
-  {id:'viciado-em-bet',name:'Viciado em Bet',subtitle:'A sorte não leu o tutorial.',role:'Dano',description:'Fala em probabilidade o tempo inteiro. Seus palpites mágicos oscilam, mas nunca colocam a vida da equipe em aposta.',skill:'Odd Impossível',skillDescription:'Lança dados mágicos: causa dano básico garantido e um bônus variável. Usa apenas energia fictícia do jogo.',stats:[4,2,5,1],quote:'Dessa vez é certeza. Eu acho.',art:2},
-  {id:'clt-cansado',name:'CLT',subtitle:'Tanque em horário comercial.',role:'Linha de frente',description:'Sobreviveu a reuniões que poderiam ser mensagens. Um monstro gigante não chega nem perto da segunda-feira.',skill:'Hora Extra',skillDescription:'Recebe um escudo temporário e atrai inimigos enquanto o café estiver fazendo efeito.',stats:[5,1,3,3],quote:'Isso entra no banco de horas?',art:3},
-  {id:'motogirl',name:'Motogirl',subtitle:'Sua salvação saiu para entrega.',role:'Suporte',description:'Encontra qualquer endereço, inclusive uma masmorra sem número. Chega primeiro e nunca esquece o pedido.',skill:'Entrega Expressa',skillDescription:'Corre até um aliado e entrega cura; o percurso deixa um rastro de velocidade.',stats:[2,5,2,3],quote:'Tô na porta. Qual é o portão?',art:4},
-  {id:'pedreiro',name:'Pedreiro',subtitle:'A obra é a defesa.',role:'Linha de frente',description:'Olhou para o chefe e disse que a estrutura está comprometida. Faz uma muralha antes de o cimento secar.',skill:'Puxadinho Tático',skillDescription:'Ergue uma barreira temporária que bloqueia inimigos e protege a retaguarda.',stats:[5,1,4,2],quote:'Dá pra fazer. Só falta material.',art:5},
-  {id:'vizinha-fofoqueira',name:'Fofoqueira',subtitle:'Informação privilegiada.',role:'Controle',description:'Sabe quem entrou na dungeon, com quem saiu e por que o boss está nervoso. Seu alcance é a rua inteira.',skill:'Já Fiquei Sabendo',skillDescription:'Revela inimigos próximos e marca o alvo principal para a equipe causar mais dano.',stats:[1,3,5,3],quote:'Não sou de falar, mas...',art:6},
-  {id:'tio-do-churrasco',name:'Tio do Churrasco',subtitle:'O suporte está no ponto.',role:'Suporte',description:'Onde a turma vê uma invasão, ele vê uma desculpa para reunir todo mundo. Carrega carvão para emergências.',skill:'Ponto Perfeito',skillDescription:'Prepara uma área de descanso que cura lentamente e concede força aos aliados.',stats:[3,1,3,5],quote:'Quem pediu bem passado?',art:7},
-  {id:'maromba',name:'Maromba',subtitle:'Hoje é treino de chefe.',role:'Dano',description:'Conta repetições até durante o combate. A mochila só tem creatina, uma coqueteleira e convicção.',skill:'Última Repetição',skillDescription:'Carrega um golpe corpo a corpo que empurra inimigos e quebra sua defesa.',stats:[5,3,1,3],quote:'Tá leve! Tá leve!',art:8},
-  {id:'feirante',name:'Feirante',subtitle:'Três buffs por um.',role:'Suporte',description:'Sua voz atravessa o mapa. Nunca deixa a equipe sem recursos e conhece o preço de cada relíquia.',skill:'É Pra Acabar',skillDescription:'Distribui frutas que restauram energia e remove um efeito negativo dos aliados próximos.',stats:[2,2,3,5],quote:'Olha a promoção da cura!',art:9},
-  {id:'tecnico-ti',name:'Técnico de TI',subtitle:'Já tentou reviver de novo?',role:'Controle',description:'Chega com um cabo que ninguém pediu e resolve o problema. Suspeita que os monstros estejam sem atualização.',skill:'Reinicia Isso',skillDescription:'Solta um pulso que interrompe ataques inimigos e desacelera a área.',stats:[1,3,5,3],quote:'Na minha máquina não tinha dragão.',art:10},
-  {id:'streamer',name:'Streamer',subtitle:'A live não pode cair.',role:'Dano',description:'Comenta cada movimento como se milhares estivessem assistindo. Talvez estejam. Talvez seja só a mãe.',skill:'Clipa Isso',skillDescription:'Acerta uma sequência à distância; concluir o combo fortalece o próximo ataque aliado.',stats:[3,4,2,3],quote:'Chat, vocês viram isso?!',art:11},
-  {id:'coach',name:'Coach Quântico',subtitle:'Destrave seu dano interior.',role:'Suporte',description:'Transforma qualquer derrota em palestra. A turma reclama, mas o megafone faz todo mundo correr mais rápido.',skill:'Mude o Mindset',skillDescription:'Concede velocidade e resistência a controles aos aliados por um curto período.',stats:[1,2,4,5],quote:'O limite é uma crença do boss.',art:12},
-  {id:'faxineira',name:'Faxineira',subtitle:'Vai varrer a dungeon.',role:'Controle',description:'Viu a bagunça e resolveu o encontro antes de alguém pedir. Nenhuma gosma passa pela inspeção.',skill:'Passa o Rodo',skillDescription:'Varre inimigos em um arco e limpa áreas perigosas de efeito temporário.',stats:[3,3,4,2],quote:'Acabei de limpar esse chão!',art:13},
-  {id:'concurseira',name:'Concurseira',subtitle:'Especialista em decorar padrões.',role:'Controle',description:'Estudou o manual do monstro, o edital e as erratas. Já sabe qual ataque cai mais na prova.',skill:'Questão Anulada',skillDescription:'Interrompe uma habilidade inimiga e reduz seu dano por um instante.',stats:[1,2,5,4],quote:'Esse padrão já caiu em 2018.',art:14},
-  {id:'vendedor-praia',name:'Vendedor de Praia',subtitle:'Reforço geladinho.',role:'Suporte',description:'Caminha o dia todo sob o sol, sempre oferecendo exatamente o que alguém está precisando.',skill:'Olha a Água',skillDescription:'Recupera energia da equipe e remove lentidão enquanto atravessa o grupo.',stats:[2,4,2,4],quote:'Vai uma geladinha, aventureiro?',art:15},
-  {id:'pagodeiro',name:'Pagodeiro',subtitle:'Sustain no cavaquinho.',role:'Suporte',description:'Mantém o grupo no ritmo mesmo quando a partida vira um caos. Sabe exatamente quando puxar o refrão.',skill:'Deixa Acontecer',skillDescription:'Cria um ritmo que cura aliados aos poucos e aumenta sua recuperação de energia.',stats:[2,2,3,5],quote:'Só mais uma e a gente vai.',art:18},
-  {id:'gambiarreiro',name:'Gambiarreiro',subtitle:'Temporário há seis anos.',role:'Controle',description:'Seu equipamento desafia a física e o bom senso. Se está funcionando, ninguém toca.',skill:'Fita Resolve',skillDescription:'Monta uma armadilha que prende os primeiros inimigos que atravessarem a área.',stats:[3,2,5,2],quote:'Agora segura aqui um pouquinho.',art:20},
-  {id:'universitario',name:'Universitário',subtitle:'Entrega às 23h59.',role:'Dano',description:'Não dormiu, mas fez uma apresentação convincente. Canaliza todo o desespero em rajadas de energia.',skill:'Prazo Final',skillDescription:'Dispara rapidamente por um curto período e precisa recuperar o fôlego depois.',stats:[3,4,4,1],quote:'Dá tempo. Ainda dá tempo.',art:21},
-  {id:'passageira',name:'Passageira do Busão',subtitle:'Esquiva em horário de pico.',role:'Linha de frente',description:'Aprendeu a manter o equilíbrio nas condições mais improváveis. Não perde a viagem por causa de monstro.',skill:'Dá Licença',skillDescription:'Abre passagem entre inimigos, reduzindo dano recebido durante o movimento.',stats:[3,5,2,2],quote:'Vai descer? Então deixa eu passar.',art:22},
-  {id:'porteiro',name:'Porteiro',subtitle:'Entrada só com autorização.',role:'Linha de frente',description:'Reconhece todo mundo da rua, inclusive aquele inimigo disfarçado. Guarda a linha de frente com tranquilidade.',skill:'Nome na Lista',skillDescription:'Provoca um grupo de inimigos e cria uma zona que reduz sua velocidade.',stats:[4,1,4,3],quote:'Vou precisar confirmar lá em cima.',art:23},
-  {id:'merendeira',name:'Merendeira',subtitle:'A cura vem de concha.',role:'Suporte',description:'Conhece todo mundo pelo prato favorito. Com uma panela resolve fome, medo e a moral do grupo.',skill:'Prato Reforçado',skillDescription:'Cura um aliado e concede vida temporária que desaparece ao fim do efeito.',stats:[3,1,3,5],quote:'Você tá muito magrinho, vem cá.',art:26},
-  {id:'rei-pastel',name:'Rei do Pastel',subtitle:'Crocância ofensiva.',role:'Dano',description:'Conquistou a praça pela qualidade e a dungeon por acidente. Nunca deixa o recheio para depois.',skill:'Óleo no Fogo',skillDescription:'Arremessa um pacote fumegante que causa dano em área e deixa o chão perigoso.',stats:[4,2,3,3],quote:'Saiu um especial da casa!',art:27},
-  {id:'astrologa',name:'Astróloga',subtitle:'Seu ascendente é stun.',role:'Controle',description:'Diz que o chefe está agressivo por causa dos astros. Sua previsão é surpreendentemente útil no combate.',skill:'Mercúrio Retrógrado',skillDescription:'Cria um campo que desacelera inimigos e atrasa suas próximas habilidades.',stats:[2,2,5,3],quote:'Eu avisei no mapa astral.',art:28},
-  {id:'rei-arraia',name:'Rei do Arraiá',subtitle:'Pula a fogueira, chefão.',role:'Controle',description:'Só precisava de uma sanfona para levantar a turma. Já decorou a masmorra com bandeirinhas.',skill:'Olha a Cobra',skillDescription:'Assusta inimigos próximos e abre espaço para o grupo se reorganizar.',stats:[3,2,2,5],quote:'É mentira! Ou será que não?',art:29},
-  {id:'mae-pet',name:'Mãe de Pet',subtitle:'Companheiro inseparável.',role:'Suporte',description:'Trouxe petisco, água, remédio e uma foto do gato para cada pessoa da equipe.',skill:'Cadê o Neném',skillDescription:'Envia um companheiro para buscar um recurso de cura e revelar ameaças próximas.',stats:[1,3,3,5],quote:'Ele não morde. Normalmente.',art:30},
-  {id:'aposentado',name:'Aposentado',subtitle:'Experiência não falta.',role:'Controle',description:'Tem uma história para cada inimigo e uma estratégia que parece absurda até funcionar.',skill:'No Meu Tempo',skillDescription:'Usa a vara para puxar um inimigo leve e interromper sua aproximação.',stats:[3,1,5,3],quote:'Antigamente o boss era maior.',art:31},
-  {id:'conspiracionista',name:'Conspiracionista',subtitle:'Ele sabe demais. Talvez.',role:'Controle',description:'Ligou todos os pontos, inclusive os que não existiam. Pelo menos colocou sensores em volta do acampamento.',skill:'Eu Já Sabia',skillDescription:'Instala um sensor que revela inimigos e avisa a equipe quando uma ameaça se aproxima.',stats:[1,3,5,3],quote:'Isso tudo é um grande tutorial.',art:33},
+  {id:'cidadao-comum',name:'Cidadão',subtitle:'O básico também dá crítico.',role:'Linha de frente',skill:'Só Estou de Passagem',stats:[3,3,3,3],art:0},
+  {id:'viciado-em-bet',name:'Viciado em Bet',subtitle:'A sorte não leu o tutorial.',role:'Dano',skill:'Odd Impossível',stats:[4,2,5,1],art:2},
+  {id:'clt-cansado',name:'CLT',subtitle:'Tanque em horário comercial.',role:'Linha de frente',skill:'Hora Extra',stats:[5,1,3,3],art:3},
+  {id:'motogirl',name:'Motogirl',subtitle:'Sua salvação saiu para entrega.',role:'Suporte',skill:'Entrega Expressa',stats:[2,5,2,3],art:4},
+  {id:'pedreiro',name:'Pedreiro',subtitle:'A obra é a defesa.',role:'Linha de frente',skill:'Puxadinho Tático',stats:[5,1,4,2],art:5},
+  {id:'vizinha-fofoqueira',name:'Fofoqueira',subtitle:'Informação privilegiada.',role:'Controle',skill:'Já Fiquei Sabendo',stats:[1,3,5,3],art:6},
+  {id:'tio-do-churrasco',name:'Tio do Churrasco',subtitle:'O suporte está no ponto.',role:'Suporte',skill:'Ponto Perfeito',stats:[3,1,3,5],art:7},
+  {id:'maromba',name:'Maromba',subtitle:'Hoje é treino de chefe.',role:'Dano',skill:'Última Repetição',stats:[5,3,1,3],art:8},
+  {id:'feirante',name:'Feirante',subtitle:'Três buffs por um.',role:'Suporte',skill:'É Pra Acabar',stats:[2,2,3,5],art:9},
+  {id:'tecnico-ti',name:'Técnico de TI',subtitle:'Já tentou reviver de novo?',role:'Controle',skill:'Reinicia Isso',stats:[1,3,5,3],art:10},
+  {id:'streamer',name:'Streamer',subtitle:'A live não pode cair.',role:'Dano',skill:'Clipa Isso',stats:[3,4,2,3],art:11},
+  {id:'coach',name:'Coach Quântico',subtitle:'Destrave seu dano interior.',role:'Suporte',skill:'Mude o Mindset',stats:[1,2,4,5],art:12},
+  {id:'faxineira',name:'Faxineira',subtitle:'Vai varrer a dungeon.',role:'Controle',skill:'Passa o Rodo',stats:[3,3,4,2],art:13},
+  {id:'concurseira',name:'Concurseira',subtitle:'Especialista em decorar padrões.',role:'Controle',skill:'Questão Anulada',stats:[1,2,5,4],art:14},
+  {id:'vendedor-praia',name:'Vendedor de Praia',subtitle:'Reforço geladinho.',role:'Suporte',skill:'Olha a Água',stats:[2,4,2,4],art:15},
+  {id:'pagodeiro',name:'Pagodeiro',subtitle:'Sustain no cavaquinho.',role:'Suporte',skill:'Deixa Acontecer',stats:[2,2,3,5],art:18},
+  {id:'gambiarreiro',name:'Gambiarreiro',subtitle:'Temporário há seis anos.',role:'Controle',skill:'Fita Resolve',stats:[3,2,5,2],art:20},
+  {id:'universitario',name:'Universitário',subtitle:'Entrega às 23h59.',role:'Dano',skill:'Prazo Final',stats:[3,4,4,1],art:21},
+  {id:'passageira',name:'Passageira do Busão',subtitle:'Esquiva em horário de pico.',role:'Linha de frente',skill:'Dá Licença',stats:[3,5,2,2],art:22},
+  {id:'porteiro',name:'Porteiro',subtitle:'Entrada só com autorização.',role:'Linha de frente',skill:'Nome na Lista',stats:[4,1,4,3],art:23},
+  {id:'merendeira',name:'Merendeira',subtitle:'A cura vem de concha.',role:'Suporte',skill:'Prato Reforçado',stats:[3,1,3,5],art:26},
+  {id:'rei-pastel',name:'Rei do Pastel',subtitle:'Crocância ofensiva.',role:'Dano',skill:'Óleo no Fogo',stats:[4,2,3,3],art:27},
+  {id:'astrologa',name:'Astróloga',subtitle:'Seu ascendente é stun.',role:'Controle',skill:'Mercúrio Retrógrado',stats:[2,2,5,3],art:28},
+  {id:'rei-arraia',name:'Rei do Arraiá',subtitle:'Pula a fogueira, chefão.',role:'Controle',skill:'Olha a Cobra',stats:[3,2,2,5],art:29},
+  {id:'mae-pet',name:'Mãe de Pet',subtitle:'Companheiro inseparável.',role:'Suporte',skill:'Cadê o Neném',stats:[1,3,3,5],art:30},
+  {id:'aposentado',name:'Aposentado',subtitle:'Experiência não falta.',role:'Controle',skill:'No Meu Tempo',stats:[3,1,5,3],art:31},
+  {id:'conspiracionista',name:'Conspiracionista',subtitle:'Ele sabe demais. Talvez.',role:'Controle',skill:'Eu Já Sabia',stats:[1,3,5,3],art:33},
   // NEW-20261022-ORQ-gato-personagem-completo: kit approved by the ORQ (23/10 00:21Z); cell 16 is the one Tia da Festa left.
-  {id:'gato-nada-pra-comer',name:'Gatito da raça nada para comer em casa',subtitle:'A fome é a arma mais forte.',role:'Controle',description:'Comeu há quinze minutos e jura que está há três dias em jejum. Segue qualquer barulho de pacote até o outro lado do mapa.',skill:'Miado de Fome',skillDescription:'Solta um miado desesperado: os bichos em volta levam um susto, congelam por um instante e depois só querem saber do Gatito, que fica protegido.',stats:[1,5,4,2],quote:'Miau. (Tradução: cadê a ração?)',art:16},
+  {id:'gato-nada-pra-comer',name:'Gatito da raça nada para comer em casa',subtitle:'A fome é a arma mais forte.',role:'Controle',skill:'Miado de Fome',stats:[1,5,4,2],art:16},
 ];
 export const roles: Role[] = ['Linha de frente','Dano','Suporte','Controle'];
 export function getClass(id: string): HeroClass | undefined { return classes.find(hero => hero.id === id); }
 /**
- * D-053 (17/10/2026): for now only the heroes with the complete R06 movement art (8 directions, 128 poses, the 15 of
- * personagens-movimento128) can be picked in the menu or drawn for a room bot. The other 20 stay in the code and data,
- * hidden: a room or link asking for one of them plays one of these (playableClassId), never an error.
+ * The 6 active heroes (herois-legados-escondidos, the user 29/10: "dê hide em todos os personagens (serão legados). E
+ * teremos nossos 6 ativos"): the only ones a person can see or pick (menu, stories, lobby) or a room bot can get, in
+ * the menu's order (the first is the default, personagens-liberados.ts PERSONAGEM_PADRAO). The one list: the menu,
+ * index.html's preload (OPEN) and the room read it.
  */
-export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['clt-cansado','coach','concurseira','faxineira','feirante',
-  'gato-nada-pra-comer','maromba','mendigo','passageira','pedreiro','streamer','universitario','viciado-em-bet','vizinha-fofoqueira',
-  // The user (24/10, "falta liberar o aposentado e o vendedor"): playable with their 4-direction sheets until the 8-direction art lands.
-  'vendedor-praia','aposentado']);
-/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now; the vendedor and the aposentado until their 8-direction art). */
-export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer','vendedor-praia','aposentado']);
+export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
+/**
+ * LEGADO: every other class (the mendigo on screen is an enemy, art/mendigo.ts; the Mendigo hero was deleted on 30/10). They
+ * stay in the code, the data and the art folders, hidden from the player and never preloaded: a room, a save or a link
+ * asking for one of them plays a playable class (playableClassId), never an error.
+ */
+export const LEGACY_CLASS_IDS: readonly string[] = Object.freeze(classes.map(hero => hero.id).filter(id => !PLAYABLE_CLASS_IDS.includes(id)));
+/**
+ * Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now). The vendedor and the aposentado are bots
+ * since bots-vendedor-aposentado: their M16 sheets cover the 8 directions (3 mirrored), the same clips the viciado and the
+ * maromba walk on (movementPlan takes M16 first, so a walk128 would never show).
+ */
+export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer']);
 /** The classes a room bot may get: the playable ones minus NOT_FOR_BOTS, in the roster's order. */
 export const BOT_CLASS_IDS: readonly string[] = Object.freeze(PLAYABLE_CLASS_IDS.filter(id => !NOT_FOR_BOTS.includes(id)));
 /** The playable classes, in the roster's order. */
 export const playableClasses: HeroClass[] = classes.filter(hero => PLAYABLE_CLASS_IDS.includes(hero.id));
 export const isPlayableClass = (id: unknown): id is string => typeof id === 'string' && PLAYABLE_CLASS_IDS.includes(id);
-/** `id` when playable; otherwise (hidden, unknown, not a string) the first playable class. */
+/** `id` when playable; otherwise (legacy, unknown, not a string) the first playable class (the viciado). */
 export const playableClassId = (id: unknown): string => isPlayableClass(id) ? id : playableClasses[0].id;
 /** The menu's search: over the playable classes only (D-053). */
 export function filterClasses(query: string, role: string): HeroClass[] {

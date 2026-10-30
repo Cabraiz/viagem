@@ -30,11 +30,10 @@ import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
 import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
-import {playEvents} from '../audio/events.ts';
+import {GEMS,playEvents} from '../audio/events.ts';
 import {Footsteps,allyGain,type StepFigure} from '../audio/footsteps.ts';
-import {AlarmLoop} from '../audio/alarm.ts';
-/** The alarm stays loud this long after the car's last hit (ms). */
-const ALARM_HIT_MS=1500;
+import {AlarmLoop,alarmHit} from '../audio/alarm.ts';
+import {alarmOn} from '../render/chaveiro/rules.ts';
 import {heroRuns} from '../sprites/movement128.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
@@ -165,7 +164,7 @@ export class RescueBoard {
     const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
     // A cédula caught on screen clinked at the catch (tick): the room's own pickup of it plays nothing.
     // An elite's kill: its body is still in the feed on the kill's tick (the tombstone comes a few ticks later).
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite);
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id,e=>!!this.scene()?.cedulaHeard(e),id=>!!this.net.feed.enemies.get(id)?.elite,undefined,{hero:this.net.predicted,side:p=>this.scene()?.screenSide(p)??0,boss:id=>!!this.net.feed.enemies.get(id)?.boss,telegraph:id=>view.telegraphs.find(t=>t.id===id),enemy:id=>this.net.feed.enemies.get(id)});
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -226,7 +225,9 @@ export class RescueBoard {
     const objective=objectiveOf(this.last),live=!!objective&&!objective.ended&&!!this.net.run;
     if(!live&&!this.alarmLoop)return;
     const loop=this.alarmLoop??=new AlarmLoop(getAudio()),hero=this.net.predicted;
-    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,now-this.carHitAt<=ALARM_HIT_MS);
+    // Loud while the sim's alarm runs (its alarmUntil, the waves drawn on the car), not only right after a hit seen here.
+    const alarmed=!!objective&&!!this.last&&alarmOn(objective,this.last.tick);
+    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,alarmHit(alarmed,now-this.carHitAt));
   }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
@@ -243,7 +244,7 @@ export class RescueBoard {
     this.alarm(now);
     // The cédula the hero walked into clinks the moment it flies into him (render/cedula-catch.ts), not at the room's word.
     const caught=scene?.cedulasCaught()??0;
-    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema');}
+    if(caught>this.caught){const audio=getAudio();if(audio.unlocked)audio.play('gema',{rate:GEMS.next(now)});}
     this.caught=caught;
     const pending=scene?.pendingGrana()??0;
     if(pending!==this.pending){this.pending=pending;hud.granaMoved();}

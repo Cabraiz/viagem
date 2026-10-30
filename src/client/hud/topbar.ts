@@ -5,7 +5,7 @@
 import {putData,putHidden,putIconNumber,putTextData} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
 import {bossInfo,exploraLeft,nestCount,nestsMode,roundInfo,xpFraction,type HudContext,type HudPart} from './model.ts';
-import type {ChaveiroClock} from './chaveiro.ts';
+import {ClockTag,arrivalBand,liveObjective,type ChaveiroClock} from './chaveiro.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
@@ -15,6 +15,9 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 };
 
 export function createTopBar():HudPart{
+  // Lazy, and its rejection dropped, so the node tests that build this part (hud.test, hud-sem-escrita-repetida) never load
+  // a .css (card chaveiro-chegou-e-relogio); Vite always serves it.
+  import('./chaveiro-relogio.css').catch(()=>{});
   const root=el('div','rh-top');
   // Not a live region: the countdown changes every second. Round changes are announced by the marquee.
   const chip=el('div','rh-round',root);
@@ -22,6 +25,16 @@ export function createTopBar():HudPart{
   // D-047: the chaveiro's clock ("Onda 3 · 9:48", no moto since topo-sem-icone-contagem-exploracao), only while the
   // objective runs; in the time to explore, the seconds left ("120", "119"…).
   eta.hidden=true;
+  // Card chaveiro-chegou-e-relogio: while the moto is stopped the clock wears the stop's colour and, under the chip, the
+  // time the stop added ("Moto tombou: +4 s", hud/chaveiro.ts ClockStopTracker).
+  // Right after the clock, in the chip: "+N s", with what stopped the moto before it where the row has room (chaveiro-relogio.css).
+  const stopTag=el('span','rh-relogio-motivo');eta.after(stopTag);stopTag.hidden=true;
+  const stopName=el('span','rh-relogio-motivo-nome',stopTag),stopAdded=el('span','rh-relogio-motivo-mais',stopTag);
+  const tag=new ClockTag();
+  // "Chegou" is a moment: the band under the chip while he opens the car, the seconds left and a bar filling up.
+  const arrival=el('div','rh-chaveiro-chegou',root);arrival.setAttribute('role','status');arrival.hidden=true;
+  const arrivalTitle=el('strong','rh-chegou-titulo',arrival),arrivalHold=el('span','rh-chegou-segurem',arrival);
+  const arrivalFill=el('i','rh-chegou-fill',el('div','rh-chegou-track',arrival));
   const xp=el('div','rh-xp',root);
   const level=el('span','rh-xp-level',xp);
   const track=el('div','rh-xp-track',xp),fill=el('i','rh-xp-fill',track);
@@ -71,11 +84,26 @@ export function createTopBar():HudPart{
         }
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
+      const objective=liveObjective(view);
+      // A stop's "+N s" first; else a hit's on the Uno (card missao-proteger-uno-tempo): both read the ETA, held = nothing.
+      const stop=tag.step(objective&&!round.chaveiro?.held?objective:undefined,view.tick);
+      put('stop',stop?`${stop.mode}|${stop.text}`:'',()=>{
+        putHidden(stopTag,!stop);
+        if(stop){eta.dataset.motivo=stop.urgent?'urgente':'parada';stopTag.dataset.motivo=eta.dataset.motivo;
+          stopName.textContent=`${stop.label}: `;stopAdded.textContent=`+${stop.added} s`;stopTag.title=stop.text;}
+        else{delete eta.dataset.motivo;stopName.textContent=stopAdded.textContent=stopTag.title='';}
+      });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);
     }
+    const band=arrivalBand(liveObjective(view));
+    put('chegou',band?`${band.seconds}`:'',()=>{
+      putHidden(arrival,!band);
+      if(band){arrivalTitle.textContent=band.title;arrivalHold.textContent=band.hold;arrival.setAttribute('aria-label',band.aria);}
+    });
+    if(band)put('chegouFill',`scaleX(${Math.round(band.fraction*100)/100})`,v=>{arrivalFill.style.transform=v;});
     const fraction=xpFraction(view);
     put('xp',`scaleX(${fraction})`,v=>{fill.style.transform=v;});
-    put('level',`Nv ${view.team.level}`,v=>{level.textContent=v;});
+    put('level',`Nív. ${view.team.level}`,v=>{level.textContent=v;});
     put('xpAria',String(Math.round(fraction*100)),v=>xp.setAttribute('aria-valuenow',v));
     if(lastLevel>=0&&view.team.level>lastLevel){xp.classList.remove('rh-pop');void xp.offsetWidth;xp.classList.add('rh-pop');}
     lastLevel=view.team.level;
@@ -91,7 +119,7 @@ export function createTopBar():HudPart{
 
 /** Lines for the interval marquee, picked by round index so it is stable per round. */
 const intervalLines=[
-  'Respira, bebe água e escolhe o upgrade',
+  'Respira, bebe água e escolhe a melhoria',
   'Intervalo comercial: resgata a galera',
   'Pausa pro cafezinho. Rápido!',
   'Hora de fingir que tem estratégia',
@@ -120,18 +148,42 @@ export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name
 export function createAnnouncer():HudPart{
   const root=el('div','rh-marquee');root.setAttribute('aria-live','polite');root.hidden=true;
   const title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
-  let timer:ReturnType<typeof setTimeout>|undefined;
+  // The whole subtitle for screen readers when the line shows less of it (fitSubtitle).
+  const whole=el('span','rh-sr',root);
+  let timer:ReturnType<typeof setTimeout>|undefined,full='';
+  /**
+   * One line and nothing cut (BUG-20261023-ORQ-resultado-paisagem-e-125): the title is always whole; the subtitle shows
+   * whole if it fits beside it, else only the modifier's name (modifierLabel "Nome: descrição"), else it goes. Runs again
+   * when the banner's size changes (text at 125%, a turned phone), starting from the whole text every time.
+   */
+  const fitSubtitle=()=>{
+    if(root.hidden||!full)return;
+    subtitle.textContent=full;subtitle.hidden=false;whole.textContent='';
+    // Two lines at most: a title that needs two lines keeps them and the subtitle goes.
+    const line=parseFloat(getComputedStyle(title).lineHeight)||28,oneLine=title.getBoundingClientRect().height<=line*1.5;
+    const over=()=>subtitle.scrollWidth>subtitle.clientWidth+1;
+    if(oneLine&&!over())return;
+    const name=full.split(/:\s/)[0];
+    if(oneLine&&name!==full){subtitle.textContent=name;if(!over()){whole.textContent=full;return;}}
+    subtitle.hidden=true;whole.textContent=full;
+  };
+  // Next frame (a size change inside the observer's own callback is a "loop" error), and only when the room or the text
+  // size changed: the fit itself resizes the banner.
+  let fitted='';
+  const fitKey=()=>`${root.parentElement?.clientWidth}|${getComputedStyle(title).fontSize}|${full}`;
+  const resized=typeof ResizeObserver==='function'?new ResizeObserver(()=>requestAnimationFrame(()=>{
+    if(fitKey()!==fitted){fitted=fitKey();fitSubtitle();}
+  })):undefined;
+  resized?.observe(root);
   const show=(marquee:Marquee)=>{
     // A notice already in the slot wins (danger over the joke): the round name skips its turn; the chip shows the round.
     if(root.parentElement?.querySelector('.rh-alert:not([hidden])'))return;
     // An open offer window too (design onda 3 B4): the chip already shows the round.
     if(root.closest('.rh')?.querySelector('.rh-offer:not([hidden])'))return;
     // Word joiner after hyphens: "E-mail" must never break into "E-" / "mail" on a narrow phone.
-    title.textContent=marquee.title.replace(/-/g,'-\u2060');subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
+    title.textContent=marquee.title.replace(/-/g,'-\u2060');full=marquee.subtitle??'';subtitle.textContent=full;subtitle.hidden=!full;whole.textContent='';
     root.dataset.tone=marquee.tone;root.hidden=false;
-    // Two lines at most: a title that needs two lines keeps them and the subtitle goes.
-    const line=parseFloat(getComputedStyle(title).lineHeight)||28;
-    if(!subtitle.hidden&&title.getBoundingClientRect().height>line*1.5)subtitle.hidden=true;
+    fitSubtitle();fitted=fitKey();
     root.classList.remove('rh-marquee-in');void root.offsetWidth;root.classList.add('rh-marquee-in');
     clearTimeout(timer);timer=setTimeout(()=>{root.hidden=true;root.classList.remove('rh-marquee-in');},MARQUEE_MS);
   };
@@ -149,5 +201,5 @@ export function createAnnouncer():HudPart{
       const marquee=view.objective?marqueeFor(event,Infinity,'Onda'):marqueeFor(event,view.round?.total);
       if(marquee)show(marquee);
     }
-  },destroy(){clearTimeout(timer);}};
+  },destroy(){clearTimeout(timer);resized?.disconnect();}};
 }

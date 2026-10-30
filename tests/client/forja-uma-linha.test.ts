@@ -397,7 +397,7 @@ test('each tag carries its short effect; the aria-label keeps the long one and t
       const label=tag.attrs['aria-label'];
       assert.ok(label.startsWith(`${RECIPES[id].name}: ${RECIPES[id].describe}. Custa ${forgePriceLabel(price).speech}.`),label);
     }
-    assert.equal(forgePrice('gambiarra',view.camp!.forge),2*RECIPES.gambiarra.cost,'the second gambiarra costs double');
+    assert.equal(forgePrice('gambiarra',view.camp!.forge),Math.round(1.5*RECIPES.gambiarra.cost),'the second gambiarra costs 1.5×');
     part.destroy();
   }finally{if(before===undefined)delete g.document;else g.document=before;}
 });

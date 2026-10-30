@@ -1,6 +1,7 @@
 // cadeado-so-clt-viciado (the user, 22/10): a person may only play the CLT or the viciado (and the gato since gato-no-menu); the other playable heroes
 // show locked in the menu and cannot be confirmed; a room converts a locked class sent by a person (a console, an old
-// tab) to the viciado; room bots still draw from every playable class.
+// tab) to the viciado. herois-legados-escondidos (29/10): the released heroes are the playable ones (one list); the rest
+// are hidden legacy heroes, so the lock no longer shows on any tile, and room bots draw from the 6 minus NOT_FOR_BOTS.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,28 +18,28 @@ const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.c
 
 test('one list: the viciado, the CLT, the gato, the maromba (user, 23/10: released for the play test), the vendedor and the aposentado (user, 24/10), all playable; the viciado is the default; anything else falls to him',()=>{
   assert.deepEqual([...PERSONAGENS_LIBERADOS],['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
-  for(const id of PERSONAGENS_LIBERADOS)assert.ok(PLAYABLE_CLASS_IDS.includes(id),`${id} has the movement art`);
+  assert.equal(PERSONAGENS_LIBERADOS,PLAYABLE_CLASS_IDS,'one list, not two');
   assert.equal(PERSONAGEM_PADRAO,'viciado-em-bet');assert.equal(heroiPadrao().id,'viciado-em-bet');
   assert.equal(isLiberado('clt-cansado'),true);assert.equal(isLiberado('coach'),false);assert.equal(isLiberado(42),false);
   assert.equal(liberadoId('clt-cansado'),'clt-cansado');assert.equal(liberadoId('gato-nada-pra-comer'),'gato-nada-pra-comer');
   assert.equal(liberadoId('aposentado'),'aposentado');assert.equal(liberadoId('vendedor-praia'),'vendedor-praia');
-  for(const id of ['coach','pedreiro','cidadao-comum','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
-  assert.ok(PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id)).length>=10,'the rest of the playable heroes are locked');
+  for(const id of ['coach','pedreiro','tio-do-churrasco','cidadao-comum','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
+  assert.deepEqual(PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id)),[],'no playable hero is locked any more');
 });
 
-test('a room seats a person who sends a locked class as the viciado; its bots still draw locked heroes',()=>{
+test('a room seats a person who sends a legacy class as the viciado; its bots only draw released heroes',()=>{
   const botClasses=new Set<string>();
   for(let seed=1;seed<=10;seed++){
     const room=new Room(1000,seed),a=peer(),b=peer(),c=peer();
     const ana=join(room,a,'Ana','pedreiro',1000),bia=join(room,b,'Bia','clt-cansado',1000),cid=join(room,c,'Cid','viciado-em-bet',1000);
-    assert.equal(room.sim.players.get(ana)!.classId,'viciado-em-bet','a locked class from a console plays the viciado');
+    assert.equal(room.sim.players.get(ana)!.classId,'viciado-em-bet','a legacy class from a console plays the viciado');
     assert.equal(room.sim.players.get(bia)!.classId,'clt-cansado');assert.equal(room.sim.players.get(cid)!.classId,'viciado-em-bet');
     let t=1100;
     for(let k=0;k<3;k++){room.receive(a,JSON.stringify({t:'bot-add',round:room.run.snapshot().round}),t);t+=OWNER_GAP_MS+1;}
     for(const m of room.run.snapshot().members.filter(m=>m.bot))botClasses.add(room.sim.players.get(m.id)!.classId);
   }
-  assert.ok([...botClasses].some(id=>!isLiberado(id)),`bots play locked heroes too (${[...botClasses].join(', ')})`);
-  assert.ok(botClasses.size>=6,`the bots' draw still varies (${botClasses.size})`);
+  assert.ok([...botClasses].every(isLiberado),`bots play released heroes only (${[...botClasses].join(', ')})`);
+  assert.ok(botClasses.size>=2,`the bots' draw still varies (${botClasses.size})`);
 });
 
 test('the menu opens on the viciado, a saved locked hero falls back to him, and a locked hero never gets confirmed',()=>{

@@ -26,7 +26,7 @@ export const KIT_REACH=KIT_PLACE_REACH;
 /** A press dragged this far (world u) turns a barricade to the drag's axis; shorter, a tap keeps its rot. */
 export const KIT_TURN_DRAG=.35;
 /** What the HUD says when a kit is picked: where to tap now (the phone has no hover to show the ghost first). */
-export const KIT_TAP_HINT='Toque no mapa onde quer pôr; segure e arraste pra girar';
+export const KIT_TAP_HINT='Toca no mapa pra pôr; segura e arrasta pra girar';
 /** A request without an answer stops counting as pending after this. */
 export const KIT_PENDING_MS=3000;
 /** What the phone says before the first aim, and the kit's own refusals (sim/inventory.ts PlaceResult). */

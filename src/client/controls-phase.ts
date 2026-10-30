@@ -8,6 +8,7 @@
  */
 import type {RunPhase} from '../contract/index.ts';
 import type {InputKind} from './desktop-input.ts';
+import {dicaFor} from './hud/coach/dicas-dom.ts';
 
 export type StickMode='live'|'dimmed'|'off';
 export type SkillMode='live'|'disabled'|'off';
@@ -29,12 +30,15 @@ export const CONTROLS_HINTS_MOUSE:Readonly<Record<ControlsHint,readonly string[]
   lobby:['WASD, setas ou clique pra andar.','A arma atira sozinha.'],
   countdown:['Aquece o mouse!'],
 };
-/** D-051 manual combat: the lobby's second line speaks of the attack, not of the weapon firing on its own. */
-export const MANUAL_HINT:Readonly<Record<InputKind,string>>={touch:'Segura Atacar pra bater.',mouse:'Segura Espaço pra atacar.'};
+/**
+ * D-051 manual combat: the lobby speaks of the attack, not of the weapon firing on its own. One line that walks and
+ * attacks (levelup-sem-arma-e-solo): coop.css hides any second line (BUG-20261013-ORQ-oferta-e-dicas-menores, size).
+ */
+export const MANUAL_HINT:Readonly<Record<InputKind,string>>={touch:'Arrasta pra andar, Atacar pra bater.',mouse:'WASD pra andar, Espaço pra atacar.'};
 /** The etiqueta's lines for a phase and an input kind (`manual`: the room plays the D-051 manual combat). */
 export function controlsHintLines(hint:ControlsHint,kind:InputKind='touch',manual=false):readonly string[]{
   const lines=(kind==='mouse'?CONTROLS_HINTS_MOUSE:CONTROLS_HINTS)[hint];
-  return manual&&hint==='lobby'?[lines[0],MANUAL_HINT[kind]]:lines;
+  return manual&&hint==='lobby'?[MANUAL_HINT[kind]]:lines;
 }
 
 export function controlsFor(input:ControlsInput):Controls{
@@ -62,12 +66,18 @@ export function applyControls(root:HTMLElement,controls:Controls):boolean{
   if(root.dataset.controls!==next)root.dataset.controls=next;
   const hint=root.querySelector<HTMLElement>('.explore-stick-hint');
   if(hint){
-    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',manual=root.dataset.combat==='manual',key=controls.hint?`${controls.hint}:${kind}:${manual?'manual':'auto'}`:'';
+    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',manual=root.dataset.combat==='manual';
+    // In the round the etiqueta lends itself to the first match's gesture tips (hud/coach/dicas-dom.ts).
+    const dica=controls.hint?undefined:dicaFor(root,controls);
+    const key=controls.hint?`${controls.hint}:${kind}:${manual?'manual':'auto'}`:dica?`dica:${dica.tip}:${kind}`:'';
     if(hint.dataset.hint!==key){
       hint.dataset.hint=key;
-      hint.replaceChildren(...(controls.hint?controlsHintLines(controls.hint,kind,manual):[]).map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
+      const lines=controls.hint?controlsHintLines(controls.hint,kind,manual):dica?[dica.text]:[];
+      hint.replaceChildren(...lines.map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
+      if(dica)hint.dataset.dica=dica.tip;else delete hint.dataset.dica;
     }
-    if(hint.hidden!==!controls.hint)hint.hidden=!controls.hint;
+    const shown=!!(controls.hint||dica);
+    if(hint.hidden!==!shown)hint.hidden=!shown;
   }
   return next==='off'&&!wasOff;
 }

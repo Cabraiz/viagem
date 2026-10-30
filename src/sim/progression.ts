@@ -21,7 +21,7 @@ import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimPlayer,
 import type {SimContext,SimSystem} from './context.ts';
 import type {Point} from '../maps/index.ts';
 import {isLand} from '../maps/index.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,needsWeapon,rollChoices} from '../rules/index.ts';
 import type {ItemCatalog} from '../rules/index.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
@@ -34,13 +34,27 @@ import type {ClassBonus} from '../rules/index.ts';
 const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBonus}).classBonus;
 const ctxRunStartTick=(ctx:SimContext)=>(ctx as SimContext&{runStartTick?:number}).runStartTick;
 
-/** XP needed to go from `level` to `level + 1`: 5, then +10 per level until 20, +13 until 40, +16 after. */
+/**
+ * XP needed to go from `level` to `level + 1`: 4, 10, 20, then 5+10×(level−1) until 20, +13 until 40, +16 after.
+ * levelup-espalhado: levels 2 and 3 cheaper (were 5 and 15, 20 to level 3 in all) so they come in the trickle before
+ * the nests' first groups instead of inside their burst; everything above is the old curve, 11 XP sooner.
+ */
+const FIRST_LEVELS=[4,10,20];
 export function xpToNext(level:number){
   const l=Math.max(1,Math.floor(level));
+  if(l<=FIRST_LEVELS.length)return FIRST_LEVELS[l-1]!;
   if(l<=20)return 5+10*(l-1);
   if(l<=40)return 195+13*(l-20);
   return 455+16*(l-40);
 }
+/**
+ * D-051 mode 'ninhos' (ritmo-morto-e-viaduto): the first level costs FIRST_LEVEL_XP[heroes − 1] instead of xpToNext(1),
+ * heroes = the match's heroes (people and bots, not spectators) at its first step, fixed for the run (a fall never
+ * moves the bar). One bar for the whole team: 5 XP came in 12–27 s with 3 heroes and not before 2 min with 1, the
+ * card wants it at 60–120 s for any team. Levels 2+ cost xpToNext as ever.
+ */
+export const FIRST_LEVEL_XP:number[]=[6,6,7,10,12,13];
+export const firstLevelXp=(heroes:number)=>FIRST_LEVEL_XP[Math.min(FIRST_LEVEL_XP.length,Math.max(1,heroes))-1];
 export const createTeamProgress=():TeamProgress=>({xp:0,level:1,nextXp:xpToNext(1)});
 
 export const COLLECT_RADIUS=.6;
@@ -49,12 +63,17 @@ export const PULL_RADIUS=1.2;
 /** Units per second a pulled pickup travels toward its collector. */
 export const HOMING_SPEED=12;
 /**
- * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, one more than the first level) in the endless
+ * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, more than the first level) in the endless
  * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
  * one, so the first level (and its chip) still lands in round 1. Not at the wave start: there it would open the
  * level-up pause (D-050) before anyone moved.
  */
 export const ROUND1_XP=6;
+/**
+ * levelup-espalhado: a solo run's XP ×1.5 below SOLO_EARLY_LEVEL. Alone in the city the bichos come one at a time
+ * before the nests open (2-3 kills in 200 s), so the first card only came with the first group; now it comes before.
+ */
+export const SOLO_EARLY_XP=1.5,SOLO_EARLY_LEVEL=3;
 export const ROUND_OFFER_FALLBACK_SECONDS=20;
 const DROP_LIFETIME_SECONDS=30,DROP_SPREAD=.3,MAX_LEVELS_PER_TICK=100;
 const REROLL='~';
@@ -90,6 +109,13 @@ export interface ProgressionOptions {
   crates?:boolean;
   /** A cédula with no room on the ground (the pickup budget full, none to join): its Grana paid at once (default: dropped). */
   payGrana?(ctx:SimContext,amount:number,owner?:string):void;
+  /** D-051 mode 'ninhos': the first level's cost follows the match's heroes (FIRST_LEVEL_XP). */
+  firstLevelByHeroes?:boolean;
+  /**
+   * D-051 manual combat: whether the player has a weapon (sim/inventory.ts). One without gets no weapon card
+   * (rules/passives.ts needsWeapon; levelup-sem-arma-e-solo). Absent: every card can roll.
+   */
+  armed?(player:SimPlayer):boolean;
 }
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
@@ -101,6 +127,8 @@ export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:numb
   charges?:Record<string,[number,number]>;
   /** D-054: ROUND1_XP was paid this run. */
   round1Paid?:boolean;
+  /** firstLevelByHeroes: the heroes counted at the run's first step (absent before it). */
+  heroes?:number;
   /** Cédulas still to appear, in the order they appear (CEDULA_DELAY_SECONDS after their kill). */
   cedulas?:PendingCedula[]}
 /** D-052: every player starts a run with this many "Pular" (close the offer, no prize) and "Rolar de novo" (new cards). */
@@ -114,6 +142,12 @@ export type ChooseFailure='no-player'|'no-offer'|'unknown-offer'|'not-oldest'|'b
 export type ChooseResult={ok:true;itemId:string;level:number}|{ok:false;reason:ChooseFailure};
 
 const canCollect=(p:SimPlayer)=>p.online&&!p.spectator&&!p.eliminated&&!p.downed;
+/** SOLO_EARLY_XP while the team is below SOLO_EARLY_LEVEL and the run has one hero (room bots count, spectators do not). */
+function soloEarly(ctx:SimContext){
+  if(ctx.team.level>=SOLO_EARLY_LEVEL)return 1;
+  let heroes=0;for(const p of ctx.players.values())if(!p.spectator&&++heroes>1)return 1;
+  return heroes===1?SOLO_EARLY_XP:1;
+}
 const receivesOffers=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 const dist2=(a:Point,b:Point)=>(a.x-b.x)**2+(a.y-b.y)**2;
 /** A round director owns ctx.round (VGM-033): offers follow the intermission clock (D-021). */
@@ -148,11 +182,13 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let rng:Rng|undefined;
   const rngOf=(ctx:SimContext)=>rng??=state.rngState!==undefined?new Rng(state.rngState):options.seed!==undefined?new Rng(options.seed).fork('progression'):ctx.rng.fork('progression');
   const saveRng=()=>{if(rng)state.rngState=rng.state;};
+  const roll=(ctx:SimContext,player:SimPlayer)=>
+    rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx),options.armed&&!options.armed(player)?needsWeapon:undefined);
   // Never drawn from: openChest forks `chest:<id>` from it, so chest rolls ignore every other draw in the tick.
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;delete state.cedulas;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;delete state.cedulas;delete state.heroes;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -173,7 +209,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const killer=by?ctx.players.get(by):undefined;
     let growth=killer&&!killer.spectator?killer.stats.growth:0;
     if(!growth)for(const p of ctx.players.values())if(canCollect(p))growth=Math.max(growth,p.stats.growth);
-    const xp=(enemy.xp+(round1Due(ctx)&&ctx.round.index===1&&ctx.round.phase==='wave'?payRound1():0))*(growth||1);
+    const xp=(enemy.xp+(round1Due(ctx)&&ctx.round.index===1&&ctx.round.phase==='wave'?payRound1():0))*(growth||1)*soloEarly(ctx);
     ctx.team.xp+=xp;
     return xp;
   }
@@ -230,7 +266,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       return true;
     }
     ctx.pickups.delete(pickup.id);
-    if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth;
+    if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth*soloEarly(ctx);
     else if(pickup.kind==='heal')player.hp=Math.min(player.stats.maxHp,player.hp+pickup.value);
     else if(pickup.kind==='grana')addGrana(player,pickup.value);
     ctx.emit({type:'pickup',player:player.id,pickup:pickup.id,kind:pickup.kind,value:pickup.value});
@@ -274,7 +310,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     // Old head clock only: a queued offer never shows a deadline before the one ahead of it has run out.
     const last=queue[queue.length-1];
     if(last&&clocked(ctx)&&!isHeldOffer(last))deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
-    const choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    const choices=roll(ctx,player);
     saveRng();
     const offer:LevelOffer={id,playerId:player.id,source,level,choices,deadlineTick,defaultIndex:defaultIndexFor(player.build,choices)};
     queue.push(offer);
@@ -393,7 +429,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     if(charges(playerId)[1]<=0)return {ok:false,reason:'no-charge'};
     const left=spend(playerId,1),player=found.player,head=found.head;
     head.id=head.id.split(REROLL)[0]+REROLL+(ctx.tick*1000+(OFFER_REROLLS-left));
-    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.choices=roll(ctx,player);
     head.defaultIndex=defaultIndexFor(player.build,head.choices);
     saveRng();
     ctx.emit({type:'offer',player:player.id,offer:head.id});
@@ -402,6 +438,10 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
 
   const progression:SimSystem={id:'progression',step(ctx){
     const team=ctx.team;
+    if(options.firstLevelByHeroes&&state.heroes===undefined){
+      const heroes=[...ctx.players.values()].filter(p=>!p.spectator).length;
+      if(heroes>0){state.heroes=heroes;if(team.level===1)team.nextXp=firstLevelXp(heroes);}
+    }
     // Round 1's wave ended with no kill: its XP comes with the intermission (no pause there, D-050).
     if(round1Due(ctx)&&ctx.round.index===2&&ctx.round.phase==='prepare')team.xp+=payRound1();
     for(let n=0;n<MAX_LEVELS_PER_TICK&&team.xp>=team.nextXp;n++){
@@ -437,7 +477,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     if(head.choices.every(choice=>isEligible(catalog,player.build,choice)))return;
     // New id so a pick sent against the old cards is refused instead of applying a different item.
     head.id=head.id.split(REROLL)[0]+REROLL+ctx.tick;
-    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.choices=roll(ctx,player);
     head.defaultIndex=defaultIndexFor(player.build,head.choices);
     saveRng();
     ctx.emit({type:'offer',player:player.id,offer:head.id});

@@ -35,13 +35,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Com licença, só vou ali comprar pão.','Eu nem queria estar aqui.','Opa, foi mal, tô passando!','Isso não estava no meu dia.'],
   },
   {
-    classId:'mendigo',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{luck:0.2,growth:0.08,regen:0.2},
-    skill:{name:'Tesouro do Achados',cooldown:20,
-      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto.'},
-    lines:['Isso aqui ainda dá jogo.','Papelão é tecnologia, confia.','Abrigo cinco estrelas, sem taxa de serviço.','Engenharia de reaproveitamento!'],
-  },
-  {
     classId:'viciado-em-bet',role:'Dano',weapon:'boleto',
     classBonus:{luck:0.3,might:0.1,maxHp:-10},
     skill:{name:'Odd Impossível',cooldown:15,
@@ -74,7 +67,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'pedreiro',role:'Linha de frente',weapon:'audio',
     classBonus:{maxHp:25,armor:2,moveSpeed:-0.05},
     skill:{name:'Puxadinho Tático',cooldown:16,
-      effect:'Ergue um puxadinho na frente: empurra os bichos do arco, derruba os tiros inimigos ali e fica protegido por um instante.'},
+      effect:'Ergue um puxadinho na frente: empurra os bichos do arco, derruba os tiros dos bichos ali e fica protegido por um instante.'},
     lines:['Vou só levantar uma paredinha aqui.','Fica pronto semana que vem. Juro.','Quem pegou meu nível de bolha?','Essa parede aguenta. Confia no prumo.'],
   },
   {
@@ -165,7 +158,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mae-pet',role:'Suporte',weapon:'pombo',
     classBonus:{growth:0.06,luck:0.1},
     skill:{name:'Cadê o Neném',cooldown:18,
-      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante o round.'},
+      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante a rodada.'},
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
   },
   {
@@ -179,7 +172,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'faxineira',role:'Controle',weapon:'audio',
     classBonus:{area:0.1,armor:1},
     skill:{name:'Passa o Rodo',cooldown:14,
-      effect:'Varre um arco largo à frente: dano, empurrão e limpeza dos tiros inimigos ali.'},
+      effect:'Varre um arco largo à frente: dano, empurrão e limpeza dos tiros dos bichos ali.'},
     lines:['Tira o pé, que o chão tá molhado!','Quem sujou, limpa. Simples.','Isso aí é sujeira de semanas.','Licença, vou passar o pano aí.'],
   },
   {

@@ -22,6 +22,19 @@ import type {Point} from '../maps/index.ts';
  * 1.7× city, 23 since mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
 export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=23;
+/**
+ * Card bot-nao-trava-entre-casa-e-arma: a bot already walking to (or standing by) a crate or a weapon keeps that goal
+ * with critters within LOOT_SAFE while its hp is at least this share of its max (one with no weapon at all goes for any).
+ * The 28/10 headless seeds (1p 6, 10, 11,
+ * 12): walking up to the crate woke a body by it (sono.ts WAKE_SIGHT), the lull broke, the unarmed bot walked back to
+ * the car until the critter was 6 u off and came again, 48 swaps of 'loot' and 'home' in 60 s and never a weapon.
+ */
+export const LOOT_KEEP_HP=.5;
+/**
+ * The other way: an armed bot that leaves its loot for a critter (within LOOT_SAFE of it, or at the car) starts no new
+ * one for LOOT_REST s (the seeds' bots walked off and back every 1-2 s as a critter by the car woke and slept again).
+ */
+export const LOOT_REST=5;
 const VERDE_PISTOL={id:'pistola',level:1};
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;
@@ -38,6 +51,9 @@ export function weaponScore(item:OwnedItem|{id:string;level:number}|undefined){
   return perSecond*(def.pattern==='pierce'||def.pattern==='homing'?1+Math.min(w.pierce,3)*.15:CROWD)*Math.min(2,.5+reach/6);
 }
 
+/** Whether the inventory holds any weapon (one the bot can hit with). */
+export const hasWeapon=(inv:readonly OwnedItem[])=>inv.some(i=>weaponScore(i)>0);
+
 export type LootCommand={t:'equip'|'use';slot:number}|{t:'kit';slot:number}|{t:'take';pickup:string};
 export interface LootPlan {
   /** An inventory command this tick (the walking goes on). */
@@ -50,7 +66,9 @@ const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 /**
  * NEW-20261025-ORQ-uno-caminho-caixas-vender (c): a bot leaves a crate to a person (online, on the map, not a bot) who
- * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it.
+ * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it. Not a bot with no weapon at all
+ * (planLoot): auditoria-primeira-partida-30-10 item 8, 1p by the car, every crate within LOOT_CAR_LEASH was the person's,
+ * and the two aposentados (no weapon at the start) did 0 damage in 2:12 (seed 1: 0 and 308 in 140 s; with it, 2.7k and 2.5k).
  */
 export const BOT_LEAVES_CRATE=40;
 export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number})[],crate:Pick<PickupState,'x'|'y'|'hiddenFor'>,me:string):boolean{
@@ -67,10 +85,12 @@ export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number}
 export const LOOT_ANY_NEAR=12,CRATE_CLAIM=OPEN_REACH*1.5;
 /**
  * `opts.skip`: pickups this bot gave up on (bot-brain: no nearer in a while); `opts.leash`: only goals within `r` of
- * `at` (bot-brain, mode 'ninhos': the car, LOOT_CAR_LEASH).
+ * `at` (bot-brain, mode 'ninhos': the car, LOOT_CAR_LEASH); `opts.keep`: the pickup it was looting at the last decision
+ * (LOOT_KEEP_HP: out of a lull it goes on to that one only); `opts.anyVerde`: a verde within the radius too, however
+ * far past LOOT_ANY_NEAR (bot-brain: a bot alone, with nobody else to open it).
  */
 export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS,
-  opts:{skip?:(id:string)=>boolean;leash?:{at:Point;r:number}}={}):LootPlan{
+  opts:{skip?:(id:string)=>boolean;leash?:{at:Point;r:number};keep?:string;anyVerde?:boolean}={}):LootPlan{
   const plan:LootPlan={};
   const inv=me.weapons,hand=me.hand??0;
   // 1. Eat when hurt.
@@ -82,19 +102,23 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
     inv.forEach((item,i)=>{const s=weaponScore(item);if(s>bestScore){best=i;bestScore=s;}});
     if(best!==hand)plan.command={t:'equip',slot:best};
   }
-  // 3. Loot only in a lull.
-  if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return plan;
+  // 3. Loot only in a lull (a body asleep is none: the sleepers by a crate held it out for good), or keep at it. A bot
+  // with no weapon at all (it cannot hit: bot-brain attackReach) looks for one with critters near too.
+  const lull=!view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<LOOT_SAFE);
+  const pressed=!lull&&me.hp>=me.maxHp*LOOT_KEEP_HP,unarmed=!hasWeapon(inv);
+  if(!lull&&!(pressed&&(unarmed||opts.keep!==undefined)))return plan;
+  const keep=lull||unarmed?undefined:opts.keep;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return plan;
   const kit=inv.findIndex(isKitItem);
-  if(kit>=0&&!plan.command)plan.command={t:'kit',slot:kit};
+  if(lull&&kit>=0&&!plan.command)plan.command={t:'kit',slot:kit};
   const handScore=Math.max(...inv.map(i=>weaponScore(i)),0),armed=handScore>=weaponScore(VERDE_PISTOL);
   const pickups=view.pickups as readonly (PickupState|RunView['pickups'][number])[];
   let goal:LootPlan['goal'],goalDist=radius;
   for(const k of pickups){
     const d=dist(k,at);
-    if(d>=goalDist)continue;
+    if(d>=goalDist||keep!==undefined&&k.id!==keep)continue;
     if(opts.skip?.(k.id)||opts.leash&&dist(k,opts.leash.at)>opts.leash.r)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1&&d>LOOT_ANY_NEAR||claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&!opts.anyVerde&&k.value<=1&&d>LOOT_ANY_NEAR||!(k.id===opts.keep&&d<=CRATE_CLAIM)&&claimed(view.players,k,me.id,d)||(k as PickupState).hiddenFor?.includes(me.id)||!unarmed&&forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;
@@ -103,7 +127,12 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   if(!goal.stand&&!plan.command&&inv.length>=INVENTORY_SLOTS&&goalDist<=TAKE_REACH)plan.command={t:'take',pickup:goal.id};
   return plan;
 }
-/** Item 4: another standing bot within CRATE_CLAIM of this crate and nearer to it than `d` (this bot's distance). */
+/**
+ * Item 4: another standing bot within CRATE_CLAIM of this crate and nearer to it than `d` (this bot's distance). Not
+ * against a bot already by the crate it looted at the last decision (planLoot `opts.keep`): card bot-nao-trava-entre-casa-
+ * e-arma, 3p seed 7, the person seat stood at its crate, the partner came to it within PARTNER_NEAR a hair nearer, the
+ * person left it, and the partner, leashed to the person, left after it (4 swaps of 'loot' and 'home' in 5 s, never opened).
+ */
 function claimed(players:readonly PlayerRunView[],k:Point,me:string,d:number):boolean{
   return players.some(p=>{
     const q=p as PlayerRunView&{x?:number;y?:number};
@@ -124,7 +153,7 @@ export const VEHICLE_BOT_REACH=8;
 export const BOT_VEHICLES:ReadonlySet<string>=new Set<VehicleKind>(['patinete','carrinho','crossfiteiro']);
 export function vehicleGoal(view:Pick<RunView,'tick'|'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point):PickupView|undefined{
   if(me.ride!==undefined&&view.tick<(me.rideUntil??-Infinity))return undefined;
-  if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return undefined;
+  if(view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<LOOT_SAFE))return undefined;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return undefined;
   let best:PickupView|undefined,bestD=Infinity;
   for(const k of view.pickups){

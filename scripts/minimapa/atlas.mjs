@@ -2,7 +2,7 @@
  * Minimap art (card NEW-20261025-ORQ-minimapa-arte-chatgpt): builds the shipped files from the ChatGPT sheets kept in
  * evidence/minimapa-arte-chatgpt/ (rostos/rostos-t1.png 3×2 and rostos-2-t1.png 5×2, icones/icones-t1.png 4×3,
  * fundo/fundo-m1-t1.png; for asset v6 fundo/fundo-m2-v6.png, that painting with the opened ground repainted: fundo-aberto.ts).
- *   public/art/minimapa/marcas.webp   one row of CELL px cells: the 16 playable heroes' faces (masked to a circle; transparent
+ *   public/art/minimapa/marcas.webp   one row of CELL px cells: the 15 heroes' faces (masked to a circle; transparent
  *                                     where the sheet was green, so the team colour drawn under shows), then the 12 icons;
  *   public/art/minimapa/cidade-nevada.webp   the city seen from above, world-aligned, BG px (the minimap turns it),
  *                                     darkened.
@@ -70,7 +70,9 @@ async function cells(path,cols,rows,face,part={}){
   }
   return out;
 }
-const all=[...await cells(`${EV}/rostos/rostos-t1.png`,3,2,true),...await cells(`${EV}/rostos/rostos-2-t1.png`,5,2,true),...await cells(`${EV}/icones/icones-t1.png`,4,3,false,{2:.6})];
+// Face 10 of the two sheets is the Mendigo hero, deleted on 30/10 (the mendigo is an enemy now): not in the atlas.
+const faces=[...await cells(`${EV}/rostos/rostos-t1.png`,3,2,true),...await cells(`${EV}/rostos/rostos-2-t1.png`,5,2,true)].filter((_,i)=>i!==10);
+const all=[...faces,...await cells(`${EV}/icones/icones-t1.png`,4,3,false,{2:.6})];
 await sharp({create:{width:CELL*all.length,height:CELL,channels:4,background:{r:0,g:0,b:0,alpha:0}}})
   .composite(all.map((input,i)=>({input,left:i*CELL,top:0}))).webp({quality:85,alphaQuality:90,effort:6}).toFile(`${OUT}/marcas.webp`);
 // Night: darker and a little greyer than the painting, so the marks on top stand out at 124 px.

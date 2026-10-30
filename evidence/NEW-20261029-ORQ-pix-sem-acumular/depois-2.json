@@ -1,0 +1,4344 @@
+{
+ "card": "NEW-20261012-ORQ-cidade-11-balanco-run",
+ "version": 1,
+ "startedAt": "2026-10-29T13:09:04.281Z",
+ "updatedAt": "2026-10-29T13:09:22.448Z",
+ "config": {
+  "objective": "chaveiro",
+  "combat": null,
+  "mode": null,
+  "nestPace": null,
+  "chaveiroPace": null,
+  "spread": null,
+  "alarm": null,
+  "nestCalm": null,
+  "seeds": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "players": [
+   6
+  ],
+  "capMin": 30,
+  "knobs": null,
+  "knobsFile": null,
+  "knobRoute": "none",
+  "classes": [
+   "cidadao-comum",
+   "motogirl",
+   "maromba",
+   "coach",
+   "pagodeiro",
+   "porteiro"
+  ],
+  "nav": {
+   "READ_SECONDS": 4,
+   "HOME_MARGIN": 4,
+   "CRATE_NEAR": 2.5,
+   "FAR": 12,
+   "STUCK_TICKS": 30,
+   "STUCK_MOVE": 0.3,
+   "UNSTICK_TICKS": 16
+  }
+ },
+ "runs": [
+  {
+   "key": "1:6",
+   "seed": 1,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 5,
+   "diedRound": 5,
+   "ticks": 9906,
+   "simMinutes": 8.26,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [
+    {
+     "round": 1,
+     "waveStartTick": 61,
+     "endTick": 1199,
+     "firstInsideBaseTick": 633,
+     "firstArrivalS": 28.6,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 2,
+     "waveStartTick": 1986,
+     "endTick": 2940,
+     "firstInsideBaseTick": 2293,
+     "firstArrivalS": 15.35,
+     "downed": 3,
+     "eliminated": 0,
+     "revived": 2,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 1
+    },
+    {
+     "round": 3,
+     "waveStartTick": 3727,
+     "endTick": 5477,
+     "firstInsideBaseTick": 4009,
+     "firstArrivalS": 14.1,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 4,
+     "waveStartTick": 6264,
+     "endTick": 8236,
+     "firstInsideBaseTick": 6565,
+     "firstArrivalS": 15.05,
+     "downed": 8,
+     "eliminated": 4,
+     "revived": 4,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 5,
+     "waveStartTick": 9023,
+     "endTick": 9906,
+     "firstInsideBaseTick": 9318,
+     "firstArrivalS": 14.75,
+     "downed": 3,
+     "eliminated": 0,
+     "revived": 1,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    }
+   ],
+   "intermissions": [
+    {
+     "round": 2,
+     "startTick": 1199,
+     "endTick": 1986,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 0
+     },
+     "balanceEnd": {
+      "units": 15
+     },
+     "gathered": {
+      "units": 15
+     },
+     "spent": {
+      "units": 0,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0.56,
+      "bot2": 6,
+      "bot3": 0,
+      "bot4": 3,
+      "bot5": 3,
+      "bot6": 2.44
+     },
+     "cratesEmptied": 4,
+     "purchases": []
+    },
+    {
+     "round": 3,
+     "startTick": 2940,
+     "endTick": 3727,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 15
+     },
+     "balanceEnd": {
+      "units": 87
+     },
+     "gathered": {
+      "units": 72
+     },
+     "spent": {
+      "units": 0,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 15,
+      "bot3": 15,
+      "bot4": 6,
+      "bot5": 24,
+      "bot6": 12
+     },
+     "cratesEmptied": 13,
+     "purchases": []
+    },
+    {
+     "round": 4,
+     "startTick": 5477,
+     "endTick": 6264,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 87
+     },
+     "balanceEnd": {
+      "units": 25
+     },
+     "gathered": {
+      "units": 48
+     },
+     "spent": {
+      "units": 110,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 12,
+      "bot3": 0,
+      "bot4": 12,
+      "bot5": 9,
+      "bot6": 15
+     },
+     "cratesEmptied": 9,
+     "purchases": [],
+     "towerUnits": 110
+    },
+    {
+     "round": 5,
+     "startTick": 8236,
+     "endTick": 9023,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 25
+     },
+     "balanceEnd": {
+      "units": 9
+     },
+     "gathered": {
+      "units": 6
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 0,
+      "bot3": 0,
+      "bot4": 3,
+      "bot5": 3,
+      "bot6": 0
+     },
+     "cratesEmptied": 2,
+     "purchases": [],
+     "towerUnits": 22
+    }
+   ],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": 20.7,
+     "bot2": 21.4,
+     "bot3": 25.95,
+     "bot4": 24.65,
+     "bot5": 24.65,
+     "bot6": 24.65
+    },
+    "tutorialArrivalS": 20.7,
+    "modeTicks": {
+     "hold": 846,
+     "plaza": 5149,
+     "brain": 24254,
+     "unstick": 243,
+     "build:clear": 2181,
+     "build:bank": 2528,
+     "crate": 2930,
+     "crate-near": 723,
+     "home-wall": 5320,
+     "build:push": 1822,
+     "down": 12136,
+     "build:build": 1220,
+     "build:veiculo": 84
+    },
+    "stuck": 17,
+    "crateTrips": 34
+   },
+   "perf": {
+    "wallSeconds": 4.72,
+    "msPerTick": 0.476,
+    "thinkMsPerTick": 0.142,
+    "navMsPerTick": 0.042
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 14,
+    "repairs": 1,
+    "units": 132,
+    "refused": {
+     "ocupado": 8
+    },
+    "final": {
+     "atiradores-do-telhado": 1,
+     "lanca-foguetes": 1,
+     "vigias-armados": 1,
+     "holofote": 1
+    },
+    "ruined": 1,
+    "gustavao": false,
+    "rail": false,
+    "roots": 6,
+    "tokens": 6
+   },
+   "pause": {
+    "count": 7,
+    "botSeconds": 7,
+    "waveSeconds": 334.85,
+    "humanShare": 0.2
+   },
+   "grana": {
+    "earned": 384,
+    "spent": {
+     "evolutions": 97,
+     "repairs": 5,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 92,
+    "pix": {
+     "count": 24,
+     "amount": 422
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 5,
+    "extraWaves": 0,
+    "eta": 86,
+    "seconds": 495.25,
+    "hits": 55,
+    "limit": 224,
+    "budget": 190,
+    "grana": 282,
+    "paid": 190,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 42,
+      "paid": 31
+     },
+     {
+      "id": "bot2",
+      "had": 42,
+      "paid": 31
+     },
+     {
+      "id": "bot3",
+      "had": 19,
+      "paid": 19
+     },
+     {
+      "id": "bot4",
+      "had": 95,
+      "paid": 47
+     },
+     {
+      "id": "bot5",
+      "had": 42,
+      "paid": 31
+     },
+     {
+      "id": "bot6",
+      "had": 42,
+      "paid": 31
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "tombo": 2,
+     "lombada": 2,
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "volta": 4
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "enemies": {
+    "max": 111,
+    "seen": 405,
+    "alivePerMinute": [
+     0,
+     0,
+     43,
+     0,
+     14,
+     0,
+     39,
+     0,
+     102
+    ],
+    "newPerMinute": [
+     18,
+     54,
+     14,
+     100,
+     0,
+     90,
+     0,
+     120,
+     9
+    ]
+   },
+   "banks": {
+    "grana": 110,
+    "withdraws": 22,
+    "share": 0.286,
+    "enemyWithdraws": 1,
+    "enemyGrana": 2,
+    "primes": 0,
+    "empties": 7
+   },
+   "vehicles": {
+    "rides": 2,
+    "byKind": {
+     "crossfiteiro": 2
+    },
+    "acabou": 2,
+    "largou": 0,
+    "riders": 2
+   },
+   "levels": [
+    40.2,
+    41.4,
+    118.2,
+    127.6,
+    143.3,
+    214.8,
+    229.8,
+    248.25,
+    349.4,
+    394.45,
+    487.95
+   ],
+   "econ": {
+    "buys": [
+     {
+      "t": 274.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 101
+     },
+     {
+      "t": 282.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 101
+     },
+     {
+      "t": 294.2,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 101
+     },
+     {
+      "t": 295.6,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 91
+     },
+     {
+      "t": 297.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 92
+     },
+     {
+      "t": 298.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 92
+     },
+     {
+      "t": 300,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 92
+     },
+     {
+      "t": 413.65,
+      "round": 5,
+      "act": "repair",
+      "who": "bot4",
+      "kind": "vigia-do-predio",
+      "grana": 5,
+      "units": 0,
+      "wallet": 95
+     },
+     {
+      "t": 416.25,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot4",
+      "kind": "morteiro",
+      "from": "rojao-de-festa",
+      "grana": 16,
+      "units": 0,
+      "wallet": 90
+     },
+     {
+      "t": 419.05,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot4",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 88
+     },
+     {
+      "t": 420.45,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot4",
+      "kind": "holofote",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 92
+     },
+     {
+      "t": 421.45,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot4",
+      "kind": "atiradores-do-telhado",
+      "from": "vigias-armados",
+      "grana": 16,
+      "units": 0,
+      "wallet": 92
+     },
+     {
+      "t": 422.85,
+      "round": 5,
+      "act": "build",
+      "who": "bot4",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 76
+     },
+     {
+      "t": 427.45,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot4",
+      "kind": "lanca-foguetes",
+      "from": "morteiro",
+      "grana": 25,
+      "units": 0,
+      "wallet": 87
+     }
+    ],
+    "byKind": {
+     "build:vigia-do-predio": {
+      "count": 6,
+      "grana": 0,
+      "units": 132
+     },
+     "upgrade:vigias-armados": {
+      "count": 2,
+      "grana": 20,
+      "units": 0
+     },
+     "upgrade:rojao-de-festa": {
+      "count": 1,
+      "grana": 10,
+      "units": 0
+     },
+     "repair:vigia-do-predio": {
+      "count": 1,
+      "grana": 5,
+      "units": 0
+     },
+     "upgrade:morteiro": {
+      "count": 1,
+      "grana": 16,
+      "units": 0
+     },
+     "upgrade:holofote": {
+      "count": 1,
+      "grana": 10,
+      "units": 0
+     },
+     "upgrade:atiradores-do-telhado": {
+      "count": 1,
+      "grana": 16,
+      "units": 0
+     },
+     "upgrade:lanca-foguetes": {
+      "count": 1,
+      "grana": 25,
+      "units": 0
+     }
+    },
+    "refused": {
+     "build:ocupado": 8
+    },
+    "firstAffordable": {
+     "vigia-do-predio": 150.35,
+     "vigias-armados": 66.55,
+     "atiradores-do-telhado": 68.3,
+     "ninho-de-metralhadora": 75,
+     "guarnicao-do-predio": 79.95,
+     "ninho-do-sniper": 75,
+     "equipe-antimaterial": 79.95,
+     "rojao-de-festa": 66.55,
+     "morteiro": 68.3,
+     "lanca-foguetes": 75,
+     "obuseiro": 79.95,
+     "gustavao": 157.85,
+     "holofote": 66.55,
+     "arame-e-sirene": 68.3,
+     "antiaerea-quadrupla": 75,
+     "posto-de-radar": 79.95,
+     "muro": 51.75,
+     "barricada": 51.75,
+     "reparo": 66.55,
+     "gambiarra": 132.4,
+     "torre-chinelo": 132.4
+    },
+    "idleMean": 178.3,
+    "waves": [
+     {
+      "t": 3.05,
+      "round": 1,
+      "grana": 0,
+      "units": 0,
+      "maxWallet": 0,
+      "idleMean": 20.74
+     },
+     {
+      "t": 99.3,
+      "round": 2,
+      "grana": 63,
+      "units": 15,
+      "maxWallet": 35,
+      "idleMean": 102.15
+     },
+     {
+      "t": 186.35,
+      "round": 3,
+      "grana": 131,
+      "units": 87,
+      "maxWallet": 62,
+      "idleMean": 217.2
+     },
+     {
+      "t": 313.2,
+      "round": 4,
+      "grana": 250,
+      "units": 25,
+      "maxWallet": 92,
+      "idleMean": 279.07
+     },
+     {
+      "t": 451.15,
+      "round": 5,
+      "grana": 250,
+      "units": 9,
+      "maxWallet": 62,
+      "idleMean": 257.37
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 0,
+      "units": 0,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 15,
+      "units": 0,
+      "wallets": [
+       4,
+       2,
+       0,
+       9,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 63,
+      "units": 15,
+      "wallets": [
+       35,
+       6,
+       6,
+       6,
+       0,
+       10
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 63,
+      "units": 15,
+      "wallets": [
+       35,
+       6,
+       6,
+       6,
+       0,
+       10
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 130,
+      "units": 15,
+      "wallets": [
+       18,
+       73,
+       6,
+       15,
+       0,
+       18
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 131,
+      "units": 87,
+      "wallets": [
+       62,
+       30,
+       6,
+       15,
+       0,
+       18
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 136,
+      "units": 87,
+      "wallets": [
+       62,
+       30,
+       6,
+       18,
+       0,
+       20
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 240,
+      "units": 87,
+      "wallets": [
+       101,
+       52,
+       6,
+       43,
+       6,
+       32
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 270,
+      "units": 87,
+      "wallets": [
+       101,
+       53,
+       6,
+       48,
+       15,
+       47
+      ]
+     },
+     {
+      "t": 300,
+      "grana": 250,
+      "units": 47,
+      "wallets": [
+       92,
+       48,
+       6,
+       42,
+       15,
+       47
+      ]
+     },
+     {
+      "t": 330,
+      "grana": 250,
+      "units": 25,
+      "wallets": [
+       92,
+       48,
+       6,
+       42,
+       15,
+       47
+      ]
+     },
+     {
+      "t": 360,
+      "grana": 295,
+      "units": 25,
+      "wallets": [
+       95,
+       56,
+       15,
+       56,
+       17,
+       56
+      ]
+     },
+     {
+      "t": 390,
+      "grana": 307,
+      "units": 25,
+      "wallets": [
+       63,
+       56,
+       19,
+       94,
+       19,
+       56
+      ]
+     },
+     {
+      "t": 420,
+      "grana": 281,
+      "units": 25,
+      "wallets": [
+       63,
+       42,
+       19,
+       92,
+       23,
+       42
+      ]
+     },
+     {
+      "t": 450,
+      "grana": 250,
+      "units": 9,
+      "wallets": [
+       42,
+       42,
+       19,
+       62,
+       43,
+       42
+      ]
+     },
+     {
+      "t": 480,
+      "grana": 254,
+      "units": 9,
+      "wallets": [
+       42,
+       42,
+       19,
+       67,
+       42,
+       42
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 11,
+     "bot2": 11,
+     "bot3": 0,
+     "bot4": 48,
+     "bot5": 11,
+     "bot6": 11
+    }
+   },
+   "digest": "6844766fe58f"
+  },
+  {
+   "key": "2:6",
+   "seed": 2,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 4,
+   "diedRound": 4,
+   "ticks": 7245,
+   "simMinutes": 6.04,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [
+    {
+     "round": 1,
+     "waveStartTick": 61,
+     "endTick": 1247,
+     "firstInsideBaseTick": 392,
+     "firstArrivalS": 16.55,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 2,
+     "waveStartTick": 2034,
+     "endTick": 3303,
+     "firstInsideBaseTick": 2479,
+     "firstArrivalS": 22.25,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 1
+    },
+    {
+     "round": 3,
+     "waveStartTick": 4090,
+     "endTick": 5345,
+     "firstInsideBaseTick": 4399,
+     "firstArrivalS": 15.45,
+     "downed": 1,
+     "eliminated": 0,
+     "revived": 1,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 4,
+     "waveStartTick": 6132,
+     "endTick": 7245,
+     "firstInsideBaseTick": 6338,
+     "firstArrivalS": 10.3,
+     "downed": 9,
+     "eliminated": 0,
+     "revived": 3,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    }
+   ],
+   "intermissions": [
+    {
+     "round": 2,
+     "startTick": 1247,
+     "endTick": 2034,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 0
+     },
+     "balanceEnd": {
+      "units": 11
+     },
+     "gathered": {
+      "units": 33
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 9,
+      "bot2": 9,
+      "bot3": 0,
+      "bot4": 12,
+      "bot5": 3,
+      "bot6": 0
+     },
+     "cratesEmptied": 8,
+     "purchases": [],
+     "towerUnits": 22
+    },
+    {
+     "round": 3,
+     "startTick": 3303,
+     "endTick": 4090,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 11
+     },
+     "balanceEnd": {
+      "units": 8
+     },
+     "gathered": {
+      "units": 63
+     },
+     "spent": {
+      "units": 66,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 18,
+      "bot3": 12,
+      "bot4": 9,
+      "bot5": 9,
+      "bot6": 15
+     },
+     "cratesEmptied": 12,
+     "purchases": [],
+     "towerUnits": 66
+    },
+    {
+     "round": 4,
+     "startTick": 5345,
+     "endTick": 6132,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 8
+     },
+     "balanceEnd": {
+      "units": 32
+     },
+     "gathered": {
+      "units": 24
+     },
+     "spent": {
+      "units": 0,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 6,
+      "bot3": 3,
+      "bot4": 3,
+      "bot5": 0,
+      "bot6": 12
+     },
+     "cratesEmptied": 7,
+     "purchases": [],
+     "towerUnits": 0
+    }
+   ],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": 20.7,
+     "bot2": 21.4,
+     "bot3": 25.95,
+     "bot4": 24.65,
+     "bot5": 24.65,
+     "bot6": 24.65
+    },
+    "tutorialArrivalS": 20.7,
+    "modeTicks": {
+     "hold": 846,
+     "plaza": 4814,
+     "brain": 21219,
+     "unstick": 529,
+     "crate": 2613,
+     "build:clear": 1372,
+     "build:bank": 3116,
+     "crate-near": 722,
+     "build:build": 1246,
+     "home-wall": 4397,
+     "build:push": 1264,
+     "down": 1288,
+     "build:veiculo": 44
+    },
+    "stuck": 35,
+    "crateTrips": 34
+   },
+   "perf": {
+    "wallSeconds": 3.51,
+    "msPerTick": 0.485,
+    "thinkMsPerTick": 0.187,
+    "navMsPerTick": 0.048
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 11,
+    "repairs": 3,
+    "units": 88,
+    "refused": {
+     "ocupado": 1
+    },
+    "final": {
+     "morteiro": 1,
+     "vigias-armados": 1
+    },
+    "ruined": 2,
+    "gustavao": false,
+    "rail": false,
+    "roots": 4,
+    "tokens": 4
+   },
+   "pause": {
+    "count": 5,
+    "botSeconds": 5,
+    "waveSeconds": 241.15,
+    "humanShare": 0.2
+   },
+   "grana": {
+    "earned": 309,
+    "spent": {
+     "evolutions": 46,
+     "repairs": 15,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 190,
+    "pix": {
+     "count": 16,
+     "amount": 142
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 4,
+    "extraWaves": 0,
+    "eta": 248,
+    "seconds": 362.2,
+    "hits": 11,
+    "limit": 224,
+    "budget": 58,
+    "grana": 248,
+    "paid": 58,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 76,
+      "paid": 16
+     },
+     {
+      "id": "bot2",
+      "had": 6,
+      "paid": 6
+     },
+     {
+      "id": "bot3",
+      "had": 64,
+      "paid": 9
+     },
+     {
+      "id": "bot4",
+      "had": 24,
+      "paid": 9
+     },
+     {
+      "id": "bot5",
+      "had": 29,
+      "paid": 9
+     },
+     {
+      "id": "bot6",
+      "had": 49,
+      "paid": 9
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "entrega": 2,
+     "morta": 2,
+     "tranco": 2,
+     "lombada": 2,
+     "volta": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 0
+    }
+   },
+   "enemies": {
+    "max": 111,
+    "seen": 314,
+    "alivePerMinute": [
+     0,
+     3,
+     36,
+     0,
+     27,
+     0,
+     52
+    ],
+    "newPerMinute": [
+     18,
+     36,
+     32,
+     90,
+     0,
+     138
+    ]
+   },
+   "banks": {
+    "grana": 90,
+    "withdraws": 18,
+    "share": 0.291,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "vehicles": {
+    "rides": 1,
+    "byKind": {
+     "crossfiteiro": 1
+    },
+    "acabou": 1,
+    "largou": 0,
+    "riders": 1
+   },
+   "levels": [
+    28.8,
+    31.35,
+    144.25,
+    151.6,
+    230.6,
+    245.55,
+    260.3,
+    337.05,
+    347.45
+   ],
+   "econ": {
+    "buys": [
+     {
+      "t": 94,
+      "round": 2,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 31
+     },
+     {
+      "t": 166.6,
+      "round": 3,
+      "act": "repair",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 5,
+      "units": 0,
+      "wallet": 53
+     },
+     {
+      "t": 167.6,
+      "round": 3,
+      "act": "repair",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 5,
+      "units": 0,
+      "wallet": 54
+     },
+     {
+      "t": 172,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 49
+     },
+     {
+      "t": 183.4,
+      "round": 3,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 49
+     },
+     {
+      "t": 184.8,
+      "round": 3,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 39
+     },
+     {
+      "t": 186.8,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 29
+     },
+     {
+      "t": 187.8,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 29
+     },
+     {
+      "t": 299.8,
+      "round": 4,
+      "act": "repair",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 5,
+      "units": 0,
+      "wallet": 53
+     },
+     {
+      "t": 301,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "morteiro",
+      "from": "rojao-de-festa",
+      "grana": 16,
+      "units": 0,
+      "wallet": 56
+     },
+     {
+      "t": 302.2,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 56
+     }
+    ],
+    "byKind": {
+     "build:vigia-do-predio": {
+      "count": 4,
+      "grana": 0,
+      "units": 88
+     },
+     "repair:vigia-do-predio": {
+      "count": 3,
+      "grana": 15,
+      "units": 0
+     },
+     "upgrade:vigias-armados": {
+      "count": 2,
+      "grana": 20,
+      "units": 0
+     },
+     "upgrade:rojao-de-festa": {
+      "count": 1,
+      "grana": 10,
+      "units": 0
+     },
+     "upgrade:morteiro": {
+      "count": 1,
+      "grana": 16,
+      "units": 0
+     }
+    },
+    "refused": {
+     "build:ocupado": 1
+    },
+    "firstAffordable": {
+     "vigia-do-predio": 78,
+     "vigias-armados": 70.75,
+     "atiradores-do-telhado": 72.75,
+     "ninho-de-metralhadora": 77.75,
+     "guarnicao-do-predio": 109.95,
+     "ninho-do-sniper": 77.75,
+     "equipe-antimaterial": 109.95,
+     "rojao-de-festa": 70.75,
+     "morteiro": 72.75,
+     "lanca-foguetes": 77.75,
+     "obuseiro": 109.95,
+     "gustavao": null,
+     "holofote": 70.75,
+     "arame-e-sirene": 72.75,
+     "antiaerea-quadrupla": 77.75,
+     "posto-de-radar": 109.95,
+     "muro": 31.4,
+     "barricada": 31.65,
+     "reparo": 70.75,
+     "gambiarra": 150.9,
+     "torre-chinelo": 152.05
+    },
+    "idleMean": 93.57,
+    "waves": [
+     {
+      "t": 3.05,
+      "round": 1,
+      "grana": 0,
+      "units": 0,
+      "maxWallet": 0,
+      "idleMean": 20.25
+     },
+     {
+      "t": 101.7,
+      "round": 2,
+      "grana": 58,
+      "units": 11,
+      "maxWallet": 31,
+      "idleMean": 72.72
+     },
+     {
+      "t": 204.5,
+      "round": 3,
+      "grana": 68,
+      "units": 8,
+      "maxWallet": 29,
+      "idleMean": 133.15
+     },
+     {
+      "t": 306.6,
+      "round": 4,
+      "grana": 167,
+      "units": 32,
+      "maxWallet": 56,
+      "idleMean": 194.43
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 3,
+      "units": 0,
+      "wallets": [
+       3,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 11,
+      "units": 0,
+      "wallets": [
+       9,
+       0,
+       0,
+       0,
+       0,
+       2
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 58,
+      "units": 33,
+      "wallets": [
+       31,
+       10,
+       6,
+       0,
+       5,
+       6
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 63,
+      "units": 11,
+      "wallets": [
+       36,
+       10,
+       6,
+       0,
+       5,
+       6
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 73,
+      "units": 11,
+      "wallets": [
+       43,
+       10,
+       6,
+       0,
+       7,
+       7
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 88,
+      "units": 40,
+      "wallets": [
+       49,
+       10,
+       8,
+       6,
+       6,
+       9
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 68,
+      "units": 8,
+      "wallets": [
+       29,
+       10,
+       8,
+       6,
+       6,
+       9
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 115,
+      "units": 8,
+      "wallets": [
+       52,
+       22,
+       8,
+       11,
+       7,
+       15
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 162,
+      "units": 8,
+      "wallets": [
+       53,
+       31,
+       11,
+       14,
+       16,
+       37
+      ]
+     },
+     {
+      "t": 300,
+      "grana": 193,
+      "units": 32,
+      "wallets": [
+       56,
+       36,
+       26,
+       29,
+       9,
+       37
+      ]
+     },
+     {
+      "t": 330,
+      "grana": 172,
+      "units": 32,
+      "wallets": [
+       56,
+       36,
+       16,
+       18,
+       9,
+       37
+      ]
+     },
+     {
+      "t": 360,
+      "grana": 248,
+      "units": 32,
+      "wallets": [
+       76,
+       6,
+       64,
+       24,
+       29,
+       49
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 60,
+     "bot2": 0,
+     "bot3": 55,
+     "bot4": 15,
+     "bot5": 20,
+     "bot6": 40
+    }
+   },
+   "digest": "60dc0fb8e77b"
+  },
+  {
+   "key": "3:6",
+   "seed": 3,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 4,
+   "diedRound": 4,
+   "ticks": 7907,
+   "simMinutes": 6.59,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [
+    {
+     "round": 1,
+     "waveStartTick": 61,
+     "endTick": 1248,
+     "firstInsideBaseTick": 662,
+     "firstArrivalS": 30.05,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 2,
+     "waveStartTick": 2035,
+     "endTick": 3510,
+     "firstInsideBaseTick": 2467,
+     "firstArrivalS": 21.6,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 1
+    },
+    {
+     "round": 3,
+     "waveStartTick": 4297,
+     "endTick": 5985,
+     "firstInsideBaseTick": 4545,
+     "firstArrivalS": 12.4,
+     "downed": 4,
+     "eliminated": 0,
+     "revived": 4,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 1
+    },
+    {
+     "round": 4,
+     "waveStartTick": 6772,
+     "endTick": 7907,
+     "firstInsideBaseTick": 7180,
+     "firstArrivalS": 20.4,
+     "downed": 9,
+     "eliminated": 0,
+     "revived": 3,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    }
+   ],
+   "intermissions": [
+    {
+     "round": 2,
+     "startTick": 1248,
+     "endTick": 2035,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 0
+     },
+     "balanceEnd": {
+      "units": 1
+     },
+     "gathered": {
+      "units": 45
+     },
+     "spent": {
+      "units": 44,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 18,
+      "bot2": 3,
+      "bot3": 3,
+      "bot4": 3,
+      "bot5": 12,
+      "bot6": 6
+     },
+     "cratesEmptied": 10,
+     "purchases": [],
+     "towerUnits": 44
+    },
+    {
+     "round": 3,
+     "startTick": 3510,
+     "endTick": 4297,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 1
+     },
+     "balanceEnd": {
+      "units": 8
+     },
+     "gathered": {
+      "units": 51
+     },
+     "spent": {
+      "units": 44,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 18,
+      "bot3": 9,
+      "bot4": 9,
+      "bot5": 12,
+      "bot6": 3
+     },
+     "cratesEmptied": 11,
+     "purchases": [],
+     "towerUnits": 44
+    },
+    {
+     "round": 4,
+     "startTick": 5985,
+     "endTick": 6772,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 8
+     },
+     "balanceEnd": {
+      "units": 3
+     },
+     "gathered": {
+      "units": 39
+     },
+     "spent": {
+      "units": 44,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 9,
+      "bot2": 3,
+      "bot3": 12,
+      "bot4": 6,
+      "bot5": 6,
+      "bot6": 3
+     },
+     "cratesEmptied": 9,
+     "purchases": [],
+     "towerUnits": 44
+    }
+   ],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": 20.7,
+     "bot2": 21.4,
+     "bot3": 25.95,
+     "bot4": 24.65,
+     "bot5": 24.65,
+     "bot6": 24.65
+    },
+    "tutorialArrivalS": 20.7,
+    "modeTicks": {
+     "hold": 846,
+     "plaza": 4866,
+     "brain": 24016,
+     "unstick": 241,
+     "crate": 3109,
+     "build:bank": 2264,
+     "crate-near": 793,
+     "build:build": 1428,
+     "build:veiculo": 132,
+     "home-wall": 5441,
+     "build:push": 1244,
+     "build:clear": 720,
+     "down": 2342
+    },
+    "stuck": 16,
+    "crateTrips": 32
+   },
+   "perf": {
+    "wallSeconds": 3.84,
+    "msPerTick": 0.485,
+    "thinkMsPerTick": 0.157,
+    "navMsPerTick": 0.046
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 7,
+    "repairs": 0,
+    "units": 132,
+    "refused": {},
+    "final": {
+     "vigia-do-predio": 4
+    },
+    "ruined": 1,
+    "gustavao": false,
+    "rail": false,
+    "roots": 6,
+    "tokens": 6
+   },
+   "pause": {
+    "count": 5,
+    "botSeconds": 5,
+    "waveSeconds": 274.25,
+    "humanShare": 0.18
+   },
+   "grana": {
+    "earned": 287,
+    "spent": {
+     "evolutions": 10,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 14,
+     "amount": 114
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 4,
+    "extraWaves": 0,
+    "eta": 285,
+    "seconds": 395.3,
+    "hits": 98,
+    "limit": 224,
+    "budget": 319,
+    "grana": 277,
+    "paid": 277,
+    "debt": 42,
+    "parts": 1,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 63,
+      "paid": 63
+     },
+     {
+      "id": "bot2",
+      "had": 27,
+      "paid": 27
+     },
+     {
+      "id": "bot3",
+      "had": 35,
+      "paid": 35
+     },
+     {
+      "id": "bot4",
+      "had": 21,
+      "paid": 21
+     },
+     {
+      "id": "bot5",
+      "had": 67,
+      "paid": 67
+     },
+     {
+      "id": "bot6",
+      "had": 64,
+      "paid": 64
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "entrega": 2,
+     "morta": 2,
+     "tranco": 2,
+     "lombada": 2,
+     "volta": 2
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 0
+    }
+   },
+   "enemies": {
+    "max": 138,
+    "seen": 315,
+    "alivePerMinute": [
+     0,
+     7,
+     57,
+     0,
+     71,
+     0,
+     138
+    ],
+    "newPerMinute": [
+     18,
+     57,
+     11,
+     84,
+     7,
+     138
+    ]
+   },
+   "banks": {
+    "grana": 84,
+    "withdraws": 17,
+    "share": 0.293,
+    "enemyWithdraws": 3,
+    "enemyGrana": 6,
+    "primes": 0,
+    "empties": 6
+   },
+   "vehicles": {
+    "rides": 3,
+    "byKind": {
+     "patinete": 2,
+     "crossfiteiro": 1
+    },
+    "acabou": 3,
+    "largou": 0,
+    "riders": 3
+   },
+   "levels": [
+    36.75,
+    41.8,
+    129.35,
+    239.5,
+    252.8,
+    263.45,
+    289.35,
+    370.3
+   ],
+   "econ": {
+    "buys": [
+     {
+      "t": 85.4,
+      "round": 2,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 39
+     },
+     {
+      "t": 94.2,
+      "round": 2,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 39
+     },
+     {
+      "t": 199.2,
+      "round": 3,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 57
+     },
+     {
+      "t": 200.6,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 47
+     },
+     {
+      "t": 201.8,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 47
+     },
+     {
+      "t": 316.4,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 62
+     },
+     {
+      "t": 328.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 62
+     }
+    ],
+    "byKind": {
+     "build:vigia-do-predio": {
+      "count": 6,
+      "grana": 0,
+      "units": 132
+     },
+     "upgrade:rojao-de-festa": {
+      "count": 1,
+      "grana": 10,
+      "units": 0
+     }
+    },
+    "refused": {},
+    "firstAffordable": {
+     "vigia-do-predio": 77,
+     "vigias-armados": 52.7,
+     "atiradores-do-telhado": 72.6,
+     "ninho-de-metralhadora": 75.95,
+     "guarnicao-do-predio": 77.6,
+     "ninho-do-sniper": 75.95,
+     "equipe-antimaterial": 77.6,
+     "rojao-de-festa": 52.7,
+     "morteiro": 72.6,
+     "lanca-foguetes": 75.95,
+     "obuseiro": 77.6,
+     "gustavao": null,
+     "holofote": 52.7,
+     "arame-e-sirene": 72.6,
+     "antiaerea-quadrupla": 75.95,
+     "posto-de-radar": 77.6,
+     "muro": 48.2,
+     "barricada": 48.2,
+     "reparo": 52.7,
+     "gambiarra": 139.8,
+     "torre-chinelo": 151.6
+    },
+    "idleMean": 103.12,
+    "waves": [
+     {
+      "t": 3.05,
+      "round": 1,
+      "grana": 0,
+      "units": 0,
+      "maxWallet": 0,
+      "idleMean": 22.06
+     },
+     {
+      "t": 101.75,
+      "round": 2,
+      "grana": 63,
+      "units": 1,
+      "maxWallet": 39,
+      "idleMean": 74.26
+     },
+     {
+      "t": 214.85,
+      "round": 3,
+      "grana": 74,
+      "units": 8,
+      "maxWallet": 47,
+      "idleMean": 142.12
+     },
+     {
+      "t": 338.6,
+      "round": 4,
+      "grana": 199,
+      "units": 3,
+      "maxWallet": 62,
+      "idleMean": 221.96
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 0,
+      "units": 0,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 11,
+      "units": 0,
+      "wallets": [
+       5,
+       0,
+       0,
+       0,
+       0,
+       6
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 63,
+      "units": 23,
+      "wallets": [
+       39,
+       6,
+       6,
+       0,
+       6,
+       6
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 63,
+      "units": 1,
+      "wallets": [
+       39,
+       6,
+       6,
+       0,
+       6,
+       6
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 75,
+      "units": 1,
+      "wallets": [
+       49,
+       6,
+       6,
+       0,
+       6,
+       8
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 84,
+      "units": 1,
+      "wallets": [
+       57,
+       6,
+       6,
+       0,
+       6,
+       9
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 74,
+      "units": 8,
+      "wallets": [
+       47,
+       6,
+       6,
+       0,
+       6,
+       9
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 76,
+      "units": 8,
+      "wallets": [
+       52,
+       6,
+       6,
+       0,
+       6,
+       6
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 144,
+      "units": 8,
+      "wallets": [
+       66,
+       11,
+       13,
+       13,
+       16,
+       25
+      ]
+     },
+     {
+      "t": 300,
+      "grana": 173,
+      "units": 8,
+      "wallets": [
+       62,
+       11,
+       22,
+       16,
+       28,
+       34
+      ]
+     },
+     {
+      "t": 330,
+      "grana": 199,
+      "units": 3,
+      "wallets": [
+       62,
+       21,
+       22,
+       16,
+       38,
+       40
+      ]
+     },
+     {
+      "t": 360,
+      "grana": 199,
+      "units": 3,
+      "wallets": [
+       62,
+       21,
+       22,
+       16,
+       38,
+       40
+      ]
+     },
+     {
+      "t": 390,
+      "grana": 270,
+      "units": 3,
+      "wallets": [
+       63,
+       27,
+       26,
+       21,
+       65,
+       68
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 0,
+     "bot2": 0,
+     "bot3": 0,
+     "bot4": 0,
+     "bot5": 0,
+     "bot6": 0
+    }
+   },
+   "digest": "2bc457d9e5ec"
+  },
+  {
+   "key": "4:6",
+   "seed": 4,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 7,
+   "diedRound": null,
+   "ticks": 11563,
+   "simMinutes": 9.64,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [
+    {
+     "round": 1,
+     "waveStartTick": 61,
+     "endTick": 1223,
+     "firstInsideBaseTick": 734,
+     "firstArrivalS": 33.65,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 2,
+     "waveStartTick": 2010,
+     "endTick": 3402,
+     "firstInsideBaseTick": 2266,
+     "firstArrivalS": 12.8,
+     "downed": 2,
+     "eliminated": 1,
+     "revived": 1,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 1
+    },
+    {
+     "round": 3,
+     "waveStartTick": 4189,
+     "endTick": 5416,
+     "firstInsideBaseTick": 4605,
+     "firstArrivalS": 20.8,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 4,
+     "waveStartTick": 6203,
+     "endTick": 7318,
+     "firstInsideBaseTick": 6530,
+     "firstArrivalS": 16.35,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 5,
+     "waveStartTick": 8105,
+     "endTick": 9690,
+     "firstInsideBaseTick": 8462,
+     "firstArrivalS": 17.85,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    },
+    {
+     "round": 6,
+     "waveStartTick": 10477,
+     "endTick": 11472,
+     "firstInsideBaseTick": 10830,
+     "firstArrivalS": 17.65,
+     "downed": 0,
+     "eliminated": 0,
+     "revived": 0,
+     "wallHpStart": 600,
+     "wallHpEnd": 600,
+     "barricadesFallen": 0
+    }
+   ],
+   "intermissions": [
+    {
+     "round": 2,
+     "startTick": 1223,
+     "endTick": 2010,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 0
+     },
+     "balanceEnd": {
+      "units": 8
+     },
+     "gathered": {
+      "units": 30
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 18,
+      "bot2": 6,
+      "bot3": 3,
+      "bot4": 0,
+      "bot5": 3,
+      "bot6": 0
+     },
+     "cratesEmptied": 7,
+     "purchases": [],
+     "towerUnits": 22
+    },
+    {
+     "round": 3,
+     "startTick": 3402,
+     "endTick": 4189,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 8
+     },
+     "balanceEnd": {
+      "units": 12
+     },
+     "gathered": {
+      "units": 48
+     },
+     "spent": {
+      "units": 44,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 9,
+      "bot2": 0,
+      "bot3": 12,
+      "bot4": 18,
+      "bot5": 0,
+      "bot6": 9
+     },
+     "cratesEmptied": 10,
+     "purchases": [],
+     "towerUnits": 44
+    },
+    {
+     "round": 4,
+     "startTick": 5416,
+     "endTick": 6203,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 12
+     },
+     "balanceEnd": {
+      "units": 2
+     },
+     "gathered": {
+      "units": 12
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 3,
+      "bot2": 0,
+      "bot3": 6,
+      "bot4": 3,
+      "bot5": 0,
+      "bot6": 0
+     },
+     "cratesEmptied": 4,
+     "purchases": [],
+     "towerUnits": 22
+    },
+    {
+     "round": 5,
+     "startTick": 7318,
+     "endTick": 8105,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 2
+     },
+     "balanceEnd": {
+      "units": 19
+     },
+     "gathered": {
+      "units": 39
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 18,
+      "bot3": 4.88,
+      "bot4": 4.13,
+      "bot5": 0,
+      "bot6": 12
+     },
+     "cratesEmptied": 9,
+     "purchases": [],
+     "towerUnits": 22
+    },
+    {
+     "round": 6,
+     "startTick": 9690,
+     "endTick": 10477,
+     "seconds": 39.35,
+     "balanceStart": {
+      "units": 19
+     },
+     "balanceEnd": {
+      "units": 15
+     },
+     "gathered": {
+      "units": 18
+     },
+     "spent": {
+      "units": 22,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 3,
+      "bot2": 6,
+      "bot3": 6,
+      "bot4": 0,
+      "bot5": 0,
+      "bot6": 3
+     },
+     "cratesEmptied": 5,
+     "purchases": [],
+     "towerUnits": 22
+    },
+    {
+     "round": 7,
+     "startTick": 11472,
+     "endTick": 11563,
+     "seconds": 4.55,
+     "balanceStart": {
+      "units": 15
+     },
+     "balanceEnd": {
+      "units": 18
+     },
+     "gathered": {
+      "units": 3
+     },
+     "spent": {
+      "units": 0,
+      "forge": 0
+     },
+     "perPlayer": {
+      "bot1": 0,
+      "bot2": 0,
+      "bot3": 0,
+      "bot4": 3,
+      "bot5": 0,
+      "bot6": 0
+     },
+     "cratesEmptied": 1,
+     "purchases": [],
+     "towerUnits": 0
+    }
+   ],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": {
+    "spawnTick": 10477,
+    "spawnAfterWaveS": 0,
+    "maxHp": 9120,
+    "hpEnd": 0,
+    "firstInsideBaseTick": 10477,
+    "firstInsideBaseS": 0,
+    "firstPlayerHitTick": null,
+    "firstPlayerHitS": null,
+    "firstWallHitTick": null,
+    "firstWallHitS": null,
+    "killTick": 11167,
+    "killAfterSpawnS": 34.5
+   },
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": 20.7,
+     "bot2": 21.4,
+     "bot3": 25.95,
+     "bot4": 24.65,
+     "bot5": 24.65,
+     "bot6": 24.65
+    },
+    "tutorialArrivalS": 20.7,
+    "modeTicks": {
+     "hold": 846,
+     "plaza": 5333,
+     "brain": 33813,
+     "unstick": 380,
+     "crate": 3955,
+     "build:clear": 1706,
+     "build:bank": 4008,
+     "crate-near": 982,
+     "build:build": 1796,
+     "home-wall": 5623,
+     "build:push": 1604,
+     "down": 9104,
+     "build:veiculo": 228
+    },
+    "stuck": 24,
+    "crateTrips": 50
+   },
+   "perf": {
+    "wallSeconds": 5.86,
+    "msPerTick": 0.507,
+    "thinkMsPerTick": 0.173,
+    "navMsPerTick": 0.043
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 28,
+    "repairs": 2,
+    "units": 132,
+    "refused": {},
+    "final": {
+     "guarnicao-do-predio": 2,
+     "obuseiro": 1,
+     "antiaerea-quadrupla": 1,
+     "ninho-de-metralhadora": 1,
+     "morteiro": 1
+    },
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 6,
+    "tokens": 6
+   },
+   "pause": {
+    "count": 9,
+    "botSeconds": 9,
+    "waveSeconds": 373.8,
+    "humanShare": 0.22
+   },
+   "grana": {
+    "earned": 848,
+    "spent": {
+     "evolutions": 386,
+     "repairs": 10,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 91,
+    "pix": {
+     "count": 35,
+     "amount": 257
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 7,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 578.1,
+    "hits": 67,
+    "limit": 224,
+    "budget": 226,
+    "grana": 317,
+    "paid": 226,
+    "debt": 0,
+    "parts": 1,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 97,
+      "paid": 63
+     },
+     {
+      "id": "bot2",
+      "had": 49,
+      "paid": 37
+     },
+     {
+      "id": "bot3",
+      "had": 53,
+      "paid": 37
+     },
+     {
+      "id": "bot4",
+      "had": 50,
+      "paid": 37
+     },
+     {
+      "id": "bot5",
+      "had": 15,
+      "paid": 15
+     },
+     {
+      "id": "bot6",
+      "had": 53,
+      "paid": 37
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "volta": 14,
+     "lombada": 3,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "enemies": {
+    "max": 144,
+    "seen": 677,
+    "alivePerMinute": [
+     0,
+     3,
+     38,
+     0,
+     84,
+     0,
+     7,
+     104,
+     1,
+     106
+    ],
+    "newPerMinute": [
+     18,
+     40,
+     28,
+     131,
+     0,
+     115,
+     109,
+     39,
+     131,
+     66
+    ]
+   },
+   "banks": {
+    "grana": 135,
+    "withdraws": 27,
+    "share": 0.159,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 9
+   },
+   "vehicles": {
+    "rides": 5,
+    "byKind": {
+     "carrinho": 4,
+     "crossfiteiro": 1
+    },
+    "acabou": 5,
+    "largou": 0,
+    "riders": 3
+   },
+   "levels": [
+    32.7,
+    38.2,
+    134.3,
+    144.25,
+    234.8,
+    241.5,
+    252.7,
+    263.6,
+    331.6,
+    343.25,
+    353.15,
+    417.8,
+    433.95,
+    445.8,
+    453.55,
+    484.45,
+    541.4,
+    555.4,
+    558.9,
+    565.9
+   ],
+   "econ": {
+    "buys": [
+     {
+      "t": 84.2,
+      "round": 2,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 31
+     },
+     {
+      "t": 188.2,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 58
+     },
+     {
+      "t": 196.2,
+      "round": 3,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 58
+     },
+     {
+      "t": 197.6,
+      "round": 3,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 48
+     },
+     {
+      "t": 199.6,
+      "round": 3,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 38
+     },
+     {
+      "t": 271.8,
+      "round": 4,
+      "act": "repair",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "grana": 5,
+      "units": 0,
+      "wallet": 86
+     },
+     {
+      "t": 272.8,
+      "round": 4,
+      "act": "repair",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "grana": 5,
+      "units": 0,
+      "wallet": 81
+     },
+     {
+      "t": 273.8,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "morteiro",
+      "from": "rojao-de-festa",
+      "grana": 16,
+      "units": 0,
+      "wallet": 83
+     },
+     {
+      "t": 276.8,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 68
+     },
+     {
+      "t": 278.8,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "atiradores-do-telhado",
+      "from": "vigias-armados",
+      "grana": 16,
+      "units": 0,
+      "wallet": 80
+     },
+     {
+      "t": 287.2,
+      "round": 4,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "lanca-foguetes",
+      "from": "morteiro",
+      "grana": 25,
+      "units": 0,
+      "wallet": 74
+     },
+     {
+      "t": 298.6,
+      "round": 4,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 64
+     },
+     {
+      "t": 395.8,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "obuseiro",
+      "from": "lanca-foguetes",
+      "grana": 35,
+      "units": 0,
+      "wallet": 119
+     },
+     {
+      "t": 396.8,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "holofote",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 84
+     },
+     {
+      "t": 398,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "atiradores-do-telhado",
+      "from": "vigias-armados",
+      "grana": 16,
+      "units": 0,
+      "wallet": 83
+     },
+     {
+      "t": 399,
+      "round": 5,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "ninho-de-metralhadora",
+      "from": "atiradores-do-telhado",
+      "grana": 25,
+      "units": 0,
+      "wallet": 83
+     },
+     {
+      "t": 400,
+      "round": 5,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 72
+     },
+     {
+      "t": 450.9,
+      "round": 5,
+      "act": "buyCida",
+      "who": "bot3",
+      "kind": "brigadeiro",
+      "grana": 15,
+      "units": 0,
+      "wallet": 51
+     },
+     {
+      "t": 478.95,
+      "round": 5,
+      "act": "buyCida",
+      "who": "bot2",
+      "kind": "pacoca",
+      "grana": 25,
+      "units": 0,
+      "wallet": 74
+     },
+     {
+      "t": 479.15,
+      "round": 5,
+      "act": "buyCida",
+      "who": "bot2",
+      "kind": "brigadeiro",
+      "grana": 15,
+      "units": 0,
+      "wallet": 49
+     },
+     {
+      "t": 484.6,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "vigias-armados",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 136
+     },
+     {
+      "t": 486.4,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "arame-e-sirene",
+      "from": "holofote",
+      "grana": 16,
+      "units": 0,
+      "wallet": 126
+     },
+     {
+      "t": 487.4,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "ninho-de-metralhadora",
+      "from": "atiradores-do-telhado",
+      "grana": 25,
+      "units": 0,
+      "wallet": 110
+     },
+     {
+      "t": 488.4,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "guarnicao-do-predio",
+      "from": "ninho-de-metralhadora",
+      "grana": 35,
+      "units": 0,
+      "wallet": 85
+     },
+     {
+      "t": 493,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "atiradores-do-telhado",
+      "from": "vigias-armados",
+      "grana": 16,
+      "units": 0,
+      "wallet": 83
+     },
+     {
+      "t": 494.4,
+      "round": 6,
+      "act": "build",
+      "who": "bot1",
+      "kind": "vigia-do-predio",
+      "grana": 0,
+      "units": 22,
+      "wallet": 83
+     },
+     {
+      "t": 497.8,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "antiaerea-quadrupla",
+      "from": "arame-e-sirene",
+      "grana": 25,
+      "units": 0,
+      "wallet": 83
+     },
+     {
+      "t": 499.8,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "guarnicao-do-predio",
+      "from": "ninho-de-metralhadora",
+      "grana": 35,
+      "units": 0,
+      "wallet": 68
+     },
+     {
+      "t": 514,
+      "round": 6,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "rojao-de-festa",
+      "from": "vigia-do-predio",
+      "grana": 10,
+      "units": 0,
+      "wallet": 59
+     },
+     {
+      "t": 556.6,
+      "round": 6,
+      "act": "buyCida",
+      "who": "bot1",
+      "kind": "pacoca",
+      "grana": 25,
+      "units": 0,
+      "wallet": 123
+     },
+     {
+      "t": 560,
+      "round": 6,
+      "act": "buyCida",
+      "who": "bot1",
+      "kind": "cocada",
+      "grana": 20,
+      "units": 0,
+      "wallet": 123
+     },
+     {
+      "t": 568.25,
+      "round": 6,
+      "act": "buyCida",
+      "who": "bot4",
+      "kind": "brigadeiro",
+      "grana": 15,
+      "units": 0,
+      "wallet": 68
+     },
+     {
+      "t": 569,
+      "round": 6,
+      "act": "buyCida",
+      "who": "bot1",
+      "kind": "cocada",
+      "grana": 20,
+      "units": 0,
+      "wallet": 122
+     },
+     {
+      "t": 574.8,
+      "round": 7,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "morteiro",
+      "from": "rojao-de-festa",
+      "grana": 16,
+      "units": 0,
+      "wallet": 109
+     },
+     {
+      "t": 576,
+      "round": 7,
+      "act": "upgrade",
+      "who": "bot1",
+      "kind": "ninho-de-metralhadora",
+      "from": "atiradores-do-telhado",
+      "grana": 25,
+      "units": 0,
+      "wallet": 99
+     }
+    ],
+    "byKind": {
+     "build:vigia-do-predio": {
+      "count": 6,
+      "grana": 0,
+      "units": 132
+     },
+     "upgrade:vigias-armados": {
+      "count": 3,
+      "grana": 30,
+      "units": 0
+     },
+     "upgrade:rojao-de-festa": {
+      "count": 2,
+      "grana": 20,
+      "units": 0
+     },
+     "repair:rojao-de-festa": {
+      "count": 2,
+      "grana": 10,
+      "units": 0
+     },
+     "upgrade:morteiro": {
+      "count": 2,
+      "grana": 32,
+      "units": 0
+     },
+     "upgrade:atiradores-do-telhado": {
+      "count": 3,
+      "grana": 48,
+      "units": 0
+     },
+     "upgrade:lanca-foguetes": {
+      "count": 1,
+      "grana": 25,
+      "units": 0
+     },
+     "upgrade:obuseiro": {
+      "count": 1,
+      "grana": 35,
+      "units": 0
+     },
+     "upgrade:holofote": {
+      "count": 1,
+      "grana": 10,
+      "units": 0
+     },
+     "upgrade:ninho-de-metralhadora": {
+      "count": 3,
+      "grana": 75,
+      "units": 0
+     },
+     "buyCida:brigadeiro": {
+      "count": 3,
+      "grana": 45,
+      "units": 0
+     },
+     "buyCida:pacoca": {
+      "count": 2,
+      "grana": 50,
+      "units": 0
+     },
+     "upgrade:arame-e-sirene": {
+      "count": 1,
+      "grana": 16,
+      "units": 0
+     },
+     "upgrade:guarnicao-do-predio": {
+      "count": 2,
+      "grana": 70,
+      "units": 0
+     },
+     "upgrade:antiaerea-quadrupla": {
+      "count": 1,
+      "grana": 25,
+      "units": 0
+     },
+     "buyCida:cocada": {
+      "count": 2,
+      "grana": 40,
+      "units": 0
+     }
+    },
+    "refused": {},
+    "firstAffordable": {
+     "vigia-do-predio": 75.85,
+     "vigias-armados": 43.9,
+     "atiradores-do-telhado": 72.75,
+     "ninho-de-metralhadora": 77.75,
+     "guarnicao-do-predio": 85.35,
+     "ninho-do-sniper": 77.75,
+     "equipe-antimaterial": 85.35,
+     "rojao-de-festa": 43.9,
+     "morteiro": 72.75,
+     "lanca-foguetes": 77.75,
+     "obuseiro": 85.35,
+     "gustavao": null,
+     "holofote": 43.9,
+     "arame-e-sirene": 72.75,
+     "antiaerea-quadrupla": 77.75,
+     "posto-de-radar": 85.35,
+     "muro": 39.2,
+     "barricada": 39.45,
+     "reparo": 43.9,
+     "gambiarra": 90.35,
+     "torre-chinelo": 144.6
+    },
+    "idleMean": 165.39,
+    "waves": [
+     {
+      "t": 3.05,
+      "round": 1,
+      "grana": 0,
+      "units": 0,
+      "maxWallet": 0,
+      "idleMean": 20.26
+     },
+     {
+      "t": 100.5,
+      "round": 2,
+      "grana": 63,
+      "units": 8,
+      "maxWallet": 46,
+      "idleMean": 88.35
+     },
+     {
+      "t": 209.45,
+      "round": 3,
+      "grana": 93,
+      "units": 12,
+      "maxWallet": 38,
+      "idleMean": 157.8
+     },
+     {
+      "t": 310.15,
+      "round": 4,
+      "grana": 192,
+      "units": 2,
+      "maxWallet": 64,
+      "idleMean": 252.12
+     },
+     {
+      "t": 405.25,
+      "round": 5,
+      "grana": 221,
+      "units": 19,
+      "maxWallet": 72,
+      "idleMean": 257.88
+     },
+     {
+      "t": 523.85,
+      "round": 6,
+      "grana": 191,
+      "units": 15,
+      "maxWallet": 49,
+      "idleMean": 249.66
+     }
+    ],
+    "samples": [
+     {
+      "t": 30,
+      "grana": 0,
+      "units": 0,
+      "wallets": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "grana": 11,
+      "units": 0,
+      "wallets": [
+       5,
+       0,
+       0,
+       0,
+       0,
+       6
+      ]
+     },
+     {
+      "t": 90,
+      "grana": 63,
+      "units": 8,
+      "wallets": [
+       41,
+       0,
+       11,
+       0,
+       5,
+       6
+      ]
+     },
+     {
+      "t": 120,
+      "grana": 63,
+      "units": 8,
+      "wallets": [
+       46,
+       0,
+       6,
+       0,
+       5,
+       6
+      ]
+     },
+     {
+      "t": 150,
+      "grana": 88,
+      "units": 8,
+      "wallets": [
+       50,
+       8,
+       14,
+       3,
+       7,
+       6
+      ]
+     },
+     {
+      "t": 180,
+      "grana": 113,
+      "units": 17,
+      "wallets": [
+       58,
+       14,
+       14,
+       3,
+       7,
+       17
+      ]
+     },
+     {
+      "t": 210,
+      "grana": 93,
+      "units": 12,
+      "wallets": [
+       38,
+       14,
+       14,
+       3,
+       7,
+       17
+      ]
+     },
+     {
+      "t": 240,
+      "grana": 103,
+      "units": 12,
+      "wallets": [
+       42,
+       14,
+       14,
+       8,
+       7,
+       18
+      ]
+     },
+     {
+      "t": 270,
+      "grana": 223,
+      "units": 12,
+      "wallets": [
+       86,
+       34,
+       24,
+       16,
+       7,
+       56
+      ]
+     },
+     {
+      "t": 300,
+      "grana": 192,
+      "units": 2,
+      "wallets": [
+       64,
+       33,
+       29,
+       26,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 330,
+      "grana": 192,
+      "units": 2,
+      "wallets": [
+       64,
+       33,
+       29,
+       26,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 360,
+      "grana": 280,
+      "units": 2,
+      "wallets": [
+       98,
+       48,
+       46,
+       34,
+       7,
+       47
+      ]
+     },
+     {
+      "t": 390,
+      "grana": 307,
+      "units": 41,
+      "wallets": [
+       119,
+       52,
+       46,
+       36,
+       7,
+       47
+      ]
+     },
+     {
+      "t": 420,
+      "grana": 221,
+      "units": 19,
+      "wallets": [
+       72,
+       36,
+       37,
+       36,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 450,
+      "grana": 300,
+      "units": 19,
+      "wallets": [
+       118,
+       60,
+       46,
+       36,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 480,
+      "grana": 313,
+      "units": 19,
+      "wallets": [
+       136,
+       34,
+       44,
+       58,
+       7,
+       34
+      ]
+     },
+     {
+      "t": 510,
+      "grana": 196,
+      "units": 15,
+      "wallets": [
+       49,
+       33,
+       36,
+       38,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 540,
+      "grana": 191,
+      "units": 15,
+      "wallets": [
+       49,
+       33,
+       36,
+       33,
+       7,
+       33
+      ]
+     },
+     {
+      "t": 570,
+      "grana": 328,
+      "units": 15,
+      "wallets": [
+       102,
+       55,
+       44,
+       53,
+       15,
+       59
+      ]
+     }
+    ],
+    "wallets": {
+     "bot1": 34,
+     "bot2": 12,
+     "bot3": 16,
+     "bot4": 13,
+     "bot5": 0,
+     "bot6": 16
+    }
+   },
+   "digest": "47c056a381c7"
+  }
+ ],
+ "summary": {
+  "runs": 4,
+  "byPlayers": {
+   "6": {
+    "players": 6,
+    "runs": 4,
+    "wins": 1,
+    "winRate": 0.25,
+    "causes": {
+     "boss": 0,
+     "team": 3,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 1,
+     "car": 0
+    },
+    "deathRounds": {
+     "4": 2,
+     "5": 1
+    },
+    "roundReached": {
+     "n": 4,
+     "mean": 5,
+     "min": 4,
+     "median": 4.5,
+     "max": 7
+    },
+    "firstArrivalS": {
+     "all": {
+      "n": 15,
+      "mean": 16.47,
+      "min": 10.3,
+      "median": 15.45,
+      "max": 22.25
+     },
+     "byRound": {
+      "1": {
+       "n": 4,
+       "mean": 27.21,
+       "min": 16.55,
+       "median": 29.33,
+       "max": 33.65
+      },
+      "2": {
+       "n": 4,
+       "mean": 18,
+       "min": 12.8,
+       "median": 18.48,
+       "max": 22.25
+      },
+      "3": {
+       "n": 4,
+       "mean": 15.69,
+       "min": 12.4,
+       "median": 14.77,
+       "max": 20.8
+      },
+      "4": {
+       "n": 4,
+       "mean": 15.53,
+       "min": 10.3,
+       "median": 15.7,
+       "max": 20.4
+      },
+      "5": {
+       "n": 2,
+       "mean": 16.3,
+       "min": 14.75,
+       "median": 16.3,
+       "max": 17.85
+      },
+      "6": {
+       "n": 1,
+       "mean": 17.65,
+       "min": 17.65,
+       "median": 17.65,
+       "max": 17.65
+      }
+     }
+    },
+    "loot": {
+     "unitsPerIntermission": {
+      "n": 16,
+      "mean": 34.13,
+      "min": 3,
+      "median": 36,
+      "max": 72
+     },
+     "recipesPerIntermission": 0.98,
+     "byRound": {
+      "2": {
+       "n": 4,
+       "mean": 30.75,
+       "min": 15,
+       "median": 31.5,
+       "max": 45
+      },
+      "3": {
+       "n": 4,
+       "mean": 58.5,
+       "min": 48,
+       "median": 57,
+       "max": 72
+      },
+      "4": {
+       "n": 4,
+       "mean": 30.75,
+       "min": 12,
+       "median": 31.5,
+       "max": 48
+      },
+      "5": {
+       "n": 2,
+       "mean": 22.5,
+       "min": 6,
+       "median": 22.5,
+       "max": 39
+      },
+      "6": {
+       "n": 1,
+       "mean": 18,
+       "min": 18,
+       "median": 18,
+       "max": 18
+      },
+      "7": {
+       "n": 1,
+       "mean": 3,
+       "min": 3,
+       "median": 3,
+       "max": 3
+      }
+     },
+     "purchasesPerRun": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 0,
+     "tutorialArrivalS": {
+      "n": 4,
+      "mean": 20.7,
+      "min": 20.7,
+      "median": 20.7,
+      "max": 20.7
+     }
+    },
+    "barricadesFallen": {
+     "perRound": {
+      "n": 15,
+      "mean": 0.33,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "byRound": {
+      "2": {
+       "n": 4,
+       "mean": 1,
+       "min": 1,
+       "median": 1,
+       "max": 1
+      },
+      "3": {
+       "n": 4,
+       "mean": 0.25,
+       "min": 0,
+       "median": 0,
+       "max": 1
+      },
+      "4": {
+       "n": 4,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "5": {
+       "n": 2,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      },
+      "6": {
+       "n": 1,
+       "mean": 0,
+       "min": 0,
+       "median": 0,
+       "max": 0
+      }
+     }
+    },
+    "boss": {
+     "spawnAfterWaveS": {
+      "n": 1,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "firstInsideBaseS": {
+      "n": 1,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": {
+      "n": 1,
+      "mean": 34.5,
+      "min": 34.5,
+      "median": 34.5,
+      "max": 34.5
+     },
+     "kills": 1,
+     "reached": 1
+    },
+    "towers": {
+     "runs": 4,
+     "rootsPerRun": {
+      "n": 4,
+      "mean": 5.5,
+      "min": 4,
+      "median": 6,
+      "max": 6
+     },
+     "tokensPerRun": {
+      "n": 4,
+      "mean": 5.5,
+      "min": 4,
+      "median": 6,
+      "max": 6
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 4,
+     "earned": {
+      "n": 4,
+      "mean": 457,
+      "min": 287,
+      "median": 346.5,
+      "max": 848
+     },
+     "spent": {
+      "n": 4,
+      "mean": 142.25,
+      "min": 10,
+      "median": 81.5,
+      "max": 396
+     },
+     "evolutions": {
+      "n": 4,
+      "mean": 134.75,
+      "min": 10,
+      "median": 71.5,
+      "max": 386
+     },
+     "repairs": {
+      "n": 4,
+      "mean": 7.5,
+      "min": 0,
+      "median": 7.5,
+      "max": 15
+     },
+     "forge": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "final": {
+      "n": 4,
+      "mean": 93.25,
+      "min": 0,
+      "median": 91.5,
+      "max": 190
+     }
+    },
+    "chaveiro": {
+     "runs": 4,
+     "wins": 1,
+     "winsWithDebt": 0,
+     "debt": {
+      "n": 1,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "banks": {
+     "runs": 4,
+     "grana": {
+      "n": 4,
+      "mean": 104.75,
+      "min": 84,
+      "median": 100,
+      "max": 135
+     },
+     "share": {
+      "n": 4,
+      "mean": 0.26,
+      "min": 0.16,
+      "median": 0.29,
+      "max": 0.29
+     },
+     "pooledShare": 0.229,
+     "withdraws": {
+      "n": 4,
+      "mean": 21,
+      "min": 17,
+      "median": 20,
+      "max": 27
+     },
+     "enemyWithdraws": {
+      "n": 4,
+      "mean": 1,
+      "min": 0,
+      "median": 0.5,
+      "max": 3
+     },
+     "enemyGrana": {
+      "n": 4,
+      "mean": 2,
+      "min": 0,
+      "median": 1,
+      "max": 6
+     },
+     "primes": {
+      "n": 4,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 4,
+      "mean": 7,
+      "min": 6,
+      "median": 6.5,
+      "max": 9
+     },
+     "verdict": "low"
+    },
+    "econ": {
+     "runs": 4,
+     "buysPerRun": {
+      "build:vigia-do-predio": {
+       "count": 5.5,
+       "grana": 0
+      },
+      "buyCida:brigadeiro": {
+       "count": 0.75,
+       "grana": 11.25
+      },
+      "buyCida:cocada": {
+       "count": 0.5,
+       "grana": 10
+      },
+      "buyCida:pacoca": {
+       "count": 0.5,
+       "grana": 12.5
+      },
+      "repair:rojao-de-festa": {
+       "count": 0.5,
+       "grana": 2.5
+      },
+      "repair:vigia-do-predio": {
+       "count": 1,
+       "grana": 5
+      },
+      "upgrade:antiaerea-quadrupla": {
+       "count": 0.25,
+       "grana": 6.25
+      },
+      "upgrade:arame-e-sirene": {
+       "count": 0.25,
+       "grana": 4
+      },
+      "upgrade:atiradores-do-telhado": {
+       "count": 1,
+       "grana": 16
+      },
+      "upgrade:guarnicao-do-predio": {
+       "count": 0.5,
+       "grana": 17.5
+      },
+      "upgrade:holofote": {
+       "count": 0.5,
+       "grana": 5
+      },
+      "upgrade:lanca-foguetes": {
+       "count": 0.5,
+       "grana": 12.5
+      },
+      "upgrade:morteiro": {
+       "count": 1,
+       "grana": 16
+      },
+      "upgrade:ninho-de-metralhadora": {
+       "count": 0.75,
+       "grana": 18.75
+      },
+      "upgrade:obuseiro": {
+       "count": 0.25,
+       "grana": 8.75
+      },
+      "upgrade:rojao-de-festa": {
+       "count": 1.25,
+       "grana": 12.5
+      },
+      "upgrade:vigias-armados": {
+       "count": 1.75,
+       "grana": 17.5
+      }
+     },
+     "idleMean": {
+      "n": 4,
+      "mean": 135.1,
+      "min": 93.57,
+      "median": 134.26,
+      "max": 178.3
+     },
+     "firstAffordable": {
+      "vigia-do-predio": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 95.3,
+        "min": 75.85,
+        "median": 77.5,
+        "max": 150.35
+       }
+      },
+      "vigias-armados": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 58.47,
+        "min": 43.9,
+        "median": 59.63,
+        "max": 70.75
+       }
+      },
+      "atiradores-do-telhado": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 71.6,
+        "min": 68.3,
+        "median": 72.68,
+        "max": 72.75
+       }
+      },
+      "ninho-de-metralhadora": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 76.61,
+        "min": 75,
+        "median": 76.85,
+        "max": 77.75
+       }
+      },
+      "guarnicao-do-predio": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 88.21,
+        "min": 77.6,
+        "median": 82.65,
+        "max": 109.95
+       }
+      },
+      "ninho-do-sniper": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 76.61,
+        "min": 75,
+        "median": 76.85,
+        "max": 77.75
+       }
+      },
+      "equipe-antimaterial": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 88.21,
+        "min": 77.6,
+        "median": 82.65,
+        "max": 109.95
+       }
+      },
+      "rojao-de-festa": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 58.47,
+        "min": 43.9,
+        "median": 59.63,
+        "max": 70.75
+       }
+      },
+      "morteiro": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 71.6,
+        "min": 68.3,
+        "median": 72.68,
+        "max": 72.75
+       }
+      },
+      "lanca-foguetes": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 76.61,
+        "min": 75,
+        "median": 76.85,
+        "max": 77.75
+       }
+      },
+      "obuseiro": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 88.21,
+        "min": 77.6,
+        "median": 82.65,
+        "max": 109.95
+       }
+      },
+      "gustavao": {
+       "reached": 1,
+       "s": {
+        "n": 1,
+        "mean": 157.85,
+        "min": 157.85,
+        "median": 157.85,
+        "max": 157.85
+       }
+      },
+      "holofote": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 58.47,
+        "min": 43.9,
+        "median": 59.63,
+        "max": 70.75
+       }
+      },
+      "arame-e-sirene": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 71.6,
+        "min": 68.3,
+        "median": 72.68,
+        "max": 72.75
+       }
+      },
+      "antiaerea-quadrupla": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 76.61,
+        "min": 75,
+        "median": 76.85,
+        "max": 77.75
+       }
+      },
+      "posto-de-radar": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 88.21,
+        "min": 77.6,
+        "median": 82.65,
+        "max": 109.95
+       }
+      },
+      "muro": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 42.64,
+        "min": 31.4,
+        "median": 43.7,
+        "max": 51.75
+       }
+      },
+      "barricada": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 42.76,
+        "min": 31.65,
+        "median": 43.83,
+        "max": 51.75
+       }
+      },
+      "reparo": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 58.47,
+        "min": 43.9,
+        "median": 59.63,
+        "max": 70.75
+       }
+      },
+      "gambiarra": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 128.36,
+        "min": 90.35,
+        "median": 136.1,
+        "max": 150.9
+       }
+      },
+      "torre-chinelo": {
+       "reached": 4,
+       "s": {
+        "n": 4,
+        "mean": 145.16,
+        "min": 132.4,
+        "median": 148.1,
+        "max": 152.05
+       }
+      }
+     },
+     "waves": [
+      {
+       "index": 1,
+       "runs": 4,
+       "grana": 0,
+       "idleMean": 20.83,
+       "maxWallet": 0
+      },
+      {
+       "index": 2,
+       "runs": 4,
+       "grana": 61.75,
+       "idleMean": 84.37,
+       "maxWallet": 37.75
+      },
+      {
+       "index": 3,
+       "runs": 4,
+       "grana": 91.5,
+       "idleMean": 162.57,
+       "maxWallet": 44
+      },
+      {
+       "index": 4,
+       "runs": 4,
+       "grana": 202,
+       "idleMean": 236.9,
+       "maxWallet": 68.5
+      },
+      {
+       "index": 5,
+       "runs": 2,
+       "grana": 235.5,
+       "idleMean": 257.63,
+       "maxWallet": 67
+      },
+      {
+       "index": 6,
+       "runs": 1,
+       "grana": 191,
+       "idleMean": 249.66,
+       "maxWallet": 49
+      }
+     ]
+    },
+    "verdict": {
+     "wins": "too-hard",
+     "target": {
+      "min": 1.75,
+      "max": 2.75
+     },
+     "round1": "ok"
+    }
+   }
+  },
+  "verdict": {
+   "ok": false,
+   "notes": [
+    "6p: banks 22.9 % of the Grana, target 25–35 % (low)",
+    "6p: 1/4 wins, target 1.75–2.75 (too-hard)"
+   ]
+  }
+ }
+}

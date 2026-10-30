@@ -116,6 +116,16 @@ export function fallingPart(part:CarPart,t:number):Box[]{
   });
 }
 
+/**
+ * Card carro-chaveiro-arte: where a part's image goes, between its place on the car (t = 0) and the ground (t = 1), the
+ * same path and bounce as fallingPart: its centre (forward, left, up in world units, at the car's heading) and its turn.
+ */
+export function partSpot(part:CarPart,t:number):{x:number;y:number;z:number;turn:number}{
+  const a=PART_ON[part][0],d=PART_DOWN[part][0],k=Math.max(0,Math.min(1,t)),hop=Math.sin(Math.min(1,k*1.25)*Math.PI)*.35*M;
+  const lerp=(p:number,q:number)=>p+(q-p)*k;
+  return {x:lerp(a.x,d.x),y:lerp(a.y,d.y),z:Math.max(0,lerp(a.z+a.h/2,d.z+d.h/2)+hop*(1-k)),turn:(d.turn??0)*k};
+}
+
 /** The chaveiro and Cida as the moto's riders, sitting (lift: the moto's bounce, units). */
 function riders(lift:number,withChaveiro:boolean):Box[]{
   const r=(x:number,y:number,z:number,l:number,w:number,h:number,color:number,layer:number)=>({...m(x,y,z,l,w,h,color,{layer}),z:z*M+lift});

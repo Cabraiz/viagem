@@ -6,12 +6,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {HUD_CSS} from './hud-css.ts';
 
 const read=(path:string)=>readFileSync(new URL(`../../${path}`,import.meta.url),'utf8');
 
 test('the level badge is built hidden and hud.css keeps it out of the layout',()=>{
   assert.match(read('src/client/hud/topbar.ts'),/\bxp\.hidden=true;/);
-  assert.match(read('src/client/hud/hud.css'),/\.rh-xp\[hidden\]\{display:none\}/);
+  assert.match(HUD_CSS,/\.rh-xp\[hidden\]\{display:none\}/);
 });
 
 test('no nests count drawn next to the clock (chip nor the base bar); the words stay for screen readers',()=>{

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {STEP,reconcile,simulate} from '../../src/maps/prediction.ts';
 import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.ts';
-import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
+import {Room,LAB_REACH,ROOM_MAX_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,MSG_BURST,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
@@ -73,7 +73,7 @@ test('prediction replay produces same state after delayed acknowledgement',()=>{
   const replay=reconcile(p,inputs.filter(i=>i.seq>p.ack));assert.deepEqual(replay,predicted);
 });
 test('every kill rewards each active player once and never spectators',()=>{
-  const s=new Simulation(),p=s.add('p','Tester','cidadao-comum'),q=s.add('q','Ally','mendigo'),watcher=s.add('w','Watcher','cidadao-comum');
+  const s=new Simulation(),p=s.add('p','Tester','cidadao-comum'),q=s.add('q','Ally','tio-do-churrasco'),watcher=s.add('w','Watcher','cidadao-comum');
   watcher.spectator=true;s.resetRun();
   const enemy=createEnemy(s.world,'bebado',{x:p.x+8,y:p.y});
   assert.equal(s.world.damageEnemy(enemy.id,1e6,p.id),true);s.step();
@@ -82,12 +82,12 @@ test('every kill rewards each active player once and never spectators',()=>{
   assert.equal(p.score,10);assert.equal(q.score,10);
 });
 test('delta can reconstruct full state and removes departed players',()=>{
-  const s=new Simulation();s.add('a','A','cidadao-comum');s.add('b','B','mendigo');s.resetRun();const before=s.snapshot();s.remove('b');s.input('a',{seq:1,x:1,y:0,attack:false});s.step();const after=s.snapshot(),patch=delta(before,after);
+  const s=new Simulation();s.add('a','A','cidadao-comum');s.add('b','B','tio-do-churrasco');s.resetRun();const before=s.snapshot();s.remove('b');s.input('a',{seq:1,x:1,y:0,attack:false});s.step();const after=s.snapshot(),patch=delta(before,after);
   const players=new Map(before.players.map(p=>[p[0],p]));for(const p of patch.players)players.set(p[0],p);for(const id of patch.removed)players.delete(id);
   assert.deepEqual([...players.values()],after.players);assert.ok(JSON.stringify(patch).length<JSON.stringify(after).length+100);
 });
 test('message flooding and oversized payloads close connection',()=>{
-  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<50;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
+  const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<=MSG_BURST;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
   const b=peer();join(r,b,'B',1000);r.receive(b,'a'.repeat(1025),1000);assert.equal(b.closes[0].code,1009);
 });
 
@@ -191,7 +191,8 @@ test('boss kill sends one result message to every player and stays stable',()=>{
 });
 test('victory or defeat on the last tick beats the timeout; otherwise the timeout is announced once',()=>{
   const duration=8;
-  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer();join(race,a);startRun(race,[a]);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4, levanta-seguro.test.ts).
+  const race=new Room(1000,undefined,{durationTicks:duration}),a=peer(),a2=peer();join(race,a);join(race,a2,'A2');startRun(race,[a,a2]);
   for(let i=0;i<duration-1;i++)race.advance(4200+i*50);
   assert.equal(race.run.snapshot().phase,'combat');assert.equal(race.run.snapshot().remaining,1);
   downAll(race);race.advance(5000);
@@ -254,10 +255,11 @@ test('choose drops malformed ids, bad indexes and stale rounds before the simula
   assert.equal(calls(),0);assert.equal(room.sim.offers(id).length,2);
 });
 test('choose outside combat is refused (lobby and result)',()=>{
-  const room=new Room(1000),a=peer();join(room,a);const id=idOf(a);
+  // Two in the run: alone, the first fall is a second chance (comeca-armado-e-levanta-seguro item 4).
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');const id=idOf(a);
   let calls=0;const choose=room.sim.choose.bind(room.sim);room.sim.choose=(pid,offer,index)=>{calls++;return choose(pid,offer,index);};
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0});assert.equal(calls,0);
-  startRun(room,[a]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
+  startRun(room,[a,b]);room.sim.run.progression.grantLevelOffers(room.sim.world,2);
   downAll(room);room.advance(4200);assert.equal(room.run.snapshot().phase,'result');
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);assert.equal(calls,0);
 });
@@ -360,21 +362,22 @@ test('a late spectator alone does not keep an empty combat alive (review 1)',()=
 });
 
 test('no new run starts without time for a whole run; a run near the room end is closed as a timeout (review 2)',()=>{
-  const created=1000,lateAt=created+ROOM_LIFETIME_MS-RUN_START_WINDOW_MS+1;
-  const room=new Room(created),a=peer(),b=peer();join(room,a);join(room,b,'B');
+  // At the end of a room's renewals (sala-aguenta-cidade: before it, a ready or a rematch renews the room instead).
+  const created=1000,end=created+ROOM_MAX_LIFETIME_MS,lateAt=end-RUN_START_WINDOW_MS+1;
+  const room=new Room(created,undefined,{closesAt:end}),a=peer(),b=peer();join(room,a);join(room,b,'B');
   command(room,a,{t:'ready',round:1,ready:true},lateAt);
   assert.ok(room.run.snapshot().members.every(m=>!m.ready),'ready refused');
   assert.deepEqual(a.messages.filter(m=>m.t==='notice').map(m=>m.message),[ROOM_CLOSING_NOTICE]);
   assert.equal(a.closes.length,0,'a notice never closes the connection');
   command(room,a,{t:'ready',round:1,ready:false},lateAt);assert.equal(a.messages.filter(m=>m.t==='notice').length,1,'un-ready is always fine');
   // Inside the window everything works, and a run still going near the end gets a result before the 4004.
-  const ok=new Room(created),c=peer();join(ok,c);startRun(ok,[c]);
+  const ok=new Room(created,undefined,{closesAt:end}),c=peer();join(ok,c);startRun(ok,[c]);
   // Pings keep the peer fresh across the jump in time (a stale peer would be dropped and the run lost instead).
   const at=(t:number)=>{command(ok,c,{t:'ping',at:t},t);ok.advance(t);};
-  at(created+ROOM_LIFETIME_MS-60_000);assert.equal(ok.run.snapshot().phase,'combat');
-  at(created+ROOM_LIFETIME_MS-29_000);
+  at(end-60_000);assert.equal(ok.run.snapshot().phase,'combat');
+  at(end-29_000);
   assert.equal(ok.run.snapshot().outcome,'timeout');assert.deepEqual(results(c).map(m=>m.outcome),['timeout']);
-  command(ok,c,{t:'rematch',round:1},created+ROOM_LIFETIME_MS-28_000);
+  command(ok,c,{t:'rematch',round:1},end-28_000);
   assert.equal(ok.run.snapshot().phase,'result','rematch refused too');
   assert.equal(c.messages.filter(m=>m.t==='notice').length,1);
 });

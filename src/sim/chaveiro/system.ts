@@ -24,6 +24,10 @@
  *   than REPLAN_DRIFT u from where his route ends, at most once every REPLAN_GAP_SECONDS, the route is rebuilt from where
  *   he is to the car, the stops ahead keep their share of what is left of it (the one he is at stays under him) and he
  *   keeps his speed. Nobody moves the car while he opens it.
+ * - Card missao-proteger-uno-tempo (mode 'ninhos': ChaveiroOptions.clock, CHAVEIRO_CLOCK): no stops. The clock opens at
+ *   5:00 and every hit unit the car takes while it runs adds to it; at zero he rides the route's last share (an enemy on
+ *   him knocks him over), then unlocks the car (hits on it put time back on the unlocking, an enemy on him stops it).
+ *   The car's hit limit is what ends a bad run: no ceiling on the time added, so no endless spiral either.
  * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
  * span and the boss's spawn are fractions of the route length; radii around bodies (push, Cida, lure, the delivery's
  * clean check, the car) stay in u.
@@ -48,9 +52,27 @@ export const MOTO_RIDE_SECONDS=420;
  * won 16/16, the Uno untouched (~0.3 hits of 224), with the car open after 2-3 waves at ~10 min; no wave knob took them
  * off it, so a bigger room waits longer for him (more waves before the car opens): 6p 900 s, with NEST_PACE.crowd
  * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
+ * solo-uno-aguenta-1a-onda (headless audit fim.ts, armed, seeds 1-8, with comeca-armado + solo-segunda-chance): a solo
+ * never pushes a dead moto (each one waits MORTA_ALONE_SECONDS), so at 420 s his first ETA was ~752 s against 3p's 540;
+ * 1p ride 210 s puts it at 540 (holdTick). limit 1p × 1.6 (192 hits): the first wave pinned the Uno at the rate cap
+ * while the solo hero (level 4) fought ~40 bodies at it; with NEST_PACE.trickle 1p .4: 1p 3/8 → 6/8, 3p 6/8 → 8/8.
+ * After ritmo-morto-e-viaduto (visitors, deck sleepers recruited to the car) 1p fell to 3/8 (13/32); ride 150 (ETA0 still
+ * 540: the moto waits at the last delivery) with NEST_PACE.march 1p .7: 6/8 (22/32), 3p 7/8. ride 90/120 → 15/32, 7/16.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[],limit:[1,1,1,1,1,1] as number[],rate:3};
+export const CHAVEIRO_PACE={ride:[150,420,420,580,740,900] as number[],limit:[1.6,1,1,1,1,1] as number[],rate:3};
+/**
+ * Card missao-proteger-uno-tempo (the user, 29/10: "a missão é sim proteger o uno enquanto se espera o tempo ... a cada
+ * batida no carro aumentasse o tempo ... 5 minutos ... com limite de batida"; then "número de batidas mesmo": no ceiling
+ * on the time). start: the clock (s) the run opens with, to the car unlocked (the HUD's etaS: the wait, his last
+ * stretch and ABRINDO_SECONDS, clockWait); perHit: s added per hit unit the car takes while it runs;
+ * share / chegada: the route's last share he rides once it is zero, in that many seconds; abrindoPerHit: s a hit unit
+ * puts back on the unlocking (at most ABRINDO_SECONDS left). Mutable only for the bench's grid; the game never writes it.
+ */
+export const CHAVEIRO_CLOCK:ChaveiroClockRule={start:300,perHit:3,share:.2,chegada:20,abrindoPerHit:1};
+export interface ChaveiroClockRule {start:number;perHit:number;share:number;chegada:number;abrindoPerHit:number}
+/** The clock's wait (ticks) before he rides the last stretch, so the run opens with etaS = start. */
+export const clockWait=(clock:ChaveiroClockRule)=>Math.max(0,ticks(clock.start)-ticks(clock.chegada)-ticks(ABRINDO_SECONDS));
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**
@@ -148,6 +170,12 @@ export interface ChaveiroState {
   ride?:number;
   /** The vaquinha, once the result paid it (wallets already deducted): the result returns the same bill again. */
   vaquinha?:{grana:number;paid:number;debt:number;share:VaquinhaShare[]};
+  /**
+   * missao-proteger-uno-tempo (ChaveiroOptions.clock): wait, the clock's ticks left (set at the first step); added, the
+   * ticks the hits put on it and on the unlocking.
+   */
+  wait?:number;
+  added?:number;
 }
 
 /** The run's seated players (sim/wallet.ts seatedPlayers, join order): whose wallets pay the bill at the end. */
@@ -203,6 +231,12 @@ export interface ChaveiroOptions {
    * on the Uno emptied 224 in ~15 s with the bots beside it); blows past it still ring the alarm. 0/absent: no cap.
    */
   rate?:number;
+  /**
+   * missao-proteger-uno-tempo (mode 'ninhos': CHAVEIRO_CLOCK): the run waits on a clock the car's hits add to, instead of
+   * the stops (no dead moto, bump or delivery; the alarm still sounds but no longer sends him around the block).
+   * finalNotBefore and ride do nothing then. Absent: the stops.
+   */
+  clock?:ChaveiroClockRule;
 }
 
 export interface ChaveiroSystem {
@@ -285,7 +319,9 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const pace=()=>{speed=plan.route.length/((state.ride??MOTO_RIDE_SECONDS)*SIM_HZ);bumpSpeed=speed*LOMBADA_PACE;};
   pace();
   const bump=lombadaLength(plan.route.length);
-  let route=plan.route,stops=plan.stops;
+  // missao-proteger-uno-tempo: with the clock no stops; the last share of the planned route is ridden at `dash`.
+  const clock=options.clock,stretch=clock?plan.route.length*clock.share:0,dash=clock?stretch/(clock.chegada*SIM_HZ):0;
+  let route=plan.route,stops=clock?[]:plan.stops;
   // The moto's body keeps off a muro's blocker disc: the cells within both radii are shut to him.
   const muroReach=(options.muros?.radius??0)+MOTO_RADIUS;
   const gridFor=(muros:readonly Point[]|undefined,ends:readonly Point[])=>muros?.length?shutGrid(options.grid,muros,muroReach,ends):options.grid;
@@ -297,10 +333,14 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const moto=state.moto,car=state.car;
   const carWorld={input:options.input??(()=>undefined),blocks:options.blocks,nests:options.nests,helper:options.helper};
 
-  const alarmed=(tick:number)=>tick<car.alarmUntil&&moto.task!=='morta';
+  const alarmed=(tick:number)=>!clock&&tick<car.alarmUntil&&moto.task!=='morta';
   const fallen=(tick:number)=>tick<moto.tomboUntil;
   const shown=(tick:number):MotoMode=>alarmed(tick)?'volta':fallen(tick)?'tombo':moto.task;
-  const riding=()=>moto.task==='anda'||moto.task==='lombada';
+  /** The clock's ticks left (its start before the first step), 0 without the clock. */
+  const waitLeft=()=>clock?state.wait??clockWait(clock):0;
+  const riding=()=>(moto.task==='anda'&&waitLeft()<=0)||moto.task==='lombada';
+  /** On the road or, with the clock, unlocking the car: an enemy on him knocks him over (and lures the siege to him). */
+  const exposed=()=>riding()||!!clock&&moto.task==='abrindo';
   /**
    * Ticks the moto still stands still for the alarm and the fall. Both are deadlines on the same clock (alarmUntil,
    * tomboUntil) that run out together, so the wait is the later one, not their sum.
@@ -308,10 +348,12 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   /**
    * Standing players at the last step (or car hit): a dead moto ahead takes PUSH_SECONDS with PUSH_PLAYERS of them, else
    * it starts by itself (MORTA_ALONE_SECONDS). Read from the context on every step and hit, so the ETA (and the boss's
-   * call) is the same after a checkpoint; before the first one, the team is assumed big enough.
+   * call) is the same after a checkpoint; before the first one, the team is assumed big enough. `room`: the players in
+   * the run (standing or not); a room smaller than PUSH_PLAYERS (solo) can never push, so its hold counts every dead
+   * moto at its by-itself time (holdTick).
    */
-  let crew=PUSH_PLAYERS;
-  const countCrew=(ctx:SimContext)=>{crew=0;for(const p of ctx.players.values())if(isStanding(p))crew++;};
+  let crew=PUSH_PLAYERS,room=PUSH_PLAYERS;
+  const countCrew=(ctx:SimContext)=>{crew=room=0;for(const p of ctx.players.values()){if(p.spectator)continue;room++;if(isStanding(p))crew++;}};
   /** Ticks a dead moto still needs: the push left with a crew, else its by-itself countdown. */
   const mortaLeft=()=>crew>=PUSH_PLAYERS?Math.min(moto.left,PUSH_TICKS-moto.push):moto.left;
   const mortaTicks=()=>crew>=PUSH_PLAYERS?PUSH_TICKS:ticks(MORTA_ALONE_SECONDS);
@@ -340,18 +382,28 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   /**
    * The tick before which he does not leave the last delivery (options.finalNotBefore), or null: the run's start +
    * finalNotBefore less the fastest rest after it (the road, every dead moto pushed, abrindo), so the car opens no
-   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later.
+   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later. A solo room never pushes
+   * (solo-uno-aguenta-1a-onda): its dead motos count at MORTA_ALONE_SECONDS, so a solo car opens at finalNotBefore too.
    */
   function holdTick(tick:number){
     const last=lastEntrega();
     if(options.finalNotBefore===undefined||last<0)return null;
     let rest=rideTicks(stops[last].s,last+1)+ticks(ABRINDO_SECONDS);
-    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=PUSH_TICKS;
+    const morta=room>=PUSH_PLAYERS?PUSH_TICKS:ticks(MORTA_ALONE_SECONDS);
+    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=morta;
     return (state.startTick??tick)+ticks(options.finalNotBefore)-Math.ceil(rest);
   }
+  /** With the clock: where the wait crawls him to (the start of the last share; never back). */
+  const waitTo=()=>Math.max(moto.s,L-stretch);
   function eta(tick:number){
     if(state.ended)return 0;
     let t=held(tick);
+    if(clock){
+      if(moto.task==='abrindo')return (t+moto.left)/SIM_HZ;
+      const w=waitLeft();
+      t+=w+Math.max(0,L-(w>0?waitTo():moto.s))/dash;
+      return (t+ticks(ABRINDO_SECONDS))/SIM_HZ;
+    }
     let next=moto.stop;
     switch(moto.task){
       case 'abrindo':return (t+moto.left)/SIM_HZ;
@@ -385,9 +437,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   }
   function next(){moto.task='anda';moto.stop++;moto.left=0;moto.push=0;}
   function ride(ctx:SimContext){
+    const w=waitLeft();
+    if(moto.task==='anda'&&w>0){moto.s+=(waitTo()-moto.s)/w;state.wait=w-1;return;}
     switch(moto.task){
       case 'anda':{
-        moto.s+=speed;
+        moto.s+=clock?dash:speed;
         const stop=stops[moto.stop];
         if(stop&&moto.s>=stop.s){moto.s=stop.s;begin(ctx,stop);}
         else if(moto.s>=L){
@@ -453,7 +507,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);
   }
   function tombo(ctx:SimContext){
-    if(!riding()||ctx.tick<moto.tomboReady)return;
+    if(!exposed()||ctx.tick<moto.tomboReady)return;
     const p=at(moto.s);
     ctx.enemyIndex.query(p.x,p.y,MOTO_RADIUS+1.5,near);
     for(const e of near){
@@ -486,6 +540,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         // The limit follows the room the run starts with (a checkpoint keeps it).
         let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;
         if(car.hits===0)car.limit=carLimitFor(n,options.limit);
+        if(clock)state.wait??=clockWait(clock);
         const ride=options.ride?rideSecondsFor(options.ride,n):MOTO_RIDE_SECONDS;
         if(ride!==MOTO_RIDE_SECONDS){state.ride=ride;pace();}
       }
@@ -509,7 +564,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.ended)return [];
       // Card uno-bloqueio-corpo: the critters hit the car from its box's edge (carGap), not the old disc's.
       const out:{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS,gap:p=>carGap(car,p)}];
-      if(riding()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
+      if(exposed()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
       return out;
     },
     hitCar(ctx,enemy){
@@ -523,6 +578,13 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         units=Math.min(units,Math.max(0,options.rate-(car.rateUsed??0)));car.rateUsed=(car.rateUsed??0)+units;
       }
       car.hits+=units;state.budget+=BUDGET_PER_HIT*units;
+      // missao-proteger-uno-tempo: each hit unit adds to the clock while it runs, or back to the unlocking (capped).
+      if(clock&&units>0){
+        const before=moto.task==='abrindo'?moto.left:waitLeft();
+        if(moto.task==='abrindo')moto.left=Math.min(ticks(ABRINDO_SECONDS),moto.left+units*ticks(clock.abrindoPerHit));
+        else if(before>0)state.wait=before+units*ticks(clock.perHit);
+        state.added=(state.added??0)+(moto.task==='abrindo'?moto.left:waitLeft())-before;
+      }
       const silent=ctx.tick>=car.alarmUntil;
       car.alarmUntil=Math.min(ctx.tick+ticks(ALARM_MAX_SECONDS),Math.max(car.alarmUntil,ctx.tick)+ticks(ALARM_PER_HIT_SECONDS));
       if(silent)ctx.emit({type:'alarm',untilTick:car.alarmUntil});

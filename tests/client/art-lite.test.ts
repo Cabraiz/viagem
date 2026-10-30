@@ -32,7 +32,9 @@ test('every tree and class sheet has its copy, made from the approved file as it
 
 test('measured quality: at the size a phone draws them no copy is below 36 dB, and the whole set is ≤ 50% of the bytes (the v2 hero atlases and the 9 first enemies with their elite layers are denser, ~48%; each file stays < 60%)',()=>{
   const s=manifest.summary;
-  assert.ok(s.worstShownPsnr>=36,`${s.worstShownPsnr} dB`);
+  // The menu letreiros are the one exception (primeira-visita-leve, below): fine highlights at the width the PC draws them.
+  const worst=Math.min(...Object.entries<any>(manifest.files).filter(([k])=>!k.startsWith('menu/letreiro/')).map(([,e])=>e.shownPsnr));
+  assert.ok(worst>=36,`${worst} dB`);assert.ok(s.worstShownPsnr>=30,`${s.worstShownPsnr} dB`);
   assert.ok(s.liteBytes<=s.bytes*.5,`${s.liteBytes} of ${s.bytes}`);
   assert.equal(manifest.webp.alphaQuality,100,'cut-out edges stay exact');
 });
@@ -145,10 +147,10 @@ test('the base wall and barricades (art/base-art.ts) load their city lite copies
   }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
 });
 
-test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from /art/lite/menu has its copy, made from the approved file as it is now; the rest of public/art/menu (button, cut-out heroes, letreiros, mureta) is loaded as it is and has no copy (art-lite --check stays green)',()=>{
+test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from /art/lite/menu has its copy, made from the approved file as it is now; the rest of public/art/menu (button, cut-out heroes, mureta) is loaded as it is and has no copy (art-lite --check stays green)',()=>{
   const menu=readdirSync('public/art/menu',{recursive:true}).map(n=>String(n).replaceAll('\\','/')).filter(n=>n.endsWith('.webp'));
-  const lite=menu.filter(n=>/^(danca\/|insta\/|rosto\/|fundo-[^/]+\.webp$)/.test(n)); // insta/: the phone's profile screen (selecao-mobile-instagram); rosto/: the row's faces (selecao-miniatura-rosto)
-  assert.ok(lite.length>=142,`${lite.length} menu files with a copy`);
+  const lite=menu.filter(n=>/^(insta\/|rosto\/|letreiro\/|fundo-[^/]+\.webp$)/.test(n)); // menu-sem-danca: danca/ is in legado/. insta/: the phone's profile screen (selecao-mobile-instagram); rosto/: the row's faces (selecao-miniatura-rosto); letreiro/: primeira-visita-leve
+  assert.ok(lite.length>=90,`${lite.length} menu files with a copy`);
   for(const name of lite){
     const key=`menu/${name}`,entry=manifest.files[key];
     assert.ok(entry,`${key}: no copy in scripts/art-lite.json (node scripts/art-lite.mjs --kinds menu)`);
@@ -156,7 +158,7 @@ test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from 
     assert.equal(entry.lite,sha(`public/art/lite/${key}`),`public/art/lite/${key} is not the copy the manifest measured`);
   }
   for(const name of menu.filter(n=>!lite.includes(n)))assert.equal(manifest.files[`menu/${name}`],undefined,`menu/${name}: loaded as it is, no copy`);
-  // Every /art/lite/menu url the page names (the dance pages come from menu-dance.ts's replace) is one of those copies.
+  // Every /art/lite/menu url the page names is one of those copies.
   const sources=['index.html',...readdirSync('src/client',{recursive:true}).map(n=>`src/client/${String(n).replaceAll('\\','/')}`).filter(n=>/\.(ts|css)$/.test(n))];
   const urls=new Set(sources.flatMap(f=>readFileSync(f,'utf8').match(/\/art\/lite\/menu\/[\w\-/]+\.webp/g)??[]));
   assert.ok(urls.size>=2,[...urls].join(', '));
@@ -166,6 +168,20 @@ test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from 
 // BUG-20261025-ORQ-art-lite-chefoes-velho: the enemies' liteCell/pcCell follow rules the script reads from the game
 // (artTargetHeight, WAVE_BOSS.drawScale, HD_ENEMIES); a lote that changes those and not the copies went green here
 // while `art-lite --check` failed. Its enemy-cell step runs on every --kinds (~1 s with the smallest family).
+test('primeira-visita-leve: the menu letreiros are 960 px wide (the PC draws them ≤ ~810) and the landscape backgrounds 1920, the shape of the approved file at a fraction of its bytes; the letreiros lose only fine highlights (≥ 30 dB shown; any lossy WebP of them is ~31)',async()=>{
+  const sharp=(await import('sharp')).default;
+  const menu=Object.entries<any>(manifest.files).filter(([k])=>/^menu\/(letreiro\/|fundo-[^/]+\.webp$)/.test(k));
+  assert.equal(menu.filter(([k])=>k.startsWith('menu/letreiro/')).length,6);assert.equal(menu.length,12);
+  for(const [key,e] of menu){
+    const want=key.startsWith('menu/letreiro/')?{w:960,q:90,share:.3,db:30}:{w:1920,q:80,share:.5,db:36};
+    assert.deepEqual([e.liteWidth,e.liteQuality],[want.w,want.q],key);
+    const a=await sharp(`public/art/${key}`).metadata(),b=await sharp(`public/art/lite/${key}`).metadata();
+    assert.equal(b.width,want.w,key);assert.ok(Math.abs(b.height!-a.height!*want.w/a.width!)<=.5,`${key}: ${b.width}x${b.height} keeps ${a.width}x${a.height}`);
+    assert.ok(e.liteBytes<e.bytes*want.share,`${key}: ${e.liteBytes} of ${e.bytes}`);assert.ok(e.shownPsnr>=want.db,`${key}: ${e.shownPsnr} dB`);
+  }
+  assert.ok(manifest.files['menu/fundo-estadio-viciado.webp'].liteBytes<=220*1024,'the landscape stadium ~200 KB');
+});
+
 test('art-lite --check is green: every enemy liteCell/pcCell is what the script derives from the game as it is now (else: node scripts/art-lite.mjs)',()=>{
   const run=spawnSync(process.execPath,['scripts/art-lite.mjs','--check','--kinds','menu'],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr.trim().split('\n').slice(-3).join('\n'));

@@ -7,6 +7,12 @@
  *   on the line from the car to a spawn (the run's rng: where on it, which way the row runs; the pieces turned along it). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
  *   body, within TRALHA_POINT_KEEP of the plaza, its mouths or a spawn, within CAR_NEST_KEEP_OUT of a living nest or where it would lock the car off a spawn or the moto (free-build
  *   locks). So the map never starts shut.
+ * - Off the entrances (NEW-20261029-ORQ-sem-tralha-nas-entradas, the user 29/10: "eu falei para remover essas tralhas da
+ *   entradas, elas perdem a graça"): no square within TRALHA_ENTRADA_RAIO of an entrance (entradas: the mouth of every
+ *   street, gate or passage between blocks where it opens into wider ground; NEW-20261030-ORQ-entradas-livres-de-tudo,
+ *   the user 30/10: "obstáculos em entradas são horríveis": of any width, the square kept off the free strip down the middle of the mouth, bocaFaixa, run TRALHA_ENTRADA_FUNDO u into the street), besides the plaza, its mouths and the spawns.
+ *   Fewer squares left two of them free to shut a spawn between them, so each square also keeps the car reaching, over the
+ *   whole map, every plaza, mouth and spawn it reached bare (carReach).
  * - Out of the Uno's way (NEW-20261025-ORQ-uno-caminho-caixas-vender, the user 25/10: "esses entulhos e essa barreira só
  *   atrapalham na parte de mover o Uno"): the line car → spawn runs down the avenues the car is pushed along, and to the
  *   car's body every piece is its blocker discs (free-build blockDiscs), so a row across a street shut it. A
@@ -21,7 +27,7 @@
  *   The outcomes of the tick are drained by the room ({t:'coleta'} to the collector).
  * Everything here is JSON-safe in TowersState.tralha (checkpoints, stateHash).
  */
-import {type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
+import {cityEntradas,naBoca,type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,CAR_RADIUS,ticks,type SimPlayer} from '../../contract/index.ts';
 import {BARRICADA_CELLS,CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,FREE_PIECE_DEFS,pieceCells,TRALHA_GROUPS,TRALHA_GROUP_CELLS,TRALHA_REACH,UNO_BUILD_CELLS} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
@@ -38,6 +44,12 @@ export const TRALHA_WALL_GAP=.6;
 export const TRALHA_CAR_MARGIN=1;
 /** No square this close (u) to the plaza, a mouth of it or a spawn (uno-anda-mapa-todo, the user 27/10: "várias tralhas nas entradas do jogo"). */
 export const TRALHA_POINT_KEEP=6;
+/** No square this close (u) to the free strip of an entrance (entradas, any width: maps/city/entradas.ts bocaFaixa). */
+export const TRALHA_ENTRADA_RAIO=0;
+/** ...and the strip runs this much (u) further into the street (ORQ 30/10, the print: a row across the street 5 u in still shut the mouth). */
+export const TRALHA_ENTRADA_FUNDO=4;
+/** The map's entrances (maps/city/entradas.ts), memoised per asset. */
+export const entradas=(city:CityTerrain):readonly Point[]=>cityEntradas(city.asset);
 /** How far (build cells, Chebyshev) from its point on the line car → spawn a row may start. */
 export const TRALHA_SEARCH_CELLS=10;
 export const TRALHA_PREFIX='tralha';
@@ -120,6 +132,53 @@ export function carStillPasses(city:CityTerrain,discs:readonly {x:number;y:numbe
   return true;
 }
 
+/** carReach: grid cell and room around the car's body (u), the car-path test's (uno-caminho-livre) own. */
+const REACH_CELL=.75,REACH_ROOM=.25,REACH_SNAP=8;
+type Disc={x:number;y:number;r:number};
+/**
+ * The car's reach over the whole map (NEW-20261029-ORQ-sem-tralha-nas-entradas: two squares each passing carStillPasses
+ * could still shut a spawn between them): `ok(discs)` is true when the car's centre, off every disc, still gets from
+ * `car` to every goal it got to with no disc. 4-way steps on a REACH_CELL grid; each goal snapped to the nearest open
+ * cell within REACH_SNAP cells. Pure.
+ */
+export function carReach(city:CityTerrain,car:Point,goals:readonly Point[]):(discs:readonly Disc[])=>boolean{
+  const w=Math.ceil(city.asset.size.w/REACH_CELL),h=Math.ceil(city.asset.size.h/REACH_CELL),R=CAR_RADIUS+REACH_ROOM;
+  const bare=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)bare[x+y*w]=city.clearDisc((x+.5)*REACH_CELL,(y+.5)*REACH_CELL,R)?1:0;
+  const snap=(p:Point)=>{
+    let best=-1,bd=Infinity;
+    for(let dy=-REACH_SNAP;dy<=REACH_SNAP;dy++)for(let dx=-REACH_SNAP;dx<=REACH_SNAP;dx++){
+      const x=Math.floor(p.x/REACH_CELL)+dx,y=Math.floor(p.y/REACH_CELL)+dy,d=dx*dx+dy*dy;
+      if(x>=0&&y>=0&&x<w&&y<h&&bare[x+y*w]&&d<bd){bd=d;best=x+y*w;}
+    }
+    return best;
+  };
+  const start=Math.floor(car.x/REACH_CELL)+Math.floor(car.y/REACH_CELL)*w;
+  const seen=new Uint8Array(w*h),queue=new Int32Array(w*h);
+  const flood=(open:Uint8Array)=>{
+    seen.fill(0);let head=0,tail=0;
+    if(open[start]){seen[start]=1;queue[tail++]=start;}
+    while(head<tail){
+      const u=queue[head++],ux=u%w;
+      for(const v of [ux>0?u-1:-1,ux<w-1?u+1:-1,u-w,u+w])if(v>=0&&v<w*h&&!seen[v]&&open[v]){seen[v]=1;queue[tail++]=v;}
+    }
+    return seen;
+  };
+  const reached=flood(bare),wanted=goals.map(snap).filter(k=>k>=0&&reached[k]);
+  const open=new Uint8Array(w*h);
+  return discs=>{
+    open.set(bare);
+    for(const d of discs){
+      const r=d.r+R;
+      for(let y=Math.max(0,Math.floor((d.y-r)/REACH_CELL));y<=Math.min(h-1,Math.floor((d.y+r)/REACH_CELL));y++)
+        for(let x=Math.max(0,Math.floor((d.x-r)/REACH_CELL));x<=Math.min(w-1,Math.floor((d.x+r)/REACH_CELL));x++)
+          if(((x+.5)*REACH_CELL-d.x)**2+((y+.5)*REACH_CELL-d.y)**2<r*r)open[x+y*w]=0;
+    }
+    const got=flood(open);
+    return wanted.every(k=>got[k]);
+  };
+}
+
 /** Lays the map's barricadas once (see the header); returns the squares laid (0 when already done). */
 export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWorld):number{
   const towers=towersOf(state);
@@ -129,6 +188,7 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
   const rng=ctx.rng.fork('tralha'),def=FREE_PIECE_DEFS.barricada,keep=car.radius+(UNO_BUILD_CELLS+1)*FREE_CELL,n=BARRICADA_CELLS;
   const pieces=towers.pieces??=[];
   const B=P.bocas,keepOff=[P.praca,B.N,B.S,B.L,B.O,...spawns];
+  const reach=carReach(city,car,keepOff),laidDiscs=()=>pieces.flatMap(p=>{const [pw,ph]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,pw,ph);});
   let laid=0;
   const fits=(cell:{c:number;r:number},rot:0|1)=>{
     const [w,h]=pieceCells('barricada',rot);
@@ -136,11 +196,14 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
     const rect=pieceRect(cell,w,h);
     if(gap(rect,car)<keep)return false;
     if(keepOff.some(q=>gap(rect,q)<TRALHA_POINT_KEEP))return false;
+    if(naBoca(city.asset,rect,TRALHA_ENTRADA_RAIO,TRALHA_ENTRADA_FUNDO))return false;
     if(pieces.some(p=>rectsOverlap(pieceRectOf(p),rect)))return false;
     for(const n of world.nests??[])if(gap(rect,n)<CAR_NEST_KEEP_OUT)return false;
     if(!againstWall(city,rect))return false;
-    if(!carStillPasses(city,pieces.flatMap(p=>{const [pw,ph]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,pw,ph);}),blockDiscs('barricada',cell,w,h)))return false;
-    return !locks(city,state,cell,car,world.moto,w,h,'barricada');
+    const discs=laidDiscs(),extra=blockDiscs('barricada',cell,w,h);
+    if(!carStillPasses(city,discs,extra))return false;
+    if(locks(city,state,cell,car,world.moto,w,h,'barricada'))return false;
+    return reach([...discs,...extra]);
   };
   for(let g=0;g<TRALHA_GROUPS;g++){
     const s=spawns[g%spawns.length],t=rng.range(.3,.7),across=rng.chance(.5);

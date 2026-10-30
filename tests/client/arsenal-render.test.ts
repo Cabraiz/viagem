@@ -17,6 +17,7 @@ import {OPEN_REACH,OPEN_SECONDS} from '../../src/sim/crates.ts';
 import {CONSUMABLE_IDS,NEW_WEAPONS,legendaryId} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS} from '../../src/sim/weapons/catalog.ts';
 import type {PlayerRunView,RunView} from '../../src/contract/index.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 const index=parseArtIndex(JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8')));
 const withArt=(fn:()=>void)=>()=>{setArtIndex(index);try{fn();}finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}};
@@ -129,7 +130,7 @@ test('the team portrait shows the weapon in the hand (manual combat only, not wh
   assert.equal(handWeapon(p({hand:1,eliminated:true})),undefined);
   assert.equal(handWeapon(p({hand:1,spectator:true})),undefined);
   assert.equal(handWeapon(p({hand:5})),undefined,'an empty slot');
-  const css=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8');
+  const css=HUD_CSS;
   assert.match(css,/.rh-member-arma{position:absolute/);
 });
 

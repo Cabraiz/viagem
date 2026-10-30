@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtHead,enemyArtId,enemyArtRatio,enemyArtRow,enemyArtShadow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -30,7 +30,7 @@ import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
-import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
+import {castContact,castSheetShadow,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
 import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
@@ -40,13 +40,14 @@ import {CedulaCatch,catchFlight} from './cedula-catch.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
 import {THROW_MS,rosterEntry} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
-import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
+import {CULL_MARGIN_CSS,inView,overCap,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
 import {SHOT_BANDS} from './usable-glow-rules.ts';
 import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 import {MapLabel} from './map-labels.ts';
 import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
 import {enemyLook} from './enemy-variety.ts';
+import {BOSS_SHAKE_PX,HitStop,deathImpact,gemGlow,shakeIntensity,type DeathImpact} from './impact-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -129,8 +130,8 @@ interface EnemyActor{
   name:string|undefined;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
-  /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
-  asleep:boolean;
+  /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake`; `pushed`: its shoved. */
+  asleep:boolean;pushed?:{x:number;y:number};
   /** The round costume variant this enemy wears (horde-art.ts ROUND_COSTUMES), or undefined. */
   costume?:string;
   /** The roster accent of the reserve (keys.ts fallbackTint); `tint` is it while the reserve shows, undefined over art. */
@@ -147,6 +148,8 @@ interface EnemyActor{
   ax:number;ay:number;walking:boolean;
   /** Off camera (render/cull.ts): hidden, and nothing but its position runs until it comes back. */
   culled:boolean;
+  /** Over the level's cap of critters drawn at once (quality.ts enemyCap, render/cull.ts overCap): hidden like off camera. */
+  capped:boolean;
   /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
   bossPhase:number;
   /** What EnemyView.phase shows on a regular critter (phase-look.ts: acting pose, lecture ring, buff, reflect, headlight). */
@@ -284,6 +287,8 @@ const TARGET_RING={};
 export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
 /** Hit numbers on a player sit above balloons (96000) and the heroes (96500): damage on you is never under a joke. */
 export const PLAYER_HIT_DEPTH=96600;
+/** The caught gem's glow: its ring's radius (CSS px, × gemGlow's size) and its height over the feet (world px × actorScale). */
+const GEM_GLOW_CSS=26,GEM_GLOW_CHEST=34;
 /** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
 export const TELEGRAPH_TOP_DEPTH=99000;
 /** Balloon bodies: one step under the balloon text, so nothing falls between a balloon's body and its words. */
@@ -376,6 +381,10 @@ export class HordeRenderer{
   private targetId?:string;
   private snapNext=false;
   private at:Pt={x:0,y:0};
+  /** An elite's or a boss's death pauses the drawn clock (impact-rules.ts); push() asks, the next update() starts it. */
+  private readonly hitStop=new HitStop();private stopAsk=0;
+  /** When the local hero last caught a gem (the kill's cédula): its glow (impact-rules.ts gemGlow). */
+  private gemAt=-Infinity;
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
   /** Inset centre line of the imported border strip (drawBorderArt). */
   private ptsIn:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
@@ -411,14 +420,14 @@ export class HordeRenderer{
       showImage(o,active);o.shadow.setVisible(active).setActive(active);
       if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
     };
-    const showEnemy=(o:EnemyActor,active:boolean)=>{showImage(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);o.contact.setVisible(false).setActive(false);}};
+    const showEnemy=(o:EnemyActor,active:boolean)=>{showImage(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.capped=false;o.sil.setVisible(false).setActive(false);o.contact.setVisible(false).setActive(false);}};
     // The silhouette: just over the pickups' and shots' contact shadows (-9980), under every body; one flat dark tint, set once.
     const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979,ENEMY_SILHOUETTE.color));
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,cell:128,name:undefined,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,tone:undefined,vary:1,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,capped:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,tone:undefined,vary:1,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
     // The kill's cédula (render/cedula.ts): its front/back sheet, loaded in the background (the procedural note until then).
@@ -465,7 +474,7 @@ export class HordeRenderer{
       if(isWakeEvent(event as {type:string}))this.woken.push(...wakeTargets(event as unknown as Parameters<typeof wakeTargets>[0],this.fresh));
     }
     if(this.woken.length&&enemyArtActive())for(const id of this.woken){const a=this.enemies.get(id);if(a)playEnemyAction(a.image,a.art,'wake',this.now);}
-    this.enemies.end();
+    this.enemies.end();this.capDirty=true;
     this.pickups.begin();
     for(let i=0;i<view.pickups.length;i++)this.syncPickup(view.pickups[i]);
     this.pickups.end();
@@ -478,8 +487,15 @@ export class HordeRenderer{
     this.telegraphs.end();
   }
 
-  /** Every frame: interpolate and animate. */
+  /**
+   * Every frame: interpolate and animate, on the drawn clock (`timeMs` less the hit-stops: a big death holds the
+   * horde still HIT_STOP_MS while the sim runs on).
+   */
   update(timeMs:number,_deltaMs:number){
+    if(this.stopAsk){this.hitStop.start(timeMs,this.stopAsk);this.stopAsk=0;}
+    this.frame(this.hitStop.clock(timeMs));
+  }
+  private frame(timeMs:number){
     this.now=timeMs;
     const since=Math.max(0,timeMs-this.pushAt)/this.tickMs;
     const glided=Math.max(0,timeMs-this.pushAt)/this.glide;
@@ -490,6 +506,7 @@ export class HordeRenderer{
     this.body=this.options.actorScale?.()??1;this.enemyBody=this.body*ENEMY_DRAW_SCALE;
     this.playerCount=0;this.selfAt=undefined;this.othersAt.length=0;const me=this.options.selfId?.();
     for(const id of this.playerIds){const p=this.options.locate?.(id);if(!p)continue;this.playerAt[this.playerCount++]=p;if(id===me)this.selfAt=p;else this.othersAt.push(p);}
+    if(this.capDirty)this.applyCap();
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();this.glow.begin(timeMs);
@@ -501,6 +518,7 @@ export class HordeRenderer{
     for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
+    this.drawGemGlow();
     this.glow.end();
     this.warnings.retain(this.drawWarning);
     this.poofs.retain(this.drawPoof);
@@ -518,7 +536,7 @@ export class HordeRenderer{
     this.enemies.forEach(a=>{a.px=a.nx;a.py=a.ny;a.screenX=NaN;});
     this.pickups.forEach(a=>{a.px=a.nx;a.py=a.ny;});
     this.projectiles.forEach(this.aim);
-    this.snapNext=true;this.update(this.now,0);
+    this.snapNext=true;this.frame(this.now);
   }
 
   /** City on/off: every live shadow takes the city's Breu 38% texture, or FX.shadow back (idle ones on reuse). */
@@ -527,7 +545,7 @@ export class HordeRenderer{
     this.pickups.forEach(swap);this.projectiles.forEach(swap);
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
-  setTarget(enemyId?:string){this.targetId=enemyId;}
+  setTarget(enemyId?:string){if(enemyId!==this.targetId)this.capDirty=true;this.targetId=enemyId;}
   /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
   ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
@@ -538,6 +556,13 @@ export class HordeRenderer{
   auras(at:(id:string)=>Pt|undefined){this.arsenal.drawAuras(at);}
   /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
   get culled(){return this.culledNow;}
+  /** Enemies hidden over the level's cap (quality.ts enemyCap), for the dev probe and the bench. */
+  get capped(){return this.cappedNow;}
+  /**
+   * Critters drawn at once (Q3 slice 4, quality.ts enemyCap): past it only the nearest to the hero show, the boss, the
+   * target, elites and a coach's ring always. Infinity (the default) draws them all.
+   */
+  setEnemyCap(cap:number){if(cap!==this.enemyCap){this.enemyCap=cap;this.capDirty=true;}}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
   get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
@@ -600,7 +625,7 @@ export class HordeRenderer{
     a.asleep=asleep;a.act=sleepOrAct(asleep,actAnim(view.kind,kind,view.phase));
     if(used.fresh&&!asleep)this.fresh.push(view);
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
-    a.sugar=view.sugar===true;
+    a.sugar=view.sugar===true;a.pushed=view.pushed;
     a.prime=view.prime===true;
     a.floor=view.andar;
     // Every enemy's art (the nine kinds' too) loads per match, the first time one of them shows up (horde-art.ts
@@ -714,6 +739,10 @@ export class HordeRenderer{
       // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
       // D-033: the agiota's boleto marks a player as owing money: a short red tag over them instead of the line.
       case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line,false,sayPriority(event.key));break;}
+      // My gem (xp, a resource, a cédula not caught on screen, whose catch glowed already) lights the glow.
+      case 'pickup':
+        if(event.player===this.options.selfId?.()&&(event.kind==='xp'||event.kind==='resource'||(event.kind==='grana'&&!this.catcher.get(event.pickup))))this.gemAt=this.now;
+        break;
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss){boss.flashAt=this.now;boss.bossPhase=event.phase;}break;}
     }
   }
@@ -792,6 +821,9 @@ export class HordeRenderer{
     // Art v2: the imported death plays on a pooled death actor where (and facing where) the enemy was last drawn,
     // instead of today's puff and stars; the death joke below stays.
     const dying=this.enemies.get(id);
+    // An elite's (on screen) or a boss's death trembles the screen and holds the drawing a beat (never with reduced motion).
+    const impact=deathImpact(k==='chefe'||!!dying?.boss,!!dying?.elite&&!dying.culled,this.reduced);
+    if(impact)this.impact(impact);
     const art=enemyArtId(kind,k);
     if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
@@ -819,6 +851,21 @@ export class HordeRenderer{
     const pop=this.pops.spawn();
     pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45*body;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
+  }
+  private impact(i:DeathImpact){
+    const cam=this.scene.cameras.main,s=shakeIntensity(i.shakePx,cam.width,cam.height,cam.zoom);
+    // A boss's tremble takes over an elite's still running.
+    cam.shake(i.shakeMs,new Phaser.Math.Vector2(s.x,s.y),i.shakePx>=BOSS_SHAKE_PX);
+    this.stopAsk=Math.max(this.stopAsk,i.stopMs);
+  }
+  /** The caught gem's glow: a warm halo on the ground under the hero and a ring at his chest, growing and fading. */
+  private drawGemGlow(){
+    const at=this.selfAt,glow=at&&gemGlow(this.now-this.gemAt,this.reduced);
+    if(!glow)return;
+    const q=this.project(at),r=GEM_GLOW_CSS*glow.size*this.css(),chest=q.y-GEM_GLOW_CHEST*this.body;
+    this.ground.fillStyle(0xfff1a8,.45*glow.alpha).fillEllipse(q.x,q.y,r*2.2,r*1);
+    this.heroBalloons.lineStyle(3*this.css(),0xffe066,glow.alpha).strokeEllipse(q.x,chest,r*2,r*1.7);
+    this.heroBalloons.fillStyle(0xfffbe0,.18*glow.alpha).fillEllipse(q.x,chest,r*2,r*1.7);
   }
   /**
    * The caster's line over their head (E7-skill-hud-wiring). It is the answer to a tap; when the budget is full the
@@ -855,6 +902,31 @@ export class HordeRenderer{
   private cullMargin=0;
   private culledNow=0;
   private alsoView?:ViewRect;
+  private enemyCap=Infinity;
+  private capDirty=false;
+  private cappedNow=0;
+  private readonly capActors:EnemyActor[]=[];
+  private readonly capDist:number[]=[];
+  private readonly capKeep:boolean[]=[];
+  private readonly capOut:boolean[]=[];
+  private readonly capOrder:number[]=[];
+  /**
+   * Over the level's cap (setEnemyCap), once per push, a cap change or a new target: the nearest to the hero (any
+   * player while the own hero is not located) stay drawn. Without anyone to measure from, the last marks stay.
+   */
+  private applyCap(){
+    const list=this.capActors;list.length=0;this.enemies.forEach(a=>{list.push(a);});
+    if(list.length<=this.enemyCap){for(const a of list)a.capped=false;this.cappedNow=0;this.capDirty=false;return;}
+    const from=this.selfAt??(this.playerCount?this.playerAt[0]:undefined);if(!from)return;
+    const dist=this.capDist,keep=this.capKeep;dist.length=keep.length=list.length;
+    for(let i=0;i<list.length;i++){
+      const a=list[i];dist[i]=(a.nx-from.x)**2+(a.ny-from.y)**2;
+      keep[i]=a.boss||a.elite||a.id===this.targetId||!!a.look.aura;
+    }
+    this.cappedNow=overCap(dist,keep,this.enemyCap,this.capOut,this.capOrder);
+    for(let i=0;i<list.length;i++)list[i].capped=this.capOut[i];
+    list.length=0;this.capDirty=false;
+  }
   private drawEnemy=(a:EnemyActor)=>{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
@@ -862,13 +934,13 @@ export class HordeRenderer{
     // On a viaduct's deck (floor 1): lifted onto it and drawn over its strip.
     const q=this.options.projector.projectOn(a.x,a.y,a.floor,this.q);
     // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, silhouette, bar or cues. The boss, the target and
-    // a coach's lecture ring (wider than the body) are always drawn.
+    // a coach's lecture ring (wider than the body) are always drawn. Over the level's cap (applyCap) the same.
     const k=size*a.fit*body;
     const halfW=art.width*.6*k,tall=art.height*art.originY*k+art.hover*size*body+this.barLift(a);
-    if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,halfW,tall,this.cullMargin)
+    if(a.capped||this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,halfW,tall,this.cullMargin)
       &&!(this.alsoView&&inView(this.alsoView,q.x,q.y,halfW,tall,this.cullMargin))){
       if(!a.culled){a.culled=true;a.image.setVisible(false);a.sil.setVisible(false);a.contact.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
-      a.screenX=NaN;this.culledNow++;return;
+      a.screenX=NaN;if(!a.capped)this.culledNow++;return;
     }
     if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
     // On a viaduct's deck the critter is above the (ground) car: no car sort there.
@@ -904,11 +976,15 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
+    // An art with its own cast shadow (horde-art.ts enemyArtShadow: the saci's sheet) lays that frame instead, with no
+    // contact shadow: the artist's shadow already meets the foot.
+    const sheet=enemyArtShadow(a.image);
+    if(sheet)castSheetShadow(a.sil,a.image,sheet,q.x+dx,q.y-lift,true);
+    else castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art)*ENEMY_SILHOUETTE.length,ENEMY_SILHOUETTE.alpha);
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;
-    a.contactW=flying?0:contactWidth(feet,a.asleep,feet?Math.abs(a.image.frame.width*a.image.scaleX):0,kindW);
+    a.contactW=flying||sheet?0:contactWidth(feet,a.asleep,feet?Math.abs(a.image.frame.width*a.image.scaleX):0,kindW);
     castContact(a.contact,a.image,q.x,q.y,a.contactW,true);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
@@ -1138,7 +1214,7 @@ export class HordeRenderer{
   /** A cédula drawn at (a.x, a.y): the local hero's when he is within the room's magnet and the nearest standing hero. */
   private catchNote(a:PickupActor,now:number){
     const c=this.catcher.near(now,a.id,a.value,a.x,a.y,this.selfAt,this.othersAt);
-    if(c)this.caughtTotal++;
+    if(c){this.caughtTotal++;this.gemAt=now;}
     return c;
   }
   private drawProjectile=(a:ProjectileActor,id:string)=>{

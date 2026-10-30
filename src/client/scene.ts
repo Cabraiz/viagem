@@ -6,6 +6,8 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {Nevoa} from './render/nevoa.ts';
+import {exposureGameConfig} from './render/exposure-pipeline.ts';
 import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
 import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
@@ -18,7 +20,7 @@ import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CITY_GROUND_DEPTH,CityLayer,OUTSIDE_CITY,VIADUCT_PROP_IDS,ViaductLayer,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
-import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
+import {ART_BUDGET,CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -63,7 +65,7 @@ import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/k
 import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
-import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
+import {SafeClock,arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip,safeAlpha} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos,stackedLabelOffsetCss} from './render/map-labels.ts';
 import {ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
@@ -126,6 +128,8 @@ export interface SceneHooks {
   attacking?:()=>boolean;
   /** Whether the attack is held now, without spending a tap (attacking() latches it for the next input step). */
   attackHeld?:()=>boolean;
+  /** The scene-clock time of hero `id`'s last "Dançar" (empty hands, own or relayed): it dances from it, like a cheer. */
+  danceAt?:(id:string)=>number|undefined;
   /** The auto aim's pick (world), for the predicted shot's direction (tiro-delay-1s-predicao). */
   aimPick?:()=>Point|undefined;
   /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
@@ -369,6 +373,7 @@ export class IslandScene extends Phaser.Scene {
   private marks:HeroMark[]=[];
   private selfCovered=false;
   private lastPhase?:string;
+  private loadSaid=false;
   /** Wave or interval of the current round: map labels come back in the interval. */
   private roundPhase?:string;
   /** Tick of the last authoritative view (seconds left on a caído ficha). */
@@ -526,7 +531,10 @@ export class IslandScene extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
     // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
-    this.vignette=new Vignette(this);this.applyGrade();
+    this.vignette=new Vignette(this);
+    // jogo-mais-escuro: the fog over the world, faded around the hero (`?nevoa=0..3`).
+    this.nevoa=new Nevoa(this,{reduced:this.reduced,hero:()=>this.actor&&{x:this.actor.x,y:this.actor.y-this.actor.displayHeight*.4}});
+    this.applyGrade();
     // The hero's ring and stand-in follow its drawn size (HERO_DRAW_SCALE, render/draw-scale.ts).
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
@@ -768,6 +776,7 @@ export class IslandScene extends Phaser.Scene {
       this.cityHeld=false;this.releaseBackground();
       if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
     }
+    this.cityStream?.tick(performance.now());
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
     const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
@@ -843,7 +852,7 @@ export class IslandScene extends Phaser.Scene {
   private updatePip(time:number){
     const hit=this.chaveiro?.hitState();
     if(!hit&&!this.pip)return;
-    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return [...v?[v]:[],...this.fearDark?.objects??[]];}});
+    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return [...v?[v]:[],...this.nevoa?.objects??[],...this.fearDark?.objects??[]];}});
     const live=!!hit&&!hit.ended,cam=this.cameras.main,carPx=hit?this.project(hit.car):undefined;
     const me=this.watchPoint??this.position,distance=hit?Math.hypot(hit.car.x-me.x,hit.car.y-me.y):Infinity;
     const carOnScreen=!!carPx&&cam.worldView.contains(carPx.x,carPx.y);
@@ -1100,6 +1109,7 @@ export class IslandScene extends Phaser.Scene {
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
+    this.horde?.setEnemyCap(profile.enemyCap); // Q3 fatia 4 (E2): teto de bichos desenhados por nível (150/300/3000)
   }
   /**
    * Phaser's frame gate (the game starts with fps.limit 60), changed live: the economy profile, or one frame every
@@ -1110,8 +1120,11 @@ export class IslandScene extends Phaser.Scene {
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
+  private nevoa?:Nevoa;
   /** The chefão's arena in the dark (boss-fim-onda-1, render/arena-rules.ts): built on the first chefão. */
   private readonly arenaClock=new ArenaClock();
+  /** Who the server keeps untouchable (getting up, the start grace): their sprite blinks (you-rules.ts SafeClock). */
+  private readonly safe=new SafeClock();
   private arenaDark?:ArenaDark;
   private readonly arenaSpots:ArenaSpotPx[]=[];
   /** A circle of `radius` u around `at` as drawn (world px ellipse). */
@@ -1195,7 +1208,7 @@ export class IslandScene extends Phaser.Scene {
     this.vignette?.cover(dark.covering);
   }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
-  private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
+  private applyGrade(){const world=isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha';this.vignette?.set(world,this.economy);this.nevoa?.set(world,this.economy);}
   private readonly catchUp=new CatchUp();
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
@@ -1238,6 +1251,7 @@ export class IslandScene extends Phaser.Scene {
     if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)if(!chefaoDeferred(id))queueEnemyArt(this,id);}
     if(this.elenco)this.stepChefaoArt();
     this.vignette?.update();
+    this.nevoa?.update(delta);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.artMarks?.begin();
@@ -1254,11 +1268,11 @@ export class IslandScene extends Phaser.Scene {
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
     if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||(this.hooks.attackHeld??this.hooks.attacking)?.())this.inputAt=this.time.now;
-    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
+    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:Math.max(this.cheers.of(meId)??-Infinity,this.hooks.danceAt?.(meId)??-Infinity)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),
-      !!meId&&!!net?.feed.players.get(meId)?.downed&&!net.feed.players.get(meId)!.eliminated);
+      !!meId&&!!net?.feed.players.get(meId)?.downed&&!net.feed.players.get(meId)!.eliminated,meId?net?.feed.players.get(meId):undefined);
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1376,7 +1390,7 @@ export class IslandScene extends Phaser.Scene {
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
     if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position,
-      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';}});
+      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';},playerAt:id=>{const net=this.hooks.net;return id===net?.id?this.position:net?.players.get(id);}});
     this.banks?.push(view.banks,view.tick,view.events);
     this.shopWorkers.clear();
     for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
@@ -1529,6 +1543,9 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net!;
     const phase=net.run?.phase;
     if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
+    // exploracao-espera-carregar: the first combat frame with the island on screen (hooks.ready, past the city art's
+    // hold) tells the room this phone is in; the Minerva waits for it.
+    if(phase!=='combat')this.loadSaid=false;else if(!this.readyHeld&&!this.loadSaid){this.loadSaid=true;net.loaded();}
     this.lastPhase=phase;
     // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
     const frozen=this.paused||!!net.run?.pause;
@@ -1556,6 +1573,7 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
+      this.safe.push(runView.tick,runView.events,!!runView.round);
       this.cheers.push(this.time.now,runView.events,runView.players.map(p=>{const at=net.players.get(p.id);return {id:p.id,x:at?.x??NaN,y:at?.y??NaN,bot:!!p.bot};}),runView.enemies);
       this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
@@ -1607,7 +1625,7 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): its fall (downed16, queda-6-herois) or, without one, turned on its feet; still
     // opaque enough to be found; out/watching fades.
-    this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown&&!hasDowned16(this.hooks.classId)?-90:0);
+    this.actor.setAlpha(safeAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4,this.safe.on(net.id,this.viewTick),time,this.reduced)).setAngle(selfDown&&!hasDowned16(this.hooks.classId)?-90:0);
     // Bicos: without a work16 the hero is gone through the shop's door (the silhouette follows the body's alpha).
     if(this.shopWorkers.has(net.id)&&!hasWork16(this.hooks.classId))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
@@ -1632,16 +1650,16 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       // An ally dances too when it has stood still for a while (danca-no-jogo): its moves and swings show it. A room bot
       // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
-      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
+      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0,isWeaponItem),idle:!net.feed.players.get(player.id)?.bot,cheer:Math.max(this.cheers.of(player.id)??-Infinity,this.hooks.danceAt?.(player.id)??-Infinity)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras),down);
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp,undefined,this.shopWorkers.has(player.id)?workFacing(this.view):buildFacing(player,this.obras),down,st);
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const inShop=this.shopWorkers.has(player.id)&&!hasWork16(player.classId);
-      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down&&!hasDowned16(player.classId)?-90:0);
+      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(safeAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4,this.safe.on(player.id,this.viewTick),time,this.reduced)).setAngle(down&&!hasDowned16(player.classId)?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       // Each ally casts its frame on the ground like the hero (card sombra-silhueta), in every world and quality.
@@ -1849,6 +1867,9 @@ export class IslandScene extends Phaser.Scene {
       if(placed.has(s.key))sheets.set(s.key,s);
       else if(s.key.startsWith('city:live:ninho-')){sheets.set(s.key,s);nests.push(s.key);}
     }
+    // Q3 fatia 3 (art-stream.ts ART_BUDGET): what is over the quality level's budget leaves the GPU, never what a live
+    // chunk draws, the viaduct's props (ViaductLayer keeps them) nor the nests (placed by the room, no chunk).
+    const pinned=new Set(VIADUCT_PROP_IDS.map(id=>plan.decor[id]?.key).filter((k):k is string=>!!k));
     const stream=this.cityStream=new CityArtStream({
       missing:()=>[...city.missingArt(this.cityCamera(),this.view),...nests.filter(k=>!this.textures.exists(k)).map(key=>({key,px:1}))]
         .sort((a,b)=>a.px-b.px),
@@ -1868,6 +1889,17 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
         return true;
       },
+      resident:()=>{
+        const art=city.chunkArt(),inUse=new Set(city.liveChunks().flatMap(c=>art.get(c)??[]));
+        return city.artDistance(this.cityCamera(),this.view)
+          .filter(({key})=>sheets.has(key)&&!pinned.has(key)&&!key.startsWith('city:live:ninho-')&&this.textures.exists(key))
+          .map(({key,px})=>{const src=this.textures.get(key).source[0];return {key,px,bytes:(src?.width??0)*(src?.height??0)*4,inUse:inUse.has(key)};});
+      },
+      evict:key=>{
+        const img:unknown=this.textures.get(key).getSourceImage();this.textures.remove(key);
+        if(typeof ImageBitmap!=='undefined'&&img instanceof ImageBitmap)img.close();
+      },
+      budget:()=>ART_BUDGET[this.quality],
     });
     const done=(key:string,ok:boolean)=>{if(this.city!==city||!sheets.has(key))return;if(ok)city.artArrived(key);stream.settled(key,ok);};
     const complete=(key:string)=>done(key,true),failed=(file:Phaser.Loader.File)=>done(file.key,false);
@@ -2056,7 +2088,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
-    antialias:true,transparent:false,autoFocus:false,
+    antialias:true,transparent:false,autoFocus:false,...exposureGameConfig(),
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
   // Phone turned: Phaser 3.90 refreshes on screen.orientation 'change' with the old parent size, then reads the new one
   // inside that refresh, so its own size check never sees a change and the canvas stays stretched (22/10, espectador

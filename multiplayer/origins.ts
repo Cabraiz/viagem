@@ -9,6 +9,11 @@ export const LOCAL_PORT=4187;
 /** Accepted local vite ports: PC executors 4200–4299 (42NN = 4200 + N), cloud executors 4300–4399 (Executor-N<k> uses 43k0, plus 43k1..43k9 for extra servers). */
 export const EXECUTOR_PORTS={min:4200,max:4299} as const;
 export const CLOUD_EXECUTOR_PORTS={min:4300,max:4399} as const;
+/**
+ * The 403 for a page outside the allowed origins, read by the lobby as `error`. Lives here, not in worker.ts: the
+ * Worker's entry module may export only handlers, functions and classes, and a string there stops workerd from starting.
+ */
+export const ORIGIN_REFUSED='Este endereço não pode abrir salas. Abre o jogo pelo viagem.cyou.';
 const LOCAL_RANGES=[EXECUTOR_PORTS,CLOUD_EXECUTOR_PORTS] as const;
 
 const LOCAL_ORIGIN=/^http:\/\/127\.0\.0\.1:(\d{4})$/;

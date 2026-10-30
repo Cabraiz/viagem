@@ -350,35 +350,6 @@
         "expression": "normal"
       }
     },
-    "mendigo-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "mendigo-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "mendigo-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "6683a4901bbff98f4d3b097c4e9c19a78e80792b7dc4d87fc61b7d9bbcde42d2"
-            }
-          ],
-          "sha256": "6683a4901bbff98f4d3b097c4e9c19a78e80792b7dc4d87fc61b7d9bbcde42d2"
-        }
-      },
-      "sha256": "56dd817ff7c165d1c563bddc5e3724490058b5edf734232ba90d1bfd88633c9d",
-      "meta": {
-        "face": "mendigo",
-        "expression": "normal"
-      }
-    },
     "merendeira-normal": {
       "kind": "icon",
       "files": {

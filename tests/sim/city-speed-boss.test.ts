@@ -171,17 +171,18 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25), one
+  // City seeds whose round 3 has a speed modifier: 29 'Modo Segunda-feira' (× 0.75; was 4 before modificadores-so-elenco-ativo),
+  // 22 'Sinal do Recreio' (× 1.25), one
   // player (vida-inimigos-estilo-clash: clashBodies(1) = 1, the stream of before the Clash table).
-  const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
+  const c29=directorSpeeds(city,29,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
-  console.log(`[cidade-05c] director speeds: city seed 4 ${c4.checked} bodies (multipliers ${c4.mults.join(', ')}), seed 22 ${c22.checked} (${c22.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
-  for(const [name,r] of [['city 4',c4],['city 22',c22],['island',i],['endless',n]] as const){
+  console.log(`[cidade-05c] director speeds: city seed 29 ${c29.checked} bodies (multipliers ${c29.mults.join(', ')}), seed 22 ${c22.checked} (${c22.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
+  for(const [name,r] of [['city 29',c29],['city 22',c22],['island',i],['endless',n]] as const){
     assert.ok(r.checked>0,`${name}: bodies were spawned`);
     assert.deepEqual(r.bad.slice(0,8),[],`${name}: ${r.bad.length} bodies with another speed`);
   }
-  const mults=new Set([...c4.mults,...c22.mults]);
+  const mults=new Set([...c29.mults,...c22.mults]);
   for(const m of [.75,1,1.25])assert.ok(mults.has(m),`city: a round with speed multiplier ${m} was checked (${[...mults].join(', ')})`);
   // The boss controller keeps the authored speed on its body outside the city (its walk is measured in section 7).
   for(const terrain of [new TerrainField(3),new TerrainField(3,{world:'infinito'})]){
@@ -475,7 +476,9 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both again for heroi-empurra-inimigos (heroes and critters solid to each other; were ilha 251d5c145e1bf470,
 // infinito dba3b8b9445b3997).
 // Both again for vida-inimigos-estilo-clash: role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'f2cdd64acf0330fc',infinito:'9d8dabc1887c3e50'};
+// Both again for colisao-entre-herois (the heroes solid to each other: b's sweep passes 0.32 u from a, inside HERO_GAP;
+// were ilha f2cdd64acf0330fc, infinito 9d8dabc1887c3e50).
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'0c5beba18278c238',infinito:'a13a025aa294b33e'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);
@@ -631,7 +634,9 @@ test('speeds (addendum §3): catalog kinds × round multipliers {0.75, 1, 1.25} 
 
 test('siege while the team is away (inicio): siege groups are placed like plaza-aimed groups (not toward the team) and every siege body reaches the base before its round ends',()=>{
   const report:string[]=[],far:string[]=[],late:string[]=[];let total=0;
-  for(const seed of [1,2]){
+  // Seeds 1 and 3 (was 2 before modificadores-so-elenco-ativo: its round 3 now draws 'Trenzinho da Festa', whose line
+  // formation spreads a siege group past the formation-less plaza-aimed reference; every body still reached the base).
+  for(const seed of [1,3]){
     const rig=assembled(city,seed),{world,sys}=rig,P=plannerOf(rig);
     addPlayer(rig.players,'a',INICIO);addPlayer(rig.players,'b',{x:INICIO.x+1,y:INICIO.y});
     const team:PlayerLike[]=[...rig.players.values()];

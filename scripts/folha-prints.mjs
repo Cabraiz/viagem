@@ -35,13 +35,24 @@ const outDir=resolve(process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&
 const dist=resolve(arg('dist','dist'));
 const sha=String(arg('sha',process.env.GITHUB_SHA??'local')).slice(0,7);
 const VIEWPORTS=[{w:1280,h:720},{w:390,h:844}];
+/**
+ * The active enemies (card ferramentas-so-elenco-ativo): rules INIMIGOS_LIBERADOS of the game printed (the cwd, game/ in
+ * prints.yml, whose root holds only scripts/), until it exists the mendigo's sim body and the saci. The minimapa scene
+ * shows the profiles of those that have a photo (was 3 legacy ones: tio-pave, pombos, boleto-vivo).
+ */
+const INIMIGOS_ATIVOS=await (async()=>{
+  const file=resolve('src/rules/inimigos-liberados.ts');
+  const list=existsSync(file)?(await import(pathToFileURL(file).href)).INIMIGOS_LIBERADOS:undefined;
+  return list?.length?[...list]:['bebado','aberracao-saci'];
+})();
+const PERFIS_ATIVOS=INIMIGOS_ATIVOS.filter(id=>existsSync(resolve('public/art/perfis',`${id}.webp`)));
 /** Modo foto scenes (name, extra query, caption). Extras pass through to the sandbox (foto.ts fotoSearch). */
 const FOTOS=[
   ['arsenal','','caixa abrindo (arsenal)'],
-  ['cidade-praca','&torres=1&hero=100,124','ao lado das torres (A3 atrás do prédio)'],
+  ['cidade-praca','&torres=1&hero=76,86','ao lado das torres (A3 atrás do prédio)'],
   ['sombra','','sombras do elenco'],
   ['cidade-regua','','herói ao lado da casa (silhueta)'],
-  ['minimapa','&perfis=3','perfis de inimigo novo em leque'],
+  ['minimapa',PERFIS_ATIVOS.length?`&perfis=${PERFIS_ATIVOS.length}&perfil=${PERFIS_ATIVOS.join(',')}`:'','perfis dos inimigos ativos em leque'],
 ];
 const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS'],SW:['KeyS','KeyA'],W:['KeyA'],NW:['KeyW','KeyA']};
 /**
@@ -382,7 +393,7 @@ async function openMenu(p,base,label){
 }
 /** Character → island: true once the solo match runs (false and a fail when it did not start in 180 s). */
 async function enterMatch(p,vp,label){
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card[data-hero]:not([data-bloqueado])').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
   await p.evaluate(()=>document.getElementById('enter-island').click());
   if(!await until(p,()=>window.__partidaPronta===true&&!!window.__perfScene?.actor,180000)){fails.push(`${label}: a partida solo não começou em 180 s`);await shot(p,'sem-partida',`sem partida (${label})`,vp);return false;}

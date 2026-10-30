@@ -16,7 +16,20 @@
  *  - the crates the team opened this window in the Minerva's and the explore's lines: "Junte caixas (2)";
  *  - the moto stopped for the team (morta, tombo): "Moto morta: vá empurrar" / "A moto tombou: tire os bichos" (urgent,
  *    the moto's arrow; hud/chaveiro.ts MotoReason leaves these two to the line);
- *  - the nests mode out of a window, nests standing: "Derrube os ninhos (5)", the nearest nest's arrow.
+ *  - the objective (card missao-proteger-uno-tempo, the user 29/10: the nests are NOT needed to win; protect the Uno
+ *    while the clock runs): "Proteja o Uno até o chaveiro" (the Uno's arrow), and with nests standing it takes turns
+ *    every ROTATE_S with "Opcional: derrube ninhos (5)" (the nearest nest's arrow). Both calm: never the big band, so no
+ *    line sounds like an obligation to knock the nests down. Without the objective the nests' line is alone.
+ * Card ordens-menos-e-claras (auditoria-primeiro-minuto item 5: seven orders in ~3 min, "A moto tombou" 1.4 s after
+ * "Derrube os ninhos"): a new order at most every ORDER_GAP_S, the most important one wanted when the gap opens wins;
+ * meanwhile the line keeps the order it shows while that still holds, else it is empty. Only the dark's "Volte ao Uno!"
+ * goes over the gap (it does not count as an order). "Volte ao Uno." is not shown with the hero at the Uno (UNO_NEAR_U).
+ * Card celular-objetivo-e-grana (auditoria-primeira-partida-30-10 item 1: the Minerva is 30 s, sim ninhos.ts MINERVA_S,
+ * so its line held 10 s and the rest was a quiet "Volte ao Uno." at the Uno: a novato saw no objective): the line is not
+ * left empty while a calm line is wanted. With the objective, the quiet "Volte ao Uno." of a window gives way to
+ * "Proteja o Uno até o chaveiro"; a calm line fills an empty line at once (small, the gap untouched); and a calm order
+ * that no longer holds (the objective seen a frame before the Minerva's tick) does not hold back the next order, nor
+ * the Minerva's line its own "Volte ao Uno." (the gap was longer than the whole Minerva: the hero away never heard it).
  * Time comes from the sim tick (the clock's), so a phone and a PC agree. The tracker is pure (tests); createMission
  * paints the two elements.
  */
@@ -32,6 +45,15 @@ export const TOWERS_MAX_S=30;
 export const DEFEND_MS=4000;
 /** The dark presses (rules/fear.ts: 0 alone in light, 1 consumed): from half of it the line says come back to the Uno. */
 export const DARK_PRESS=.5;
+/** A new order at most this often (s): the first minutes said seven things in three minutes (ordens-menos-e-claras). */
+export const ORDER_GAP_S=30;
+/** "Volte ao Uno." is not shown with the hero this close to the Uno (u); it comes back past UNO_LEAVE_U (no blink). */
+export const UNO_NEAR_U=4;
+export const UNO_LEAVE_U=5;
+/** The objective's line and the optional nests' take turns this long each: the order gap, so each turn is a new order. */
+export const ROTATE_S=ORDER_GAP_S;
+/** "Eles vão atrás do Uno. Defenda." is about the wave's start: kept back by the gap longer than this (s), it is dropped. */
+export const DEFEND_LATE_S=15;
 
 export const MISSION_TEXT=Object.freeze({
   minerva:'Junte caixas e volte ao Uno.',
@@ -40,15 +62,18 @@ export const MISSION_TEXT=Object.freeze({
   torres:'Ponha as torres perto do Uno.',
   defenda:'Eles vão atrás do Uno. Defenda.',
   escuro:'Volte ao Uno!',
+  proteja:'Proteja o Uno até o chaveiro',
 });
-/** The lines that carry a count: the crates the team opened this window, the nests standing. */
+/** The lines that carry a count: the crates the team opened this window, the nests standing (optional). */
 export const missionCount={
   minerva:(n:number)=>n>0?`Junte caixas (${n})`:MISSION_TEXT.minerva,
   explora:(n:number)=>n>0?`Junte caixas em dupla (${n})`:MISSION_TEXT.explora,
-  ninhos:(n:number)=>`Derrube os ninhos (${n})`,
+  ninhos:(n:number)=>`Opcional: derrube ninhos (${n})`,
 };
 
-export type MissionKey='minerva'|'explora'|'volta'|'torres'|'defenda'|'escuro'|'moto'|'ninhos';
+export type MissionKey='minerva'|'explora'|'volta'|'torres'|'defenda'|'escuro'|'moto'|'proteja'|'ninhos';
+/** The calm lines: always the small row (never the big band), so they never read as an order. */
+const CALM:ReadonlySet<MissionKey>=new Set(['proteja','ninhos']);
 /** What the line's edge arrow points at (rescue.ts; the arrow shows only while the target is off screen). */
 export type MissionArrow={kind:'uno';urgent:boolean}|{kind:'moto'}|{kind:'ninho';id:string;x:number;y:number};
 /** The run's view as the line reads it (missionFacts); every field optional, absent = not in this run. */
@@ -61,6 +86,8 @@ export interface MissionFacts {
   moto?:MotoMode;
   /** The local hero's dark (PlayerView.fear, 0..1). */
   dark?:number;
+  /** The hero's distance to the Uno (the objective's car, u) while the objective runs. */
+  uno?:number;
 }
 export interface MissionInput {
   tick:number;
@@ -103,21 +130,33 @@ export function missionFacts(view:Pick<RunView,'players'|'structures'|'objective
     out.nests={alive:up.length,...(near?{nearest:{id:near.id,x:near.x,y:near.y}}:{})};
   }
   const o=view.objective;
-  if(o&&!o.ended)out.moto=o.moto.mode;
+  if(o&&!o.ended){out.moto=o.moto.mode;if(hero)out.uno=Math.hypot(o.car.x-hero.x,o.car.y-hero.y);}
   if(me?.fear!==undefined)out.dark=me.fear;
   return out;
 }
 
 const ms=(n:number)=>Math.round(n/1000*SIM_HZ);
 
+/** A line the run wants now (wants() lists them most important first); `quiet`: wanted, but not written (the hero is there). */
+interface Want {key:MissionKey;pointUno:boolean;windowEnd?:number;text?:string;arrow?:MissionArrow;quiet?:boolean}
+/** What makes an order new: its key, the moto's two verbs apart, and the window it belongs to. */
+const orderId=(w:Want)=>`${w.key}|${w.key==='moto'?w.text:''}|${w.windowEnd??''}`;
+
 export class MissionTracker {
-  private key:MissionKey|undefined;private since=0;private windowEnd:number|undefined;
-  private lastTick=-1;private sawMinerva=false;
+  private lastTick=-1;private sawMinerva=false;private nearUno=false;
+  /** The order on the line now (or last, if it went quiet) and the tick it began: the gap counts from there. */
+  private order:{id:string;at:number;calm:boolean;window?:number}|undefined;
+  /** The dark's line began here (it goes over the orders, big for MISSION_BIG_MS). */
+  private darkSince:number|undefined;
   /** The team's crates when the current window opened (its count starts at 0). */
   private cratesFrom:number|undefined;private cratesWindow:number|undefined;
-  /** After the Minerva: 'torres' → 'defenda' → 'feito' (once a run). */
-  private after:'antes'|'torres'|'defenda'|'feito'='antes';private afterSince=0;
-  reset(){this.key=undefined;this.windowEnd=undefined;this.lastTick=-1;this.sawMinerva=false;this.after='antes';this.cratesFrom=this.cratesWindow=undefined;}
+  /** After the Minerva: 'torres' → 'defenda' → 'feito' (once a run); `defendAt`: when "Defenda." got on the line. */
+  private after:'antes'|'torres'|'defenda'|'feito'='antes';private afterSince=0;private defendAt:number|undefined;
+  reset(){this.lastTick=-1;this.sawMinerva=false;this.nearUno=false;this.order=this.darkSince=this.defendAt=undefined;this.after='antes';this.cratesFrom=this.cratesWindow=undefined;}
+  /** Ticks since the line's order began (Infinity before the first): the fear's notice waits for the gap too (hud.ts). */
+  orderAge(tick:number){return this.order?tick-this.order.at:Infinity;}
+  /** An order began less than ORDER_GAP_S ago: another notice (the fear's) would be a second order inside the gap. */
+  orderRecent(tick:number){return this.orderAge(tick)<ms(ORDER_GAP_S*1000);}
   /** The crates opened since the window that ends at `end` opened. */
   private crates(end:number,now:number|undefined){
     if(now===undefined)return 0;
@@ -129,43 +168,69 @@ export class MissionTracker {
     // A new run (rematch) starts the tick again.
     if(tick<this.lastTick)this.reset();
     this.lastTick=tick;
-    if(!input.playing)return this.show(undefined,tick,false);
+    if(!input.playing){this.darkSince=undefined;return {pointUno:false};}
     const facts=input.facts??{};
     const minerva=input.minervaAte!==undefined&&tick<input.minervaAte?input.minervaAte:undefined;
     const explora=input.explora&&tick>=input.explora.from&&tick<input.explora.until?input.explora:undefined;
     if(minerva!==undefined)this.sawMinerva=true;
-    // The dark pressing: come back to the Uno, over every other line.
-    if((facts.dark??0)>=DARK_PRESS)return this.show('escuro',tick,true,undefined,undefined,{kind:'uno',urgent:true});
-    if(minerva!==undefined){
-      const back=(minerva-tick)/SIM_HZ<=RETURN_SECONDS;
-      return back?this.show('volta',tick,true,minerva,undefined,{kind:'uno',urgent:true})
-        :this.show('minerva',tick,true,minerva,missionCount.minerva(this.crates(minerva,facts.crates)),{kind:'uno',urgent:false});
+    this.nearUno=facts.uno!==undefined&&facts.uno<=(this.nearUno?UNO_LEAVE_U:UNO_NEAR_U);
+    // The dark pressing: come back to the Uno, over every other line and over the gap.
+    if((facts.dark??0)>=DARK_PRESS){
+      this.darkSince??=tick;
+      const line:MissionLine={key:'escuro',text:MISSION_TEXT.escuro,big:tick-this.darkSince<ms(MISSION_BIG_MS),urgent:true};
+      return {pointUno:true,arrow:{kind:'uno',urgent:true},line};
     }
-    if(explora){
-      const back=(explora.until-tick)/SIM_HZ<=RETURN_SECONDS;
-      return back?this.show('volta',tick,true,explora.until,undefined,{kind:'uno',urgent:true})
-        :this.show('explora',tick,false,explora.until,missionCount.explora(this.crates(explora.until,facts.crates)));
-    }
+    this.darkSince=undefined;
+    return this.pick(this.wants(input,facts,minerva,explora),tick);
+  }
+  /** Every line the run wants now, most important first. */
+  private wants(input:MissionInput,facts:MissionFacts,minerva:number|undefined,explora:{from:number;until:number}|undefined):Want[]{
+    const {tick}=input,objective=facts.moto!==undefined;
+    const proteja:Want={key:'proteja',pointUno:false,arrow:{kind:'uno',urgent:false}};
+    // At the Uno, "Volte ao Uno." is quiet: the objective says what the Uno is for instead (calm).
+    const back=(end:number):Want[]=>[{key:'volta',pointUno:true,windowEnd:end,arrow:{kind:'uno',urgent:true},quiet:this.nearUno},...(this.nearUno&&objective?[proteja]:[])];
+    if(minerva!==undefined)return (minerva-tick)/SIM_HZ<=RETURN_SECONDS?back(minerva)
+      :[{key:'minerva',pointUno:true,windowEnd:minerva,text:missionCount.minerva(this.crates(minerva,facts.crates)),arrow:{kind:'uno',urgent:false}}];
+    if(explora)return (explora.until-tick)/SIM_HZ<=RETURN_SECONDS?back(explora.until)
+      :[{key:'explora',pointUno:false,windowEnd:explora.until,text:missionCount.explora(this.crates(explora.until,facts.crates))}];
+    const out:Want[]=[];
     // The moto stopped for the team: go there.
     const action=facts.moto?MOTO_ACTIONS[facts.moto]:undefined;
-    if(action)return this.show('moto',tick,false,undefined,action,{kind:'moto'});
+    if(action)out.push({key:'moto',pointUno:false,text:action,arrow:{kind:'moto'}});
     // After the Minerva, once: the towers (only with a kit in hand), then "Eles vão atrás do Uno. Defenda.".
     if(this.sawMinerva&&this.after==='antes'){this.after=input.towerKit?'torres':'defenda';this.afterSince=tick;}
     if(this.after==='torres'&&(!input.towerKit||tick-this.afterSince>=ms(TOWERS_MAX_S*1000))){this.after='defenda';this.afterSince=tick;}
-    if(this.after==='defenda'&&tick-this.afterSince>=ms(DEFEND_MS))this.after='feito';
-    if(this.after==='torres'||this.after==='defenda')return this.show(this.after,tick,false);
-    // The nests mode: knock them down, the nearest one pointed.
+    if(this.after==='defenda'&&(this.defendAt!==undefined?tick-this.defendAt>=ms(DEFEND_MS):tick-this.afterSince>=ms(DEFEND_LATE_S*1000)))this.after='feito';
+    if(this.after==='torres'||this.after==='defenda')out.push({key:this.after,pointUno:false});
+    // The objective: protect the Uno; the nests standing are optional, in turns with it (alone without the objective).
     const nests=facts.nests;
-    if(nests&&nests.alive>0)return this.show('ninhos',tick,false,undefined,missionCount.ninhos(nests.alive),nests.nearest?{kind:'ninho',...nests.nearest}:undefined);
-    return this.show(undefined,tick,false);
+    const ninhos:Want|undefined=nests&&nests.alive>0?{key:'ninhos',pointUno:false,text:missionCount.ninhos(nests.alive),...(nests.nearest?{arrow:{kind:'ninho' as const,...nests.nearest}}:{})}:undefined;
+    const nestTurn=Math.floor(tick/ms(ROTATE_S*1000))%2===1;
+    if(objective)out.push(...(ninhos&&nestTurn?[ninhos,proteja]:ninhos?[proteja,ninhos]:[proteja]));
+    else if(ninhos)out.push(ninhos);
+    return out;
   }
-  private show(key:MissionKey|undefined,tick:number,pointUno:boolean,windowEnd?:number,text?:string,arrow?:MissionArrow):MissionOutput{
-    // A line starts over (big again) when it changes or a new window opens with the same line.
-    if(key!==this.key||windowEnd!==this.windowEnd&&key!==undefined&&windowEnd!==undefined){this.key=key;this.since=tick;}
-    this.windowEnd=windowEnd;
-    if(!key)return {pointUno};
-    const age=tick-this.since,big=key==='defenda'||age<ms(MISSION_BIG_MS);
-    return {pointUno,...(arrow?{arrow}:{}),line:{key,text:text??MISSION_TEXT[key as keyof typeof MISSION_TEXT],big,urgent:key==='volta'||key==='escuro'||key==='moto'}};
+  /**
+   * The gap: the most important line said (not quiet) starts a new order once ORDER_GAP_S went by, or at once over a calm
+   * order that no longer holds, or as "Volte ao Uno." after its own window's line (the 30 s Minerva is shorter than the
+   * gap); until then the line keeps its order, else the first calm line wanted (small, no order).
+   */
+  private pick(wants:readonly Want[],tick:number):MissionOutput{
+    const top=wants[0],lead=wants.find(w=>!w.quiet);
+    if(!top)return {pointUno:false};
+    const held=(id:string|undefined)=>wants.find(w=>!w.quiet&&orderId(w)===id);
+    if(lead){
+      const id=orderId(lead),now=this.order;
+      const free=this.orderAge(tick)>=ms(ORDER_GAP_S*1000)||!!now?.calm&&!held(now.id)||lead.key==='volta'&&now?.window===lead.windowEnd;
+      if(id!==now?.id&&free)this.order={id,at:tick,calm:CALM.has(lead.key),...(lead.windowEnd!==undefined?{window:lead.windowEnd}:{})};
+    }
+    const order=this.order,shown=order&&held(order.id)||wants.find(w=>!w.quiet&&CALM.has(w.key));
+    // Nothing on the line: the Uno's arrow still says where to go (the Minerva, the last seconds of a window).
+    if(!shown)return {pointUno:top.pointUno,...(top.arrow?.kind==='uno'?{arrow:top.arrow}:{})};
+    if(shown.key==='defenda')this.defendAt??=tick;
+    const big=shown.key==='defenda'||!CALM.has(shown.key)&&!!order&&tick-order.at<ms(MISSION_BIG_MS);
+    return {pointUno:top.pointUno,...(shown.arrow?{arrow:shown.arrow}:{}),
+      line:{key:shown.key,text:shown.text??MISSION_TEXT[shown.key as keyof typeof MISSION_TEXT],big,urgent:shown.key==='volta'||shown.key==='moto'}};
   }
 }
 

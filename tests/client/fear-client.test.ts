@@ -186,7 +186,7 @@ test('the result\'s embarrassing moment blames the dark, not a critter',async()=
   const early=shameText({key:'cedo',player:'a',round:1,source:FEAR_SOURCE} as Parameters<typeof shameText>[0],'Tia','ninhos');
   assert.match(early.text,/escuridão/);assert.doesNotMatch(early.text,/bicho/);
   const late=shameText({key:'caiu',player:'a',round:3,source:FEAR_SOURCE} as Parameters<typeof shameText>[0],'Tia','onda');
-  assert.match(late.text,/escuridão levou na Onda 3/);
+  assert.match(late.text,/escuridão levou na onda 3/);
   // A critter's fall is unchanged.
   assert.match(shameText({key:'cedo',player:'a',round:1,source:'bebado'} as Parameters<typeof shameText>[0],'Tia','ninhos').text,/Bêbado|bêbado/i);
 });

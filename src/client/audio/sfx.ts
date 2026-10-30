@@ -31,24 +31,29 @@ export type SfxFormat='webm'|'m4a';
 
 const spec=(throttleMs:number,priority:number,gain:number,takes=1,align=false):SfxSpec=>Object.freeze({takes,throttleMs,priority,gain,...(align?{align}:{})});
 /** The groups' levels: spam (hits, footsteps, every shot) under the moments (chests, level up, the boss). */
+// NEW-20261030-ORQ-sons-ganhos-e-receitas (auditoria-sons-30-10 §2d): a file louder or quieter than its group gets its own
+// gain, so every heard file sits within ±6 dB of the median (tests/client/audio-ganhos-receitas.test.ts keeps the map).
 const UI=spec(40,2,.6),SHOT=spec(70,0,.45),PACK=spec(90,0,.4),TOWER=spec(120,0,.32);
 const own=(id:ProceduralId,gain:number,takes=1)=>spec(RECIPES[id].throttleMs,RECIPES[id].priority,gain,takes);
 
 export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
-  golpe:own('golpe',.4),gema:own('gema',.45),nivel:own('nivel',.7),upgrade:own('upgrade',.6),queda:own('queda',.75),
+  golpe:own('golpe',.4),gema:own('gema',.25),nivel:own('nivel',.7),upgrade:own('upgrade',.6),queda:own('queda',.75),
   resgate:own('resgate',.7),chefe:own('chefe',.85),'round-inicio':own('round-inicio',.7),'round-fim':own('round-fim',.7),
-  buzina:own('buzina',.6),boing:own('boing',.6),risada:own('risada',.6),carimbo:own('carimbo',.6),sos:own('sos',1,0),
-  'ui-botao':UI,'ui-abrir':UI,'ui-fechar':UI,'ui-carta':UI,'ui-erro':UI,
+  buzina:own('buzina',.6),boing:own('boing',.6),risada:own('risada',.6),carimbo:own('carimbo',.35),sos:own('sos',1,0),
+  ufa:own('ufa',1,0),tsc:own('tsc',1,0),
+  vitoria:own('vitoria',1,0),derrota:own('derrota',1,0),'chaveiro-chega':own('chaveiro-chega',1,0),
+  'bicho-ataque':own('bicho-ataque',1,0),'saci-assobio':own('saci-assobio',1,0),sanfona:own('sanfona',1,0),
+  'ui-botao':UI,'ui-abrir':UI,'ui-fechar':UI,'ui-carta':spec(40,2,.4),'ui-erro':UI,
   // Six takes of the step (footsteps.ts draws one per contact of the foot, never the same twice in a row), each from
   // its crunch, at one level.
   'passo-neve':spec(0,0,.35,6,true),empurrar:spec(600,1,.5),levantar:spec(300,1,.55),'dano-heroi':spec(250,2,.55),
   faca:SHOT,pistola:SHOT,escopeta:SHOT,submetralhadora:SHOT,rifle:SHOT,macarico:spec(180,0,.4),rojao:spec(200,1,.55),
-  chinelo:SHOT,boleto:SHOT,cafe:SHOT,'guarda-chuva':SHOT,pombo:SHOT,audio:spec(400,0,.45),
+  chinelo:SHOT,boleto:spec(70,0,1),cafe:SHOT,'guarda-chuva':SHOT,pombo:SHOT,audio:spec(400,0,.45),
   'p12-tiro':PACK,'p12-leque':PACK,'p12-orbita':spec(400,0,.3),'p12-ricochete':PACK,'p12-bumerangue':PACK,'p12-teleguiado':PACK,
-  'p12-lancado':PACK,'p12-mina':PACK,'p12-torreta':PACK,'p12-aura':spec(500,0,.3),'p12-nuvem':spec(300,0,.4),
+  'p12-lancado':PACK,'p12-mina':spec(90,0,.65),'p12-torreta':PACK,'p12-aura':spec(500,0,.3),'p12-nuvem':spec(300,0,.4),
   'torre-construir':spec(150,2,.65),'torre-pistola':TOWER,'torre-fuzil':TOWER,'torre-metralhadora':TOWER,'torre-rotativa':TOWER,
-  'torre-sniper':TOWER,'torre-antimaterial':TOWER,'torre-rojao':TOWER,'torre-morteiro':TOWER,'torre-foguete':TOWER,
-  'torre-obus':TOWER,'torre-gustavao':spec(300,1,.45),'torre-holofote':spec(600,0,.3),'torre-arame':spec(400,0,.3),
+  'torre-sniper':TOWER,'torre-antimaterial':TOWER,'torre-rojao':spec(120,0,.55),'torre-morteiro':TOWER,'torre-foguete':TOWER,
+  'torre-obus':TOWER,'torre-gustavao':spec(300,1,.45),'torre-holofote':spec(600,0,.9),'torre-arame':spec(400,0,.3),
   'torre-antiaerea':TOWER,'torre-radar':spec(900,0,.25),
   // The hit 70 ms and the kill's plop 80 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados: 300 critters at once).
   'bicho-acerto':spec(70,0,.3),'bicho-morte':spec(80,1,.4),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85),'chefe-passo':spec(250,1,.5),

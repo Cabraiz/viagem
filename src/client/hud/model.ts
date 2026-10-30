@@ -173,14 +173,30 @@ export function teamOrder(players:readonly PlayerRunView[],localId:string){
 
 export interface ReviveAlert {kind:'self'|'ally';playerId:string;name:string;seconds:number;progress:number;text:string}
 
+/**
+ * Card solo-segunda-chance (sim/revive.ts): alone in the run (no friend, no bot), the first fall gets up by itself in
+ * SOLO_SELF_REVIVE_TICKS; nobody comes, so the banner says so instead of "Grita por socorro".
+ */
+export const soloRun=(view:RunView)=>view.players.filter(p=>!p.spectator).length===1;
+export const soloRisingText=(progress:number)=>`Segunda chance! Levantando… ${Math.round(progress*100)}%`;
+/** Shown LAST_CHANCE_TICKS after the solo hero got up by himself: the next fall ends the match. */
+export const LAST_CHANCE_TEXT='Última chance: se cair de novo, acabou.';
+export const LAST_CHANCE_TICKS=3*SIM_HZ;
+/** The tick the last-chance line goes, for a view carrying the local hero's own solo get-up (a `revived` with no rescuer). */
+export function lastChanceUntil(view:RunView,localId:string):number|undefined{
+  if(!soloRun(view))return undefined;
+  return view.events.some(e=>e.type==='revived'&&e.player===localId&&!e.by)?view.tick+LAST_CHANCE_TICKS:undefined;
+}
+
 /** Alerts for downed players: the local one first (it changes what the player should do), then allies by urgency. */
 export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
   const alerts:ReviveAlert[]=[];
+  const solo=soloRun(view);
   for(const player of view.players){
     if(!player.downed||player.eliminated)continue;
     const seconds=secondsLeft(player.downed.bleedOutTick,view.tick);
     const progress=clamp01(player.downed.progress);
-    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
+    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:solo&&progress>0?soloRisingText(progress):progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
     else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá: ${seconds} s`});
   }
   return alerts.sort((a,b)=>Number(b.kind==='self')-Number(a.kind==='self')||a.seconds-b.seconds);
@@ -201,12 +217,21 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
 /** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
 export const watchingText=(name:string)=>`Assistindo: ${railName(name)}`;
 
-export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false):ReviveBanner|undefined{
+/**
+ * `lastChance`: the tick the solo last-chance line goes (lastChanceUntil), shown while the hero is back on his feet;
+ * the solo get-up itself keeps its line even with the world rescue (the ring alone does not say nobody is coming).
+ */
+export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false,lastChance=-Infinity):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
+  const me=view.players.find(p=>p.id===localId);
+  if(me&&!me.downed&&!me.eliminated&&!me.spectator&&view.tick<lastChance)return {kind:'self',key:'last-chance',text:LAST_CHANCE_TEXT,seconds:Infinity,progress:0,urgent:true};
   if(worldRescue){
     // Falls and rescues live in the world now (ring, column, "Você, 18 s" ficha, Me salva button, edge arrows).
-    const self=view.players.find(p=>p.id===localId);
-    if(self?.downed&&!self.eliminated)return undefined;
+    const self=me;
+    if(self?.downed&&!self.eliminated){
+      const progress=clamp01(self.downed.progress);
+      return soloRun(view)&&progress>0?{kind:'self',key:`solo:${self.id}`,text:soloRisingText(progress),seconds:secondsLeft(self.downed.bleedOutTick,view.tick),progress,urgent:false}:undefined;
+    }
     if((self?.eliminated||self?.spectator)&&watching)return {kind:'ally',key:`watching:${watching}`,text:watchingText(watching),seconds:Infinity,progress:0,urgent:false};
     if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
     if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
@@ -233,7 +258,7 @@ export function reviveBanner(view:RunView,localId:string,network?:string,causes?
 
 /** Offer header copy (DSG-voz): one title, no eyebrow chip. */
 export function offerTitle(offer:OfferView){
-  return {title:offer.source==='round'?'Oferta do round':`Nível ${offer.level}!`};
+  return {title:offer.source==='round'?'Escolha da rodada':`Nível ${offer.level}!`};
 }
 
 /**

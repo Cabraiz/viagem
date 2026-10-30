@@ -119,6 +119,17 @@ test('the screen reader hears the start and "Falta você!", never every second',
   assert.equal(pauseAnnouncement(at(9000,['p1']),undefined),undefined);
 });
 
+test('levelup-espalhado: two cards in one pause read "+2 escolhas", counted only while the room waits for this phone',()=>{
+  const v=(waiting:string[],cards:number)=>pauseView(pause(15200,waiting,16000),ROSTER,'p1',0,0,cards)!;
+  assert.equal(v(['p1','p2'],2).title,'+2 escolhas! 16 s');assert.equal(v(['p1','p2'],2).cards,2);
+  assert.equal(v(['p1','p2'],1).title,'Escolham! 16 s','the last card left: the usual title');
+  assert.equal(v(['p1','p2'],0).title,'Escolham! 16 s','a view one message behind never says "+0"');
+  assert.equal(v(['p2'],2).title,'Escolham! 16 s','this phone picked: no count of its own');assert.equal(v(['p2'],2).cards,0);
+  assert.equal(v([],2).title,'Voltando em 16 s');
+  assert.equal(pauseAnnouncement(undefined,v(['p1','p2'],2)),'Subiu pro nível 6! Escolham 2 cartas: 16 segundos.');
+  assert.equal(new PauseClock().view(ROSTER,'p1',0,2),undefined);
+});
+
 /**
  * Boxes measured on the photo-mode scenes (pausa-escolhendo/esperando/ultimo: the HUD sandbox with its minimap slot, 4
  * players, the pause's whole offer window of offer.ts, data-mode=pause; tools/foto.mjs phones with touch: the fone HUD),
@@ -192,4 +203,17 @@ test('the pause\'s photo-mode scenes and the overlay\'s CSS: tokens, no taps, re
   assert.match(css,/\.rh-pausa-veu\{[^}]*pointer-events:none/);
   assert.match(css,/\.rh-pausa\{[^}]*pointer-events:none/);
   assert.match(css,/prefers-reduced-motion:reduce/);
+});
+
+test('solo (levelup-sem-arma-e-solo): one human, bots aside: "Escolha!", no line, never "Falta você!"',()=>{
+  const solo:PauseMember[]=[{id:'p1',name:'Mateus',online:true},{id:'b1',name:'Bot',online:true,bot:true}];
+  const v=pauseView(pause(12000,['p1']),solo,'p1',0)!;
+  assert.equal(v.solo,true);assert.equal(v.title,'Escolha! 12 s');assert.equal(v.line,'');
+  assert.equal(pauseView(pause(2900,['p1']),solo.slice(0,1),'p1',0)!.title,'Escolha! 3 s','alone, no bot');
+  assert.equal(pauseView(pause(5000,[]),solo,'p1',0)!.line,'','picked: still no line');
+  assert.equal(pauseAnnouncement(undefined,v),'Subiu pro nível 6! Escolha a carta: 12 segundos.');
+  assert.equal(pauseAnnouncement(pauseView(pause(12000,['p1']),solo,'p1',0),pauseView(pause(2000,['p1']),solo,'p1',0)),undefined);
+  // Two humans: the plural and the line as before.
+  const two=pauseView(pause(12000,['p1']),ROSTER.slice(0,2),'p1',0)!;
+  assert.equal(two.solo,false);assert.equal(two.title,'Escolham! 12 s');assert.equal(two.line,'Falta você!');
 });

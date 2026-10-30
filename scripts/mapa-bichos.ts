@@ -16,6 +16,7 @@ import * as nestsMod from '../src/maps/nests.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
 import {cityRunStart} from '../src/sim/city/tutorial.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
@@ -30,7 +31,7 @@ const loaded=await cityTerrainFrom(text,hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 const sim=new Simulation(SEED,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos',combat:'manual',...(pop?{nestPopulation:Number(pop)}:{})});
-for(let i=0;i<PLAYERS;i++)sim.addBot(`bot-${i+1}`,`bot-${i+1}`,'cidadao-comum');
+for(let i=0;i<PLAYERS;i++)sim.addBot(`bot-${i+1}`,`bot-${i+1}`,PERSONAGEM_PADRAO);
 sim.resetRun();sim.step(sim.tick*50);
 const plan=sim.run.nests!.plan()!;
 const a=city.asset,cs=a.unitsPerCell,W=a.cells.w*S,H=a.cells.h*S,px=Buffer.alloc(W*H*4);

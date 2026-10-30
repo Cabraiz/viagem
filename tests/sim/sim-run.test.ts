@@ -278,8 +278,8 @@ test('victory beats defeat when the boss dies in the same tick the last player f
 // Two novice scripts from the UX review: stand still for the first 15 s, and stop 8 s at every new offer.
 const ROUND1_SEEDS=Array.from({length:10},(_,i)=>i?i*7919+1:SEED);
 const ROUND1_TEAMS:readonly (readonly string[])[]=[
-  ['cidadao-comum'],['maromba'],['viciado-em-bet'],['universitario'],['mendigo'],
-  ['cidadao-comum','mendigo'],['maromba','viciado-em-bet'],['universitario','pedreiro'],
+  ['cidadao-comum'],['maromba'],['viciado-em-bet'],['universitario'],['tio-do-churrasco'],
+  ['cidadao-comum','tio-do-churrasco'],['maromba','viciado-em-bet'],['universitario','pedreiro'],
   KIT_CLASSES.slice(0,6),['viciado-em-bet','universitario','maromba','streamer','rei-pastel','coach'],
   ['cidadao-comum','pedreiro','passageira','porteiro','clt-cansado','maromba'],
 ];

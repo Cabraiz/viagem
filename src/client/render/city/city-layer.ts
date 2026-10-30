@@ -57,8 +57,12 @@ const GLINT_DEPTH=CITY_GROUND_DEPTH+2;
 const FOG_DEPTH=CITY_GROUND_DEPTH-1;
 /** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
 const GLINT_PERIOD_MS=4000;
-/** Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. */
-export const GROUND_RESOLUTION=0.75;
+/**
+ * Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. Fixed, not following
+ * the zoom (no re-bake mid-match): 1 keeps the setts sharp at the phone's zoom (~0.9) for +43 MB of GPU texture over
+ * 0.75 at the spawn (card chao-pedra-nitida, evidence/medidas.log).
+ */
+export const GROUND_RESOLUTION=1;
 export const GROUND_RT_MAX_PX=2048;
 
 /** Fills a polygon with the current fill style: a convex one as a triangle fan (fan.ts, no earcut), any other through Phaser. */
@@ -492,6 +496,12 @@ export class CityLayer {
     const v=normalizeView(view),chunks:{bounds:Rect;keys:readonly string[]}[]=[];
     for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
     return missingByDistance(chunks,camera,key=>this.scene.textures.exists(key));
+  }
+  /** Every key of the chunks' art, loaded or not, with the same distance (Q3 fatia 3: the art stream's LRU, art-stream.ts). */
+  artDistance(camera:Rect,view:number):{key:string;px:number}[]{
+    const v=normalizeView(view),chunks:{bounds:Rect;keys:readonly string[]}[]=[];
+    for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
+    return missingByDistance(chunks,camera,()=>false);
   }
   /** A texture of the chunks' art arrived: the live chunks drawing it are rebuilt with it once they are off screen. */
   artArrived(key:string){

@@ -237,6 +237,8 @@ test('the Tank\'s punch: a push telegraph throws the hero away from it, then dow
   const {KNOCK_TICKS,KNOCK_DOWN_TICKS}=await import('../../src/sim/player-effects.ts');
   const {world}=run({seed:7});
   const p=[...world.players.values()][0];
+  // The start grace (comeca-armado-e-levanta-seguro: untouchable until the first crate or 20 s) is not this test's.
+  p.invulnerableUntil=undefined;
   const at={x:p.x,y:p.y},from={x:p.x-1,y:p.y};
   addTelegraph(world,{shape:'circle',x:from.x,y:from.y,radius:3,damage:1,owner:'env:test',push:5},1);
   for(let i=0;i<60&&p.downUntil===undefined;i++){at.x=p.x;at.y=p.y;world.step();}

@@ -9,7 +9,7 @@
  *   how much into the bill, carteira-e-pix: ObjectiveResult.share).
  * Every number comes from the room's view (protocol 15); nothing here decides the game.
  */
-import {CIDA_ITEMS,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView,type VaquinhaShare} from '../../contract/index.ts';
+import {CIDA_ITEMS,SIM_HZ,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView,type VaquinhaShare} from '../../contract/index.ts';
 
 /** Dona Cida sells within this many units of the moto (mirrors the sim's CIDA_REACH; tests/client/chaveiro-hud pins it). */
 export const CIDA_REACH_U=3;
@@ -20,6 +20,11 @@ export const REASON_MS=2500;
 /** The car's bar turns Cone under this share of hits left (render/chaveiro/rules.ts CAR_LOW, the base's 30%). */
 export const CAR_BAR_LOW=.3;
 
+/**
+ * The clock's name before its time (card relogio-do-chaveiro-com-legenda: the novice did not know it is his arrival):
+ * "Chaveiro 3:59" on the round chip and on the phone's bar, which both write ChaveiroClock.clock.
+ */
+export const CLOCK_LABEL='Chaveiro';
 /** The chaveiro's clock: whole seconds as "m:ss" ("10:00", "0:07"); never negative. */
 export function etaClock(seconds:number){
   const s=Math.max(0,Math.ceil(Number.isFinite(seconds)?seconds:0));
@@ -38,8 +43,8 @@ export const liveObjective=(view:{objective?:ObjectiveView}|undefined)=>view?.ob
  */
 export interface ChaveiroClock {clock:string;seconds:number;aria:string;held:boolean}
 export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>,held=false):ChaveiroClock{
-  const seconds=Math.max(0,Math.ceil(objective.etaS)),clock=etaClock(seconds);
-  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${clock}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`;
+  const seconds=Math.max(0,Math.ceil(objective.etaS)),time=etaClock(seconds),clock=`${CLOCK_LABEL} ${time}`;
+  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${time}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o Uno: ${time}`:`Chaveiro chega em ${time}`;
   return {clock,seconds,aria,held};
 }
 
@@ -54,17 +59,20 @@ export const MOTO_REASONS:Readonly<Record<MotoMode,string|undefined>>=Object.fre
   entrega:'Entregando',
   lombada:'Lombada',
   tombo:'Tombou! Bicho na moto',
-  abrindo:'Chegou! Abrindo o carro',
+  abrindo:'Chegou! Abrindo o Uno',
 });
 /** The modes where the team can do something: the row wears Cone (morta: 2 to push; tombo: clear the critter). */
 export const reasonUrgent=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
 /**
  * Card objetivo-com-verbo: the stops that need the team say what to do, with a verb, in the mission line (hud/missao.ts,
- * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size.
+ * with the moto's edge arrow) instead of the reason's row; one row on a 393 px phone at the band's size. Card
+ * ordens-menos-e-claras (auditoria-primeiro-minuto item 5: "Uno" and "moto" read as one vehicle, only the Uno on
+ * screen): the line names the chaveiro, as the top's clock and the moto's arrow ("Chaveiro parado") do; the Uno is the
+ * team's car, the moto is his.
  */
 export const MOTO_ACTIONS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
-  morta:'Moto morta: vá empurrar',
-  tombo:'A moto tombou: tire os bichos',
+  morta:'Moto do chaveiro: vá empurrar',
+  tombo:'Chaveiro caiu: tire os bichos',
 });
 
 /**
@@ -85,13 +93,113 @@ export class MotoReason {
   reset(){this.mode=undefined;}
 }
 
+/**
+ * Card chaveiro-chegou-e-relogio (auditoria fim-de-partida, item 3): the clock "lies" when the moto stops (it falls
+ * 10–40 s per real minute and nobody knows why). While he is stopped, the clock wears the stop's colour and says how
+ * much the stop has added so far ("Moto tombou: +4 s"). Only the HUD: the ETA is the room's, untouched.
+ */
+export const CLOCK_STOPS:Readonly<Partial<Record<MotoMode,string>>>=Object.freeze({
+  tombo:'Moto tombou',morta:'Moto morta',lombada:'Lombada',volta:'Deu a volta',entrega:'Entregando',
+});
+/** The added time shows once it reaches this (s): the ETA comes in whole seconds, one is rounding noise. */
+export const CLOCK_ADDED_MIN_S=2;
+/** After he rides again, the last "+N s" stays this long (s) so it can be read. */
+export const CLOCK_ADDED_HOLD_S=3;
+export interface ClockStop {mode:MotoMode;label:string;text:string;added:number;urgent:boolean}
+/**
+ * The time a stop adds: from the tick he stopped, the clock should have fallen one second per second; what it did not
+ * fall (or rose) is the stop's. Fed every view with the moto's mode, the ETA and the tick; undefined: nothing to say.
+ */
+export class ClockStopTracker {
+  private start?:{mode:MotoMode;etaS:number;tick:number};
+  private shown?:ClockStop;private until=-1;
+  step(mode:MotoMode|undefined,etaS:number,tick:number):ClockStop|undefined{
+    const label=mode&&CLOCK_STOPS[mode];
+    if(!label||!mode){
+      this.start=undefined;
+      if(mode===undefined||mode==='abrindo'){this.shown=undefined;return undefined;}
+      return this.shown&&tick<=this.until?this.shown:(this.shown=undefined);
+    }
+    if(this.start?.mode!==mode||tick<this.start.tick)this.start={mode,etaS,tick};
+    const added=Math.floor(etaS-(this.start.etaS-(tick-this.start.tick)/SIM_HZ));
+    if(added>=CLOCK_ADDED_MIN_S){
+      this.shown={mode,label,text:`${label}: +${added} s`,added,urgent:reasonUrgent(mode)};
+      this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
+    }
+    return this.shown&&(this.shown.mode===mode||tick<=this.until)?this.shown:undefined;
+  }
+  reset(){this.start=this.shown=undefined;this.until=-1;}
+}
+
+/**
+ * Card missao-proteger-uno-tempo: the clock's say when an enemy's hit on the Uno pushed the unlocking back. Card
+ * relogio-do-chaveiro-com-legenda (auditoria primeira-partida, item 3: the novice did not see that a hit delays him):
+ * the run's first burst says it whole ("Uno apanhou, chaveiro atrasa: +3 s"), the next ones short ("Uno apanhou: +3 s").
+ */
+export const CLOCK_HIT_LABEL='Uno apanhou';
+export const CLOCK_HIT_FIRST_LABEL='Uno apanhou, chaveiro atrasa';
+/**
+ * Each hit on the Uno adds time to the run's clock (the sim's CHAVEIRO_CLOCK): the clock says how much ("Uno apanhou:
+ * chaveiro +3 s"). A burst of hits within CLOCK_ADDED_HOLD_S adds into one number, from the clock before its first hit.
+ * Fed every view with the mode, the ETA, the tick and the car's hits; a stop mode is ClockStopTracker's, not this.
+ */
+export class ClockHitTracker {
+  private last?:{etaS:number;tick:number;hits:number};
+  private base?:{etaS:number;tick:number};
+  private shown?:ClockStop;private until=-1;
+  /** The burst's label; `explained`: the first one was shown (kept across reset(): the chefão's hold is the same run). */
+  private label?:string;private explained=false;
+  step(mode:MotoMode|undefined,etaS:number,tick:number,hits:number):ClockStop|undefined{
+    const last=this.last;this.last={etaS,tick,hits};
+    if(!last||tick<last.tick||!mode||CLOCK_STOPS[mode]){this.base=this.shown=undefined;return undefined;}
+    if(hits>last.hits){
+      if(!this.base||tick>this.until){this.base={etaS:last.etaS,tick:last.tick};this.label=undefined;}
+      const added=Math.round(etaS-(this.base.etaS-(tick-this.base.tick)/SIM_HZ));
+      if(added>=1){
+        this.label??=this.explained?CLOCK_HIT_LABEL:CLOCK_HIT_FIRST_LABEL;this.explained=true;
+        this.shown={mode,label:this.label,text:`${CLOCK_HIT_LABEL}: chaveiro +${added} s`,added,urgent:true};
+        this.until=tick+CLOCK_ADDED_HOLD_S*SIM_HZ;
+      }
+    }
+    return this.shown&&tick<=this.until?this.shown:(this.shown=this.base=undefined);
+  }
+  reset(){this.last=this.base=this.shown=undefined;this.until=-1;}
+}
+/**
+ * What the clock says next to it, from both trackers: a stop's "+N s" first, else a hit's on the Uno. Fed every view
+ * with the live objective (undefined: none, ended, or held by the chefão: nothing, and both start over).
+ * The round chip (topbar.ts) and the phone's bar clock (camp.ts) each keep one.
+ */
+export class ClockTag {
+  private stops=new ClockStopTracker();private hits=new ClockHitTracker();
+  step(objective:Pick<ObjectiveView,'moto'|'etaS'|'car'>|undefined,tick:number):ClockStop|undefined{
+    if(!objective){this.stops.reset();this.hits.reset();return undefined;}
+    const stopped=this.stops.step(objective.moto.mode,objective.etaS,tick),hit=this.hits.step(objective.moto.mode,objective.etaS,tick,objective.car.hits);
+    return stopped||hit||undefined;
+  }
+}
+
+/**
+ * Card chaveiro-chegou-e-relogio (item 4): "chegou" is a moment. While he opens the car ('abrindo', ABRINDO_SECONDS in
+ * the sim) a big band says so with the seconds left and a bar filling up; victory comes when it is full.
+ */
+export const ARRIVAL_SECONDS=15;
+export interface ArrivalBand {title:string;hold:string;seconds:number;fraction:number;aria:string}
+export function arrivalBand(objective:Pick<ObjectiveView,'etaS'|'moto'>|undefined):ArrivalBand|undefined{
+  if(objective?.moto.mode!=='abrindo')return undefined;
+  const seconds=Math.max(0,Math.min(ARRIVAL_SECONDS,Math.ceil(Number.isFinite(objective.etaS)?objective.etaS:0)));
+  const fraction=Math.max(0,Math.min(1,1-objective.etaS/ARRIVAL_SECONDS));
+  return {title:'O chaveiro chegou!',hold:`Segurem ${seconds} s`,seconds,fraction:Number.isFinite(fraction)?fraction:0,
+    aria:`O chaveiro chegou! Segurem o Uno mais ${seconds} segundos`};
+}
+
 /** The car's bar of the base ficha (in place of the wall's life): hits it still takes over the limit. */
 export interface CarBar {fraction:number;left:number;limit:number;low:boolean;label:string}
 export function carBar(objective:Pick<ObjectiveView,'car'>|undefined):CarBar|undefined{
   const car=objective?.car;
   if(!car||!(car.limit>0))return undefined;
   const left=Math.max(0,Math.min(car.limit,Math.round(car.limit-car.hits))),fraction=left/car.limit;
-  return {fraction,left,limit:car.limit,low:fraction<CAR_BAR_LOW,label:`O carro aguenta mais ${left} ${left===1?'pancada':'pancadas'} de ${car.limit}`};
+  return {fraction,left,limit:car.limit,low:fraction<CAR_BAR_LOW,label:`O Uno aguenta mais ${left} ${left===1?'pancada':'pancadas'} de ${car.limit}`};
 }
 
 /** Whether the hero is by the moto now: within CIDA_REACH_U to show, beyond CIDA_LEAVE_U to hide (hysteresis). */
@@ -146,7 +254,7 @@ export const cidaBought=(name:string)=>`${name.trim().split(/\s+/)[0]} na mão!`
 export const OBJECTIVE_CAUSE_TEXT:Readonly<Record<ObjectiveCause,string>>=Object.freeze({
   opened:'Abriu! O carregador era do conector errado.',
   car:'O Uno não aguentou. Perda total.',
-  team:'O time caiu antes do chaveiro chegar.',
+  team:'A turma caiu antes do chaveiro chegar.',
   timeout:'Acabou o tempo. O chaveiro não chegou.',
 });
 /** A win the team's Grana did not pay in full: he opened it anyway and took the steering wheel as a guarantee. */
@@ -160,14 +268,14 @@ export function objectiveBill(result:ObjectiveResult):ObjectiveBill{
   const budget=reais(result.budget),grana=reais(result.grana),paid=reais(result.paid),debt=result.debt>0?reais(result.debt):undefined;
   const wave=`Onda ${Math.max(1,result.wave)}`;
   return {cause:result.cause,reason:debtVictory?DEBT_VICTORY_TEXT:OBJECTIVE_CAUSE_TEXT[result.cause],budget,grana,paid,...(debt?{debt}:{}),debtVictory,wave,
-    aria:`Orçamento ${budget}, grana do time ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
+    aria:`Orçamento ${budget}, grana da turma ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
 }
 
 /**
  * The jokes for whoever put R$ 0 into the vaquinha (board plans/carteira-pix-proposta.md §2: "Tio: R$ 0, pediu
  * recibo"), one per R$ 0 in the line's order, round the list.
  */
-export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no PIX (mentira)'];
+export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no Pix (mentira)'];
 /**
  * The result's vaquinha line (carteira-e-pix, ObjectiveResult.share): each player's part of the bill, in the room's
  * order, "Vaquinha: Ana R$ 12; Bot R$ 8; Zé R$ 0, pediu o recibo"; me as "Você". Undefined with no share.
@@ -175,9 +283,11 @@ export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a
 export function vaquinhaLine(share:readonly VaquinhaShare[]|undefined,nameOf:(id:string)=>string){
   if(!share?.length)return undefined;
   let zeros=0;
-  const parts=share.map(s=>{
+  // Each part apart too (`pieces`): a tight layout may drop the jokes and keep every name and value.
+  const pieces=share.map(s=>{
     const paid=Math.max(0,Math.round(Number.isFinite(s.paid)?s.paid:0));
-    return `${nameOf(s.id)} ${reais(paid)}${paid>0?'':`, ${VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]}`}`;
+    return {who:`${nameOf(s.id)} ${reais(paid)}`,joke:paid>0?undefined:VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]};
   });
-  return {text:`Vaquinha: ${parts.join('; ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`};
+  const parts=pieces.map(p=>p.joke?`${p.who}, ${p.joke}`:p.who);
+  return {text:`Vaquinha: ${parts.join('; ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`,pieces};
 }

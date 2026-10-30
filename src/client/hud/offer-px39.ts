@@ -25,6 +25,46 @@ export function px39Icon(id:string):string{
 }
 
 /**
+ * Card oferta-icone-do-poder: the card shows the POWER, not the object (ChatGPT pixel art with snow, the sheet the user
+ * approved on 29/10, public/art/ui-extra/px39/efeitos/<id>.webp). A passive is its effect alone; a weapon keeps its
+ * object (what shows in the game) with a seal of its main effect. The item's name lives in the label and the inventory.
+ */
+export const EFFECT_ICONS=['recarga','vida','regeneracao','armadura','velocidade','area','sorte','dano','grana','projetil',
+  'velocidade-tiro','aura','lento','empurra','persegue','atravessa','ricochete','queima'] as const;
+export type EffectIcon=typeof EFFECT_ICONS[number];
+
+/** Each passive's gain (offer-card.ts offerGain) as its icon. */
+export const PASSIVE_EFFECT:Readonly<Record<string,EffectIcon>>={
+  'cafe-forte':'recarga',marmita:'vida',arruda:'regeneracao','tampa-de-panela':'armadura',tenis:'velocidade',megafone:'area',
+  bone:'sorte',oculos:'dano',cartao:'grana',pente:'projetil',estilingue:'velocidade-tiro',defumador:'aura'};
+
+/** Each weapon's main effect (its blurb in items.ts) as the seal on its icon; one with no clear effect has none. */
+export const WEAPON_EFFECT:Readonly<Record<string,EffectIcon>>={
+  boleto:'atravessa','boleto-evo':'atravessa','boleto-lendario':'atravessa',cafe:'queima','cafe-evo':'queima','cafe-lendario':'queima',
+  'guarda-chuva':'empurra','guarda-chuva-lendario':'empurra',pombo:'persegue','pombo-lendario':'persegue',audio:'empurra',
+  'audio-lendario':'empurra',faca:'dano',pistola:'dano',escopeta:'projetil',submetralhadora:'recarga',rifle:'atravessa',
+  macarico:'queima',rojao:'area',baladeira:'velocidade-tiro',espeto:'atravessa',sacole:'lento','tampa-voadora':'atravessa',
+  'colher-de-pau':'empurra',peixeira:'dano','bola-murcha':'ricochete',traque:'area',buscape:'persegue',facao:'area',
+  'sal-grosso':'empurra','tijolo-baiano':'area','taro-vencido':'projetil','nuvem-de-incenso':'lento',corneta:'empurra',
+  mangueira:'empurra','galho-de-arruda':'aura','pes-do-curupira':'lento','panela-de-pressao':'area','carro-de-som':'projetil',
+  'vira-lata':'persegue',ventilador:'empurra','fogo-boitata':'ricochete','olho-grego':'atravessa','uivo-do-lobisomem':'lento',
+  'mula-sem-cabeca':'atravessa','gorro-do-saci':'area','canto-da-iara':'lento','bola-de-cristal':'area','cristal-quantico':'ricochete'};
+
+export const effectIconUrl=(fx:EffectIcon)=>`/art/ui-extra/px39/efeitos/${fx}.webp`;
+
+/**
+ * The offer card's icon by the item id: a passive's effect, a weapon's object with its effect's seal, anything else
+ * (snacks, unknown ids) its own icon as before.
+ */
+export function offerIcon(itemId:string,icon:string):string{
+  const own=PASSIVE_EFFECT[itemId];
+  if(own)return `<img class="ic ic-px39 ic-efeito" src="${effectIconUrl(own)}" alt="" aria-hidden="true" data-efeito="${own}" draggable="false" decoding="async">`;
+  const seal=WEAPON_EFFECT[itemId];
+  if(!seal)return px39Icon(icon);
+  return `${px39Icon(icon)}<img class="rh-card-selo" src="${effectIconUrl(seal)}" alt="" aria-hidden="true" data-efeito="${seal}" draggable="false" decoding="async">`;
+}
+
+/**
  * The fan's slot of each card, left to right: the default pick stands in the middle with the gold frame, the others
  * open to the sides (3: l, m, r; 4: l2, l1, r1, r2 with the default at l1; 2: l1, r1; 1: m).
  */

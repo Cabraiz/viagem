@@ -1,0 +1,1698 @@
+{
+ "card": "NEW-20261012-ORQ-cidade-11-balanco-run",
+ "version": 1,
+ "startedAt": "2026-10-28T23:15:07.621Z",
+ "updatedAt": "2026-10-28T23:33:10.664Z",
+ "config": {
+  "objective": "chaveiro",
+  "combat": "manual",
+  "mode": "ninhos",
+  "nestPace": {
+   "period": [
+    90,
+    60
+   ],
+   "minerva": 120,
+   "first": [
+    30,
+    60
+   ],
+   "firstLate": [
+    60,
+    0
+   ],
+   "alive": [
+    8,
+    60
+   ],
+   "warm": 180,
+   "warmScale": 0.4,
+   "warmRow": 1,
+   "warmEase": 120,
+   "warmTrickle": 0.34,
+   "ramp": 540,
+   "size": [
+    1,
+    1.295
+   ],
+   "mapShare": [
+    0.1,
+    0.06999999999999999
+   ],
+   "trickle": [
+    1,
+    3
+   ],
+   "march": [
+    0.85,
+    1
+   ],
+   "hp": 1,
+   "damage": 1,
+   "perNest": [
+    1,
+    3
+   ],
+   "floor": 0.5,
+   "explore": 120,
+   "waveMin": 20,
+   "waveCap": 150,
+   "crowd": {
+    "march": [
+     1,
+     1,
+     1.08,
+     1.17,
+     1.26,
+     1.35
+    ],
+    "hp": [
+     1,
+     1,
+     1.5,
+     2,
+     2.5,
+     3
+    ],
+    "damage": [
+     1,
+     1,
+     1.15,
+     1.3,
+     1.45,
+     1.6
+    ]
+   }
+  },
+  "chaveiroPace": {
+   "ride": [
+    420,
+    420,
+    420,
+    580,
+    740,
+    900
+   ]
+  },
+  "spread": {
+   "k": 73,
+   "gap": 0,
+   "sub": 2,
+   "nearCar": 1.6,
+   "ramp": 51,
+   "route": 1.6,
+   "routeNear": 7,
+   "yard": 6,
+   "tile": 14
+  },
+  "alarm": {
+   "r": 20,
+   "p": 0.1,
+   "every": 1
+  },
+  "nestCalm": {
+   "radius": 40,
+   "seconds": 30
+  },
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "players": [
+   1,
+   3,
+   6
+  ],
+  "capMin": 25,
+  "knobs": null,
+  "knobsFile": null,
+  "knobRoute": "none",
+  "classes": [
+   "cidadao-comum",
+   "motogirl",
+   "maromba",
+   "coach",
+   "pagodeiro",
+   "porteiro"
+  ],
+  "nav": {
+   "READ_SECONDS": 4,
+   "HOME_MARGIN": 4,
+   "CRATE_NEAR": 2.5,
+   "FAR": 12,
+   "STUCK_TICKS": 30,
+   "STUCK_MOVE": 0.3,
+   "UNSTICK_TICKS": 16
+  }
+ },
+ "summary": {
+  "runs": 48,
+  "byPlayers": {
+   "1": {
+    "players": 1,
+    "runs": 16,
+    "wins": 2,
+    "winRate": 0.13,
+    "causes": {
+     "boss": 0,
+     "team": 0,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 2,
+     "car": 14
+    },
+    "deathRounds": {
+     "1": 14
+    },
+    "roundReached": {
+     "n": 16,
+     "mean": 1,
+     "min": 1,
+     "median": 1,
+     "max": 1
+    },
+    "firstArrivalS": {
+     "all": null,
+     "byRound": {}
+    },
+    "loot": {
+     "unitsPerIntermission": null,
+     "recipesPerIntermission": null,
+     "byRound": {},
+     "purchasesPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 14,
+     "tutorialArrivalS": null
+    },
+    "barricadesFallen": {
+     "perRound": null,
+     "byRound": {}
+    },
+    "boss": {
+     "spawnAfterWaveS": null,
+     "firstInsideBaseS": null,
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": null,
+     "kills": 0,
+     "reached": 0
+    },
+    "towers": {
+     "runs": 16,
+     "rootsPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "tokensPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 16,
+     "earned": {
+      "n": 16,
+      "mean": 81.63,
+      "min": 0,
+      "median": 73.5,
+      "max": 271
+     },
+     "spent": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "evolutions": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "repairs": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "forge": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "final": {
+      "n": 16,
+      "mean": 4.31,
+      "min": 0,
+      "median": 0,
+      "max": 69
+     }
+    },
+    "chaveiro": {
+     "runs": 16,
+     "wins": 2,
+     "winsWithDebt": 1,
+     "debt": {
+      "n": 2,
+      "mean": 3,
+      "min": 0,
+      "median": 3,
+      "max": 6
+     }
+    },
+    "banks": {
+     "runs": 16,
+     "grana": {
+      "n": 16,
+      "mean": 17.5,
+      "min": 0,
+      "median": 22.5,
+      "max": 35
+     },
+     "share": {
+      "n": 12,
+      "mean": 0.25,
+      "min": 0,
+      "median": 0.32,
+      "max": 0.55
+     },
+     "pooledShare": 0.214,
+     "withdraws": {
+      "n": 16,
+      "mean": 3.5,
+      "min": 0,
+      "median": 4.5,
+      "max": 7
+     },
+     "enemyWithdraws": {
+      "n": 16,
+      "mean": 3.06,
+      "min": 0,
+      "median": 1.5,
+      "max": 23
+     },
+     "enemyGrana": {
+      "n": 16,
+      "mean": 6.13,
+      "min": 0,
+      "median": 3,
+      "max": 46
+     },
+     "primes": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 16,
+      "mean": 0.06,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "verdict": "low"
+    },
+    "verdict": {
+     "wins": "ok",
+     "target": {
+      "min": 2,
+      "max": 6
+     },
+     "round1": "deaths"
+    }
+   },
+   "3": {
+    "players": 3,
+    "runs": 16,
+    "wins": 9,
+    "winRate": 0.56,
+    "causes": {
+     "boss": 0,
+     "team": 4,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 9,
+     "car": 3
+    },
+    "deathRounds": {
+     "1": 7
+    },
+    "roundReached": {
+     "n": 16,
+     "mean": 1,
+     "min": 1,
+     "median": 1,
+     "max": 1
+    },
+    "firstArrivalS": {
+     "all": null,
+     "byRound": {}
+    },
+    "loot": {
+     "unitsPerIntermission": null,
+     "recipesPerIntermission": null,
+     "byRound": {},
+     "purchasesPerRun": {
+      "n": 16,
+      "mean": 1.06,
+      "min": 0,
+      "median": 0,
+      "max": 5
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 7,
+     "tutorialArrivalS": null
+    },
+    "barricadesFallen": {
+     "perRound": null,
+     "byRound": {}
+    },
+    "boss": {
+     "spawnAfterWaveS": null,
+     "firstInsideBaseS": null,
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": null,
+     "kills": 0,
+     "reached": 0
+    },
+    "towers": {
+     "runs": 16,
+     "rootsPerRun": {
+      "n": 16,
+      "mean": 0.13,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "tokensPerRun": {
+      "n": 16,
+      "mean": 0.13,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 16,
+     "earned": {
+      "n": 16,
+      "mean": 322.25,
+      "min": 0,
+      "median": 343,
+      "max": 606
+     },
+     "spent": {
+      "n": 16,
+      "mean": 115.69,
+      "min": 0,
+      "median": 5,
+      "max": 435
+     },
+     "evolutions": {
+      "n": 16,
+      "mean": 38.19,
+      "min": 0,
+      "median": 0,
+      "max": 303
+     },
+     "repairs": {
+      "n": 16,
+      "mean": 2.81,
+      "min": 0,
+      "median": 0,
+      "max": 15
+     },
+     "forge": {
+      "n": 16,
+      "mean": 74.69,
+      "min": 0,
+      "median": 0,
+      "max": 435
+     },
+     "final": {
+      "n": 16,
+      "mean": 138.31,
+      "min": 0,
+      "median": 112.5,
+      "max": 321
+     }
+    },
+    "chaveiro": {
+     "runs": 16,
+     "wins": 9,
+     "winsWithDebt": 0,
+     "debt": {
+      "n": 9,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "banks": {
+     "runs": 16,
+     "grana": {
+      "n": 16,
+      "mean": 114.5,
+      "min": 0,
+      "median": 39,
+      "max": 272
+     },
+     "share": {
+      "n": 12,
+      "mean": 0.32,
+      "min": 0.03,
+      "median": 0.34,
+      "max": 0.51
+     },
+     "pooledShare": 0.355,
+     "withdraws": {
+      "n": 16,
+      "mean": 23.13,
+      "min": 0,
+      "median": 8,
+      "max": 55
+     },
+     "enemyWithdraws": {
+      "n": 16,
+      "mean": 4.69,
+      "min": 0,
+      "median": 2,
+      "max": 23
+     },
+     "enemyGrana": {
+      "n": 16,
+      "mean": 9.38,
+      "min": 0,
+      "median": 4,
+      "max": 46
+     },
+     "primes": {
+      "n": 16,
+      "mean": 0.13,
+      "min": 0,
+      "median": 0,
+      "max": 1
+     },
+     "empties": {
+      "n": 16,
+      "mean": 2.63,
+      "min": 0,
+      "median": 0.5,
+      "max": 7
+     },
+     "verdict": "high"
+    },
+    "verdict": {
+     "wins": "no-target",
+     "target": null,
+     "round1": "deaths"
+    }
+   },
+   "6": {
+    "players": 6,
+    "runs": 16,
+    "wins": 8,
+    "winRate": 0.5,
+    "causes": {
+     "boss": 0,
+     "team": 7,
+     "wall": 0,
+     "timeout": 1,
+     "opened": 8,
+     "car": 0
+    },
+    "deathRounds": {
+     "1": 8
+    },
+    "roundReached": {
+     "n": 16,
+     "mean": 1,
+     "min": 1,
+     "median": 1,
+     "max": 1
+    },
+    "firstArrivalS": {
+     "all": null,
+     "byRound": {}
+    },
+    "loot": {
+     "unitsPerIntermission": null,
+     "recipesPerIntermission": null,
+     "byRound": {},
+     "purchasesPerRun": {
+      "n": 16,
+      "mean": 2.75,
+      "min": 0,
+      "median": 1,
+      "max": 7
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 8,
+     "tutorialArrivalS": null
+    },
+    "barricadesFallen": {
+     "perRound": null,
+     "byRound": {}
+    },
+    "boss": {
+     "spawnAfterWaveS": null,
+     "firstInsideBaseS": null,
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": null,
+     "kills": 0,
+     "reached": 0
+    },
+    "towers": {
+     "runs": 16,
+     "rootsPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "tokensPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 16,
+     "earned": {
+      "n": 16,
+      "mean": 1031.56,
+      "min": 0,
+      "median": 1291,
+      "max": 1819
+     },
+     "spent": {
+      "n": 16,
+      "mean": 658.06,
+      "min": 0,
+      "median": 474.5,
+      "max": 1549
+     },
+     "evolutions": {
+      "n": 16,
+      "mean": 369.94,
+      "min": 0,
+      "median": 348.5,
+      "max": 864
+     },
+     "repairs": {
+      "n": 16,
+      "mean": 17.19,
+      "min": 0,
+      "median": 12.5,
+      "max": 75
+     },
+     "forge": {
+      "n": 16,
+      "mean": 270.94,
+      "min": 0,
+      "median": 50,
+      "max": 770
+     },
+     "final": {
+      "n": 16,
+      "mean": 224.13,
+      "min": 0,
+      "median": 155.5,
+      "max": 980
+     }
+    },
+    "chaveiro": {
+     "runs": 16,
+     "wins": 8,
+     "winsWithDebt": 0,
+     "debt": {
+      "n": 8,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "banks": {
+     "runs": 16,
+     "grana": {
+      "n": 16,
+      "mean": 528.13,
+      "min": 0,
+      "median": 679,
+      "max": 978
+     },
+     "share": {
+      "n": 14,
+      "mean": 0.49,
+      "min": 0.28,
+      "median": 0.53,
+      "max": 0.56
+     },
+     "pooledShare": 0.512,
+     "withdraws": {
+      "n": 16,
+      "mean": 105.88,
+      "min": 0,
+      "median": 136,
+      "max": 196
+     },
+     "enemyWithdraws": {
+      "n": 16,
+      "mean": 1.25,
+      "min": 0,
+      "median": 1,
+      "max": 4
+     },
+     "enemyGrana": {
+      "n": 16,
+      "mean": 2.5,
+      "min": 0,
+      "median": 2,
+      "max": 8
+     },
+     "primes": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 16,
+      "mean": 13.13,
+      "min": 0,
+      "median": 17,
+      "max": 24
+     },
+     "verdict": "high"
+    },
+    "verdict": {
+     "wins": "ok",
+     "target": {
+      "min": 7,
+      "max": 11
+     },
+     "round1": "deaths"
+    }
+   }
+  },
+  "verdict": {
+   "ok": false,
+   "notes": [
+    "1p: banks 21.4 % of the Grana, target 25–35 % (low)",
+    "1p: 14 death(s) in round 1",
+    "3p: banks 35.5 % of the Grana, target 25–35 % (high)",
+    "3p: 7 death(s) in round 1",
+    "6p: banks 51.2 % of the Grana, target 25–35 % (high)",
+    "6p: 8 death(s) in round 1"
+   ]
+  }
+ },
+ "runsCompact": true,
+ "ci": {
+  "run": "40785830256",
+  "url": "https://github.com/Cabraiz/viagem/actions/runs/40785830256",
+  "branch": "vgm/ritmo-morto-e-viaduto",
+  "sha": "bf1bb01614436f919df93f3a42bb9d5483a6f411",
+  "params": "63b483da4900"
+ },
+ "runs": [
+  {
+   "key": "1:1",
+   "seed": 1,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 16444,
+   "simMinutes": 13.7,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "982c50b5bc13"
+  },
+  {
+   "key": "2:1",
+   "seed": 2,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6700,
+   "simMinutes": 5.58,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "709599acade1"
+  },
+  {
+   "key": "3:1",
+   "seed": 3,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5724,
+   "simMinutes": 4.77,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "24686026e1f9"
+  },
+  {
+   "key": "4:1",
+   "seed": 4,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6002,
+   "simMinutes": 5,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "06beb79a5f38"
+  },
+  {
+   "key": "5:1",
+   "seed": 5,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 7000,
+   "simMinutes": 5.83,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "bf83375d539c"
+  },
+  {
+   "key": "6:1",
+   "seed": 6,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6502,
+   "simMinutes": 5.42,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "a305479d8972"
+  },
+  {
+   "key": "7:1",
+   "seed": 7,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6085,
+   "simMinutes": 5.07,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "0f297d3459c9"
+  },
+  {
+   "key": "8:1",
+   "seed": 8,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 17352,
+   "simMinutes": 14.46,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "9cbbd290bc56"
+  },
+  {
+   "key": "9:1",
+   "seed": 9,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6000,
+   "simMinutes": 5,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "566c8fd8cf6e"
+  },
+  {
+   "key": "10:1",
+   "seed": 10,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6000,
+   "simMinutes": 5,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "ff0e8886fd86"
+  },
+  {
+   "key": "11:1",
+   "seed": 11,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5701,
+   "simMinutes": 4.75,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "f3210ad13682"
+  },
+  {
+   "key": "12:1",
+   "seed": 12,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6961,
+   "simMinutes": 5.8,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "09ed6d22206b"
+  },
+  {
+   "key": "13:1",
+   "seed": 13,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6200,
+   "simMinutes": 5.17,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "a795ed2189ce"
+  },
+  {
+   "key": "14:1",
+   "seed": 14,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5522,
+   "simMinutes": 4.6,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "9769f029bcf9"
+  },
+  {
+   "key": "15:1",
+   "seed": 15,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6460,
+   "simMinutes": 5.38,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "5d45bda8bda7"
+  },
+  {
+   "key": "16:1",
+   "seed": 16,
+   "players": 1,
+   "classes": [
+    "cidadao-comum"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5801,
+   "simMinutes": 4.83,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "5ef8e060a8e6"
+  },
+  {
+   "key": "1:3",
+   "seed": 1,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6364,
+   "simMinutes": 5.3,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "cb04ff92bcac"
+  },
+  {
+   "key": "2:3",
+   "seed": 2,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 15892,
+   "simMinutes": 13.24,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "296510a9c78d"
+  },
+  {
+   "key": "3:3",
+   "seed": 3,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 16865,
+   "simMinutes": 14.05,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "7eab6ca0f038"
+  },
+  {
+   "key": "4:3",
+   "seed": 4,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5935,
+   "simMinutes": 4.95,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "5590c80a827e"
+  },
+  {
+   "key": "5:3",
+   "seed": 5,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 14705,
+   "simMinutes": 12.25,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "e5febbcb60ed"
+  },
+  {
+   "key": "6:3",
+   "seed": 6,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5642,
+   "simMinutes": 4.7,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "59d49afac578"
+  },
+  {
+   "key": "7:3",
+   "seed": 7,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 14406,
+   "simMinutes": 12.01,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "f83705c2b9ce"
+  },
+  {
+   "key": "8:3",
+   "seed": 8,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 15366,
+   "simMinutes": 12.81,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "a29192501ac7"
+  },
+  {
+   "key": "9:3",
+   "seed": 9,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 16309,
+   "simMinutes": 13.59,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "45a674f990d3"
+  },
+  {
+   "key": "10:3",
+   "seed": 10,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 14778,
+   "simMinutes": 12.32,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "9707b3765070"
+  },
+  {
+   "key": "11:3",
+   "seed": 11,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 4871,
+   "simMinutes": 4.06,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "7b3025037a33"
+  },
+  {
+   "key": "12:3",
+   "seed": 12,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 16243,
+   "simMinutes": 13.54,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "7ed464363538"
+  },
+  {
+   "key": "13:3",
+   "seed": 13,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 15184,
+   "simMinutes": 12.65,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "e9f2cd09baae"
+  },
+  {
+   "key": "14:3",
+   "seed": 14,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5420,
+   "simMinutes": 4.52,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "128cca1785b2"
+  },
+  {
+   "key": "15:3",
+   "seed": 15,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 15420,
+   "simMinutes": 12.85,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "21f7873f69aa"
+  },
+  {
+   "key": "16:3",
+   "seed": 16,
+   "players": 3,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5660,
+   "simMinutes": 4.72,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "674c7392ef17"
+  },
+  {
+   "key": "1:6",
+   "seed": 1,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 26403,
+   "simMinutes": 22,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "ed509e5bb481"
+  },
+  {
+   "key": "2:6",
+   "seed": 2,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 22568,
+   "simMinutes": 18.81,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "735efb1931d5"
+  },
+  {
+   "key": "3:6",
+   "seed": 3,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 25583,
+   "simMinutes": 21.32,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "c3e04fca1a60"
+  },
+  {
+   "key": "4:6",
+   "seed": 4,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 13736,
+   "simMinutes": 11.45,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "6d55426ac03a"
+  },
+  {
+   "key": "5:6",
+   "seed": 5,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 24829,
+   "simMinutes": 20.69,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "ef8a60d4bda0"
+  },
+  {
+   "key": "6:6",
+   "seed": 6,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5135,
+   "simMinutes": 4.28,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "0fe174798e46"
+  },
+  {
+   "key": "7:6",
+   "seed": 7,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 23561,
+   "simMinutes": 19.63,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "ec76b9277d8d"
+  },
+  {
+   "key": "8:6",
+   "seed": 8,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "timeout",
+   "cause": "timeout",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 30000,
+   "simMinutes": 25,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "64b1759cd4e9"
+  },
+  {
+   "key": "9:6",
+   "seed": 9,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 26913,
+   "simMinutes": 22.43,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "f9b47b84ca4c"
+  },
+  {
+   "key": "10:6",
+   "seed": 10,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 24323,
+   "simMinutes": 20.27,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "502982d3eec2"
+  },
+  {
+   "key": "11:6",
+   "seed": 11,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 4854,
+   "simMinutes": 4.05,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "cec81e7ea5a9"
+  },
+  {
+   "key": "12:6",
+   "seed": 12,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 22861,
+   "simMinutes": 19.05,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "2e11009bffd9"
+  },
+  {
+   "key": "13:6",
+   "seed": 13,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5581,
+   "simMinutes": 4.65,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "d84456f7ad13"
+  },
+  {
+   "key": "14:6",
+   "seed": 14,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 22864,
+   "simMinutes": 19.05,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "bb8c29d30188"
+  },
+  {
+   "key": "15:6",
+   "seed": 15,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 13295,
+   "simMinutes": 11.08,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "7be2d2aac70e"
+  },
+  {
+   "key": "16:6",
+   "seed": 16,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "motogirl",
+    "maromba",
+    "coach",
+    "pagodeiro",
+    "porteiro"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 27702,
+   "simMinutes": 23.08,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "digest": "5ae49d50acd8"
+  }
+ ]
+}

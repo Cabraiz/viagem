@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView,compositionLine,COMPOSITION_LINES,memberClassName,chipNameHtml} from '../../src/client/lobby.ts';
+import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView,compositionLine,COMPOSITION_LINES,memberClassName,chipNameHtml,soloHeadline,SOLO_LOADING,coverUp} from '../../src/client/lobby.ts';
+import {readFileSync} from 'node:fs';
 import {RunLifecycle,RUN_HZ,RUN_COUNTDOWN_TICKS} from '../../src/sim/run.ts';
 import type {RunMember,RunState} from '../../src/sim/run.ts';
 
@@ -113,7 +114,8 @@ test('waitingRoomView: headline variants',()=>{
   const offline=waitingRoomView(state('lobby',[member('me',true),member('c',true,false)]),names,'me');
   assert.match(offline.headline,/Caio/,'ready but offline still counts as missing');assert.equal(offline.readyCount,1);
   const several=waitingRoomView(state('lobby',[member('me'),member('b'),member('c',true)]),names,'me');
-  assert.match(several.headline,/2/);
+  // Both here and not ready (solo-sem-sala-de-espera #12): a plain count; the bathroom joke is for who is away.
+  assert.equal(several.headline,'2 ainda não estão prontos.');
   for(const v of [all,selfMissing,otherMissing,several])assert.equal(v.visible,true);
   assert.equal(new Set([all,selfMissing,otherMissing,several].map(v=>v.headline)).size,4);
 });
@@ -156,6 +158,26 @@ test('waitingRoomView: who is away is counted apart from who is here and not rea
   assert.equal(onlyAway.headline,'Só falta Zé voltar.');
   const one=waitingRoomView(state('lobby',[member('me'),member('g',true),member('a',false,false)]),names,'me');
   assert.equal(one.headline,'Falta você. Zé ainda não voltou.');
+  const twoAway=waitingRoomView(state('lobby',[member('me',true),member('a',false,false),member('b',false,false)]),names,'me');
+  assert.equal(twoAway.headline,'2 ainda não voltaram. Alguém foi ao banheiro.');
+});
+test('solo (solo-sem-sala-de-espera): a loading line, the 3-2-1 on the cover, the cover until the match',()=>{
+  assert.equal(SOLO_LOADING,'Chamando os bots…');
+  assert.equal(soloHeadline({phase:'lobby',headline:'Só você aqui. Chama a turma!'}),SOLO_LOADING,'no room talk in solo');
+  assert.equal(soloHeadline({phase:'lobby',headline:'x'},'A cidade não chegou.'),'A cidade não chegou.');
+  assert.equal(soloHeadline({phase:'countdown',headline:countdownJoke(2)}),countdownJoke(2));
+  // The cover: until the scene is drawn everywhere; in solo also through the room and its countdown (and a rematch's).
+  assert.equal(coverUp(false,'combat',false),true);assert.equal(coverUp(true,'lobby',false),false);
+  for(const phase of [undefined,'lobby','countdown'])assert.equal(coverUp(true,phase,true),true,String(phase));
+  for(const phase of ['combat','result'])assert.equal(coverUp(true,phase,true),false,phase);
+  assert.equal(coverUp(false,'combat',true),true);
+  // The texts: one cover line for every match (match-boot.ts); the share line has no drunk; solo hides the room's parts.
+  const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
+  assert.match(explore,/\$\{BOOT_TEXT\.loading\}/);
+  const lobby=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
+  assert.match(lobby,/A cidade não espera\./);assert.doesNotMatch(lobby,/bêbado não espera/);
+  assert.match(lobby,/openExploration\(hero,nick,joined,\{solo:true\}\)/);
+  assert.match(lobby,/panel\.classList\.add\('is-solo'\)/);
 });
 test('sha256Hex matches node:crypto (token hashes in the room storage, VGM-047)',async()=>{
   const {sha256Hex}=await import('../../src/protocol/sha256.ts');const {createHash}=await import('node:crypto');
@@ -168,10 +190,10 @@ test('compositionLine: 3+ with every class known names the first missing role, s
   // CLT (frente), Viciado em Bet (dano), Fofoqueira (controle): no support.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet','vizinha-fofoqueira')),COMPOSITION_LINES['Suporte']);
   assert.match(COMPOSITION_LINES['Suporte'],/café/);
-  // Mendigo (suporte), Maromba (dano), Fofoqueira: nobody up front.
-  assert.equal(compositionLine(m('mendigo','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
+  // Tio do Churrasco (suporte), Maromba (dano), Fofoqueira: nobody up front.
+  assert.equal(compositionLine(m('tio-do-churrasco','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
   // All four roles: nothing to say.
-  assert.equal(compositionLine(m('clt-cansado','mendigo','viciado-em-bet','vizinha-fofoqueira')),undefined);
+  assert.equal(compositionLine(m('clt-cansado','tio-do-churrasco','viciado-em-bet','vizinha-fofoqueira')),undefined);
   // Two players, or a class still unknown: no verdict yet.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet')),undefined);
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet',undefined)),undefined);
@@ -183,7 +205,7 @@ test('memberClassName: the class short name under the chip, empty until known',(
 });
 
 test('chipNameHtml: a numbered name keeps its number apart (the words before it take the reticências); others plain, escaped',()=>{
-  assert.equal(chipNameHtml('Mendigo 2'),'<b class="coop-wait-numbered"><b>Mendigo</b><b>&nbsp;2</b></b>');
+  assert.equal(chipNameHtml('Aposentado 2'),'<b class="coop-wait-numbered"><b>Aposentado</b><b>&nbsp;2</b></b>');
   assert.equal(chipNameHtml('Passage. 3'),'<b class="coop-wait-numbered"><b>Passage.</b><b>&nbsp;3</b></b>');
   assert.equal(chipNameHtml('CLT'),'CLT');assert.equal(chipNameHtml('Bet 365'),'Bet 365');assert.equal(chipNameHtml('2'),'2');
   assert.equal(chipNameHtml('<i> 2'),'<b class="coop-wait-numbered"><b>&lt;i&gt;</b><b>&nbsp;2</b></b>');

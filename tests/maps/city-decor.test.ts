@@ -14,7 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodeCityAsset,encodeCityAsset,cityAssetToData,type CityAsset,type CityDecor} from '../../src/maps/city-asset.ts';
-import {BIG_ROCKS,DECOR_REFUSED,LINK,wallLines,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
+import {BIG_ROCKS,DECOR_REFUSED,LINK,relayWallLines,wallLines,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
 import {KEEP,undecorate} from '../../scripts/cenario-cidade.ts';
 import {pieceRect,wallPieces,wallRuns,type WallRun} from '../../src/maps/wall-lines.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint} from '../../src/maps/build-sites.ts';
@@ -35,9 +35,10 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,7);
-  // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city).
-  assert.ok(asset.decor.length>2500,`${asset.decor.length} pieces`);
+  assert.equal(asset.version,10);
+  // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city); v10
+  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left).
+  assert.ok(asset.decor.length>2400,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
   const keys=Object.keys(JSON.parse(TEXT));
   assert.equal(keys.at(-2)==='decor'||keys.at(-1)==='decor',true);
@@ -114,7 +115,8 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
 
 test('poles keep their spacing; every place with life at least once, apart on open ground',()=>{
   const poles=asset.decor.filter(d=>isPole(d.id));
-  assert.ok(poles.length>300,`${poles.length} poles`);
+  // v9 (bocas-sem-muro-pedra-decor) took the 218 on an entrance's ground (maps/bocas-chao-livre.test.ts).
+  assert.ok(poles.length>120,`${poles.length} poles`);
   for(let i=0;i<poles.length;i++)for(let j=i+1;j<poles.length;j++)
     assert.ok(Math.max(Math.abs(poles[i].c-poles[j].c),Math.abs(poles[i].r-poles[j].r))>=POLE_SPACING);
   const lugares=asset.decor.filter(d=>isLugar(d.id));
@@ -133,7 +135,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,6);
+  assert.equal(b.decor.length,0);assert.equal(b.version,9);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);
@@ -159,7 +161,8 @@ test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells cov
   const cliff=asset.decor.filter(d=>d.id.startsWith('penhasco')),bigCells=cliff.filter(d=>d.id.startsWith('penhasco3-')).reduce((n,d)=>n+d.w*d.h,0);
   const all=cliff.reduce((n,d)=>n+d.w*d.h,0);
   // v6 (uno-anda-mapa-todo): the Uno's lanes cut 10 cliff cells, all under big pieces (v5 990 of 1099, v6 980 of 1089).
-  assert.ok(bigCells/all>.89,`${bigCells} of ${all} cliff cells under a big piece`);
+  // v10 (bocas-chao-aberto): the cliff in the entrances' strips opened, its edges 1-cell pieces (v9 976 of 1086, v10 808 of 913).
+  assert.ok(bigCells/all>.88,`${bigCells} of ${all} cliff cells under a big piece`);
 });
 
 /**
@@ -169,7 +172,10 @@ test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells cov
 test('grades-sem-padrao: each wall is one line of straight pieces along it, back to back, never crossed or stacked',()=>{
   const walls=asset.decor.filter(d=>WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)));
   const pieces=walls.filter(d=>!d.cover);
-  assert.ok(pieces.length>450,`${pieces.length} pieces`);
+  // cercas-nordeste-ligadas: the keep-outs' pieces are the runtime's (leftoverWallLines) and a free end no longer
+  // doubles its last half cell (was > 450). bocas-chao-aberto: the walls in the entrances' strips went (ORQ 30/10: a wall
+  // in a mouth is tralha).
+  assert.ok(pieces.length>320,`${pieces.length} pieces`);
   // Centre (sub units, half cells) and axis: rot 0 along y (rows), rot 90 along x; the rect is centred on the line.
   const key=(x:number,y:number)=>`${x},${y}`,centre=new Map<string,string>(),posts=new Map<string,number>();
   for(const d of pieces){
@@ -217,9 +223,42 @@ test('wallRuns: L corners and T junctions meet on one post, no X',()=>{
   assert.deepEqual(t,['h2:0-8','h2:8-16','v8:2-10']);
 });
 
-test('wallPieces: one cell long each, centred on the line, the odd half overlapping the last; rects centred on them',()=>{
-  const runs:WallRun[]=[{o:'h',k:4,a:0,b:6},{o:'v',k:3,a:1,b:4}];
-  const pieces=wallPieces(runs);
-  assert.deepEqual(pieces,[{cx:1,cy:4,o:'h'},{cx:3,cy:4,o:'h'},{cx:5,cy:4,o:'h'},{cx:3,cy:2,o:'v'},{cx:3,cy:3,o:'v'}]);
-  for(const p of pieces){const q=pieceRect(p);assert.equal(2*q.c+q.w,p.cx);assert.equal(2*q.r+q.h,p.cy);}
+test('wallPieces: one cell long each, centred on the line; an odd half left at a free end, overlapped only between junctions; rects centred on them',()=>{
+  // An even run; an odd one free at both ends (the half left at b).
+  const free=wallPieces([{o:'h',k:4,a:0,b:6},{o:'v',k:9,a:1,b:4}]);
+  assert.deepEqual(free,[{cx:1,cy:4,o:'h'},{cx:3,cy:4,o:'h'},{cx:5,cy:4,o:'h'},{cx:9,cy:2,o:'v'}]);
+  // A T on (3, 4): each odd run leaves its half at its free end, none over another.
+  assert.deepEqual(wallPieces([{o:'h',k:4,a:0,b:3},{o:'h',k:4,a:3,b:6},{o:'v',k:3,a:1,b:4}]),
+    [{cx:2,cy:4,o:'h'},{cx:4,cy:4,o:'h'},{cx:3,cy:3,o:'v'}]);
+  // An odd run between two junctions (a U): its last piece overlaps the one before by half.
+  const u=wallPieces([{o:'h',k:0,a:0,b:3},{o:'v',k:0,a:0,b:2},{o:'v',k:3,a:0,b:2}]);
+  assert.deepEqual(u.filter(p=>p.o==='h'),[{cx:1,cy:0,o:'h'},{cx:2,cy:0,o:'h'}]);
+  for(const p of [...free,...u]){const q=pieceRect(p);assert.equal(2*q.c+q.w,p.cx);assert.equal(2*q.r+q.h,p.cy);}
+});
+
+test('cercas-nordeste-ligadas: wallLines split by `keep` draws the one same line as a single call',()=>{
+  const rows=['##########......','##########......','........##......','........##...#..','........##......','..###...........'];
+  const W0=rows[0].length,H0=rows.length,isWall=(i:number)=>rows[Math.floor(i/W0)][i%W0]==='#',none=new Uint8Array(W0*H0);
+  const keep=(i:number)=>i%W0<6,key=(d:CityDecor)=>`${d.id}@${d.c},${d.r},${d.w}x${d.h},${d.rot}${d.cover?'c':''}`;
+  const whole=wallLines(W0,H0,isWall,()=>'grade',none).map(key).sort();
+  const a=wallLines(W0,H0,isWall,()=>'grade',none,keep),b=wallLines(W0,H0,isWall,()=>'grade',none,i=>!keep(i));
+  for(const d of a)for(const [c,r] of cells(d))assert.ok(keep(r*W0+c));
+  for(const d of b)for(const [c,r] of cells(d))assert.ok(!keep(r*W0+c));
+  // The pieces across the split are in neither part (the caller draws them later, wholly on its own cells).
+  const both=new Set([...a,...b].map(key));
+  assert.ok(whole.filter(k=>!both.has(k)).length<=1,'only the piece over the split is left out');
+  for(const k of both)assert.ok(whole.includes(k),`${k} not on the single line`);
+});
+
+test('cercas-nordeste-ligadas: relaying the wall lines again and again keeps every piece, broken ones too (the break does not spread)',()=>{
+  const rows=['############....','############....','..........##....','..........##....','..####..........'];
+  const W0=rows[0].length,H0=rows.length,isWall=(i:number)=>rows[Math.floor(i/W0)][i%W0]==='#';
+  const broken=new Uint8Array(W0*H0);for(let i=0;i<W0*H0;i+=5)broken[i]=1;
+  const key=(d:CityDecor)=>`${d.id}@${d.c},${d.r},${d.w}x${d.h},${d.rot}${d.cover?'c':''}`;
+  const first=wallLines(W0,H0,isWall,()=>'cerca-madeira',broken);
+  assert.ok(first.some(d=>d.id.endsWith('-quebrado')),'the fixture has broken pieces');
+  let decor=first;
+  // scripts/becos-cidade.ts relays after every openCells: 21 % broken became 47 % when each relay marked every cell a broken piece covers.
+  for(let k=0;k<6;k++)decor=relayWallLines(W0,H0,isWall,decor);
+  assert.deepEqual(decor.map(key).sort(),first.map(key).sort());
 });

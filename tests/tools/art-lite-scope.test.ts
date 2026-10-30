@@ -33,13 +33,13 @@ test('lite refresh can target the sprites (R06 walk128 and the dir4c cardinals) 
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
-test('the menu family copies only the dance pages and the backgrounds: the button, the cut-out heroes, the letreiros and the mureta (light already) stay without a copy and --check passes (BUG-20261022-ORQ-art-lite-menu)',async()=>{
+test('the menu family copies only the dance pages, the backgrounds and the letreiros: the button, the cut-out heroes and the mureta (light already) stay without a copy and --check passes (BUG-20261022-ORQ-art-lite-menu)',async()=>{
   const dir=mkdtempSync(path.join(tmpdir(),'viagem-lite-menu-'));
   try{
     mkdirSync(path.join(dir,'scripts'),{recursive:true});
     writeFileSync(path.join(dir,'scripts/art-lite.json'),JSON.stringify({webp:{},files:{}}));
-    const copied=['danca/aposentado-p1.webp','fundo-estadio-viciado.webp'];
-    const plain=['botao/pilula.webp','heroi/viciado-em-bet-529.webp','letreiro/clt-cansado.webp','mureta-estadio.webp'];
+    const copied=['danca/aposentado-p1.webp','fundo-estadio-viciado.webp','letreiro/clt-cansado.webp'];
+    const plain=['botao/pilula.webp','heroi/viciado-em-bet-529.webp','mureta-estadio.webp'];
     for(const file of [...copied,...plain]){
       const output=path.join(dir,'public/art/menu',file);mkdirSync(path.dirname(output),{recursive:true});
       await sharp({create:{width:32,height:32,channels:4,background:{r:120,g:80,b:220,alpha:.7}}}).webp({lossless:true}).toFile(output);

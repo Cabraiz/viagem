@@ -1,0 +1,4 @@
+/* First-match gesture tips (dicas-dom.ts) in the controls' etiqueta. In the round the joystick sits where the etiqueta
+   rests in the waiting room, so a tip rides just above it, one line, wrapping rather than cut (the tip is all there is). */
+.explore-stick-hint[data-dica]{bottom:calc(100% + 8px)}
+.explore-stick-hint[data-dica] span{white-space:normal}

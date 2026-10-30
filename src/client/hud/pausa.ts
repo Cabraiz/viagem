@@ -4,7 +4,8 @@
  * The room says so in the run state (`RunState.pause`, resent at each whole second of leftMs and when `waiting` changes);
  * explore.ts hands it to Hud.setPause, which keeps it in ctx.pause (E6's channel). This module is the HUD's visual layer:
  * - a dim layer over the world (under the top band, the offer and every window; it never takes a tap);
- * - the title "Escolham! 9 s" and the deadline bar, right above the offer's cards (or under the top band once this phone
+ * - the title "Escolham! 9 s" ("+2 escolhas! 9 s" when this phone has two cards to pick in the one pause: two
+ *   level-ups on one tick, or levels queued during the gap, open ONE pause, card levelup-espalhado) and the deadline bar, right above the offer's cards (or under the top band once this phone
  *   picked and its offer closed), and who the team still waits for ("Esperando: Tia e Zé", "Falta você!");
  * - the marks on the team strip (team.ts): a check on who picked, a "thinking" ficha on who did not yet.
  * The offer itself (opening by itself during the pause, with no clock of its own) is offer.ts, of Executor-6.
@@ -41,8 +42,8 @@ export const PAUSE_PLACE_MS=1000;
 /** Gap (CSS px) between the title box and the offer's cards, and the screen's edges. */
 export const PAUSE_GAP=8;
 
-/** Who the pause can wait for: the run's players (names from the view, states for "você já escolheu"). */
-export interface PauseMember {id:string;name:string;spectator?:boolean;eliminated?:boolean;online?:boolean}
+/** Who the pause can wait for: the run's players (names from the view, states for "você já escolheu"; bots never pick). */
+export interface PauseMember {id:string;name:string;spectator?:boolean;eliminated?:boolean;online?:boolean;bot?:boolean}
 
 export interface PauseView {
   /** Interpolated ms left (clamped to 0..totalMs). */
@@ -52,7 +53,10 @@ export interface PauseView {
   /** What is left of the deadline bar, 0..1. */
   fraction:number;
   urgent:boolean;
-  /** "Escolham! 9 s"; "Voltando em 9 s" once nobody is missing (no "Escolham!" over "Todo mundo escolheu!"). */
+  /**
+   * "Escolham! 9 s"; "+2 escolhas! 9 s" while this phone has 2+ cards left in this pause; "Voltando em 9 s" once nobody
+   * is missing (no "Escolham!" over "Todo mundo escolheu!").
+   */
   title:string;
   /** Who the team waits for ("Esperando: você, Tia e Zé", "Falta você!", "Você já escolheu. Esperando: Tia"). */
   line:string;
@@ -63,6 +67,13 @@ export interface PauseView {
   /** The waiting ids the roster knows (unknown ones are dropped). */
   waiting:string[];
   level:number;
+  /** Cards this phone still has to pick in this pause (its pending offers; 0 once it picked them all). */
+  cards:number;
+  /**
+   * One human in the run (bots aside; levelup-sem-arma-e-solo): the words are singular ("Escolha! 9 s") and the line,
+   * which could only say "Falta você!" or "Todo mundo escolheu!", is empty.
+   */
+  solo:boolean;
 }
 
 /** The leftMs counted down from the message's arrival (`receivedAtMs`) to `nowMs`, clamped to 0..totalMs. */
@@ -86,8 +97,9 @@ const picks=(m:PauseMember|undefined)=>!!m&&!m.spectator&&!m.eliminated;
  * Pure view of the pause for this phone: the title, the bar, who is still missing. `roster` gives the names (railName,
  * the strip's short name); waiting ids it does not know are ignored; this phone's player is "você" and comes first.
  * `receivedAtMs` is when that pause arrived (pauseLeftMs); undefined pause → undefined (no overlay).
+ * `cards`: this phone's pending offers (RunView.offers.length); counted only while the room waits for it.
  */
-export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[],localId:string,nowMs:number,receivedAtMs=nowMs):PauseView|undefined{
+export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[],localId:string,nowMs:number,receivedAtMs=nowMs,cards=1):PauseView|undefined{
   if(!pause)return undefined;
   const leftMs=pauseLeftMs(pause,nowMs,receivedAtMs);
   const seconds=Math.ceil(leftMs/1000);
@@ -99,14 +111,30 @@ export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[]
   const localWaiting=ids.has(localId),others=waiting.filter(id=>id!==localId);
   const names=others.map(id=>railName(byId.get(id)!.name));
   const onlyLocal=localWaiting&&!others.length;
+  const solo=roster.filter(m=>!m.bot).length<=1;
   let line:string;
-  if(!waiting.length)line='Todo mundo escolheu!';
+  if(solo&&!others.length)line='';
+  else if(!waiting.length)line='Todo mundo escolheu!';
   else if(onlyLocal)line='Falta você!';
   else if(localWaiting)line=`Esperando: ${namesList(['você',...names])}`;
   else if(picks(byId.get(localId)))line=`Você já escolheu. Esperando: ${namesList(names)}`;
   else line=`Esperando: ${namesList(names)}`;
-  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title:waiting.length?`Escolham! ${seconds} s`:`Voltando em ${seconds} s`,line,localWaiting,onlyLocal,waiting,level:pause.level};
+  const mine=localWaiting?Math.max(1,Math.floor(cards)||1):0;
+  const title=!waiting.length?`Voltando em ${seconds} s`:mine>1?`+${mine} escolhas! ${seconds} s`:`${solo?'Escolha':'Escolham'}! ${seconds} s`;
+  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title,line,localWaiting,onlyLocal,waiting,level:pause.level,cards:mine,solo};
 }
+
+/**
+ * The first pause's hint (primeira-melhoria-sem-pressa): what to do and what "Rolar de novo" does, by the input kind
+ * (RunHud data-hud). In the pause's box, not under the button: the offer window is offer.ts's.
+ */
+export const PAUSE_HINT_TOUCH='Toque numa carta · Rolar de novo troca as cartas',PAUSE_HINT_MOUSE='Clique numa carta · Rolar de novo troca as cartas';
+/**
+ * The hint under the pause's line: only in the run's first pause (a new player meets the cards there, auditoria
+ * primeira-partida-30-10 item 6) and only while this phone still has a card to pick. Empty otherwise.
+ */
+export const pauseHint=(view:PauseView|undefined,first:boolean,touch:boolean)=>
+  view&&first&&view.localWaiting?touch?PAUSE_HINT_TOUCH:PAUSE_HINT_MOUSE:'';
 
 /** A teammate's mark on the strip while a pause lasts. */
 export type PickMark='escolheu'|'pensando';
@@ -128,12 +156,13 @@ export function pickMarks(pause:RunPause|undefined,roster:readonly PauseMember[]
 
 /**
  * What the screen reader hears (aria-live polite), never every second: the pause starting ("Subiu pro nível 5! Escolham
- * a carta: 12 segundos.") and the moment only this phone is missing ("Falta você!"). Undefined: nothing new to say.
+ * a carta: 12 segundos."; "… Escolham 2 cartas: 16 segundos." with two to pick) and the moment only this phone is
+ * missing ("Falta você!"). Undefined: nothing new to say.
  */
 export function pauseAnnouncement(before:PauseView|undefined,now:PauseView|undefined):string|undefined{
   if(!now)return undefined;
-  if(!before)return `Subiu pro nível ${now.level}! Escolham a carta: ${now.seconds} segundos.`;
-  if(now.onlyLocal&&!before.onlyLocal)return 'Falta você!';
+  if(!before)return `Subiu pro nível ${now.level}! ${now.solo?'Escolha':'Escolham'} ${now.cards>1?`${now.cards} cartas`:'a carta'}: ${now.seconds} segundos.`;
+  if(now.onlyLocal&&!before.onlyLocal&&!now.solo)return 'Falta você!';
   return undefined;
 }
 
@@ -192,7 +221,7 @@ export class PauseClock {
   }
   get pause(){return this.sample;}
   get receivedAt(){return this.at;}
-  view(roster:readonly PauseMember[],localId:string,nowMs:number){return pauseView(this.sample,roster,localId,nowMs,this.at);}
+  view(roster:readonly PauseMember[],localId:string,nowMs:number,cards=1){return pauseView(this.sample,roster,localId,nowMs,this.at,cards);}
 }
 
 const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:string,parent?:HTMLElement)=>{
@@ -209,7 +238,7 @@ export interface PausePartHost {root:HTMLElement;offer:HTMLElement;top:HTMLEleme
 
 /** The roster of the pause from the view's players, in the strip's order (teamOrder: this phone first, then by id). */
 export const pauseRoster=(players:readonly PlayerRunView[],localId:string):PauseMember[]=>
-  teamOrder(players,localId).map(p=>({id:p.id,name:p.name,spectator:p.spectator,eliminated:p.eliminated,online:p.online}));
+  teamOrder(players,localId).map(p=>({id:p.id,name:p.name,spectator:p.spectator,eliminated:p.eliminated,online:p.online,bot:p.bot}));
 
 /**
  * The pause's HUD part (D-050): the veil (`dim`, RunHud puts it under every part), the title box (`el`) and the polite
@@ -225,10 +254,17 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo pra escolher');
   track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
   const line=el(doc,'span','rh-pausa-linha',box);
+  // The first pause's hint, a second line in the line's voice (empty: hidden by .rh-pausa-linha:empty).
+  const hint=el(doc,'span','rh-pausa-linha rh-pausa-dica',box);
   const live=el(doc,'span','rh-sr');live.setAttribute('aria-live','polite');
   const clock=new PauseClock(),now=()=>host.now?.()??performance.now();
-  let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='';
+  let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='',cards=1;
   let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',placedAt=-Infinity,pending=false;
+  /**
+   * The run's first pause: its level, kept until the run ends (rh-ended: the rematch's run starts over) or the team's
+   * level drops below it (a new run in the same HUD). Undefined: no pause seen yet in this run.
+   */
+  let firstLevel:number|undefined,teamLevel=0;
   const render=(view:PauseView|undefined)=>{
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
@@ -238,6 +274,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
     // The text node changes in place (dom-put putTextData): a new node each second made Chrome check the page's :has()
     // rules up to <html> and restyle the whole document, which the place's read then paid for (BUG-20261025-ORQ-levelup-pausa-mede-1s).
     putTextData(title,view.title);putTextData(line,view.line);
+    putTextData(hint,pauseHint(view,view.level===firstLevel,host.root.dataset.hud!=='mesa'));
     // Laranja Cone with a pulse at ≤ 3 s, never by colour alone (the seconds say it too).
     if(('urgente' in box.dataset)!==view.urgent){if(view.urgent)box.dataset.urgente='';else delete box.dataset.urgente;}
     const scale=`scaleX(${view.fraction.toFixed(3)})`;
@@ -253,7 +290,7 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
    * the boxes made the browser recalculate style and layout there (50–130 ms on a 4× phone, card levelup-pausa-mede-1s).
    */
   const place=(view:PauseView)=>{
-    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
+    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${hint.textContent}|${view.urgent}|${host.offer.hidden}|${host.offer.classList.contains('rh-ofc-only-wait')}|${screen.width}x${screen.height}`;
     const t=now();
     if(key===placed&&Math.abs(t-placedAt)<PAUSE_PLACE_MS)return;
     placed=key;placedAt=t;
@@ -283,15 +320,18 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const stop=()=>{if(timer!==undefined){clearInterval(timer);timer=undefined;}};
   const paint=()=>{
     const ended=host.root.classList.contains('rh-ended');
-    if(ended)stop();
-    const view=ended?undefined:clock.view(roster,localId,now());
+    if(ended){stop();firstLevel=undefined;}
+    const view=ended?undefined:clock.view(roster,localId,now(),cards);
     render(view);
     if(view)place(view);
   };
   return {el:box,dim,live,update(view:RunView,ctx:HudContext){
     if(destroyed)return;
-    roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;
+    roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;cards=view.offers?.length??1;
     const pause=validPause(ctx.pause);
+    teamLevel=view.team?.level??teamLevel;
+    if(firstLevel!==undefined&&teamLevel<firstLevel)firstLevel=undefined;
+    if(pause&&firstLevel===undefined&&!host.root.classList.contains('rh-ended'))firstLevel=pause.level;
     clock.sync(pause,now());
     if(pause&&timer===undefined&&!host.root.classList.contains('rh-ended'))timer=setInterval(paint,PAUSE_TICK_MS);
     if(!pause)stop();

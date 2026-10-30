@@ -43,7 +43,9 @@ test(`a person who opens crate after crate still sees at least ${VISIBLE_FLOOR} 
       // sleeps by seed 1's second crate).
       if(target&&pickups().has(target)&&t-since>ticks(8)){skip.add(target);target=undefined;}
       if(!target||!pickups().has(target)){if(target)opened++;target=mine.find(k=>k.id!==target)?.id;since=t;if(target){const k=pickups().get(target)!;p0.x=k.x;p0.y=k.y;}}
-      p0.hp=p0.stats.maxHp;delete (p0 as {fear?:unknown}).fear;
+      // Untouchable (so-3-inimigos: the mendigo runners chase him and every hit starts the opening over): the floor is the
+      // subject here, not the fight.
+      p0.hp=p0.stats.maxHp;p0.invulnerableUntil=Infinity;delete (p0 as {fear?:unknown}).fear;
       s.step(now+=50);
       if(t>ticks(5)&&t%ticks(1)===0)least=Math.min(least,[...pickups().values()].filter(k=>k.kind==='chest'&&!k.hiddenFor?.includes('p0')).length);
     }
@@ -62,7 +64,9 @@ test('(c) a bot leaves a crate to a person who sees it nearby; not one hidden fr
   assert.equal(forAPerson([bot,ana],{...crate,hiddenFor:['ana']},'b'),false,'she does not see it');
   assert.equal(forAPerson([bot,{...(ana as object),x:2+BOT_LEAVES_CRATE} as never],crate,'b'),false,'she is far');
   assert.equal(forAPerson([bot,{...(ana as object),bot:true} as never],crate,'b'),false,'another bot');
-  const view={players:[bot,ana],pickups:[crate],enemies:[]} as never;
-  assert.equal(planLoot(view,bot,{x:0,y:0}).goal,undefined,'the bot does not walk to her crate');
-  assert.equal(planLoot({players:[bot],pickups:[crate],enemies:[]} as never,bot,{x:0,y:0}).goal?.id,'bau-1','alone, it takes it');
+  const armed={...(bot as object),weapons:[{id:'pistola',level:1}]} as never;
+  assert.equal(planLoot({players:[armed,ana],pickups:[crate],enemies:[]} as never,armed,{x:0,y:0}).goal,undefined,'the bot does not walk to her crate');
+  assert.equal(planLoot({players:[armed],pickups:[crate],enemies:[]} as never,armed,{x:0,y:0}).goal?.id,'bau-1','alone, it takes it');
+  // auditoria-primeira-partida-30-10 item 8: a bot with no weapon at all takes one (it cannot hit without it).
+  assert.equal(planLoot({players:[bot,ana],pickups:[crate],enemies:[]} as never,bot,{x:0,y:0}).goal?.id,'bau-1','unarmed, it takes it');
 });

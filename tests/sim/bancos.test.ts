@@ -2,13 +2,13 @@
  * Bancos (card NEW-20261014-ORQ-bancos-e-veiculos, part 1; src/sim/bancos/system.ts, rules/bancos.ts BANCO): the
  * "Caixa 24 h que só dá nota de 2" on the REAL Cidade Nevada, now the BICOS (card NEW-20261024-ORQ-bancos-viram-bicos,
  * rules/bicos.ts BICO): Trabalhar in the ring clocks in, R$/s in notes of R$ 5, the queue cuts the pay and throws the
- * shift out, a spent shift closes the shop and it opens again with another gig.
+ * shift out; the shift has no limit (card NEW-20261029-ORQ-bico-sem-limite-pix-voando): no saldo runs out, no shop closes.
  *  - Placement: planBanks and an assembled city run, both modes (the chaveiro's route or the plaza as the anchor),
  *    deterministic from the seed, BANCO.count banks one per third of the map, the car and route distances; the island
  *    and the endless world have none.
  *  - Unit rigs: a SimWorld of the city with no systems, the BanksSystem stepped by hand and heroes/critters placed by
- *    hand (the hero's withdrawal and its queue, the bait, the critter's withdrawal and the Cliente Prime, the empty ATM
- *    and its refill).
+ *    hand (the hero's withdrawal and its queue, the bait, the critter's withdrawal and the Cliente Prime, the shift with
+ *    no end and a closed row from before opening at once).
  *  - An assembled city run, both modes: a checkpoint at an intermission resumes on a fresh world with the same state
  *    hash on every tick.
  * D-031: sim ticks only, no wall-clock asserts.
@@ -29,7 +29,8 @@ import {cityLoot} from '../../src/sim/stonewards/loot.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {planChaveiro} from '../../src/sim/chaveiro/system.ts';
-import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
+import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,planBanks,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
+import {lotInMouth,shopCandidates,SHOP_MOUTH_REACH} from '../../src/sim/bancos/fora-das-bocas.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
 import {BICO,BICOS} from '../../src/rules/bicos.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
@@ -43,11 +44,11 @@ const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city),PLAZA=PTS.praca;
 /** The bank candidates exactly as assemble.ts hands them: the city's reachable loot points. */
 const LOOT=cityLoot(city)!.crates.map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}));
-/** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback. */
-const CANDIDATES=[...ringCandidates(CAR,(x,y,r)=>city.clearDisc(x,y,r)),...LOOT];
+/** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback, off the mouths. */
+const CANDIDATES=shopCandidates(city,CAR,LOOT);
 /** Ticks per R$ 5 note of one hero alone in a shift (R$ 1/s). */
 const NOTA=Math.ceil(BICO.nota*1000/bicoPay('telemarketing',1,0));
-const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
+const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS);
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 interface Got {tick:number;e:StampedEvent}
@@ -94,7 +95,7 @@ function onePerThird(points:readonly Point[],c:Point){
 // ---------- Placement ----------
 test('placement: 3 banks per seed, deterministic, ids and names, one per third, on the streets distCarro..distCarroMax from the car, desvio from the moto route (chaveiro) or the plaza (wall)',()=>{
   assert.equal(BANCO.count,3);
-  const seen=new Set<string>(),relaxed:string[]=[],noLot:string[]=[],noDesvio:string[]=[];
+  const seen=new Set<string>(),relaxed:string[]=[],noDesvio:string[]=[];
   for(let seed=1;seed<=24;seed++){
     const route=planChaveiro(seed,OPEN,ENTRANCES,CAR).route.points;
     for(const [mode,anchor] of [['chaveiro',{route}],['muralha',{plaza:PLAZA}]] as const){
@@ -105,8 +106,8 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
       assert.deepEqual([...a.map(p=>p.name)].sort(),[...BANK_IDS].sort());
       assert.equal(new Set(a.map(p=>`${p.x},${p.y}`)).size,3,'three different spots');
       for(const p of a)assert.ok(city.clearDisc(p.x,p.y,1.5),'on open street ground');
-      // Bicos: the whole shop fits (a BICO.lote disc clear) wherever the ring has such a spot in that third.
-      for(const p of a)if(!city.clearDisc(p.x,p.y,BICO.lote))noLot.push(`${mode} seed ${seed} ${p.id}`);
+      // Bicos: never a shop in a street mouth (lojas-bico-fora-das-bocas); the whole lot clear is rare off the mouths.
+      for(const p of a)assert.ok(!lotInMouth(city,p.x,p.y),`${mode} seed ${seed} ${p.id}: the shop's lot is off every mouth`);
       assert.ok(onePerThird(a,CAR),`one per third of the map around the car (${mode} ${seed})`);
       for(const p of a){
         const fromAnchor='route' in anchor?distanceToPolyline(p,anchor.route):dist(p,anchor.plaza);
@@ -118,14 +119,14 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
     }
   }
   assert.ok(seen.size>=12,`the seed moves the banks: ${seen.size} different layouts in 48`);
-  // The fallback tiers (a third with no candidate that fits) must stay the exception on the real city.
-  assert.deepEqual(relaxed,[],'every bank keeps the car ring on the real city');
+  // Off the mouths the car ring around the plaza is nearly all street mouth: on the map of main c45f9426 it keeps spots
+  // in two directions only, so a run's third shop is past it (E2 30/10: 58 of 144 shops). Those take the nearest free
+  // ground of their third, never farther than a ring's width past the nearest.
+  assert.ok(relaxed.length<=64,`most shops keep the car ring: ${relaxed.length} of 144 past it`);
+  for(const r of relaxed)assert.ok(Number(r.split('car ')[1])<=BANCO.distCarroMax+SHOP_MOUTH_REACH,`a shop past the ring stays near: ${r}`);
   // Bicos: the shop's lot comes before the desvio rule; on the 1.75× shorter city (mapa-175-com-viaduto) a third rarely
   // has a lot off the route (chaveiro seed 7). It stays rare: at most 2 of the 144 banks.
   assert.ok(noDesvio.length<=2,`the desvio rule drops only for a lot, rarely: ${noDesvio.join('; ')}`);
-  // On the 1.75× shorter city a few thirds have no clear BICO.lote disc on the ring at all (8 of 144 at lote 4, still 4
-  // at lote 3); those shops stand on the fallback spot. Keep it the exception.
-  assert.ok(noLot.length<=8,`the shop has its lot on the real city but rarely: ${noLot.length} without (${noLot.join('; ')})`);
 });
 
 test('placement in a run: the city has banks in both modes (route anchor with the chaveiro), the island and the endless world have none',()=>{
@@ -178,8 +179,8 @@ test('shift: standing in the ring is not working; Trabalhar clocks in (bico entr
   assert.equal(cash(r.step(NOTA-2)).length,0,'nothing before the first note');
   const note=r.step(1);
   assert.deepEqual(cash(note).map(g=>g.e.type==='bank-cash'&&[g.e.bank,g.e.amount,g.e.by]),[[b.id,BICO.nota,'hero']]);
-  assert.equal(r.purse.grana,5);assert.equal(row(r).saldo,BICO.saldo-5);
-  // BICO.porSegundo: the notes of 15 s (6 at R$ 2/s; under the shift's saldo left).
+  assert.equal(r.purse.grana,5);assert.equal(row(r).saldo,BANCO.saldo,'no saldo spent: the view keeps a full shop');
+  // BICO.porSegundo: the notes of 15 s (6 at R$ 2/s).
   assert.equal(cash(r.step(ticks(15))).length,Math.floor(15*BICO.porSegundo/BICO.nota));
   // No input this tick (the room had none): still in.
   r.work.delete('p1');
@@ -286,7 +287,7 @@ test('critter withdrawal: alone within 2 u it takes R$ 2 every 2 s (state bicho,
   const got=r.step(1);
   assert.deepEqual(cash(got).map(g=>g.e.type==='bank-cash'&&[g.e.bank,g.e.amount,g.e.by,g.e.enemy]),[[b.id,2,'enemy','e1']]);
   assert.equal(r.purse.grana,0,'the critter keeps it: no Grana for the team');
-  assert.equal(row(r).saldo,BANCO.saldo-2);assert.equal(r.sys.state.taken,2);
+  assert.equal(row(r).saldo,BANCO.saldo,'the shop stays open');assert.equal(r.sys.state.taken,2);
   // Notes 2..4: no Prime yet (R$ 8).
   r.step(BICHO_SAQUE*3);
   assert.equal(ofType(r.events,'bank-prime').length,0);assert.equal(isPrime(e),false);assert.equal(e.maxHp,10);
@@ -325,38 +326,37 @@ test('critter withdrawal: not with a hero within 4 u, not from 2.5 u, not the bo
   assert.deepEqual(cash(t.step(1),'enemy').map(g=>g.e.type==='bank-cash'&&g.e.enemy),['b']);
 });
 
-// ---------- Empty and refill ----------
-test('closed and open again: the shift\'s R$ 40 spent (8 notes), the shop closes 150 s (bank-empty, the shift out), then opens with ANOTHER gig, none of the other shops\'',()=>{
+// ---------- No limit ----------
+test('no limit (bico-sem-limite-pix-voando): 3 min on the shift pay every note, alone and with 6 seats; no bank-empty, the shop never closes',()=>{
+  for(const seats of [1,6]){
+    const r=rig(),b=r.bank(),was=row(r).bico;
+    worker(r,'p1',at(b,1));
+    for(let i=2;i<=seats;i++)addPlayer(r.world,`p${i}`,at(b,60+i));
+    r.step(1+NOTA*40);
+    assert.equal(cash(r.events,'hero').length,40,`${seats} seats: 40 notes, R$ 200`);assert.equal(r.purse.grana,40*BICO.nota);
+    assert.equal(ofType(r.events,'bank-empty').length,0);assert.equal(ofType(r.events,'bank-refill').length,0);
+    assert.deepEqual(bico(r.events),[['p1','entrou']],'never thrown out by the till');
+    assert.equal(row(r).state,'sacando');assert.equal(row(r).saldo,BANCO.saldo);assert.equal(row(r).bico,was);
+  }
+  // A critter robbing 1 min: it keeps taking (the Prime), the shop stays open.
+  const s=rig(),c=s.bank();
+  addEnemy(s.world,'e1',at(c,1));
+  s.step(BICHO_SAQUE*30);
+  assert.ok(cash(s.events,'enemy').length>=29,'a note every BICHO_SAQUE');assert.equal(ofType(s.events,'bank-empty').length,0);assert.equal(row(s).saldo,BANCO.saldo);
+});
+
+test('a closed row from before (a checkpoint of the old rule) opens at once with ANOTHER gig, none of the other shops',()=>{
   const r=rig(),b=r.bank(),was=row(r).bico;
   worker(r,'p1',at(b,1));
-  r.step(1+NOTA*(BICO.saldo/BICO.nota));
-  assert.equal(cash(r.events).length,8);assert.equal(r.purse.grana,BICO.saldo);
-  const empty=ofType(r.events,'bank-empty');
-  assert.equal(empty.length,1);
-  const until=empty[0].e.type==='bank-empty'?empty[0].e.until:NaN;
-  assert.equal(until,empty[0].tick+RECARGA);
-  assert.equal(empty[0].tick,cash(r.events).at(-1)!.tick,'with the last note');
-  assert.deepEqual(bico(r.events),[['p1','entrou'],['p1','saiu']]);
-  assert.deepEqual(viewOf(r),{id:b.id,x:b.x,y:b.y,name:b.name,saldo:0,state:'sem-cedulas',until,bico:was});
-  // 150 s with the hero still there and Trabalhar held: nothing.
-  const wait=r.step(until-r.world.tick-1);
-  assert.equal(cash(wait).length,0);assert.equal(row(r).state,'sem-cedulas');assert.deepEqual(bico(wait),[]);
+  Object.assign(r.sys.state.list[0],{saldo:0,state:'sem-cedulas',until:r.world.tick+ticks(100),clock:0,held:0});
   const refill=r.step(1);
-  assert.equal(refill[0]?.tick,until);
-  assert.deepEqual(refill.map(g=>g.e.type),['bank-refill','bico']);
-  assert.equal(row(r).saldo,BICO.saldo);assert.equal(row(r).opened,1);
+  assert.deepEqual(refill.map(g=>g.e.type).slice(0,2),['bank-refill','bico']);
+  assert.equal(row(r).saldo,BANCO.saldo);assert.equal(row(r).opened,1);
   const now=row(r).bico;
   assert.notEqual(now,was,'another gig');
   assert.ok(!r.sys.state.list.slice(1).some(x=>x.bico===now),'not one another shop has');
   assert.equal(now,nextBico(7,0,1,was,r.sys.state.list.slice(1).map(x=>x.bico)),'drawn by (seed, shop, times opened)');
-  assert.equal(row(r).state,'sacando','the hero holding Trabalhar starts the new shift');
-  // A critter at an empty shop: nothing.
-  const s=rig(),c=s.bank();
-  s.sys.state.list[0].saldo=2;
-  addEnemy(s.world,'e1',at(c,1));
-  s.step(BICHO_SAQUE);
-  assert.equal(ofType(s.events,'bank-empty').length,1,'the critter emptied it');
-  assert.equal(cash(s.step(BICHO_SAQUE*5)).length,0);
+  assert.equal(viewOf(r).until,undefined);
 });
 
 // ---------- Checkpoint ----------
@@ -377,7 +377,7 @@ for(const objective of ['chaveiro',undefined] as const){
     // bank 2 is dry and refills inside the window; bank 3 is half empty.
     addPlayer(a.world,'p1',at(b0,1));banks.state.list[0].workers=['p1'];
     for(let i=0;i<NOTA+NOTA/2;i++)a.world.step();
-    assert.ok(banks.state.list[0].saldo<BICO.saldo&&(banks.state.list[0].earn?.p1??0)>0,'mid-shift');
+    assert.ok((banks.state.list[0].earn?.p1??0)>0,'mid-shift');
     Object.assign(banks.state.list[1],{saldo:0,state:'sem-cedulas',until:a.world.tick+ticks(10),clock:0,held:0});
     banks.state.list[2].saldo=14;
     assert.equal(dist(b1,a.world.players.get('p1')!)>BANCO.holdR,true);

@@ -48,7 +48,7 @@ const tap=(room:Room,p:TestPeer,id:number)=>command(room,p,{t:'cast',round:room.
 const answers=(p:TestPeer)=>p.messages.filter(m=>m.t==='cast');
 
 test('a skill tap casts inside the tick; the line, dice, cooldown and the tap answer reach the client (protocol 4)',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','tio-do-churrasco');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   const critter=createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
@@ -74,7 +74,7 @@ test('a skill tap casts inside the tick; the line, dice, cooldown and the tap an
 });
 
 test('a dash lands where the server says: the event carries the landing and the client reconciles from it',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Moto','motogirl');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Moto','motogirl');join(room,b,'Bia','tio-do-churrasco');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const moto=room.sim.players.get(idOf(a))!,ally=room.sim.players.get(idOf(b))!;
   // D-053: the room seats the motogirl (hidden for now) as a playable class; the dash itself is hers, so set it back.
@@ -102,7 +102,7 @@ test('a dash lands where the server says: the event carries the landing and the 
 });
 
 test('one tap is one cast: walking afterwards never recasts, even when the cooldown is over',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','tio-do-churrasco');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   const critter=createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
@@ -120,7 +120,7 @@ test('one tap is one cast: walking afterwards never recasts, even when the coold
 });
 
 test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','tio-do-churrasco');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y}).hp=1e6;
@@ -160,7 +160,7 @@ test('skillState: ready without a number, then whole seconds counting down and t
   const answered=skillState({skillTick:0,skillReadyTick:0},100,{castTick:100,readyTick:100+12*SIM_HZ});
   assert.equal(answered.mode,'cooling','the tap answer starts the ring before the frame');assert.equal(answered.seconds,12);
   assert.equal(skillState({skillTick:100,skillReadyTick:100+6*SIM_HZ},101,{castTick:100,readyTick:100+12*SIM_HZ}).seconds,12,'the later readyTick wins');
-  assert.equal(skillLabel('motogirl'),'Habilidade: Entrega Expressa');assert.equal(skillLabel('nobody'),'Habilidade da classe');
+  assert.equal(skillLabel('motogirl'),'Habilidade: Entrega Expressa');assert.equal(skillLabel('nobody'),'Habilidade do herói');
   assert.ok(SKILL_BUBBLE_GAP_MS>=2000,'D-013: one line per caster every ~2 s');
   assert.equal(skillBubbleLine({line:'Calculei tudo de cabeça.',outcome:'miracle'}),'Calculei tudo de cabeça.\nMilagre!');
   assert.equal(skillBubbleLine({line:'Opa'}),'Opa');

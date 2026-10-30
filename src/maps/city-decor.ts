@@ -67,6 +67,8 @@ export interface DecorOptions {
   keepOut?:readonly DecorKeepOut[];
   /** Rects (u, top-left and size) nothing is placed in (build sites). */
   keepOutRects?:readonly {x:number;y:number;w:number;h:number}[];
+  /** Cells (r × cells.w + c) no place with life on open ground covers (an entrance's strip: bocas-chao-aberto). */
+  lugarAvoid?:ReadonlySet<number>;
 }
 export interface DecorResult {
   readonly decor:CityDecor[];
@@ -175,7 +177,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     }
   }
 
-  decor.push(...wallLines(W,H,i=>kind[i]==='wall'&&!fixed[i],i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],broken));
+  decor.push(...wallLines(W,H,i=>kind[i]==='wall',i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],broken,i=>!fixed[i]));
 
   // 2. The border band: mountains where they fit whole, boulders here and there.
   const edge=(i:number)=>kind[i]==='edge'&&solid[i]===1;
@@ -265,6 +267,45 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     }
   }
 
+  // 4b. bocas-chao-aberto: a place on open ground with a cell in `lugarAvoid` moves to the nearest spot step 4 would
+  // take outside it (no draw, before the sidewalks: the rest of the places stay as they were), or goes when there is none.
+  const avoid=options.lugarAvoid;
+  for(const q of avoid?decor.filter(d=>LUGARES.some(([l])=>d.id.startsWith(`${l}-`))&&blocked.some(([x,y])=>x===d.c&&y===d.r)):[]){
+    const own=(x:number,y:number)=>x>=q.c&&x<q.c+q.w&&y>=q.r&&y<q.r+q.h;
+    let hit=false;for(let y=q.r;y<q.r+q.h;y++)for(let x=q.c;x<q.c+q.w;x++)if(avoid!.has(y*W+x))hit=true;
+    if(!hit)continue;
+    decor.splice(decor.indexOf(q),1);
+    for(let i=blocked.length-1;i>=0;i--)if(own(blocked[i][0],blocked[i][1]))blocked.splice(i,1);
+    for(let y=q.r;y<q.r+q.h;y++)for(let x=q.c;x<q.c+q.w;x++){const i=y*W+x;walk[i]=1;used[i]=0;solid[i]=0;}
+    const k=lugarAt.findIndex(([x,y])=>x===q.c&&y===q.r);if(k>=0)lugarAt.splice(k,1);
+    walkTotal=reach().n;
+    const base=LUGARES.find(([l])=>q.id.startsWith(`${l}-`))!,spots:{c:number;r:number;w:number;h:number;face:DecorFace;d:number}[]=[];
+    for(const face of FACES){
+      const {w,h}=turned(base[1],base[2],face);
+      for(let r=1;r+h<H;r++)for(let c=1;c+w<W;c++){
+        // Its cells off the keep-outs too (a nest's yard, a mouth, loot): a place moved onto a mouth would narrow the
+        // street into a new mouth over a nest.
+        if(!rect(c,r,w,h,i=>walk[i]===1&&!avoid!.has(i)&&!out[i]))continue;
+        if(!back(c,r,w,h,face).every(([x,y])=>wallish(x,y)))continue;
+        const ring=[...front(c,r,w,h,face),...front(c,r,w,h,face==='S'||face==='N'?'E':'S'),...front(c,r,w,h,face==='S'||face==='N'?'W':'N')];
+        if(!ring.every(([x,y])=>inMap(x,y)&&walk[y*W+x]&&!used[y*W+x]))continue;
+        if(lugarAt.some(([x,y])=>Math.max(Math.abs(x-c),Math.abs(y-r))<LUGAR_SPACING))continue;
+        spots.push({c,r,w,h,face,d:Math.hypot(c-q.c,r-q.r)});
+      }
+    }
+    spots.sort((x,y)=>x.d-y.d||x.r-y.r||x.c-y.c);
+    for(const s of spots){
+      for(let y=s.r;y<s.r+s.h;y++)for(let x=s.c;x<s.c+s.w;x++)walk[y*W+x]=0;
+      const {n}=reach();
+      if(n===walkTotal-s.w*s.h){
+        walkTotal=n;put(q.id,s.c,s.r,s.w,s.h,FACE_ROT[s.face]);lugarAt.push([s.c,s.r]);
+        for(let y=s.r;y<s.r+s.h;y++)for(let x=s.c;x<s.c+s.w;x++){blocked.push([x,y]);solid[y*W+x]=1;}
+        break;
+      }
+      for(let y=s.r;y<s.r+s.h;y++)for(let x=s.c;x<s.c+s.w;x++)walk[y*W+x]=1;
+    }
+  }
+
   // 5. Sidewalks: walkable cells against a wall, a cliff, a building or a place; poles, then objects.
   const side=new Uint8Array(N);
   for(let r=0;r<H;r++)for(let c=0;c<W;c++){
@@ -303,8 +344,11 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
  * family of the block, intact or broken by the cell's draw. A bit of wall too small for a line (a lone cell or two)
  * gets one piece along its longer side. The wall cells no piece stands on get a `cover` entry (drawn by the line next
  * to them, never by the procedural box), so every wall cell reads as part of its line.
+ * `keep` (default all): the cells this call draws on; the line is always laid over every wall cell and only its entries
+ * wholly on kept cells are returned, so two calls that split the cells between them (the bake off its keep-outs, the
+ * runtime's leftoverWallLines on them) draw the one same line, not two that break where they meet.
  */
-export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:(i:number)=>string,broken:Uint8Array):CityDecor[]{
+export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:(i:number)=>string,broken:Uint8Array,keep:(i:number)=>boolean=()=>true):CityDecor[]{
   const pieces=wallPieces(wallRuns(W,H,(c,r)=>isWall(r*W+c)));
   const covered=new Uint8Array(W*H),out:CityDecor[]=[];
   const add=(p:WallPiece)=>{
@@ -333,7 +377,28 @@ export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:
   }
   for(let i=0;i<W*H;i++)if(isWall(i)&&!covered[i])
     out.push({id:`${familyOf(i)}-reto-intacto`,c:i%W,r:Math.floor(i/W),w:1,h:1,rot:0,cover:true});
-  return out;
+  return out.filter(e=>{for(let y=e.r;y<e.r+e.h;y++)for(let x=e.c;x<e.c+e.w;x++)if(!keep(y*W+x))return false;return true;});
+}
+
+/**
+ * The wall line laid again over walls that lost cells (scripts/becos-cidade.ts openCells: a street widened, a loose
+ * fence taken out; NEW-20261029-ORQ-cercas-nordeste-ligadas): `decor` with its wall entries replaced by wallLines over
+ * the new `isWall`, so what is left of a wall is one line again, not the old pieces with holes where the cut ones were.
+ * A cell keeps the family and the broken draw of the wall entry of `before` (the decor before the cut) on it; the line
+ * is returned only on the cells such an entry stood on (the bake's, off its keep-outs: those stay leftoverWallLines').
+ */
+export function relayWallLines(W:number,H:number,isWall:(i:number)=>boolean,decor:readonly CityDecor[],before:readonly CityDecor[]=decor):CityDecor[]{
+  const familyOf=(d:CityDecor)=>WALL_FAMILIES.find(f=>d.id.startsWith(`${f}-`));
+  const family:(string|undefined)[]=new Array(W*H),broken=new Uint8Array(W*H);
+  for(const d of before){
+    const f=familyOf(d);
+    if(!f)continue;
+    for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)family[r*W+c]=f;
+    // Only the cell wallLines reads a piece's draw from (its rect's first): marking every cell a broken piece covers
+    // spread the break one cell per relay (openCells runs it again and again: 21 % broken → 47 %).
+    if(!d.cover&&d.id.endsWith('-quebrado')&&d.c>=0&&d.r>=0&&d.c<W&&d.r<H)broken[d.r*W+d.c]=1;
+  }
+  return [...wallLines(W,H,isWall,i=>family[i]??WALL_FAMILIES[0],broken,i=>family[i]!==undefined),...decor.filter(d=>!familyOf(d))];
 }
 
 /** The big cliff pieces (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */

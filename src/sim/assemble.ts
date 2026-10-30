@@ -14,13 +14,13 @@ import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
-import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {SOLO_SECOND_CHANCES,createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
-import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
+import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
@@ -33,13 +33,14 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_CLOCK,CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
 import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
-import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {createBanks,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {shopCandidates} from './bancos/fora-das-bocas.ts';
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
@@ -142,6 +143,8 @@ export interface RunSystemsState {
   director:DirectorState;progression:ProgressionState;boss:BossState;enemyAi:EnemyAiState;
   /** Completed revives per rescuer (ReviveSystem.revives), as entries. */
   revives:[string,number][];
+  /** Solo second chances left (ReviveSystem.soloChances), only once one was spent (absent otherwise, so no hash moves). */
+  soloChances?:number;
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
@@ -251,11 +254,16 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const {onOutcome}=options;
   // A checkpoint is copied once: every system below mutates the state it is handed.
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
+  // D-051 manual combat: whether a hero has a weapon (the automatic weapons always do).
+  const armed=(p:SimPlayer)=>!hasInventory(p)||p.build.weapons.some(isWeaponItem);
   // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
   const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
     // A cédula with no room on the ground: paid like the kill would have been (read through `stonewards`, created below).
     payGrana:(ctx,amount,owner)=>{payKill(ctx.players,{},amount,stonewards.state,owner);},
-    ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
+    // levelup-sem-arma-e-solo: empty hands get no weapon card.
+    ...(options.combat==='manual'?{crates:true,armed}:{}),
+    // D-051 mode 'ninhos': the first level's cost follows the heroes (progression.ts FIRST_LEVEL_XP).
+    ...(cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos'?{firstLevelByHeroes:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
@@ -352,7 +360,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-051: where an alerta or a perdeu walks (the sleepers of a run in mode 'ninhos'; none otherwise).
     ...(nestMode?{goal:(ctx:SimContext,e:EnemyState)=>sono?.goal(ctx,e),
       // The minuto de Minerva (the user, 22/10): no critter walks nor chases; it still hits whoever comes into its reach.
-      hold:(ctx:SimContext)=>!!nests?.minerva(ctx.tick)}:{}),
+      // Its visitors (sono.ts VISIT_FROM) walk to the armed heroes.
+      hold:(ctx:SimContext,e:EnemyState)=>!!nests?.minerva(ctx.tick)&&e.memory?.visita!==1}:{}),
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
     // The BASE hero walk on this terrain (maps baseHeroSpeed): the heroes walk HERO_SPEED_MULT × it, but the enemies
@@ -386,6 +395,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
     ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     ...(options.goldLab!==undefined?{goldChance:options.goldLab}:{}),
+    // comeca-armado item 2: the near start crates stay off the Uno's body (the team spawns beside it).
+    car:()=>chaveiro?.state.car,
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),
@@ -448,10 +459,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
-      // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
-      ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
-      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
-      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
+      // missao-proteger-uno-tempo: in mode 'ninhos' the run is the clock (5:00, each hit on the Uno adds time), then he
+      // rides the last stretch and unlocks; no stops, no ride by room, no nests' ramp to wait for.
+      ...(nestMode?{clock:CHAVEIRO_CLOCK}:{}),
       // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
       ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
@@ -485,7 +495,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
             // Card monstros-espalhados: a noise inside a safe place draws the alerta to its door, never in.
             door:at=>safePlaceAt(city,at)?.opening,
             // The minuto de Minerva: no noise wakes anyone, the sight only within MINERVA_REACH (the AI holds them still).
-            minerva:ctx=>!!nests?.minerva(ctx.tick)},cp?.sono);
+            minerva:ctx=>!!nests?.minerva(ctx.tick),
+            // The visitors come to a hero with a weapon (manual combat starts with none: the first crates).
+            armed},cp?.sono);
           world.sleepers=sleep.sleepers;
           // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
           // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).
@@ -529,15 +541,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
   if(cityTerrain){
     const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
-    // The streets around the car first (an intermission trip away), the loot points as a fallback.
-    const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
-    banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
+    // The streets around the car first (an intermission trip away), the loot points as a fallback; none in a street mouth.
+    banks=createBanks({seed:world.seed,candidates:shopCandidates(cityTerrain,{x:wall.x,y:wall.y},(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))),car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
       wallet:{add:(n,to)=>{addGrana(to,n);}},work:id=>work.get(id)},cp?.banks);
     // Veículos: in both city modes too (a ride ends on moving the car).
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
-  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives,soloChances:cp.soloChances}:{})});
   // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
   const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
     base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
@@ -625,7 +636,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       place:(id,slot,order,requestId)=>{const p=world.players.get(id);return p?placeKit(world,p,slot,order,inventoryHooks,requestId):{ok:false,reason:'player'};},
       placeNear:(id,slot)=>{const p=world.players.get(id);return p?placeKitNear(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
-    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
+    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],...(revive.soloChances!==SOLO_SECOND_CHANCES?{soloChances:revive.soloChances}:{}),stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(chefao?{chefao:chefao.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };

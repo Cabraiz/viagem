@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {register} from 'node:module';
-import {Room,closeLogLine,CLOSE_REASON_MAX,type CloseLog} from '../../multiplayer/room.ts';
+import {Room,MSG_BURST,closeLogLine,CLOSE_REASON_MAX,type CloseLog} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {TickLoop} from '../../multiplayer/tick-clock.ts';
 
@@ -115,7 +115,7 @@ test('room-side closes log their reason: binary message (1003), flood (4008), re
   const {o,room,logs}=object();
   const a=join(o,room,'Tia');a.fire('message',{data:new ArrayBuffer(2)});
   assert.equal(a.closed?.code,1003);assert.equal(room.connections.size,0,'out of the room at once, not after 12 s of silence');
-  const b=join(o,room,'Zé');for(let i=0;i<46;i++)b.fire('message',{data:'{"t":"ping","at":1}'});
+  const b=join(o,room,'Zé');for(let i=0;i<=MSG_BURST;i++)b.fire('message',{data:'{"t":"ping","at":1}'});
   assert.equal(b.closed?.code,4008);
   const c=new FakeSocket();o.attach(c,room);c.fire('message',{data:JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'',classId:'cidadao-comum'})});
   assert.equal(c.closed?.code,4003);
@@ -125,7 +125,7 @@ test('room-side closes log their reason: binary message (1003), flood (4008), re
   e.fire('message',{data:JSON.stringify({t:'leave'})});assert.equal(e.closed?.code,1000);
   const f=join(o,room,'Lu');await o.alarm();assert.equal(f.closed?.code,4004);
   assert.deepEqual(logs.map(l=>[l.by,l.code,l.reason]),[
-    ['room',1003,'Texto esperado.'],['room',4008,'Limite de mensagens.'],['room',4003,'Nome ou classe inválidos.'],
+    ['room',1003,'Texto esperado.'],['room',4008,'Limite de mensagens.'],['room',4003,'Nome ou herói inválido. Escolhe de novo.'],
     ['room',4009,'Personagem entrou por outra conexão.'],['room',1000,'Saiu da sala.'],['room',4004,'Sala encerrada.']]);
   assert.equal(o.loop.active,false);
 });

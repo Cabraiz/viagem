@@ -13,6 +13,7 @@
 import {walkable,worldBase} from './world.ts';
 import {FlowField,type FlowGrid} from './flowfield.ts';
 import type {CityTerrain} from './city/terrain.ts';
+import {naBoca} from './city/entradas.ts';
 import {Rng,type Point} from '../contract/index.ts';
 import {citySafePlaces,safePlaceAt} from './safe-places.ts';
 
@@ -81,20 +82,46 @@ export const POPULATION=20;
  * (42.5, 147.5) joined it; the SO yard at (18, 134.5) left too, 13 u from the only G (always drawn), so never drawn.
  * The viaduct (etapa 3): the N avenue runs beside the ramp now, nearer the NO yard at (58.3, 21), which left too (it was
  * 21 u from the new start, the Uno on the deck, under NEST_FROM_START: never drawn).
- * 11 spots, every quadrant beyond NEST_FROM_START of the start.
+ * NEW-20261030-ORQ-entradas-livres-de-tudo (the user, 30/10, 2nd time: "obstáculos em entradas são horríveis"): no
+ * yard nest's drawn art (nestArte) on an entrance's free strip (maps/city/entradas.ts bocaFaixa). Two moved the least
+ * that clears it: (47, 53.1) → (50, 52.1), (42.5, 147.5) → (41, 147.5). Three have no yard off the strips anywhere in
+ * their quadrant (dense blocks, every corner a mouth; search of ±60 u) and are out of the draw (NEST_OFF), kept.
+ * 11 spots, 8 drawn, every quadrant beyond NEST_FROM_START of the start.
  */
+/** The ground square (u) a nest's art covers: 3×3 cells × the client's NEST_SCALE (render/city/live/nests.ts). */
+export const nestArte=(unitsPerCell:number,p:Point,size:NestSize)=>{
+  const h=1.5*unitsPerCell*({P:.85,M:1,G:1.25} as const)[size];
+  return {x:p.x-h,y:p.y-h,w:2*h,h:2*h};
+};
 const POOL_ROWS:readonly (readonly [NestKind,number,number,NestSize,string?])[]=[
   // NO
-  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',47,53.1,'P'],
+  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',50,52.1,'P'],
   // NE
-  ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',100.7,52.9,'P'],['terreno',147.9,34.2,'P'],
+  ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',101.7,52.9,'P'],['terreno',147.9,34.2,'P'],
   // SE
-  ['predio',103.2,145.9,'M','b-0158'],['terreno',124.5,147.9,'M'],
+  ['predio',103.2,145.9,'M','b-0158'],['terreno',122.5,144.9,'M'],
   // SO
-  ['terreno',19,147.7,'G'],['terreno',42.5,147.5,'M'],
+  ['terreno',19,147.7,'G'],['terreno',41,147.5,'M'],
 ];
-export const CITY_NEST_POOL:readonly NestSpot[]=Object.freeze(POOL_ROWS.map(([kind,x,y,maxSize,block],i)=>
-  Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})})));
+/** Spots out of the draw, with the reason; never deleted (a map change may give them a yard again). */
+const NEST_OFF:Readonly<Record<string,string>>={
+  'ninho-06':'arte pega boca, sem pátio livre','ninho-07':'arte pega boca, sem pátio livre','ninho-09':'arte pega boca, sem pátio livre',
+};
+const ALL_SPOTS=POOL_ROWS.map(([kind,x,y,maxSize,block],i):NestSpot=>
+  Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})}));
+/** Where the map (v8) laid the yards before entradas-livres-de-tudo moved them: the asset is built around these.
+ *  ninho-03's yard is where it is drawn since v10 (bocas-chao-aberto: the cuts beside the old yard moved a mouth onto it). */
+const MAP_YARD:Readonly<Record<string,readonly [number,number]>>={
+  'ninho-06':[100.7,52.9],'ninho-09':[124.5,147.9],'ninho-11':[42.5,147.5],
+};
+/** Every spot as the map scripts keep it (becos-cidade, cenario-cidade): the ones out of the draw too, at the yard the
+ *  map laid. Moving a nest or taking it out of the draw must not change the committed asset (mapa-175). */
+export const CITY_NEST_SPOTS:readonly NestSpot[]=Object.freeze(ALL_SPOTS.map(s=>MAP_YARD[s.id]?Object.freeze({...s,x:MAP_YARD[s.id][0],y:MAP_YARD[s.id][1]}):s));
+/** The spots a seed may draw. */
+export const CITY_NEST_POOL:readonly NestSpot[]=Object.freeze(ALL_SPOTS.filter(s=>!NEST_OFF[s.id]));
+/** The spots out of the draw (NEST_OFF), each with its reason. */
+export const CITY_NEST_OFF:readonly (NestSpot&{readonly motivo:string})[]=Object.freeze(
+  ALL_SPOTS.filter(s=>NEST_OFF[s.id]).map(s=>Object.freeze({...s,motivo:NEST_OFF[s.id]})));
 
 const RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 /** A building hosts a nest of up to this size by its bbox's shorter side (u): ≥ 14.5 G (10 asset cells), ≥ 8 M, else P. */
@@ -331,6 +358,7 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     for(const r of routes)if(routeDistance(n,r)<NEST_FROM_ROUTE)bad(n.id,`a ${routeDistance(n,r).toFixed(1)} u de uma rota da moto`);
     for(let j=i+1;j<plan.nests.length;j++)if(dist(n,plan.nests[j])<NEST_SPACING)bad(n.id,`perto de ${plan.nests[j].id}`);
     if(n.kind==='terreno'&&!city.clearDisc(n.x,n.y,NEST_YARD_RADIUS[n.size]))bad(n.id,`o pátio não cabe um ninho ${n.size}`);
+    if(n.kind==='terreno'&&naBoca(city.asset,nestArte(city.asset.unitsPerCell,n,n.size)))bad(n.id,`na boca de uma entrada em (${n.x}, ${n.y})`);
     const box=n.kind==='predio'?bboxOf(city,n.block):undefined;
     if(n.kind==='predio'&&!box)bad(n.id,`prédio ${n.block} não existe`);
     if(box&&RANK[buildingNestSize(box.w,box.h)]<RANK[n.size])bad(n.id,`o prédio ${n.block} não cabe um ninho ${n.size}`);

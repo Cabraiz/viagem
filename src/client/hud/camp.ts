@@ -28,7 +28,7 @@ import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
-import {carBar} from './chaveiro.ts';
+import {ClockTag,carBar,liveObjective} from './chaveiro.ts';
 import {effectivePhase,nestsRun} from '../calm-phase.ts';
 import {HUD_SWITCH} from './arrows.ts';
 import {getAudio} from '../audio/engine.ts';
@@ -159,7 +159,7 @@ export function baseBar(view:Pick<RunView,'structures'|'objective'>):BaseBar{
   const car=carBar(view.objective);
   if(car)return {fraction:car.fraction,value:car.left,low:car.low,label:car.label,car:true};
   const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da muralha',car:false};
+  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da barricada',car:false};
 }
 /** Whether the hero stands in the camp (the forge works there). */
 export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!hero&&!!wall&&Math.hypot(hero.x-wall.x,hero.y-wall.y)<=CAMP_RADIUS;
@@ -218,25 +218,35 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Base ficha ----------
   const readout=el('div','rh-camp');readout.hidden=true;readout.setAttribute('role','group');readout.setAttribute('aria-label','Base');
   const wallRow=el('span','rh-camp-wall',readout);
-  // The base has one symbol everywhere (design onda 6 D10): the tent with its flag, as on the map, the arrows and the minimap.
+  // The base has one symbol everywhere (design onda 6 D10): the Uno (icone-base-vira-uno; the tent left), as on the arrows and the objective.
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
   // The bar and the number each in their own box (.rh-camp-barra, .rh-camp-num): the chaveiro's car bar takes these
   // places later (Executor-4), the order unchanged. The bar is what gives way on a narrow screen.
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
-  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da barricada');
+  // resultado-e-topo-com-rotulo: a sticker before each number of the band ("170" read as nothing): the heart before the
+  // life, the wallet before the R$, the tower in its ring before the fichas. Decorative: the bar and the pills say it in words.
+  num.insertAdjacentHTML('afterbegin',icon('coracao',{className:'rh-camp-num-ic'}));
   // The phone's minimal top (hud-mobile-minimo, fone.css): the life's number, or a clock (barClock: the chaveiro's, D-047,
   // or the intermission's countdown), rides over the bar, small; the round chip that carries them elsewhere is not on the
   // phone. Over the bar's box, not inside the track (its overflow would cut the clock at 125 %). Hidden on the desktop,
   // where the round chip says it; on the phone the words go to the screen reader (.rh-sr, as topbar.ts does).
   const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
+  // missao-proteger-uno-tempo: the round chip's "+N s" (a hit on the Uno, a stop of the moto) after the clock, on the phone too.
+  const clockMore=el('b','rh-camp-relogio-mais',clock);clockMore.setAttribute('aria-hidden','true');clockMore.hidden=true;
+  const clockTag=new ClockTag();
   let lastClock:string|undefined;
   const paintClock=(view:RunView,w:ExploraWindows)=>{
-    const bar=barClock(view,w),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
+    const objective=liveObjective(view),bar=barClock(view,w);
+    const more=clockTag.step(objective&&!roundInfo(view)?.chaveiro?.held?objective:undefined,view.tick);
+    const key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}|${more?`${more.urgent}${more.text}`:''}`:'';
     if(key===lastClock)return;
     lastClock=key;putHidden(clock,!bar);readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+    const tag=bar&&more;putHidden(clockMore,!tag);putText(clockMore,tag?`+${tag.added} s`:'');
+    if(tag)clockMore.dataset.motivo=tag.urgent?'urgente':'parada';else delete clockMore.dataset.motivo;
+    if(bar){putTextData(clockWords,tag?`${bar.aria}. ${tag.text}`:bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
       if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
     else{putTextData(clockWords,'');putText(clockPicture,'');delete clock.dataset.urgente;delete clock.dataset.parado;}
   };
@@ -251,6 +261,7 @@ export function createCamp(options:CampOptions):CampPart{
   };
   // My wallet (D-048, carteira-e-pix), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
+  grana.insertAdjacentHTML('afterbegin',sticker('carteira',{size:24,className:'rh-camp-grana-ic'}));
   const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
   let lastGrana:string|undefined;
   // The team's fichas de torre (D-048): one sticker in its ring and the count; rewritten only when the pile changes.
@@ -373,7 +384,7 @@ export function createCamp(options:CampOptions):CampPart{
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
     // (Only with a wall: with the chaveiro's car in its place, D-047, there is no wall to warn about.)
     if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown&&wall)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){
-      warning={text:`Muralha em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
+      warning={text:`Barricada em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
       clearTimeout(warnTimer);warnTimer=setTimeout(render,WALL_WARNING_MS+20);
     }
     lastFraction=fraction;

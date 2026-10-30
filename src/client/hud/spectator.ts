@@ -2,13 +2,14 @@
  * Spectator bar (NEW-20261009-UX-espectador): out of the run (bled out) or watching (joined mid-run), the bottom band
  * where the thumbs were becomes the torcida's: ‹ who the camera follows › (cycles the teammates still in the run), the
  * "Chinelo" (a slipper flies to the watched friend and a line pops up: screen only, nothing reaches the room, so the
- * room's stateHash never sees it) and "Voltar ao lobby" (two taps: the first one asks again, then it leaves the room).
+ * room's stateHash never sees it) and "Voltar pra sala" (two taps: the first one asks again, then it leaves the room).
  * The top banner keeps "Você tá fora. Volta na revanche." (hud/model.ts OUT_TEXT). After a fall the player walks the
  * map as a ghost (morto-anda-pelo-mapa, scene.ts): the bar then reads "Fantasma · Pelo mapa" and ‹ › pin a friend. spectatorView is pure (node tests);
  * the bar's CSS (spectator.css) is imported by explore.ts, so node can load this module.
  */
 import {icon} from '../ui/icon.ts';
 import type {RunPhase} from '../../contract/index.ts';
+import {railName} from '../../rules/index.ts';
 
 /** What the bar needs from the frame: the run phase, the local player's state and who the camera follows. */
 export interface SpectatorInput {
@@ -20,9 +21,9 @@ export interface SpectatorInput {
 }
 export interface SpectatorView {show:boolean;name:string;classId?:string;arrows:boolean;ghost?:boolean}
 
-/** First word, at most 9 letters: the same cut as the banner's "Assistindo: Tia" (hud/model.ts watchingText). */
-export const shortName=(name:string)=>name.trim().split(/\s+/)[0]?.slice(0,9)??'';
-/** No one left standing to watch (everybody out): the bar still offers the lobby and the chinelo lands in the middle. */
+/** The rail's short name (rules/names.ts railName): the same as the banner's "Assistindo: Tia" and the team rail, bot number kept. */
+export const shortName=railName;
+/** No one left standing to watch (everybody out): the bar still offers the way back to the room and the chinelo lands in the middle. */
 export const NOBODY_TEXT='Ninguém em pé';
 /** The ghost walking free (the bar's "Fantasma" label comes from spectator.css). */
 export const GHOST_TEXT='Pelo mapa';
@@ -43,16 +44,16 @@ export const CHINELO_LINES:readonly string[]=Object.freeze([
   'Torcida organizada: 1 pessoa.',
   'Errou o bicho, acertou o amigo.',
   'Isso é apoio moral.',
-  'Corre que o chinelo é teu!',
+  'Corre que o chinelo é seu!',
 ]);
 /** One slipper at a time per tap rhythm: a tap inside this window is ignored. */
 export const CHINELO_COOLDOWN_MS=900;
 /** How long the slipper flies (ms) and how long its line stays after the landing. */
 export const CHINELO_FLIGHT_MS=650;
 export const CHINELO_LINE_MS=1400;
-/** The second tap on "Voltar ao lobby" must come within this window; past it, the button goes back to its label. */
+/** The second tap on "Voltar pra sala" must come within this window; past it, the button goes back to its label. */
 export const LEAVE_CONFIRM_MS=3000;
-export const LEAVE_TEXT='Voltar ao lobby';
+export const LEAVE_TEXT='Voltar pra sala';
 export const LEAVE_CONFIRM_TEXT='Sai da sala? Toca de novo';
 
 /** The line for the n-th slipper (seeded, so the sandbox and the tests see the same order). */
@@ -61,7 +62,7 @@ export const chineloLine=(n:number)=>CHINELO_LINES[((n%CHINELO_LINES.length)+CHI
 export interface SpectatorOptions {
   /** ‹ (-1) or › (1): the scene follows the previous/next teammate (scene.watchStep). */
   onStep(dir:1|-1):void;
-  /** The confirmed "Voltar ao lobby": leaves the room (explore.ts close). */
+  /** The confirmed "Voltar pra sala": leaves the room (explore.ts close). */
   onLeave():void;
   /** Where the slipper lands (CSS px, viewport): the watched teammate on screen; undefined: the middle of the screen. */
   target():{x:number;y:number}|undefined;
@@ -104,7 +105,7 @@ export class SpectatorBar {
     for(const b of [this.prev,this.next])b.addEventListener('click',()=>{if(!b.disabled)this.options.onStep(Number(b.dataset.dir) as 1|-1);});
     root.querySelector('.spect-chinelo')!.addEventListener('click',()=>this.throwChinelo());
     this.leave.addEventListener('click',()=>this.tapLeave());
-    // A mouse click leaves no focus behind: the desktop's Space (the skill key) must never press "Voltar ao lobby".
+    // A mouse click leaves no focus behind: the desktop's Space (the skill key) must never press "Voltar pra sala".
     root.addEventListener('click',e=>{if(e.detail>0)(e.target as HTMLElement).closest('button')?.blur();});
     parent.append(root,this.fx);
   }

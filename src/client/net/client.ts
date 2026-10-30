@@ -2,10 +2,10 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint,type HeroBody} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {BuildRot,CombatMode,EnemyView,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,EnemyView,PixResult,PlayerRunView,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import {AttackPredictor} from './attack-predict.ts';
@@ -13,10 +13,11 @@ import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
-import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts';
+import {MARK_ID,ROOT_DEFENSE,parseMark,shovedEnemy,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,RemoteClock,remoteAt,tickTime} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
+import {forgetSeat,markRoom,readSeat,saveSeat,unmarkRoom} from './room-return.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;tick:number;players:Map<string,Player>};
 /**
@@ -74,6 +75,30 @@ export function nearBodies(enemies:readonly EnemyView[],at:{x:number;y:number},o
     if(e.elite)b.elite=true;else delete b.elite;
     if(e.boss)b.boss=true;else delete b.boss;
     if(e.andar===1)b.andar=1;else delete b.andar;
+    // Card colisao-entre-herois: only the mendigo gives way (rules shovedEnemy, as the room's enemyHeroShare).
+    if(shovedEnemy(e.kind,e.boss))delete b.fixed;else b.fixed=true;
+    n++;
+  }
+  out.length=n;
+  return out;
+}
+/** Card colisao-entre-herois: the fastest per-tick walk a copy of a teammate keeps between frames (a ride, u/tick). */
+const HERO_COPY_STEP=.5;
+/**
+ * Card colisao-entre-herois: copies of the other heroes on their feet near `at` (the room's standingHero as the phone
+ * sees it: online, not watching, downed, out or at 0 hp), into `out` (reused objects). `before` (the last frame's
+ * players, `ticks` ago) gives each its walk per tick, so the replay walks the copies on as the room's steps do.
+ */
+export function nearHeroes(players:readonly PlayerRunView[],self:string,at:{x:number;y:number},before?:ReadonlyMap<string,{x:number;y:number}>,ticks=1,out:HeroBody[]=[]):HeroBody[]{
+  let n=0;
+  for(const p of players as readonly PlayerWireView[]){
+    if(p.id===self||!p.online||p.spectator||p.downed||p.eliminated||!(p.hp>0)||p.x===undefined||p.y===undefined)continue;
+    if(Math.abs(p.x-at.x)>BODY_COPY_REACH||Math.abs(p.y-at.y)>BODY_COPY_REACH)continue;
+    const h=out[n]??(out[n]={x:0,y:0});
+    h.x=p.x;h.y=p.y;
+    if(p.andar===1)h.andar=1;else delete h.andar;
+    const b=before?.get(p.id),vx=b&&ticks>0?(p.x-b.x)/ticks:0,vy=b&&ticks>0?(p.y-b.y)/ticks:0;
+    if(Math.hypot(vx,vy)<=HERO_COPY_STEP){h.vx=vx;h.vy=vy;}else{h.vx=0;h.vy=0;}
     n++;
   }
   out.length=n;
@@ -90,7 +115,7 @@ const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=2000;
 /**
  * 3g-rede-sem-teleporte: in a match the room holds the seat for the whole run while anyone is still playing (the hero
  * plays on its own meanwhile), so the client keeps knocking that long (the room's lifetime, D-043: 50 min) instead of RETRY_WINDOW_MS;
- * the room says when the seat is really gone ('Sua sessão expirou').
+ * the room says when the seat is really gone (SEAT_EXPIRED: 'sua vaga foi liberada').
  */
 export const RUN_RETRY_WINDOW_MS=50*60_000;
 /** A page reloaded with a saved token (mid-match, or Wi-Fi → 4G) tries this many times before giving up the first join. */
@@ -136,6 +161,8 @@ export const CITY_RETRY_WAIT_MS=6000;
  * Terminal drop in a match (the retry window ran out, the seat token is gone): the HUD shows it with "Voltar pra sala",
  * which opens the room's invite link (NEW-20261009-UX-menu-e-conexao); a reload would land on the start screen.
  */
+/** Shown when the first connection never got in (lobby status line, or the fatal panel after a reload with a seat). */
+export const JOIN_FAILED='Não deu pra entrar na sala. Confere a internet e tenta de novo.';
 export const LINK_LOST='Conexão indisponível. Toca em Voltar pra sala pra entrar de novo.';
 /** Lobby status while that join waits for the city's manifest. */
 export const CITY_RETRY_STATUS='A sala está na Cidade Nevada. Buscando o mapa…';
@@ -147,8 +174,18 @@ function settleWithin<T>(promise:Promise<T>,ms:number):Promise<T|undefined>{
 }
 /** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
 const WAKE_SILENCE_MS=3000;
-/** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
+/**
+ * Full frames (base 0) that fail to decode in a row (each one asking a resync) before the link is renewed: a fresh socket
+ * with the seat token, whose welcome starts the decoder over (nao-e-versao-nova).
+ */
 const MAX_BAD_FULL_FRAMES=3;
+/**
+ * Links renewed in a row for frames this page cannot read, with no good frame between them, before it stops with
+ * LINK_LOST ("Voltar pra sala"). Never "Saiu versão nova": the room's welcome already checked ROOM_PROTOCOL, and only its
+ * explicit refusal (VERSION_REFUSED, or a welcome of another protocol) says the page is old (auditoria 29/10, achado 3:
+ * a 3G stall in combat looped on "Saiu versão nova" with the same build for 6 min).
+ */
+export const MAX_FRAME_RENEWALS=2;
 /** At most one resync request this often (frames already in flight fail the same way). */
 const RESYNC_EVERY_MS=500;
 /** baseSeq of a protocol 4 header (magic, version, uvar seq, uvar baseSeq); -1 when it cannot be read. */
@@ -233,6 +270,8 @@ export class CoopClient {
    * predicted steps push them as the room does (maps bodies.ts), so walking into a crowd does not snap back.
    */
   private bodies:Body[]=[];
+  /** Card colisao-entre-herois: copies of the other heroes on their feet near this one (nearHeroes), soft as in the room. */
+  private heroes:HeroBody[]=[];
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
   /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
@@ -272,6 +311,18 @@ export class CoopClient {
     const ws=this.socket;
     // An attempt already on its way (connecting, or open and joining): let it finish.
     if(ws&&(ws.readyState===WebSocket.CONNECTING||ws.readyState===WebSocket.OPEN))return;
+    clearTimeout(this.retry);this.retry=undefined;this.connect();
+  }
+  /**
+   * "Reconectar" on a "versão nova" window whose site still serves this build (nao-e-versao-nova): the stop was the
+   * link's, not the version's. On again with the seat token and a fresh reconnection window; a room that really refuses
+   * this page says so again. Kicked or replaced by another tab: no (those have their own way out).
+   */
+  restart(){
+    if(!this.stopped||!this.fatal||this.kicked||this.fatal===REPLACED_MESSAGE)return;
+    const saved=readSeat(this.code);if(saved)this.token=saved;
+    this.stopped=false;this.fatal=undefined;this.attempts=0;this.frameRenewals=0;this.badFullFrames=0;this.lastSeenAt=Date.now();
+    if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
     clearTimeout(this.retry);this.retry=undefined;this.connect();
   }
   private wake?:()=>void;
@@ -327,6 +378,8 @@ export class CoopClient {
   lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** "Me salva" pings relayed by the room (UX-resgate-e-ping), the local player's own included. */
   onSos:(ping:SosPing)=>void=()=>{};
+  /** Another hero tapped "Dançar" (the room's {t:'dancou'}): it dances now on this screen too. */
+  onDance:(player:string)=>void=()=>{};
   /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
   onEmote:(e:EmoteNote)=>void=()=>{};
   /** Minimap pings relayed by the room (minimapa-wc3, rules/marks.ts), this phone's own included. */
@@ -461,7 +514,8 @@ export class CoopClient {
     return undefined;
   }
   async join(){
-    try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
+    // Kept by any tab of this device (room-return.ts): a reload or a new tab from the link takes the same seat back.
+    const saved=readSeat(this.code);if(saved)this.token=saved;
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
     if(typeof document!=='undefined'&&!this.wake){this.wake=()=>this.visibility();document.addEventListener('visibilitychange',this.wake);}
     // The phone's network is back (3g-socket-morto): a waiting retry goes now, a silent socket is dropped now.
@@ -517,7 +571,7 @@ export class CoopClient {
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
         if(this.initialized)this.fatal=LINK_LOST;
-        this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
+        this.onStatus(this.fatal??JOIN_FAILED);this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
       const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;
@@ -618,6 +672,8 @@ export class CoopClient {
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
       this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
+      // F5 volta pra sala: the address names the room until the player leaves, so a reload rejoins (main.ts autoJoin).
+      markRoom(this.code);this.marked=true;
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
     }
@@ -638,6 +694,7 @@ export class CoopClient {
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
+    else if(m.t==='dancou'&&typeof m.player==='string'&&m.player.length>0&&m.player.length<=64&&m.player!==this.id)this.onDance(m.player);
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean'){
@@ -666,7 +723,9 @@ export class CoopClient {
       const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;
       // The room checks join.maps before any seat or token (D-026): refused for the map, the seat token is still good.
       if(message===MAP_TEXT.update&&this.retryWithCity(ws))return;
-      this.forgetToken();this.fail(ws,message);
+      // Refused for the version, the same: checked before the seat, so "Reconectar" (reconnect) can still take it back.
+      if(message!==UPDATE_NEEDED)this.forgetToken();
+      this.fail(ws,message);
     }
   }
   /**
@@ -748,14 +807,30 @@ export class CoopClient {
     if(ws?.readyState===WebSocket.OPEN&&(this.connected||this.mapWait?.ws===ws)&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
     if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
+  /** Links renewed for unreadable frames since the last good one (MAX_FRAME_RENEWALS). */
+  private frameRenewals=0;
+  /**
+   * Frames this page cannot place even after asking a resync: drop this socket (its close is a drop, so the usual fast
+   * retry rejoins with the seat token and the welcome resets the decoder). Too many in a row: LINK_LOST.
+   */
+  private renewLink(ws:WebSocket,why:string){
+    // Frames still in flight on a socket already closing do not count again.
+    if(ws.readyState!==WebSocket.OPEN)return;
+    console.warn(`[rede] renova a conexão (${why})`);
+    if(++this.frameRenewals>MAX_FRAME_RENEWALS){this.fail(ws,LINK_LOST,why);return;}
+    this.badFullFrames=0;ws.close();
+  }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
-  private fail(ws:WebSocket,message:string){
+  private fail(ws:WebSocket,message:string,why?:string){
+    console.warn(`[rede] parou: ${why?`${why} → `:''}${message}`);
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  /** The seat token survives a reload (sessionStorage): for the grace, or for the whole run while one is on. */
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+retryWindow(this.run?.phase)}));}catch{}}
-  private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
+  /** The seat token survives a reload and a new tab (localStorage, room-return.ts): for the grace, or the whole run while one is on. */
+  private saveToken(){saveSeat(this.code,this.token,Date.now()+retryWindow(this.run?.phase));}
+  private forgetToken(){forgetSeat(this.code);}
+  /** This page put the room in the address (a welcome): leave() takes it out. */
+  private marked=false;
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.downUntil=-Infinity;this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
@@ -774,15 +849,17 @@ export class CoopClient {
     const result=this.feed.decode(data);
     if(!result.ok){
       if(result.error==='stale frame')return;
-      // Even a full frame does not decode, again and again: the page and the room speak different formats.
-      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.fail(ws,UPDATE_NEEDED);return;}
+      // Even a full frame does not decode, again and again (after a stall): a fresh link, not "versão nova".
+      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.renewLink(ws,`quadro cheio: ${result.error}`);return;}
       // A frame we cannot place (lost baseline, garbage): ask for a full one, once per RESYNC_EVERY_MS.
       const now=performance.now();
       if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;this.out(ws,{t:'resync'});}
       return;
     }
     this.badFullFrames=0;
-    if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,UPDATE_NEEDED);return;}
+    // A world this page did not build (its terrain came with the welcome): the next welcome brings the right one.
+    if(result.world&&result.world.signature!==this.terrain.signature){this.renewLink(ws,'assinatura do mundo');return;}
+    this.frameRenewals=0;
     this.ackSeq=result.seq;
     this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
@@ -815,7 +892,9 @@ export class CoopClient {
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
       this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);
       this.bodies=nearBodies(view.enemies,self,this.bodies);
-      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
+      const last=this.samples.at(-1),gap=last?view.tick-last.tick:0;
+      this.heroes=nearHeroes(view.players,this.id,self,gap>0&&gap<=5?last?.players:undefined,gap,this.heroes);
+      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies,heroes:this.heroes}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -863,7 +942,7 @@ export class CoopClient {
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim,work);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies,this.heroes);}
     this.flushInput();
   }
   /**
@@ -927,6 +1006,13 @@ export class CoopClient {
   get isOwner(){return !!this.id&&this.run?.owner===this.id;}
   rematch(){this.runCommand({t:'rematch'});}
   /**
+   * Card exploracao-espera-carregar: this phone drew its first frame of the run (scene.ts). The room holds the minuto de
+   * Minerva's clock full until every phone says it (at most 20 s, multiplayer/load-wait.ts); an older room ignores it.
+   */
+  loaded(){this.runCommand({t:'carregou'});}
+  /** The own hero dances (empty hands, "Dançar"): the room tells the others. */
+  dance(){this.runCommand({t:'dancar'});}
+  /**
    * Owner's map pick in the lobby (cidade-09): exactly {t:'setMap',map} (no round: map-select validateSetMap). The room
    * answers everyone with {t:'map'}, or the owner with a notice. False when there is no open connection to send it on.
    */
@@ -962,7 +1048,11 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);
+    // Replaced (4009): the seat lives on in the newer tab, which shares this device's token.
+    if(this.fatal!==REPLACED_MESSAGE)this.forgetToken();
+    if(this.marked){this.marked=false;unmarkRoom(this.code);}
+    if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
 }
 export { STEP };
 

@@ -23,6 +23,7 @@ import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 import {CALM_WINDOW_S,calmRound} from '../../src/sim/bot-brain.ts';
 import {CALMA,calmAround} from '../../src/rules/calma.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
+import {CHAVEIRO_CLOCK} from '../../src/sim/chaveiro/system.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -142,7 +143,9 @@ test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s 
 });
 
 // ---------- The room's calm checkpoint ----------
-test('calm checkpoint: every 90 s of calm with no boss, right after a nest falls, never with a critter awake within 20 u of a standing hero, never in the rounds mode',()=>{
+test('calm checkpoint: every 90 s of calm with no boss, right after a nest falls, never with a critter awake within 20 u of a standing hero, never in the rounds mode',t=>{
+  // missao-proteger-uno-tempo: the 5:00 clock calls the boss at 4:00 (no calm checkpoint after it); a longer clock here.
+  const start=CHAVEIRO_CLOCK.start;CHAVEIRO_CLOCK.start=900;t.after(()=>{CHAVEIRO_CLOCK.start=start;});
   // Seed 1 (was 7) since the viaduct (mapa-175-com-viaduto): with the hero on the deck at the start, seed 7 sends a
   // critter along the street under it, 19 u away, on the tick the second checkpoint was due.
   const sim=new Simulation(1,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos'});

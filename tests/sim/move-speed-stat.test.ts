@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {moveStep,reconcile,statMoveSpeed,STEP,type MoveEffects} from '../../src/maps/prediction.ts';
-import {heroSpeed,SPAWN,type Point} from '../../src/maps/world.ts';
+import {heroSpeed,SPAWN,walkable,type Point} from '../../src/maps/world.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 import {BOT_WALK_MULT,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT} from '../../src/contract/index.ts';
 import {SPEED} from '../../src/maps/world.ts';
@@ -43,8 +43,11 @@ test('the room: a person and a bot with the same moveSpeed walk the same share, 
   const sim=new Simulation();
   const person=sim.add('p','Ana','cidadao-comum'),bot=sim.addBot('b','Robô','cidadao-comum');
   sim.resetRun();
-  // Both from the same clear spot, one after the other (they do not push each other).
+  // Both from the same clear spot, one after the other; the other seat waits off the line (card colisao-entre-herois:
+  // the heroes are solid to each other).
   const walk=(id:string,moveSpeed:number)=>{
+    const other=sim.players.get(id==='p'?'b':'p')!;other.x=SPAWN.x;other.y=SPAWN.y-6;
+    assert.ok(walkable(other,T),'the other seat waits on the ground');
     const p=sim.players.get(id)!;p.stats={...p.stats,moveSpeed};p.x=SPAWN.x;p.y=SPAWN.y;
     const from={x:p.x,y:p.y};
     for(let i=0;i<10;i++){

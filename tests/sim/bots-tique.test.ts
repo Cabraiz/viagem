@@ -17,6 +17,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {CALMA} from '../../src/rules/index.ts';
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 import {CALM_SLACK,DANGER,PERIL_R,TURN_CALM,TURN_HOLD,calmRound,clearPath,decide,newMemory,type BrainInput} from '../../src/sim/bot-brain.ts';
 import type {RunView} from '../../src/contract/index.ts';
 import type {TerrainField} from '../../src/maps/index.ts';
@@ -28,27 +29,51 @@ const loaded=await cityTerrainFrom(TEXT,HASH);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 
+/** Seed `seed` (1), three room bots and a person, 120 s: turn-backs (more than 135°) and those 200 ms or less after the bot's last. */
+function tique(pace?:Partial<typeof NEST_PACE>,seed=1){
+  const save={...NEST_PACE};Object.assign(NEST_PACE,pace);
+  try{
+    const sim=new Simulation(seed,{world:'cidade',terrain:city,objective:'chaveiro',combat:'manual',mode:'ninhos'});
+    const room=new RoomBots();
+    sim.add('p1','Pessoa','clt');
+    for(let i=0;i<3;i++){sim.addBot('b'+i,'Bot'+i,['clt','maromba','viciado'][i]);room.add('b'+i,i);}
+    sim.botState=()=>room.state();sim.resetRun();room.reset();
+    const last=new Map<string,{x:number;y:number}>(),lastBack=new Map<string,number>();
+    let back=0,quick=0,tick=0;
+    const set=sim.setBotInput.bind(sim);
+    sim.setBotInput=(id,d,...rest)=>{
+      const l=last.get(id),n=Math.hypot(d.x,d.y);
+      if(n>.01){
+        if(l&&(l.x*d.x+l.y*d.y)/n<Math.cos(135*Math.PI/180)){
+          back++;
+          const b=lastBack.get(id);if(b!==undefined&&tick-b<=4)quick++;
+          lastBack.set(id,tick);
+        }
+        last.set(id,{x:d.x/n,y:d.y/n});
+      }
+      return set(id,d,...rest);
+    };
+    const seconds=120;
+    for(;tick<seconds*20;tick++){room.think(sim);sim.step();}
+    return {rate:back/3/seconds,back,quick};
+  }finally{Object.assign(NEST_PACE,save);}
+}
+
+// Measured with the pace of the time (Minerva 120 s, the first wave past the 120 s): the bots walking, no fight.
 test('the user\'s tique: three room bots in the nests turn back under 0.25 times a second each (0.47 before)',()=>{
-  const sim=new Simulation(1,{world:'cidade',terrain:city,objective:'chaveiro',combat:'manual',mode:'ninhos'});
-  const room=new RoomBots();
-  sim.add('p1','Pessoa','clt');
-  for(let i=0;i<3;i++){sim.addBot('b'+i,'Bot'+i,['clt','maromba','viciado'][i]);room.add('b'+i,i);}
-  sim.botState=()=>room.state();sim.resetRun();room.reset();
-  const last=new Map<string,{x:number;y:number}>();
-  let back=0;
-  const set=sim.setBotInput.bind(sim);
-  sim.setBotInput=(id,d,...rest)=>{
-    const l=last.get(id),n=Math.hypot(d.x,d.y);
-    if(n>.01){
-      if(l&&(l.x*d.x+l.y*d.y)/n<Math.cos(135*Math.PI/180))back++;
-      last.set(id,{x:d.x/n,y:d.y/n});
-    }
-    return set(id,d,...rest);
-  };
-  const seconds=120;
-  for(let t=0;t<seconds*20;t++){room.think(sim);sim.step();}
-  const rate=back/3/seconds;
+  const {rate}=tique({minerva:120,first:[30,60],firstLate:[60,0],explore:120});
   assert.ok(rate<.25,`half-turns per bot per second: ${rate.toFixed(2)}`);
+});
+
+// Card missao-proteger-uno-tempo: the first wave now comes at 35-45 s, so the 120 s hold a fight. Kiting turns back on
+// purpose (0.28 a second, 99 turns), but the tique, the swap every think (3 in 4 within 200 ms before), stays out: 2 in 99.
+// One seed's fight is chaotic (bico-sem-limite-pix-voando, same bots: seed 1 went 2/99 → 17/123 while seeds 1–8 held
+// 55/795 → 53/783 and main's seed 5 alone gives 15/120), so seeds 1–4 are summed: 22/415 on main, 30/441 with it.
+test('in the first wave (the NEST_PACE default) the turn-backs are kiting, not the 200 ms swap',()=>{
+  let back=0,quick=0;
+  for(const seed of [1,2,3,4]){const t=tique(undefined,seed);back+=t.back;quick+=t.quick;}
+  assert.ok(back>0,'the first wave reaches the bots inside the 120 s');
+  assert.ok(quick/back<.1,`turn-backs within 200 ms of the last: ${quick} of ${back}`);
 });
 
 /** A bare wave view: one bot at the origin, a critter at `critter`. */

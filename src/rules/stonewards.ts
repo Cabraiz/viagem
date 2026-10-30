@@ -37,12 +37,18 @@ export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
 /**
  * Inflação (D-048 balance): the Grana of a long run is plenty, so the weapon and tower recipes get dearer with each
- * purchase in the run: the base × (1 + bought). The repair (wall, barricades) keeps its price: defence never inflates.
+ * purchase in the run: the base × (1 + INFLATION_STEP × bought), at most INFLATION_CAP × the base, in whole R$
+ * (gambiarra 45, 68, 90, 90…). The repair (wall, barricades) keeps its price: defence never inflates.
+ * NEW-20261029-ORQ-economia-caixa-e-forja: it was × (1 + bought), no cap: the 3rd gambiarra at R$ 135, and the forge
+ * took 75 % of what a 3p team spent (auditoria-economia-29-10).
  */
 export const INFLATING:readonly RecipeId[]=['gambiarra','torre-chinelo'];
+export const INFLATION_STEP=.5,INFLATION_CAP=2;
 /** Purchases of each inflating recipe in this run (absent: none). */
 export type ForgeBought=Partial<Record<RecipeId,number>>;
-export const forgePrice=(id:RecipeId,bought?:ForgeBought)=>RECIPES[id].cost*(INFLATING.includes(id)?1+Math.max(0,bought?.[id]??0):1);
+export const forgePrice=(id:RecipeId,bought?:ForgeBought)=>INFLATING.includes(id)
+  ?Math.round(RECIPES[id].cost*Math.min(INFLATION_CAP,1+INFLATION_STEP*Math.max(0,bought?.[id]??0)))
+  :RECIPES[id].cost;
 /** The team can pay `cost` R$ from its Grana. */
 export const canPay=(grana:number,cost:number)=>grana>=cost;
 /**

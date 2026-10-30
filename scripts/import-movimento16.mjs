@@ -5,7 +5,7 @@
 //   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--motions push] [--body-height 112] [--write] [--report x.json]
 // --body-height (card maromba-cabeca-proporcao): the scale reference in native px instead of the idle-S figure height, for
 // a head enlarged on purpose (the game draws 96/height: a taller head counted in it would shrink the whole hero).
-// --motions (card empurrar-uno): only these optional motions (run, push, pull, hurt, build, work, downed) of each class, the rest of its sheets untouched.
+// --motions (card empurrar-uno): only these optional motions (run, push, pull, hurt, build, work, downed, shoved) of each class, the rest of its sheets untouched.
 // --motions idle (card parado-respiracao-herois): the rest alone, at the class's scale; on an R06 class (the CLT) it
 // replaces the idle8 while the walk128/attack128 stay.
 import assert from 'node:assert/strict';
@@ -38,7 +38,10 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
     work:{columns:4,rows:4,frames:16,durationMs:3200,loop:true},
     // Optional (card queda-6-herois): the fall when downed, from the rest pose to lying, one gag; played once, the last
     // pose held until the hero is lifted (replaces the rest turned −90°).
-    downed:{columns:4,rows:4,frames:16,durationMs:1500,loop:false}}});
+    downed:{columns:4,rows:4,frames:16,durationMs:1500,loop:false},
+    // Optional (card anim-ser-empurrado): shoved by another body, two steps back, a sit and up again with two steps
+    // forward to the rest pose (the last pose may repeat the first); played once.
+    shoved:{columns:4,rows:4,frames:16,durationMs:1400,loop:false}}});
 /**
  * A breathing rest (card parado-respiracao-herois): 16 poses in 4×4, the chest rising and the feet planted, played over
  * 3.2 s. The importer takes it when the idle sheet is 768 px tall (4×2 stays the held pose); its poses stay as drawn.
@@ -46,23 +49,26 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
 export const IDLE_BREATH=Object.freeze({columns:4,rows:4,frames:16,durationMs:3200,loop:true});
 /** The sheet layout of `motion`: the breathing rest for a 4-row idle, else its MOVEMENT16_META entry. */
 export const motionSpec=(motion,breath=false)=>motion==='idle'&&breath?IDLE_BREATH:MOVEMENT16_META.motions[motion];
-/** The motions every M16 class draws; `run`, `push`, `pull`, `hurt`, `build`, `work` and `downed` are optional, all 5 drawn directions or none. */
-const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push','pull','hurt','build','work','downed'];
+/** The motions every M16 class draws; `run`, `push`, `pull`, `hurt`, `build`, `work`, `downed` and `shoved` are optional, all 5 drawn directions or none. */
+const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push','pull','hurt','build','work','downed','shoved'];
 /** The 8 directions an R06 idle8 draws, in its column order. */
 const R06_DIRECTIONS=['S','SW','W','NW','N','NE','E','SE'];
 /** The optional motions placed by their assembler and the ground walked (a phase table next to the sheet). */
 const PHASED=new Set(['run','push','pull']);
 /** The motions placed by their assembler (no pose moved here): the phased ones, the hurt, the build, the work and the fall (feet where the rest's are). */
-const AS_DRAWN=new Set([...PHASED,'hurt','build','work','downed']);
+const AS_DRAWN=new Set([...PHASED,'hurt','build','work','downed','shoved']);
 /** A hurt starts and ends on the rest pose: its last cell may repeat its first. */
 /**
  * A work loop (animacao-trabalhar-6) may hold a gag pose: a drawn pose that broke the loop (the mug gone for a frame, the
  * body turned the other way) is replaced by its neighbour, so up to WORK_HELD_POSES cells repeat one before them.
  */
 export const WORK_HELD_POSES=2;
+const heldPoses=hashes=>new Set(hashes).size>=hashes.length-WORK_HELD_POSES&&hashes.every((h,i)=>!hashes.slice(0,i).includes(h)||hashes[i-1]===h);
 const distinctPoses=(motion,hashes)=>motion==='hurt'?new Set(hashes.slice(0,-1)).size===hashes.length-1&&hashes.at(-1)!==hashes.at(-2):
   // A fall may hold a pose the same way (queda-6-herois: a leg stretched past the parado's ratio repeats its neighbour).
-  motion==='work'||motion==='downed'?new Set(hashes).size>=hashes.length-WORK_HELD_POSES&&hashes.every((h,i)=>!hashes.slice(0,i).includes(h)||hashes[i-1]===h):new Set(hashes).size===hashes.length;
+  motion==='work'||motion==='downed'?heldPoses(hashes):
+  // A shove (anim-ser-empurrado) holds like a fall and ends on its first pose, the rest it started from.
+  motion==='shoved'?heldPoses(hashes.slice(0,-1))&&(hashes.at(-1)===hashes[0]||!hashes.slice(0,-1).includes(hashes.at(-1))):new Set(hashes).size===hashes.length;
 const exists=file=>access(file).then(()=>true,()=>false);
 /**
  * A run alone (card corrida-clt): an R06 class (walk128/attack128/idle8 in the manifest) with no walk/attack/idle M16
@@ -264,7 +270,8 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
           // starts and ends on the rest pose without a sideways jump. Its rest: the M16 idle16-<dir>, else the R06 idle8.
           // The build likewise (animacao-construir-6): the hero stops by the obra and picks up the tool on the spot.
           // A fall (queda-6-herois) is placed by its assembler with pose 0's feet on the cell's middle column: its pivot.
-          if(clip.motion==='downed')files[key].pivotX=48;
+          // A shove likewise: its assembler puts pose 0's feet (the rest's) on the middle column.
+          if(clip.motion==='downed'||clip.motion==='shoved')files[key].pivotX=48;
           else if(clip.motion==='hurt'||clip.motion==='build'||clip.motion==='work'){
             const rest=previous.pieces[record.id]?.files?.[`idle16-${clip.direction}`]??previous.pieces[record.id]?.files?.idle8;
             const pivot=rest?.pivotX??(rest?.anchor?.[0]??.5)*96;

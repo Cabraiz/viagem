@@ -90,6 +90,9 @@ function home(m:ReturnType<typeof match>){
 test(`nobody falls to the dark: a solo hero fetching the start crates within ${REACH} u and then alone for minutes, every seed`,()=>{
   for(const seed of [1,2,3,7,21,4242]){
     const m=match(seed);
+    // The dark only: the first wave where the solo had it before missao-proteger-uno-tempo (210 s; now 35–45 s, and the
+    // Uno left alone falls to it before the darkest has run its FEAR_SECONDS).
+    const nests=m.sim.run.nests!.state;nests.nextWave=nests.startTick!+ticks(210);
     // In the minuto de Minerva the mission, word for word ("Junte caixas e volte ao Uno"): one round of the start crates
     // within REACH, the nearest next, then back (a crate he cannot take any more hides from him: crates.ts hiddenFor).
     const start=m.chests().filter(k=>Math.hypot(k.x-m.car.x,k.y-m.car.y)<=REACH),near:Chest[]=[];

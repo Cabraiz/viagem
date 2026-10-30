@@ -11,7 +11,8 @@
  *  - offline players are neither waited for nor settled: their offers stay held as before D-050 (a phone on 3G back in
  *    a few seconds keeps its pick, and a pause opens for it once back, after the gap);
  *  - ends: when nobody is left waiting, or at its deadline (PAUSE_FIRST_MS, + PAUSE_EXTRA_MS per extra level, at most
- *    PAUSE_MAX_MS): the humans online who did not pick and the bots get the defaults, then the sim steps again;
+ *    PAUSE_MAX_MS; the run's first pause at least PAUSE_RUN_FIRST_MS): the humans online who did not pick and the bots
+ *    get the defaults, then the sim steps again;
  *  - the intermission keeps today's rule (offers due at its end): the game is not running there anyway.
  * Wall clock (ms, the room's `now`), not ticks: the sim's tick is what stands still.
  */
@@ -19,8 +20,17 @@ import type {RunPause} from '../src/contract/index.ts';
 import {SIM_HZ} from '../src/contract/index.ts';
 
 export const PAUSE_FIRST_MS=12_000,PAUSE_EXTRA_MS=4_000,PAUSE_MAX_MS=20_000;
-/** Combat between two pauses (20 s): a busy late game would otherwise stop every few seconds. */
-export const PAUSE_GAP_TICKS=20*SIM_HZ;
+/**
+ * The run's first pause, at least (card primeira-melhoria-sem-pressa, auditoria primeira-partida-30-10 item 6): a new
+ * player meets the cards, Pular and Rolar de novo there for the first time, and the HUD says "Toque numa carta".
+ */
+export const PAUSE_RUN_FIRST_MS=15_000;
+/**
+ * Combat between two pauses (30 s): a busy late game would otherwise stop every few seconds. levelup-espalhado: was 20 s,
+ * which in a nest burst (5-6 levels in ~100 s) opened a pause every 20 s; at 30 s the levels in between join the next
+ * pause (one pause, "+2 escolhas").
+ */
+export const PAUSE_GAP_TICKS=30*SIM_HZ;
 /** A room bot's reaction in a pause. */
 export const BOT_PICK_MS=1_000;
 
@@ -33,16 +43,19 @@ export interface PauseSim {
   pendingOffers():Map<string,number>;
   settleOffers(id:string):number;
 }
-/** Deadline of a pause whose longest queue is `levels` cards. */
-export const pauseMs=(levels:number)=>Math.min(PAUSE_MAX_MS,PAUSE_FIRST_MS+PAUSE_EXTRA_MS*Math.max(0,levels-1));
+/** Deadline of a pause whose longest queue is `levels` cards; `first`: the run's first pause (PAUSE_RUN_FIRST_MS at least). */
+export const pauseMs=(levels:number,first=false)=>
+  Math.max(first?PAUSE_RUN_FIRST_MS:0,Math.min(PAUSE_MAX_MS,PAUSE_FIRST_MS+PAUSE_EXTRA_MS*Math.max(0,levels-1)));
 
 interface Open {startedAt:number;totalMs:number;level:number}
 export class LevelupPause {
   private open?:Open;
   /** Tick the last pause ended on (the gap counts combat ticks from there). */
   private lastEndTick=-Infinity;
-  /** A new run: no pause, no gap. */
-  reset(){this.open=undefined;this.lastEndTick=-Infinity;}
+  /** A pause already opened in this run (the next ones are not the first: pauseMs). */
+  private opened=false;
+  /** A new run: no pause, no gap, the next pause is the run's first. */
+  reset(){this.open=undefined;this.lastEndTick=-Infinity;this.opened=false;}
   get paused(){return !!this.open;}
   /**
    * Per room tick in combat, before the sim would step. Returns true when the sim must NOT step this tick. `now`: the
@@ -54,7 +67,8 @@ export class LevelupPause {
       if(sim.world.round?.phase==='prepare'||sim.tick-this.lastEndTick<PAUSE_GAP_TICKS)return false;
       const pending=[...sim.pendingOffers()].filter(([id])=>this.acts(sim,id));
       if(!pending.length)return false;
-      this.open={startedAt:now,totalMs:pauseMs(Math.max(...pending.map(([,n])=>n))),level:sim.world.team.level};
+      this.open={startedAt:now,totalMs:pauseMs(Math.max(...pending.map(([,n])=>n)),!this.opened),level:sim.world.team.level};
+      this.opened=true;
     }
     const open=this.open;
     // Room bots pick their defaults after their reaction.

@@ -30,8 +30,12 @@ export function notesFromEvents(events:readonly StampedEvent[],lastEventId:numbe
   }
   return out;
 }
-/** The saldo's share of a full ATM, 0..1 (the ring on the ground). */
-export const saldoShare=(b:Pick<BankView,'saldo'>)=>Math.max(0,Math.min(1,b.saldo/BANCO.saldo));
+/**
+ * The saldo's share of a full ATM, 0..1 (the ring on the ground). `full`: what a full one holds (BANCO.saldo). The bicos
+ * never spend it (bico-sem-limite-pix-voando), so a shop's ring is whole in any room, which anel-caixa-por-assento
+ * (whole at bicoSaldo(seats)) was for.
+ */
+export const saldoShare=(b:Pick<BankView,'saldo'>,full:number=BANCO.saldo)=>Math.max(0,Math.min(1,b.saldo/Math.max(1,full)));
 /** Seconds until an empty ATM is full again (0 when it is not empty or has no deadline). */
 /**
  * What each frozen piece of a bank's ground is drawn for (card Q2, NEW-20261021-E5-q2-graphics-assados): the hold ring
@@ -39,9 +43,9 @@ export const saldoShare=(b:Pick<BankView,'saldo'>)=>Math.max(0,Math.min(1,b.sald
  * space, at the camera's contour width `k` (to the hundredth): the renderer re-freezes a piece only when its key changes,
  * and the paying pulse is a scale, not a redraw.
  */
-export function groundKeys(b:Pick<BankView,'saldo'|'state'>,k:number,view:number):{hold:string;ring:string;shadow:string}{
+export function groundKeys(b:Pick<BankView,'saldo'|'state'>,k:number,view:number,full:number=BANCO.saldo):{hold:string;ring:string;shadow:string}{
   const kq=Math.round(k*100);
-  return {hold:`${b.state==='sacando'?1:0}|${kq}`,ring:`${b.state==='bicho'?1:0}|${saldoShare(b)}|${kq}`,shadow:`${view}`};
+  return {hold:`${b.state==='sacando'?1:0}|${kq}`,ring:`${b.state==='bicho'?1:0}|${saldoShare(b,full)}|${kq}`,shadow:`${view}`};
 }
 /** The saldo ring's breathing while a hero is paid (1: still; reduced effects never breathe). */
 export const groundPulse=(b:Pick<BankView,'state'>,now:number,reduced:boolean)=>b.state==='sacando'&&!reduced?1+Math.sin(now*.01)*.04:1;
@@ -83,13 +87,15 @@ export class BankTracker {
   tick=0;
   notes:FlyingNote[]=[];
   balloons:Balloon[]=[];
+  /** The hero notes each bank paid in the last push (the PIX swarm pops one "+R$ 5" each over its workers). */
+  paid:{bank:string;count:number}[]=[];
   private last=new Map<string,BankView>();
   private heroNotes=new Map<string,number>();
   private lastEventId=-1;
   /** `events`: the room's view events (bank-cash says who took each note); undefined = guess from the saldo (sandbox). */
   push(banks:readonly BankView[]|undefined,tick:number,now:number,events?:readonly StampedEvent[]){
     this.tick=tick;this.banks=banks?[...banks]:[];
-    const seen=new Set<string>();
+    const seen=new Set<string>();this.paid=[];
     const cash=events&&notesFromEvents(events,this.lastEventId);
     if(events)for(const e of events)if(e.eventId>this.lastEventId)this.lastEventId=e.eventId;
     for(const b of this.banks){
@@ -100,6 +106,7 @@ export class BankTracker {
       const count=Math.min(NOTES_PER_VIEW,took.hero);
       // The hero's notes first, then the critter's, NOTES_PER_VIEW in all.
       for(let slot=0;slot<Math.min(NOTES_PER_VIEW,took.hero+took.enemy);slot++)this.notes.push({bank:b.id,born:now+slot*120,by:slot<count?'hero':'enemy',slot});
+      if(took.hero)this.paid.push({bank:b.id,count:took.hero});
       if(count){
         const n=this.heroNotes.get(b.id)??0;this.heroNotes.set(b.id,n+count);
         this.balloons=this.balloons.filter(x=>x.bank!==b.id);

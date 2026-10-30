@@ -1,0 +1,30 @@
+| | 1p antes | 3p antes | 6p antes |
+|---|---|---|---|
+| partidas | 16 | 16 | 16 |
+| vitórias | 3 | 14 | 12 |
+| derrotas Uno | 4 | 0 | 0 |
+| derrotas time | 9 | 2 | 4 |
+| estouro 30 min | 0 | 0 | 0 |
+| quedas | 9 | 47 | 163 |
+| eliminados | 0 | 1 | 0 |
+| elim. c/ colega ≤6 u ≥2 s | 0 | 1 | 0 |
+| elim. c/ colega ≤6 u >3 s | 0 | 1 | 0 |
+| reviver mediana s | - | 3.1 | 2.4 |
+| parado "burro" s/partida | 21.5 | 116.1 | 201.8 |
+| fight parado >10 s (ep.) | 0 | 0 | 3 |
+|   desses, na abertura (<60 s) | 0 | 0 | 0 |
+| fight parado s/partida | 0 | 0 | 4.5 |
+| build parado >8 s (ep.) | 10 | 8 | 33 |
+| build parado s/partida | 17.4 | 21 | 84 |
+| loot parado >8 s (ep.) | 0 | 0 | 1 |
+| loot parado s/partida | 0 | 0 | 0.9 |
+| longe do Uno s/partida | 0 | 0 | 0 |
+| longe máx u | 0 | 0 | 0 |
+| preso s/partida | 0.1 | 0.4 | 1 |
+| preso no Uno s/partida | 0.1 | 0.4 | 0.7 |
+| caixas abertas | 43.5% | 24.6% | 30.3% |
+|   r1 | 20% | 25.6% | 40.1% |
+|   r2 | 12.7% | 16.9% | 17.6% |
+|   r3 | 63.8% | 29.6% | 24.6% |
+| caixa ≤20 u: até abrir s | 8 | 9 | 8 |
+| abates/partida | 148.6 | 219.8 | 476.7 |

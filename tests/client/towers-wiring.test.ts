@@ -15,6 +15,9 @@ import {MARKER_SLACK,OBRA_MARKER,planMarkers} from '../../src/client/hud/towers/
 import {OBRA_DONE_MS,OBRA_NO_ANSWER,OBRA_OFFLINE,OBRA_PENDING_MS,OBRA_RAIL_TAKEN,OBRA_REFUSALS,OBRA_REFUSED,OBRA_WATCHING,ObraRequests,WIRE_BRANCH,
   branchForWire,obraViewFrom,refusalText,siteOf,towersInWorld,unreachableText} from '../../src/client/hud/towers/wiring.ts';
 import {ZONE_WINDOWS,ZONE_WINDOWS_BESIDE_OBRA,computeZones,crosses,measureZoneInput,measureZones,type Rect} from '../../src/client/hud/zones.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (rules/kits-off.ts shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 
 const PLAN:BuildPlan={cell:.88,sites:[{id:'obra-01',x:10,y:10,maxSize:2},{id:'obra-02',x:20.5,y:10,maxSize:3},{id:'obra-03',x:30,y:12.25,maxSize:1}],
   rail:{id:'trilho',x:5,y:40,axis:'x',length:12,width:4}};

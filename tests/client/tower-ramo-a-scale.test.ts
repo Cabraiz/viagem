@@ -16,13 +16,14 @@ test('the 7 posts: T1 and the 6 ramo A defenses, no other',()=>{
   assert.equal(RAMO_A_POSTS.size,7);
 });
 
-test('a post soldier stands as tall as the hero, on any map and actor scale; the rest keep the scenery scale',()=>{
+test('a post soldier stands as tall as the hero, on any map and actor scale; the crewless gustavão keeps the scenery scale',()=>{
   for(const art of [towerArtScale(84),towerArtScale(84,1.496),towerArtScale(200,1.2)])for(const s of [1,.5445,2]){
     for(const k of RAMO_A_POSTS){
       const soldier=RAMO_A_CREW_PX*towerKindScale(k,art,s),hero=HERO_FIGURE_PX*s*HERO_DRAW_SCALE;
       assert.ok(Math.abs(soldier-hero)<1e-9,`${k}: soldier ${soldier} vs hero ${hero}`);
     }
-    for(const k of ['morteiro','holofote','gustavao','rojao-de-festa'] as TowerKind[])assert.equal(towerKindScale(k,art,s),art,k);
+    // Since 31/10 (kits-so-torres-boas) the B/C crews stand at the hero's size too (tower-crew-scale.test.ts).
+    assert.equal(towerKindScale('gustavao',art,s),art,'gustavao');
   }
 });
 

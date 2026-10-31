@@ -31,6 +31,9 @@ import {CAR_ID,type RunView} from '../../src/contract/index.ts';
 import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,CHAVEIRO_KEEP_SHARE,CHAVEIRO_KEEP_WALLET,CHAVEIRO_SAVE_ETA,REPAIR_BELOW,TOWER_STAND,decide,granaReserve,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,GUSTAVAO_COST,ROOT_DEFENSE,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {EVOLVE_PRICE as E,RECIPES,TOWER_TOKENS,UNITS_PER_TOKEN,priceOf,tokensOf,type RecipeId} from '../../src/rules/index.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (the room shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 import {TOWER_REPAIR_COST} from '../../src/sim/towers/system.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.

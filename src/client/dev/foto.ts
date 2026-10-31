@@ -86,7 +86,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'pausa-esperando':{sandbox:'hud',query:'pausa=esperando&frozen=1&heroi=1',descricao:'pausa do level-up: você já escolheu, esperando 2'},
   'pausa-ultimo':{sandbox:'hud',query:'pausa=ultimo&frozen=1&heroi=1',descricao:'pausa do level-up: os 3 s finais, "Falta você!"'},
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
-  'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Morteiro (roxa) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
+  'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Guarita (a única torre das caixas) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
   'kit-obra':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro',descricao:'torre-pela-caixa: o Morteiro do kit em obra e o fantasma verde do próximo'},
   'kit-barricada':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada',descricao:'barricada-tocar-no-mapa: o fantasma da barricada = a própria arte (amarelo) sobre a pegada 2×1'},
   'kit-barricada-giro':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada&giro=1',descricao:'barricada-tocar-no-mapa: o mesmo fantasma girado (arrastou no outro eixo)'},

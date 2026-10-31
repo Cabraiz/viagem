@@ -59,12 +59,10 @@ function square(k:number,size:number){
   return ring(k).find(o=>onGround(city,o,size,size))!;
 }
 
-test('rules: rarity = tier, the wall pieces are verde, no Gustavão; every kit id is in the DICT', ()=>{
-  assert.deepEqual([...KIT_POOL[1]].sort(),['barricada','muro','vigia-do-predio']);
-  for(const r of [2,3,4,5] as const){
-    assert.ok(KIT_POOL[r].length>0);
-    for(const p of KIT_POOL[r])assert.equal(DEFENSES[p as keyof typeof DEFENSES].tier,r,`${p} in pool ${r}`);
-  }
+test('rules: the wall pieces are verde, no Gustavão; every kit id is in the DICT', ()=>{
+  // kits-so-torres-boas (31/10): no barricada (BARRICADA_OFF) and only the guarita (TOWERS_SHOWN), every tier.
+  assert.deepEqual([...KIT_POOL[1]].sort(),['muro','vigia-do-predio']);
+  for(const r of [2,3,4,5] as const)assert.deepEqual(KIT_POOL[r],['vigia-do-predio'],`pool ${r}`);
   assert.ok(!Object.values(KIT_POOL).flat().includes('gustavao' as never),'the Gustavão rides the rail');
   assert.equal(kitRarity('muro'),1);assert.equal(kitRarity('morteiro'),3);assert.equal(kitRarity('obuseiro'),5);
   assert.equal(kitPiece(kitId('morteiro')),'morteiro');assert.equal(kitPiece('pistola'),undefined);assert.equal(isKitId('kit:gustavao'),false);
@@ -82,7 +80,7 @@ test('crate draw: a kit of the crate\'s tier about KIT_CHANCE of the time, else 
       const kit=prize.items.find(i=>isKitId(i.id));
       if(!kit)continue;
       kits++;seen.add(kit.id);
-      assert.equal(kitRarity(kitPiece(kit.id)!),r,`${kit.id} from a ${r}`);
+      assert.ok(KIT_POOL[r].includes(kitPiece(kit.id)!),`${kit.id} from a ${r}`);
     }
     // bau-so-arma-ou-torre: KIT_CHANCE is the whole kit share (the dourada's own kit row is gone).
     const want=KIT_CHANCE;

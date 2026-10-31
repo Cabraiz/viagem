@@ -97,7 +97,7 @@ test('the root by cell and by site (the bots, the HUD of today); the level-up pa
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:4,ok:false,reason:'pausa'});
 });
 
-test('barricada-construir part 2: the map\'s tralha on the wire; {t:destruir} pays, {t:coletar} answers twice and gives the kit',async()=>{
+test('barricada-construir part 2: the map\'s tralha on the wire; {t:destruir} pays, {t:coletar} refused while BARRICADA_OFF',async()=>{
   // The tralha goes into the inventory: the manual combat's rooms (D-051).
   const s=await cityWave({combat:'manual'}),{room,a,ana}=s,round=room.run.snapshot().round;
   s.tick(2);
@@ -114,11 +114,10 @@ test('barricada-construir part 2: the map\'s tralha on the wire; {t:destruir} pa
   assert.equal(a.messages.length,n);
   say(room,a,{t:'coletar',round:round+1,req:6,id:two.id},s.t);
   assert.deepEqual(a.messages.at(-1),{t:'coleta',req:6,ok:false,reason:'fase'});
+  // kits-so-torres-boas (BARRICADA_OFF): no coleta, so no kit:barricada is born; the square stays (destruir still pays).
   stand(two);say(room,a,{t:'coletar',round,req:7,id:two.id},s.t);
-  const started=a.messages.findLast(m=>m.t==='coleta')!;
-  assert.equal(started.ok,true);assert.ok(Number.isSafeInteger(started.until));
+  assert.deepEqual(a.messages.findLast(m=>m.t==='coleta'),{t:'coleta',req:7,ok:false,reason:'nada'});
   s.tick(40);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='coleta'),{t:'coleta',req:7,ok:true,done:true});
-  assert.ok(ana.build.weapons.some(w=>w.id==='kit:barricada'),'the kit in the inventory');
-  assert.ok(!lastStructures(a.frames).some(x=>x.id===two.id&&x.hp>0),'the square left the map');
+  assert.ok(!ana.build.weapons.some(w=>w.id==='kit:barricada'),'no kit in the inventory');
+  assert.ok(lastStructures(a.frames).some(x=>x.id===two.id&&x.hp>0),'the square stays');
 });

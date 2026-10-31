@@ -14,6 +14,9 @@ import {DEFENSES,EVOLVE_PRICE,RECIPES,RECIPE_IDS,TOWER_TOKENS,UNITS_PER_TOKEN,fo
 import {icon} from '../../src/client/ui/icon.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import {HUD_CSS} from './hud-css.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (rules/kits-off.ts shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 
 const read=(path:string)=>readFileSync(new URL(`../../src/client/hud/${path}`,import.meta.url),'utf8');
 

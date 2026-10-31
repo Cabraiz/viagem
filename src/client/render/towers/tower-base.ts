@@ -99,7 +99,7 @@ export abstract class TowerRendererBase {
   protected get f(){return this.unitPx/24;}
   /** World px per art px of the delivered sheets (towerArtScale: the city scenery's). */
   protected get artScale(){const c=this.o.cell,cell=typeof c==='function'?c():c;return towerArtScale(this.diamondPx,cell&&cell>0?cell:undefined);}
-  /** World px per art px of a kind's sheets: the scenery's, or the hero's for the ramo A posts (towerKindScale). */
+  /** World px per art px of a kind's sheets: the hero's for a crewed kind, else the scenery's (towerKindScale). */
   protected kindScale(kind:TowerKind){return towerKindScale(kind,this.artScale,this.s);}
   /** World px of 1 u along the ground (screen length of a unit step), for barrel lengths and blast ellipses. */
   protected measure(){

@@ -31,6 +31,10 @@ import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src
 import {walkable,SPAWN,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {setRosterOnlyLiberados,setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// kits-so-torres-boas: the full run's bots get the whole upgrade tree, as before the card (with the guarita alone they
+// fall in round 5 having met 7 kinds; the rotation coverage this test wants needs the later rounds).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
 setRosterOnlyWithArt(false);setRosterOnlyLiberados(false);
 
@@ -325,7 +329,7 @@ test('a full assembled run with the rotation (6 room bots, endless world) gets t
   const ids=new Set([...rotationIds(sim.run.director.state.rotation!),'chefe','agiota','tio-pave','bebado']);
   for(const k of seen)assert.ok(ids.has(k),`${k} outside the rotation (or the boss's minions)`);
   assert.ok(rotation===undefined||isRotation(rotation));
-  assert.ok(seen.size>=8,`${seen.size} kinds met`);
+  assert.ok(seen.size>=8,`${seen.size} kinds met, outcome ${sim.outcome} round ${sim.world.round.index}`);
 });
 
 // ---------- review fixes ----------

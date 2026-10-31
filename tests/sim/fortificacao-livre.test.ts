@@ -28,6 +28,9 @@ import {buildPlanFor,type CellRect} from '../../src/maps/index.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (the room shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {RADIUS} from '../../src/maps/world.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';

@@ -27,7 +27,7 @@
  * camp's 1×1 ones included, can hold a Vigia; a tier larger than its site's maxSize is refused (on a 1×1 site the root
  * can only become a Rojão or a Holofote). The Gustavão is not built on a site: it moves onto the laid rail (RailSite).
  */
-import {ticks,type FreePiece} from '../contract/index.ts';
+import {ticks,type FreePiece} from '../contract/index.ts';import {towerShown} from './kits-off.ts';
 import {CITY_DISTANCE_SCALE} from './scale.ts';
 import {UNITS_PER_TOKEN} from './stonewards.ts';
 /** Site size a defense needs (structurally the maps port's BuildSize; rules may not import maps). */
@@ -236,7 +236,7 @@ export const isDefenseId=(id:unknown):id is DefenseId=>typeof id==='string'&&Obj
 
 /** What a defense may evolve into, main line first. */
 export function childrenOf(id:DefenseId):DefenseDef[]{
-  return DEFENSE_IDS.map(k=>DEFENSES[k]).filter(d=>d.from===id).sort((a,b)=>(a.alt?1:0)-(b.alt?1:0));
+  return DEFENSE_IDS.map(k=>DEFENSES[k]).filter(d=>d.from===id&&towerShown(d.id)).sort((a,b)=>(a.alt?1:0)-(b.alt?1:0));
 }
 
 /**

@@ -16,7 +16,7 @@ import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {SOLO_SECOND_CHANCES,createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
-import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
+import {BARRICADA_OFF,UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,killDrop,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
@@ -331,7 +331,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
     // of (the chaveiro and the nests, created below; the wall mode has none of them).
     // barricada-construir part 2: the map's barricadas, collected into the inventory's kit:barricada (manual combat).
-    ...(objective&&manual?{tralha:{
+    ...(objective&&manual?{tralha:{coleta:!BARRICADA_OFF,
       carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')?w.level:0),0),
       give:(p:SimPlayer)=>{const own=p.build.weapons.find(w=>w.id===kitId('barricada'));if(own){own.level++;return true;}return addItem(p,{id:kitId('barricada'),level:1});},
     }}:{}),

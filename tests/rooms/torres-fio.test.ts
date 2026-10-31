@@ -7,6 +7,9 @@ import {Room,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {buildPlanFor} from '../../src/maps/index.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (rules/kits-off.ts shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 
 function peer(){
   const messages:any[]=[],frames:Uint8Array[]=[];

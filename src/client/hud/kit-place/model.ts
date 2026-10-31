@@ -19,6 +19,7 @@ import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/
 import {KIT_PLACE_REACH,isTowerKit,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
+import type {TowerKind} from '../../render/towers/tower-rules.ts';
 import {fortRefusalText} from '../fortify/model.ts';
 
 /** The room's reach for a kit (rules KIT_PLACE_REACH, from the hero to the footprint's edge): farther, the ghost is red. */
@@ -75,6 +76,15 @@ export function towerKitsArrived(slots:readonly (KitSlotLike|undefined)[]|undefi
     seen.add(piece);(out??=[]).push(piece);
   }
   return out??NO_KITS;
+}
+/** torre-folha-ao-pegar-kit, the host's side: every frame's backpack; a new scene starts over (its textures are its own). */
+export class KitArt {
+  private scene:unknown;
+  private readonly seen=new Set<string>();
+  sync(scene:{needTowerArt(kind:TowerKind):void},slots:readonly (KitSlotLike|undefined)[]|undefined){
+    if(this.scene!==scene){this.scene=scene;this.seen.clear();}
+    for(const kind of towerKitsArrived(slots,this.seen))scene.needTowerArt(kind as TowerKind);
+  }
 }
 
 export class KitPlace {

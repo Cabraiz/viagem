@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {KIT_REACH,KIT_TURN_DRAG,KitPlace,kitRefusalText,towerKitsArrived} from '../../src/client/hud/kit-place/model.ts';
+import {KIT_REACH,KIT_TURN_DRAG,KitArt,KitPlace,kitRefusalText,towerKitsArrived} from '../../src/client/hud/kit-place/model.ts';
 import {inventorySlots,slotLabel,tapCommand} from '../../src/client/hud/inventory.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';
@@ -133,11 +133,15 @@ test('torre-folha-ao-pegar-kit: a tower kit coming into the backpack asks for it
   assert.deepEqual(towerKitsArrived([kitItem('morteiro'),kitItem('vigia-do-predio')],seen),[],'once per kind');
   assert.deepEqual(towerKitsArrived(undefined,seen),[]);
   assert.deepEqual(towerKitsArrived([kitItem('holofote')],seen),['holofote']);
+  const asked:string[]=[],sceneA={needTowerArt:(k:string)=>{asked.push(k);}},sceneB={needTowerArt:(k:string)=>{asked.push(`b:${k}`);}};
+  const art=new KitArt();
+  art.sync(sceneA,[kitItem('morteiro')]);art.sync(sceneA,[kitItem('morteiro'),kitItem('muro')]);art.sync(sceneB,[kitItem('morteiro')]);
+  assert.deepEqual(asked,['morteiro','b:morteiro'],'once per scene; a new scene (its own textures) starts over');
   // The host: every frame's backpack (the kit mode's own sync), a new scene starts over; the scene fetches them past
   // the loader's queue (needTowerArt, the ghost's own path).
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
   const hook=explore.slice(explore.indexOf('kitPlace.sync(me?.weapons);'));
-  assert.match(hook,/^kitPlace\.sync\(me\?\.weapons\);\n.*\n\s*if\(kitArt\.scene!==scene\)\{kitArt\.scene=scene;kitArt\.seen\.clear\(\);\}\n\s*for\(const kind of towerKitsArrived\(me\?\.weapons,kitArt\.seen\)\)scene\.prepareTowerArt\(kind\);/);
+  assert.match(hook,/^kitPlace\.sync\(me\?\.weapons\);kitArt\.sync\(scene,me\?\.weapons\);/);
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
-  assert.match(scene,/prepareTowerArt\(kind:string\)\{this\.needTowerArt\(kind as TowerKind\);\}/);
+  assert.match(scene,/\n  needTowerArt\(kind:TowerKind\)\{/,'public: KitArt calls it');
 });

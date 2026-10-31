@@ -413,7 +413,7 @@ test('xp just below the threshold does not level; leftover xp carries over',()=>
   assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:10});
 });
 
-test('never more than 3 choices, even with high luck (oferta-3-cartas); the old 4th roll still draws, so the rng stream is unchanged',()=>{
+test('never more than 3 choices, even with high luck (oferta-3-cartas); the old 4th card is still rolled and shuffled, so the rng stream is unchanged',()=>{
   assert.equal(MAX_CHOICES,3);
   const build:PlayerBuild={weapons:[{id:'chinelo',level:1}],passives:[]};
   const rng=new Rng(7);
@@ -426,6 +426,8 @@ test('never more than 3 choices, even with high luck (oferta-3-cartas); the old 
   for(let seed=1;seed<=20;seed++){
     const lucky=new Rng(seed),plain=new Rng(seed);
     assert.deepEqual(rollChoices(catalog,build,1e9,lucky),rollChoices(catalog,build,1,plain));
+    // The lucky roll shuffled one more card (one more draw), as the 4-card offer did; then the streams meet again.
+    plain.next();
     assert.equal(lucky.next(),plain.next());
   }
   const {ctx,tick}=setup();

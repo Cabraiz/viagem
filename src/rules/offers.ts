@@ -50,9 +50,9 @@ export function isEligible(catalog:ItemCatalog,build:PlayerBuild,choice:OfferCho
  * offered this time (a hero with no weapon yet skips the weapon's cards, rules/passives.ts needsWeapon).
  */
 export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rng:Rng,skip?:(itemId:string)=>boolean):OfferChoice[]{
-  // The old 4th-card roll still draws, so the rest of the rng stream (and every seeded match) stays the same; luck keeps its chest effect (sim/evolutions.ts).
-  rng.chance(1-1/Math.max(1,luck));
-  const want=BASE_CHOICES;
+  // The old 4th card is still rolled and shuffled, then dropped: the first 3 and the rest of the rng stream (every seeded
+  // match) stay the same. Luck keeps its chest effect (sim/evolutions.ts).
+  const rolled=BASE_CHOICES+(rng.chance(1-1/Math.max(1,luck))?1:0);
   const candidates:OfferChoice[]=[];
   for(const def of catalog.all()){
     if(skip?.(def.id))continue;
@@ -60,12 +60,12 @@ export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rn
     if(level!==undefined)candidates.push({itemId:def.id,level});
   }
   if(!candidates.length)return [{itemId:HEAL_CHOICE,level:1}];
-  const count=Math.min(want,candidates.length);
+  const count=Math.min(rolled,candidates.length);
   for(let i=0;i<count;i++){
     const j=rng.int(i,candidates.length-1);
     [candidates[i],candidates[j]]=[candidates[j],candidates[i]];
   }
-  return candidates.slice(0,count);
+  return candidates.slice(0,Math.min(MAX_CHOICES,count));
 }
 
 /** Visible default: the first upgrade of an owned item, else the first card. */

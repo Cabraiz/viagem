@@ -75,7 +75,7 @@ test('offer copy distinguishes round upgrades from level-ups; deadline fraction'
   assert.equal(offerDeadlineFraction(level,1000,1000),1);
   assert.equal(offerDeadlineFraction(level,1000+ticks(FIXTURE_INTERMISSION_SECONDS/2),1000),.5);
   assert.equal(offerDeadlineFraction(level,level.deadlineTick+5,1000),0);
-  assert.ok(round.choices.length===4&&level.choices.length===3);
+  assert.ok(round.choices.length===3&&level.choices.length===3);
 });
 
 test('event tally counts each eventId once and ignores late or repeated events',()=>{

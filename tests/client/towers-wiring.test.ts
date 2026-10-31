@@ -5,7 +5,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {DEFENSES,DEFENSE_IDS,RAIL,childrenOf,pickChild,type DefenseId} from '../../src/rules/index.ts';
+import {DEFENSES,DEFENSE_IDS,RAIL,childrenOf,isBicho,pickChild,type DefenseId} from '../../src/rules/index.ts';
 import {ticks,type RunView,type StructureView} from '../../src/contract/index.ts';
 import {buildPlanFor,type BuildPlan} from '../../src/maps/index.ts';
 import {POS_SCALE} from '../../src/protocol/protocol4.ts';
@@ -84,7 +84,8 @@ test('pending and done flow into the view; siteOf finds an upgrade\'s site',()=>
 });
 
 test('the branch the room accepts: A4b/A5b as they are, every other child by its letter, and it picks that child',()=>{
-  for(const parent of DEFENSE_IDS)for(const child of childrenOf(parent)){
+  // The bichos send the child's id, not its letter (hud/towers/bichos).
+  for(const parent of DEFENSE_IDS.filter(id=>!isBicho(id)))for(const child of childrenOf(parent)){
     const b=branchForWire(child.label);
     assert.ok(b&&WIRE_BRANCH.test(b),`${child.label} → ${b}`);
     assert.equal(pickChild(parent,b)?.id,child.id,`${parent} + ${b} → ${child.id}`);

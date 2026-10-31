@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {setArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
-import {DEFENSE_IDS,RAIL} from '../../src/rules/index.ts';
+import {DEFENSE_IDS,RAIL,towerArtKind} from '../../src/rules/index.ts';
 import {towerSticker} from '../../src/client/hud/towers/model.ts';
 import {CAUSE_KINDS} from '../../src/client/hud/cause.ts';
 import {critterIconSource} from '../../src/client/art/hud-art.ts';
@@ -14,7 +14,7 @@ const index=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',imp
 test('every defense has its tower sticker; the rail and unknown keys keep the suit',()=>{
   setArtIndex(index);
   try{
-    for(const id of DEFENSE_IDS)assert.match(towerSticker(id)??'',new RegExp(`/torre-${id}\.webp$`),id);
+    for(const id of DEFENSE_IDS)assert.match(towerSticker(id)??'',new RegExp(`/torre-${towerArtKind(id)}\.webp$`),id);
     assert.equal(towerSticker(RAIL.id),undefined);
     assert.equal(towerSticker('muralha'),undefined);
     assert.equal(towerSticker('toString'),undefined);

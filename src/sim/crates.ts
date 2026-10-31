@@ -70,7 +70,7 @@ import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,carGap,ticks} from '../contract/index.ts';
 import {RADIUS,walkable,type CarPlace,type CityTerrain,type TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
-import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
+import {BICHO_ROOTS,CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
@@ -234,7 +234,7 @@ export interface CratesOptions {
    * Absent or empty: no start crates.
    */
   startPoints?:readonly StartPoint[];
-  hooks?:CrateHooks;
+  hooks?:CrateHooks;kitsFull?(ctx:SimContext):boolean; // kitsFull: torres-3-base-9, the towers' teto reached (towers/bichos/forca.ts): no tower kit shown
   /**
    * A trail crate's spot about `ahead` u from `at` along the unit `heading` (the city: open ground for the crate's body
    * that the heroes reach, outside the base); undefined: none there. Absent: no trail crates.
@@ -510,6 +510,7 @@ export function createCrates(options:CratesOptions):Crates{
   function heldKeys(ctx:SimContext){
     const held=new Set<string>();
     for(const p of ctx.players.values())if(onMap(p)&&hasInventory(p))ownedKeys(p,held);
+    if(options.kitsFull?.(ctx))for(const root of BICHO_ROOTS)held.add(itemKey(kitId(root)));
     return held;
   }
   /** Whether this player no longer sees (nor opens) this crate: a colour he took, or an item he already holds. */

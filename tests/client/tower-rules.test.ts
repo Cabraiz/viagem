@@ -14,6 +14,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFENSES,DEFENSE_IDS,phaseOf,DAMAGED_AT} from '../../src/sim/towers/catalog.ts';
+import {isBicho} from '../../src/rules/index.ts';
 import {SIM_HZ} from '../../src/contract/index.ts';
 import {setArtIndex,parseArtIndex} from '../../src/client/art/manifest.ts';
 import {defenseView} from '../../multiplayer/simulation.ts';
@@ -27,7 +28,8 @@ import {CALIBRE,CRATER,DIRS8,TOWER_DAMAGED_AT,TOWER_KINDS,TOWER_LOOK,TOWER_PHASE
   flightMs,lobHeight,phaseRow,shakeAt,shakeOffset,towerArt,towerPhase,turnToward,weaponFrame,type Dir8} from '../../src/client/render/towers/tower-rules.ts';
 
 test('1. TOWER_LOOK matches the sim catalog (kinds, footprint, range, cadence, hits, shots, area, branch)',()=>{
-  assert.deepEqual([...TOWER_KINDS].sort(),[...DEFENSE_IDS].sort());
+  // torres-3-base-9: the bichos draw as the guarita (towerArtKind), so the table keeps the legacy kinds.
+  assert.deepEqual([...TOWER_KINDS].sort(),DEFENSE_IDS.filter(id=>!isBicho(id)).sort());
   assert.equal(TOWER_DAMAGED_AT,DAMAGED_AT);
   for(const kind of TOWER_KINDS){
     const l=TOWER_LOOK[kind],d=DEFENSES[kind];

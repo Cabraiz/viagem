@@ -24,7 +24,7 @@ import {ART_SCALE} from '../city/materials.ts';
 import {TILE_X} from '../city/projection.ts';
 import {HERO_DRAW_SCALE} from '../draw-scale.ts';
 import {CREW_PX} from './tower-crew.ts';
-import {CITY_DISTANCE_SCALE,DEFENSES} from '../../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,DEFENSES,towerArtKind} from '../../../rules/index.ts';
 
 export type TowerKind=
   | 'vigia-do-predio'
@@ -237,7 +237,7 @@ export class TowerFeed {
   count=0;
   views(structures:readonly WireStructure[],tick:number,cell:number,options:{railAxis?:'x'|'y';enemies?:EnemyArrays}={}):TowerView[]{
     const out:TowerView[]=[],seen=this.next;seen.clear();
-    for(const s of structures){
+    for(const w of structures){const kind=towerArtKind(w.kind),s=kind===w.kind?w:{...w,kind}; // the 12 bichos: the Guarita's art for now
       if(!isTowerKind(s.kind))continue;
       const prev=this.last.get(s.id),phase=s.phase&&PHASES.has(s.phase)?s.phase as TowerPhase:undefined;
       let fire=prev?.fire??0,at=prev?.at??tick,volleys=0;
@@ -262,7 +262,7 @@ export class TowerFeed {
   reset(){this.last.clear();this.count=0;}
 }
 /** Any defense among a snapshot's structures (the scene builds its renderer on the first one). */
-export const hasTowers=(structures:readonly {kind:string}[])=>structures.some(s=>isTowerKind(s.kind));
+export const hasTowers=(structures:readonly {kind:string}[])=>structures.some(s=>isTowerKind(towerArtKind(s.kind)));
 
 /** A volley happened between two views of the same defense (see the header). */
 export function firedNow(prevFireTick:number|undefined,d:Pick<TowerView,'fireTick'|'readyTick'|'ruined'>,tick:number):boolean{

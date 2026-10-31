@@ -7,6 +7,9 @@ import {BOT_FORGE_LEFT_WITH_PEOPLE} from '../../multiplayer/room-bots.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {SIM_HZ} from '../../src/contract/index.ts';
 import {buildPlanFor} from '../../src/maps/index.ts';
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+// torres-3-base-9: these bots build the legacy guarita by ficha; with the bichos shown they only place kits.
+showEveryTower();
 
 function peer(){
   const messages:any[]=[];

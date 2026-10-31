@@ -1810,11 +1810,13 @@ test('20x: a client gets at most AWAKE_PER_VIEWER awake enemies, the nearest (ti
 
 test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventory and on the ground, their strings appended after the vehicles',()=>{
   const from=DICT.indexOf('largou')+1;
-  assert.deepEqual(DICT.slice(from,from+KIT_IDS.length),[...KIT_IDS],'at the end, every older index unchanged');
-  for(const s of KIT_IDS)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  // torres-3-base-9: the 3 bicho kits came after the DICT's one-byte indices filled up: they travel inline.
+  const inDict=KIT_IDS.filter(id=>!id.startsWith('kit:bicho-'));
+  assert.deepEqual(DICT.slice(from,from+inDict.length),inDict,'at the end, every older index unchanged');
+  for(const s of inDict)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
   const w=busyWorld(new Rng(4),10),v=w.view;
-  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'kit:morteiro',level:1},{id:'kit:muro',level:6}],passives:[],hand:0});
+  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'kit:morteiro',level:1},{id:'kit:muro',level:6},{id:'kit:bicho-tiro',level:1}],passives:[],hand:0});
   v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit:obuseiro',value:1};
   const enc=new FrameEncoder(),bytes=enc.encode(v),res=new FrameDecoder().decode(bytes);
   assert.ok(res.ok,!res.ok?res.error:'');

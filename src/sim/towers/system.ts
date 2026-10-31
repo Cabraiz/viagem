@@ -31,8 +31,7 @@
  * - Events: none new (no wire change; torres-fio puts the defenses on the protocol). Damage and kills go out as usual.
  */
 import type {Point} from '../../maps/index.ts';
-import type {EnemyState} from '../../contract/index.ts';
-import {ticks} from '../../contract/index.ts';
+import {ticks,type EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {isFlying} from '../enemies/catalog.ts';
@@ -41,8 +40,8 @@ import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
-import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
-import {payFrom,walletOf} from '../wallet.ts';
+import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE,isBicho} from '../../rules/index.ts';import {payFrom,walletOf} from '../wallet.ts';
+import {bichoUpgrade,builtFull,countBuilt,leveled} from './bichos/forca.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
 import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
@@ -78,15 +77,15 @@ export interface DefenseState extends Point {
    * that does not move (the aim alone then never changes).
    */
   shots?:number;
-  ruined?:true;
+  ruined?:true;level?:number; // level: torres-3-base-9-evolucoes, its força (forca.ts), absent at 1
 }
 export interface RailState {owner:string;startTick:number;readyTick:number}
 export interface TowersState {
   list:DefenseState[];
   /** The Gustavão's rail, once laid. */
   rail?:RailState;
-  /** Gustavões built this run (ruined ones included). */
-  gustavoes:number;
+  /** Gustavões built this run (ruined ones included); `built`: the bichos a kit built this run (forca.ts, the teto). */
+  gustavoes:number;built?:number;
   /** D-052: the standing wall pieces (muro, barricada; free-build.ts), created by the first one. */
   pieces?:PieceState[];
   /** barricada-construir part 2: the map's barricadas laid, the heroes' coletas (towers/tralha.ts). */
@@ -273,7 +272,7 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     // NEW-20261021-ORQ-barricada-construir: a barricada keeps UNO_BUILD_CELLS cells off the car's body.
     if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
-    if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
+    if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT||isBicho(piece)&&builtFull(state.defenses))return {ok:false,reason:'limite'};
     // construir-andando-ate-a-obra: a kit too needs the hero by the footprint (KIT_PLACE_REACH = BUILD_REACH); the client walks there first.
     if(!withinReach(rect,p,BUILD_REACH))return {ok:false,reason:'away'};
     const root=wall?DEFENSES[ROOT_DEFENSE]:DEFENSES[piece],price=kit?0:wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
@@ -295,7 +294,7 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     const d:DefenseState={id:ctx.nextId(ID_PREFIX),kind:root.id,site:siteId,cell,...(rot?{rot:1 as const}:{}),owner:playerId,x,y,
       hp:root.hp,maxHp:root.hp,r:radiusOn(plan,root.size!),startTick:start,readyTick:start+ticks(root.buildSeconds),fireTick:0};
     d.fireTick=d.readyTick;
-    towers.list.push(d);
+    towers.list.push(d);countBuilt(towers,d);
     return {ok:true,defense:d.id,kind:d.kind,cost:price};
   });
 }
@@ -316,6 +315,8 @@ function grownCell(d:DefenseState,size:number):{c:number;r:number}{
  */
 export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,branch?:string,requestId?:string,calm?:CalmGate):TowerResult{
   return once(state,playerId,requestId,()=>{
+    const bicho=state.defenses?.list.find(x=>x.id===defenseId&&isBicho(x.kind));
+    if(bicho)return bichoUpgrade(ctx,state,playerId,bicho,branch,defenseRect(plan,bicho)); // the tree of today: forca.ts
     const no=common(ctx,state,playerId,calm);
     if(no)return {ok:false,reason:no};
     const d=state.defenses?.list.find(x=>x.id===defenseId);
@@ -434,7 +435,7 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
   let rng:ReturnType<SimContext['rng']['fork']>|undefined;
   for(const d of towers.list){
     if(d.ruined||ctx.tick<d.readyTick||ctx.tick<d.fireTick)continue;
-    const base=DEFENSES[d.kind];
+    const base=leveled(d);
     if(base.target==='none')continue;
     const boost=ownerBoost(ctx,d.owner);
     const def:DefenseDef=boost?{...base,damage:base.damage*boost.might,cooldown:Math.max(1,Math.round(base.cooldown*boost.cooldown)),
@@ -476,7 +477,6 @@ function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number,owner:stri
   // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
   const victims=queryHittable(ctx,at.x,at.y,radius,[]);
   const list=victims.filter(e=>e.hp>0&&floorOf(e)===0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
-
   for(const e of list)hit(ctx,def,e,owner);
 }
 function hit(ctx:SimContext,def:DefenseDef,e:EnemyState,owner:string){

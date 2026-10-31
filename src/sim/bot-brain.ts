@@ -71,8 +71,9 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,unitsOf,type Branch,type DefenseId} from './towers/catalog.ts';
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
+import {pickBichoOrder} from './towers/bichos/bots.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround} from '../rules/index.ts';
+import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround,towerShown} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {OPEN_REACH} from './crates.ts';
 import {CRATE_STAND,LOOT_ANY_NEAR,LOOT_RADIUS,LOOT_RADIUS_CALM,LOOT_REST,LOOT_SAFE,hasWeapon,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
@@ -1312,7 +1313,7 @@ export interface TowerBrainView {
   /** The plan's rail id, or null (no Gustavão on this map); railAt: the rail's centre. */
   rail:string|null;railAt?:Point;railLaid:boolean;railReady:boolean;gustavoes:number;
   /** `person`: built (last paid) by a person who is here (bot-gasta-material): the bot never evolves nor repairs it. */
-  defenses:readonly {id:string;kind:DefenseId;site:string;ready:boolean;ruined:boolean;person?:boolean;hp?:number;maxHp?:number;x?:number;y?:number}[];
+  defenses:readonly {id:string;kind:DefenseId;site:string;ready:boolean;ruined:boolean;person?:boolean;hp?:number;maxHp?:number;level?:number;x?:number;y?:number}[];
   /** First tick an order may go out (room bots with a person here: their last seconds); unset: as soon as the bot is there. */
   orderFrom?:number;
 }
@@ -1339,7 +1340,7 @@ export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,
     ...(plan.rail?{railAt:{x:plan.rail.x,y:plan.rail.y}}:{}),
     railLaid:!!t?.rail,railReady:!!t?.rail&&tick>=t.rail.readyTick,gustavoes:t?.gustavoes??0,
     defenses:(t?.list??[]).map(d=>({id:d.id,kind:d.kind,site:d.site,ready:tick>=d.readyTick,ruined:!!d.ruined,
-      ...(isPerson?.(d.owner)?{person:true}:{}),hp:d.hp,maxHp:d.maxHp,x:d.x,y:d.y})),
+      ...(isPerson?.(d.owner)?{person:true}:{}),hp:d.hp,maxHp:d.maxHp,...(d.level?{level:d.level}:{}),x:d.x,y:d.y})),
     ...(orderFrom===undefined?{}:{orderFrom})};
 }
 
@@ -1448,6 +1449,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
  * with towers now. Saving holds only the reserve: decide lets the forge spend the Grana above it.
  */
 export function pickTowerOrder(v:TowerBrainView,reach:TowerReach=()=>true):TowerOrder|'save'|undefined{
+  if(!towerShown(ROOT_DEFENSE))return pickBichoOrder(v,reach); // the tree of today: kits only, R$ on the bichos (towers/bichos/bots.ts)
   const live=v.defenses.filter(d=>!d.ruined),taken=new Set(live.map(d=>d.site));
   const near=(p:{x?:number;y?:number}|undefined)=>{const q=pointOf(p);return !q||reach(q);};
   const ok=(order:TowerOrder)=>{const q=orderSpot(v,order);return !q||reach(q);};

@@ -50,7 +50,7 @@ import {BuildWalk,KIT_TAP_HINT,KitArt,KitPlace,WALK_WORDS,kitGround,kitRefusalTe
 import {KitGesture} from './hud/kit-place/gesture.ts';
 import {WorkLatch,workShop,workingIn} from './hud/bicos.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
-import {TralhaHud} from './hud/tralha/tralha.ts';
+import {TralhaHud} from './hud/tralha/tralha.ts';import {BichoHud} from './hud/towers/bichos/painel.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import type {KeyValue} from './economy.ts';
 import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
@@ -147,7 +147,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let towTap:()=>void=()=>undefined;
   /** Bicos (hud/bicos.ts): in an open shop's ring the attack button is Trabalhar; a tap clocks in, moving clocks out. */
   const workLatch=new WorkLatch();
-  let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
+  let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();let bichoHud:BichoHud|undefined;
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -231,7 +231,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onWindow:open=>{host.yieldForge(open);host.layoutChanged();},
         // Off-screen sites' edge arrows (E4-obras-visiveis-da-base): clear of the hero and of the HUD's arrows (the base).
         heroRect:()=>controller?.scene.heroScreenRect(),edgeArrows:()=>host.edges?.shown});
-      net.onBuilt=answer=>{
+      net.onBuilt=answer=>{if(bichoHud?.answer(answer))return; // the bicho panel (towers/bichos) first
         // The free build's answers share {t:'built'} with the obra menu's: each takes its own requests.
         if(fortBuild.owns(answer.req)){const text=fortBuild.answer(answer);if(text)obraSay(text);return;}
         if(kitPlace.owns(answer.req)){const text=kitPlace.answer(answer);if(text)obraSay(text);return;}
@@ -276,7 +276,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onAct:kind=>{const r=tralhaPick.act(kind,net,hud?.view?.tick??0);if(r==='offline')obraSay('Agora não dá');},
         canvas:()=>controller?.game.canvas,
         busy:()=>fortBuild.open||kitPlace.active});
-      net.onTralha=answer=>{const text=tralhaPick.answer(answer);if(text)obraSay(text);};
+      net.onTralha=answer=>{const text=tralhaPick.answer(answer);if(text)obraSay(text);};bichoHud=new BichoHud(host.el,{net,view:()=>hud?.view,worldAt:(x,y)=>controller?.scene.worldAt(x,y),screen:p=>controller?.scene.locate(p).screen,canvas:()=>controller?.game.canvas,busy:()=>fortBuild.open||kitPlace.active,say:t=>obraSay(t)});
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
@@ -431,7 +431,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;clearTimeout(coverSlow);abort.abort();releaseBack();gearTagSeen();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();bichoHud?.destroy();kitGesture?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -848,7 +848,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 const sel=tralhaPick.selected===undefined?undefined:structures.find(s=>s.id===tralhaPick.selected),tick=view?.tick??0;
                 const progress=tralhaPick.progress(tick);
                 tralhaHud.update({available,...(sel?{at:scene.locate(sel).screen}:{}),...(progress!==undefined?{hero:scene.locate(net.predicted).screen,progress}:{})});
-                scene.setTralhaOutline(available?tralhaPick.outline(structures,tick):undefined);
+                scene.setTralhaOutline(available?tralhaPick.outline(structures,tick):undefined);bichoHud?.update(available);
               }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

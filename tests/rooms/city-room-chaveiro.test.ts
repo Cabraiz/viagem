@@ -65,7 +65,7 @@ test('ACCEPTANCE (D-047): a city room with three bots and a person plays the cha
   assert.ok(start,'the objective is wired');
   const bots=[...sim.bots];
   const stick=new Map<string,Point>(),set=sim.setBotInput.bind(sim);
-  sim.setBotInput=(id,direction,skill)=>{stick.set(id,{x:direction.x,y:direction.y});set(id,direction,skill);};
+  sim.setBotInput=(id,direction,...rest)=>{stick.set(id,{x:direction.x,y:direction.y});set(id,direction,...rest);};
   const plaza=city.asset.points.praca,route=new FlowField(cityFlowGrid(city),[plaza]),dir={x:0,y:0},v=heroSpeed(city)/SIM_HZ;
   const window=ticks(STUCK_SECONDS);
   const trail=new Map(bots.map(id=>[id,[] as {x:number;y:number;moving:boolean;free:boolean}[]]));

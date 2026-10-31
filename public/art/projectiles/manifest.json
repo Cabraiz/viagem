@@ -38,17 +38,18 @@
         "sheet": {
           "file": "bala-antimaterial.webp",
           "cell": [
-            384,
+            128,
             16
           ],
-          "frames": 1,
+          "frames": 3,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-antimaterial.webp",
-              "columns": 1,
+              "columns": 3,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 3,
               "sha256": "90d3cd71c918dd24076f5fa4511b0482394189b0ade3ed01186c112ec831c781"
             }
           ],
@@ -63,17 +64,18 @@
         "sheet": {
           "file": "bala-fuzil.webp",
           "cell": [
-            96,
+            48,
             8
           ],
-          "frames": 1,
+          "frames": 2,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-fuzil.webp",
-              "columns": 1,
+              "columns": 2,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 2,
               "sha256": "17da9290d2414d30a8f1e253f847ea31636ab81b589668b32bf833a6a9814367"
             }
           ],
@@ -88,17 +90,18 @@
         "sheet": {
           "file": "bala-metralhadora.webp",
           "cell": [
-            96,
+            48,
             8
           ],
-          "frames": 1,
+          "frames": 2,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-metralhadora.webp",
-              "columns": 1,
+              "columns": 2,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 2,
               "sha256": "8e6490db1348500eec6aaf8434cdffae292616c7655e2743d04f7bd2604ba288"
             }
           ],
@@ -113,17 +116,18 @@
         "sheet": {
           "file": "bala-revolver.webp",
           "cell": [
-            64,
+            32,
             8
           ],
-          "frames": 1,
+          "frames": 2,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-revolver.webp",
-              "columns": 1,
+              "columns": 2,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 2,
               "sha256": "92a03980946b2022ea26b423baef3ea1854a5637046100f4b53c4dc7f7fb1b1d"
             }
           ],
@@ -138,17 +142,18 @@
         "sheet": {
           "file": "bala-rotativa.webp",
           "cell": [
-            96,
+            48,
             12
           ],
-          "frames": 1,
+          "frames": 2,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-rotativa.webp",
-              "columns": 1,
+              "columns": 2,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 2,
               "sha256": "bb831a59312d85ea2c8433933758d33f184b2e97990e95a22994d02250789fca"
             }
           ],
@@ -163,17 +168,18 @@
         "sheet": {
           "file": "bala-sniper.webp",
           "cell": [
-            192,
+            96,
             8
           ],
-          "frames": 1,
+          "frames": 2,
+          "fps": 10,
           "pages": [
             {
               "file": "bala-sniper.webp",
-              "columns": 1,
+              "columns": 2,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 2,
               "sha256": "76a0d3f68e214b496aa55ec33a6a965cb08d126876e9dd162305de19459f4d3b"
             }
           ],
@@ -416,17 +422,18 @@
         "sheet": {
           "file": "cartucho.webp",
           "cell": [
-            64,
+            16,
             16
           ],
-          "frames": 1,
+          "frames": 4,
+          "fps": 10,
           "pages": [
             {
               "file": "cartucho.webp",
-              "columns": 1,
+              "columns": 4,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 4,
               "sha256": "278ecdca65cb79188ee9537d5607c3ae1e3fac187c8320ffdd7f305aae9bacb3"
             }
           ],
@@ -501,17 +508,18 @@
         "sheet": {
           "file": "chumbo-espingarda.webp",
           "cell": [
-            144,
+            48,
             48
           ],
-          "frames": 1,
+          "frames": 3,
+          "fps": 10,
           "pages": [
             {
               "file": "chumbo-espingarda.webp",
-              "columns": 1,
+              "columns": 3,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 3,
               "sha256": "6cc28299d8586070b8a35e2ce650beeae634fe33a3d2cb76b4df66dcbc079b9e"
             }
           ],
@@ -664,17 +672,18 @@
         "sheet": {
           "file": "foguete.webp",
           "cell": [
-            384,
+            96,
             32
           ],
-          "frames": 1,
+          "frames": 4,
+          "fps": 10,
           "pages": [
             {
               "file": "foguete.webp",
-              "columns": 1,
+              "columns": 4,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 4,
               "sha256": "05e5b6d82111fcd94c1f89f587ca961d803442f708b96cf56d42c12b58ab6e7e"
             }
           ],
@@ -719,17 +728,18 @@
         "sheet": {
           "file": "granada-gustavao.webp",
           "cell": [
-            2048,
+            256,
             256
           ],
-          "frames": 1,
+          "frames": 8,
+          "fps": 10,
           "pages": [
             {
               "file": "granada-gustavao.webp",
-              "columns": 1,
+              "columns": 8,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 8,
               "sha256": "64c1e8a87883efb8686b2e5b25316055eb11bd3e47a03a38a749ad08dde2c68c"
             }
           ],
@@ -744,17 +754,18 @@
         "sheet": {
           "file": "granada-morteiro.webp",
           "cell": [
-            192,
+            48,
             48
           ],
-          "frames": 1,
+          "frames": 4,
+          "fps": 10,
           "pages": [
             {
               "file": "granada-morteiro.webp",
-              "columns": 1,
+              "columns": 4,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 4,
               "sha256": "9799c74498d2ac4669d87114a433ef042e65281d3a6e7310518339e32d5a5d18"
             }
           ],
@@ -769,17 +780,18 @@
         "sheet": {
           "file": "granada-obuseiro.webp",
           "cell": [
-            256,
+            64,
             64
           ],
-          "frames": 1,
+          "frames": 4,
+          "fps": 10,
           "pages": [
             {
               "file": "granada-obuseiro.webp",
-              "columns": 1,
+              "columns": 4,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 4,
               "sha256": "f06f48e529c639adf7c5decbaaf9cfd85684135239f2a8a63523634ff850246c"
             }
           ],

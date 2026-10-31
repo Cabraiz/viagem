@@ -72,7 +72,7 @@ test('client only: the ghost never reaches the room (no net in ghost.ts; the sce
   assert.doesNotMatch(ghost,/\bnet\b|socket|send\(/);
   const scene=readFileSync('src/client/scene.ts','utf8');
   assert.match(scene,/if\(!out&&Math\.hypot\(sx,sy\)>\.05\)\{this\.route=\[\];direction=screenDirection/);
-  assert.match(scene,/!frozen&&!out&&!!this\.hooks\.attacking/);
+  assert.match(scene,/!frozen&&!out&&\(?!!this\.hooks\.attacking/);
   // The stick stays live while out (it walks the ghost); only the attack and the etiqueta hide.
   assert.doesNotMatch(readFileSync('src/client/explore.ts','utf8'),/shell\.dataset\.out==='true'\|\|shell\.dataset\.controls==='off'/);
   assert.doesNotMatch(readFileSync('src/client/coop.css','utf8'),/data-out=true\] \.explore-stick\{/);

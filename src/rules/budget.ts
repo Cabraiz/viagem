@@ -30,8 +30,9 @@ export const PROJECTILE_SPEED_MULT=.5;
  * enemies' shots (the agiota's boleto, a reflected shot) keep PROJECTILE_SPEED_MULT.
  * Card projetil-mais-rapido (usuário 25/10: "50% mais rápido no início"): 3 → 2, so a fresh hero's shots fly 1.5 × as
  * fast (and live 2/3 as long: the same reach); the Estilingue still multiplies on top.
+ * Card tiro-rapido-e-local (usuário 31/10: tiro 1,5x mais rápido): 2 → 4/3, 1.5 × faster again for 2/3 the life.
  */
-export const HERO_SHOT_SLOWDOWN=2;
+export const HERO_SHOT_SLOWDOWN=4/3;
 /** The heroes' travelling shots: PROJECTILE_SPEED_MULT / HERO_SHOT_SLOWDOWN × the tuned speed, for the inverse × the time. */
 export const HERO_SHOT_SPEED_MULT=PROJECTILE_SPEED_MULT/HERO_SHOT_SLOWDOWN;
 /** All pickups (heal, chests, resources, items, the zueira's boletos). */

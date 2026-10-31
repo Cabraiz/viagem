@@ -1,0 +1,23 @@
+{
+ "url": "http://127.0.0.1:4208",
+ "build": "",
+ "tela": "celular",
+ "atraso": 0,
+ "me": "5bd5ccff-b168-454f-a1fd-3326ca9c7e56",
+ "frames": 585,
+ "taps": [
+  {
+   "tap": 49703,
+   "golpeLocal": 16,
+   "envio": 27,
+   "ataqueTick": null,
+   "tiro": null,
+   "dano": null,
+   "tickDoServidor": null
+  }
+ ],
+ "frameGap": {
+  "mediana": 99,
+  "max": 2271
+ }
+}

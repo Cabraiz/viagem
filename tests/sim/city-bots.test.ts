@@ -31,6 +31,9 @@ import {BOT_ROUTE_BYTES_PER_CELL,BOT_ROUTE_FIELDS,botRoute,botRouteFields,botRou
 import {LEFT_BEHIND_KEY} from '../../src/sim/stonewards/system.ts';
 import {TUTORIAL_PLAN,floorToPlaza} from '../../src/sim/city/tutorial.ts';
 import {FLEE_CAP_SECONDS} from '../../src/sim/director.ts';
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+// torres-3-base-9: these bots build the legacy guarita by ficha; with the bichos shown they only place kits.
+showEveryTower();
 
 // ---------- The real city ----------
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));

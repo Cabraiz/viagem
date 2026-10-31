@@ -23,7 +23,7 @@ import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {prizeBlocks} from '../../src/sim/assemble.ts';
 import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
-import {EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
+import {EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN,isBicho} from '../../src/rules/index.ts';
 // kits-so-torres-boas: the whole upgrade tree, as before the card (the room shows only the guarita).
 import {showEveryTower} from '../../src/rules/kits-off.ts';
 showEveryTower();
@@ -121,8 +121,10 @@ test('catalog: the tree of 08-TORRES §3 with its ids, parents, costs and sizes'
     'obuseiro':['B5','lanca-foguetes',3],'gustavao':['B6','obuseiro',0],
     'holofote':['C2','vigia-do-predio',1],'arame-e-sirene':['C3','holofote',2],'antiaerea-quadrupla':['C4','arame-e-sirene',2],'posto-de-radar':['C5','antiaerea-quadrupla',2],
   };
-  assert.deepEqual([...DEFENSE_IDS].sort(),Object.keys(tree).sort());
-  for(const id of DEFENSE_IDS){
+  // torres-3-base-9: the 12 bichos are their own tree (tests/sim/torres-bichos.test.ts).
+  const legacy=DEFENSE_IDS.filter(id=>!isBicho(id));
+  assert.deepEqual([...legacy].sort(),Object.keys(tree).sort());
+  for(const id of legacy){
     const d=DEFENSES[id],[label,from,size]=tree[id];
     assert.equal(d.label,label,id);assert.equal(d.from,from,id);assert.equal(d.size,size||null,`${id}: size from the footprint ${d.footprint} (the root: 1)`);
     assert.ok(Object.isFrozen(d),id);

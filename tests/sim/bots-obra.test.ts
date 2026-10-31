@@ -24,6 +24,9 @@ import {BOT_SPOTS,BOT_SPOT_GAP,BOT_SPOT_REACH,BOT_SPOT_SPREAD,botSiteDefense,bot
 import {holdsObra} from '../../src/sim/towers/system.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+// torres-3-base-9: these bots build the legacy guarita by ficha; with the bichos shown they only place kits.
+showEveryTower();
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);

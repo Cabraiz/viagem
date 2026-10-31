@@ -10,7 +10,7 @@ import {
 } from '../../src/rules/offers.ts';
 import type {ItemCatalog} from '../../src/rules/offers.ts';
 import {computeStats} from '../../src/rules/stats.ts';
-import {COLLECT_RADIUS,HOME_ANY,SOLO_EARLY_LEVEL,SOLO_EARLY_XP,createProgression,createTeamProgress,xpToNext} from '../../src/sim/progression.ts';
+import {COLLECT_RADIUS,HOME_ANY,SOLO_EARLY_LEVEL,SOLO_EARLY_XP,createProgression,createTeamProgress,xpToNext,XP_GROWTH,XP_GROWTH_LATE} from '../../src/sim/progression.ts';
 import type {ProgressionOptions,ProgressionState} from '../../src/sim/progression.ts';
 import {initialTeam} from '../../src/sim/core.ts';
 
@@ -132,24 +132,26 @@ function fullBuild():PlayerBuild{
 }
 
 // ---------- 1. XP curve ----------
-test('xpToNext follows the 4 / 10 / 20, then 35 / +10 / +13 / +16 curve and team progress starts at level 1',()=>{
-  // levelup-espalhado: levels 2 and 3 cheaper (14 XP to level 3, was 20); level 4 on is the old curve.
-  assert.equal(xpToNext(1),4);
-  assert.equal(xpToNext(2),10);
-  assert.equal(xpToNext(3),20);
-  assert.equal(xpToNext(4),35);
-  assert.equal(xpToNext(19),185);
-  assert.equal(xpToNext(20),195);
-  assert.equal(xpToNext(21),208);
-  assert.equal(xpToNext(39),442);
-  assert.equal(xpToNext(40),455);
-  assert.equal(xpToNext(41),471);
-  assert.equal(xpToNext(42),487);
-  for(let l=1;l<120;l++){
-    assert.ok(Number.isInteger(xpToNext(l)));
-    assert.ok(xpToNext(l+1)>xpToNext(l),`curve must grow at ${l}`);
+test('xpToNext is 12 / 30 / 60, then grows by a fixed ratio, ~3× the old linear curve, and team progress starts at level 1',()=>{
+  // xp-exponencial-3x: the first levels are 3× levelup-espalhado's 4 / 10 / 20; from level 4 each costs XP_GROWTH× the last.
+  assert.equal(xpToNext(1),12);
+  assert.equal(xpToNext(2),30);
+  assert.equal(xpToNext(3),60);
+  assert.equal(xpToNext(4),120);
+  const eps=.01;
+  for(let l=4;l<20;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH-eps,`ratio ${xpToNext(l+1)/xpToNext(l)} at ${l}`);
+  for(let l=20;l<120;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH_LATE-eps,`late ratio at ${l}`);
+  const toLevel=(n:number)=>{let s=0;for(let l=1;l<n;l++)s+=xpToNext(l);return s;};
+  // the card's targets: 3× the old totals (69, 394, 1794), ±10 %
+  for(const [n,want] of [[5,210],[10,1180],[20,5400]] as const){
+    const got=toLevel(n);
+    assert.ok(Math.abs(got-want)<=want*.1,`${got} XP to level ${n}, want ~${want}`);
   }
-  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:4});
+  for(let l=1;l<1000;l++){
+    assert.ok(Number.isInteger(xpToNext(l))&&Number.isFinite(xpToNext(l)),`integer cost at ${l}`);
+    if(l<120)assert.ok(xpToNext(l+1)>xpToNext(l),`curve must grow at ${l}`);
+  }
+  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:12});
   assert.deepEqual(initialTeam(),createTeamProgress(),'the world starts on the same curve (core.ts used to pin nextXp 5)');
   assert.notEqual(createTeamProgress(),createTeamProgress(),'fresh object each call');
 });
@@ -322,7 +324,7 @@ test('a choice refreshes stats by default with the player class bonus (D-005)',(
   const {ctx,sim,tick}=setup(1,{});
   const a=addPlayer(ctx,'a',{build:{weapons:[{id:'chinelo',level:1}],passives:[]}});
   (a as SimPlayer&{classBonus?:Partial<PlayerStats>}).classBonus={might:1.25};
-  ctx.team.xp=5;tick(1);
+  ctx.team.xp=xpToNext(1)+1;tick(1);
   const head=queue(ctx,'a')[0];
   assert.ok(sim.choose(ctx,'a',head.id,0).ok);
   assert.deepEqual(a.stats,computeStats(a.build,{might:1.25}),'stats recomputed from the new build with the class bonus');
@@ -404,13 +406,13 @@ test('two level-ups in one tick produce two queued offers per eligible player, o
 test('xp just below the threshold does not level; leftover xp carries over',()=>{
   const {ctx,tick}=setup();
   addPlayer(ctx,'a');
-  ctx.team.xp=3.9;
+  ctx.team.xp=xpToNext(1)-.1;
   tick(1);
   assert.equal(ctx.team.level,1);
   assert.equal(ctx.offers.size,0);
-  ctx.team.xp=4+7;
+  ctx.team.xp=xpToNext(1)+7;
   tick(1);
-  assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:10});
+  assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:xpToNext(2)});
 });
 
 test('high luck yields a fourth choice; luck 1 always three',()=>{
@@ -428,7 +430,7 @@ test('high luck yields a fourth choice; luck 1 always three',()=>{
   const {ctx,tick}=setup();
   addPlayer(ctx,'a',{stats:{luck:1e9}});
   addPlayer(ctx,'b');
-  ctx.team.xp=5;
+  ctx.team.xp=xpToNext(1)+1;
   tick(1);
   assert.equal(queue(ctx,'a')[0].choices.length,MAX_CHOICES);
   assert.equal(queue(ctx,'b')[0].choices.length,BASE_CHOICES);
@@ -519,7 +521,7 @@ test('choose rejects forged, out-of-order, bad-index and unknown-player requests
   const {ctx,sim,tick}=setup();
   const a=addPlayer(ctx,'a');
   addPlayer(ctx,'b');
-  ctx.team.xp=20;
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;
   tick(1);
   const before=clone(a.build);
   assert.deepEqual(sim.choose(ctx,'a','lvl-99-a',0),{ok:false,reason:'unknown-offer'});
@@ -542,7 +544,7 @@ test('choose applies once: new weapon at level 1, then upgrade; repeats fail',()
   const built:string[]=[];
   const {ctx,sim,tick}=setup(1,{onBuildChange:(_c,p)=>{built.push(p.id);}});
   const a=addPlayer(ctx,'a',{build:{weapons:[{id:'chinelo',level:1}],passives:[]}});
-  ctx.team.xp=20;
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;
   tick(1);
   const [o1,o2]=queue(ctx,'a');
   o1.choices=[{itemId:'boleto',level:1},{itemId:'chinelo',level:2},{itemId:'marmita',level:1}];o1.defaultIndex=1;
@@ -576,7 +578,7 @@ test('without a director, after the head is chosen the next offer is rearmed wit
   const {ctx,sim,tick}=setup();
   undirected(ctx);
   addPlayer(ctx,'a');
-  ctx.team.xp=20;
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;
   tick(1);
   tick(ticks(OFFER_SECONDS)-20);
   assert.ok(sim.choose(ctx,'a','lvl-2-a',0).ok);
@@ -643,7 +645,7 @@ test('full build gets a single heal choice that heals by HEAL_AMOUNT (capped)',(
   const {ctx,sim,tick}=setup();
   const a=addPlayer(ctx,'a',{hp:50,build:fullBuild()});
   const b=addPlayer(ctx,'b',{hp:90,build:fullBuild()});
-  ctx.team.xp=5;
+  ctx.team.xp=xpToNext(1)+1;
   tick(1);
   for(const id of ['a','b']){
     const q=queue(ctx,id);
@@ -667,7 +669,7 @@ test('full build gets a single heal choice that heals by HEAL_AMOUNT (capped)',(
 test('stale choice is rejected as ineligible and the head is re-rolled on the next step',()=>{
   const {ctx,sim,tick}=setup();
   const a=addPlayer(ctx,'a',{build:{weapons:[{id:'chinelo',level:1}],passives:[]}});
-  ctx.team.xp=5;
+  ctx.team.xp=xpToNext(1)+1;
   tick(1);
   const head=queue(ctx,'a')[0],originalId=head.id;
   head.choices=[{itemId:'chinelo',level:2},{itemId:'boleto',level:1},{itemId:'marmita',level:1}];
@@ -696,7 +698,7 @@ test('stale choice is rejected as ineligible and the head is re-rolled on the ne
 test('D-021: level offers wait through combat and get their default once at the end of the next intermission',()=>{
   const {ctx,sim,tick}=setup();
   const a=addPlayer(ctx,'a');
-  ctx.team.xp=20;
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;
   tick(1);
   assert.deepEqual(queue(ctx,'a').map(o=>o.id),['lvl-2-a','lvl-3-a']);
   const startSum=levelSum(a.build);
@@ -764,7 +766,7 @@ test('D-021: a level offer granted with at least ARM_SECONDS left is due at the 
 test('D-021: choosing in combat works on held offers, oldest first, and the rest keep waiting',()=>{
   const {ctx,sim,tick}=setup();
   addPlayer(ctx,'a');
-  ctx.team.xp=20;tick(1);
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;tick(1);
   assert.deepEqual(sim.choose(ctx,'a','lvl-3-a',0),{ok:false,reason:'not-oldest'});
   assert.ok(sim.choose(ctx,'a','lvl-2-a',0).ok);
   tick(ticks(OFFER_SECONDS)*5);
@@ -799,7 +801,7 @@ test('D-021 review: offline across the intermission, back in combat: the round o
 test('D-021 review: an intermission shorter than ARM_SECONDS still arms what waited in combat; its own late levels wait',()=>{
   const {ctx,sim,tick}=setup();
   addPlayer(ctx,'a');
-  ctx.team.xp=5;tick(1);
+  ctx.team.xp=xpToNext(1)+1;tick(1);
   assert.ok(isHeldOffer(queue(ctx,'a')[0]));
   const ends=intermission(ctx,3);
   tick(1);
@@ -851,7 +853,7 @@ test('D-050: a pick re-rolls the next card at once when it went stale (in a paus
 test('offline player deadline is frozen and resumes after reconnection with the same queue',()=>{
   const {ctx,tick}=setup();
   const b=addPlayer(ctx,'b',{online:false});
-  ctx.team.xp=20;
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;
   tick(1);
   const ids=queue(ctx,'b').map(o=>o.id);
   assert.deepEqual(ids,['lvl-2-b','lvl-3-b']);
@@ -891,7 +893,7 @@ test('D-021: an offer carried into combat by the offline freeze waits again for 
 test('queues are dropped for removed, spectating or eliminated players',()=>{
   const {ctx,tick}=setup();
   addPlayer(ctx,'a');addPlayer(ctx,'b');addPlayer(ctx,'c');addPlayer(ctx,'d');
-  ctx.team.xp=5;
+  ctx.team.xp=xpToNext(1)+1;
   tick(1);
   assert.equal(ctx.offers.size,4);
   ctx.players.delete('a');
@@ -977,11 +979,12 @@ test('dropLoot (levelup-espalhado): solo, the XP is ×SOLO_EARLY_XP below SOLO_E
   assert.ok(Math.abs(ctx.team.xp-2*1.4)<1e-9,'two heroes: the plain XP');
 });
 
-test('levelup-espalhado: solo, 2 kills of 1 XP at growth 1.4 (the city before the nests) reach level 2',()=>{
+test('levelup-espalhado: solo, 6 kills of 1 XP at growth 1.4 (the city before the nests) reach level 2',()=>{
+  // xp-exponencial-3x: 2 kills before the curve tripled (4 XP), 6 now (12 XP)
   const {ctx,sim}=setup();
   addPlayer(ctx,'a',{x:2,y:2,stats:{growth:1.4}});
-  for(const id of ['k1','k2'])sim.dropLoot(ctx,makeEnemy(id,7,8,{xp:1}),'a');
-  assert.ok(ctx.team.xp>=xpToNext(1),`${ctx.team.xp} ≥ ${xpToNext(1)} (was 2.8 < 5)`);
+  for(let i=0;i<6;i++)sim.dropLoot(ctx,makeEnemy(`k${i}`,7,8,{xp:1}),'a');
+  assert.ok(ctx.team.xp>=xpToNext(1),`${ctx.team.xp} ≥ ${xpToNext(1)}`);
 });
 
 test('dropLoot (sem-coxinha-no-chao): no coxinha nor magnet falls, whatever the killer luck; only the chest of an elite',()=>{
@@ -1017,12 +1020,12 @@ void ({} as OfferChoice);
 test('reset forgets granted levels/rounds so a rematch grants offers again',()=>{
   const {ctx,sim,tick}=setup(4,{seed:99});
   addPlayer(ctx,'a');
-  ctx.team.xp=20;tick(1);
+  ctx.team.xp=xpToNext(1)+xpToNext(2)+6;tick(1);
   sim.grantRoundOffers(ctx,3);
   assert.equal(sim.state.lastLevelGranted,3);assert.equal(sim.state.lastRoundGranted,3);
   sim.reset();
   ctx.offers.clear();ctx.team.xp=0;ctx.team.level=1;ctx.team.nextXp=xpToNext(1);
-  ctx.team.xp=5;tick(1);
+  ctx.team.xp=xpToNext(1)+1;tick(1);
   assert.deepEqual(queue(ctx,'a').map(o=>o.id),['lvl-2-a']);
   assert.equal(sim.grantRoundOffers(ctx,3).length,1);
 });
@@ -1045,7 +1048,7 @@ test('seeded stream ignores draws by other systems and resumes from rngState',()
 test('unreachable drop while nobody can collect waits and then homes to the first collector',()=>{
   const {ctx,sim,tick}=setup(1,{reachable:()=>false,openChest:()=>{}});
   const a=addPlayer(ctx,'a',{x:15,y:15,downed:true});
-  const [chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:7,elite:true}));
+  const [chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:15,elite:true}));
   assert.equal(chest.kind,'chest');assert.equal(chest.homing,HOME_ANY);
   const x0=chest.x;
   tick(40);
@@ -1053,7 +1056,7 @@ test('unreachable drop while nobody can collect waits and then homes to the firs
   delete a.downed;
   tick(60);
   assert.ok(!ctx.pickups.has(chest.id),'delivered');
-  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,6.5],'7 xp ×1.5 (solo, SOLO_EARLY_XP) at the kill, once (4 for level 2, 6.5 left)');
+  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,10.5],'15 xp ×1.5 (solo, SOLO_EARLY_XP) at the kill, once (12 for level 2, 10.5 left)');
 });
 
 test('round offers are skipped after the last round and queued offers show a chained deadline',()=>{

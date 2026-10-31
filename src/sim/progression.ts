@@ -35,17 +35,20 @@ const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBo
 const ctxRunStartTick=(ctx:SimContext)=>(ctx as SimContext&{runStartTick?:number}).runStartTick;
 
 /**
- * XP needed to go from `level` to `level + 1`: 4, 10, 20, then 5+10×(level−1) until 20, +13 until 40, +16 after.
- * levelup-espalhado: levels 2 and 3 cheaper (were 5 and 15, 20 to level 3 in all) so they come in the trickle before
- * the nests' first groups instead of inside their burst; everything above is the old curve, 11 XP sooner.
+ * XP needed to go from `level` to `level + 1`: 12, 30, 60, then 120×1.13^(level−4) until 20 and ×1.10 per level after.
+ * xp-exponencial-3x (31/10, "muito rápido subir de level, era para ser exponencial"): every level costs ~3× the old
+ * linear curve (4, 10, 20, then 5+10×(level−1), +13, +16) and the cost now grows in proportion. Totals: 222 XP to
+ * level 5, 1101 to 10, 5702 to 20 (were 69, 394, 1794). levelup-espalhado's cheap levels 2 and 3 keep their shape.
+ * The exponent stops at XP_CURVE_CAP so the cost stays a finite integer however far a run goes.
  */
-const FIRST_LEVELS=[4,10,20];
+const FIRST_LEVELS=[12,30,60];
+export const XP_GROWTH=1.13,XP_GROWTH_LATE=1.1;
+const XP_LEVEL4=120,XP_CURVE_CAP=200;
 export function xpToNext(level:number){
-  const l=Math.max(1,Math.floor(level));
+  const l=Math.min(XP_CURVE_CAP,Math.max(1,Math.floor(level)));
   if(l<=FIRST_LEVELS.length)return FIRST_LEVELS[l-1]!;
-  if(l<=20)return 5+10*(l-1);
-  if(l<=40)return 195+13*(l-20);
-  return 455+16*(l-40);
+  if(l<=20)return Math.round(XP_LEVEL4*XP_GROWTH**(l-4));
+  return Math.round(XP_LEVEL4*XP_GROWTH**16*XP_GROWTH_LATE**(l-20));
 }
 /**
  * D-051 mode 'ninhos' (ritmo-morto-e-viaduto): the first level costs FIRST_LEVEL_XP[heroes − 1] instead of xpToNext(1),
@@ -66,9 +69,9 @@ export const HOMING_SPEED=12;
  * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, more than the first level) in the endless
  * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
  * one, so the first level (and its chip) still lands in round 1. Not at the wave start: there it would open the
- * level-up pause (D-050) before anyone moved.
+ * level-up pause (D-050) before anyone moved. xp-exponencial-3x: 18, ×3 with the curve (the first level costs 12).
  */
-export const ROUND1_XP=6;
+export const ROUND1_XP=18;
 /**
  * levelup-espalhado: a solo run's XP ×1.5 below SOLO_EARLY_LEVEL. Alone in the city the bichos come one at a time
  * before the nests open (2-3 kills in 200 s), so the first card only came with the first group; now it comes before.

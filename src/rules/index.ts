@@ -42,3 +42,5 @@ export * from './thrown.ts';
 export * from './chefao-onda.ts';
 // Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): alone, the dark closes in; shared by the sim and the vignette.
 export * from './fear.ts';
+// Card inimigos-3x-fortes-metade-da-horda: each enemy ×3 (hp, damage on heroes), the hordes half their bodies.
+export * from './forca-inimigos.ts';

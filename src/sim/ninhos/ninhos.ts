@@ -29,7 +29,7 @@
  */
 import type {NestPlan,NestSize,Point} from '../../maps/index.ts';
 import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
-import {CLASH_BODIES,ELITE_HP,ELITE_ONLY,ELITE_SIZE,MINI_ROUNDS,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
+import {CLASH_BODIES,ELITE_HP,halfHorde,ELITE_ONLY,ELITE_SIZE,MINI_ROUNDS,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {assignFoco} from '../enemies/foco.ts';
@@ -420,8 +420,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const dead=options.mapDead?.()??0,kills=Math.max(0,dead-(state.deadAt??0)),quota=state.quota??0;
     const [lo,hi]=outsideRange(f);
     const base=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count*warm*pace(NEST_PACE.size,state.players)));
-    const want=waveShares(quota,kills,base);
-    const born=state.nests.map(n=>n.down?0:random().int(NEST_PACE.perNest[0],NEST_PACE.perNest[1]));
+    const shares=waveShares(quota,kills,base),want={map:halfHorde(shares.map),outside:halfHorde(shares.outside)};// inimigos-3x-fortes
+    const born=state.nests.map(n=>n.down?0:halfHorde(random().int(NEST_PACE.perNest[0],NEST_PACE.perNest[1])));
     let nests=0;
     state.nests.forEach((nest,i)=>{
       if(!born[i])return;

@@ -8,6 +8,7 @@ import type {Point} from '../maps/index.ts';
 import {floorOf} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
 import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts';
+import {ENEMY_DAMAGE} from '../rules/forca-inimigos.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem,Sleepers} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
@@ -267,6 +268,8 @@ export class SimWorld implements SimContext {
     if(this.recordLastHit&&source!==undefined&&this.enemies.has(source))player.lastHitBy={id:source,tick:this.tick};
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
+    // inimigos-3x-fortes (rules/forca-inimigos.ts): every hit a hero takes is an enemy's, × ENEMY_DAMAGE before armor.
+    amount*=ENEMY_DAMAGE;
     // D-047 Dona Cida's cocada (SimPlayer.guardUntil), before armor like the agiota's mark.
     if(player.guardUntil!==undefined&&this.tick<player.guardUntil)amount*=CIDA_GUARD_MULT;
     if(this.playerDamageScale){

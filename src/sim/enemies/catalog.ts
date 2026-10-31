@@ -6,7 +6,7 @@ import type {Point} from '../../maps/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks,type EnemyState} from '../../contract/index.ts';
 import {OWN_BEHAVIOR} from './own-behavior.ts';
-import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,enemyFeel,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
+import {CLASH_XP,ENEMY_HP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,enemyFeel,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
  * Any roster id (rules/enemy-roster.ts, D-040): the nine hand-tuned kinds of D-033 and the P1 trio (LegacyKind, their
@@ -442,7 +442,7 @@ export interface CreateEnemyOptions {
 export function createEnemy(ctx:SimContext,kind:EnemyKind,point:Point,scale=1,options:CreateEnemyOptions={}):EnemyState{
   const def=isLegacyKind(kind)?ENEMIES[kind]:rosterDef(kind);
   if(!def)throw new Error(`unknown enemy kind: ${kind}`);
-  const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)));
+  const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)*ENEMY_HP));// inimigos-3x-fortes
   const id=ctx.nextId('e');
   const enemy:EnemyState={
     id,kind,x:point.x,y:point.y,hp:maxHp,maxHp,speed:def.speed,damage:def.damage,radius:def.radius,

@@ -12,9 +12,9 @@
  * Six players get count x3.5 and hp x1.75 (~6x threat for ~6x damage); groups grow and arrive faster by sqrt(count),
  * so a round lasts about the same 40-55 s for 1 or 6 players. Spawns plus ~20 s intermissions add up to ~11 min.
  */
-import {Rng} from '../contract/index.ts';
+import {Rng,ticks} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
-import {ticks} from '../contract/index.ts';
+import {halfHorde,HORDE_SHARE} from './forca-inimigos.ts';
 import {clashBodies,LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
 import {roleOf} from './enemy-cast.ts';
 import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
@@ -431,7 +431,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   // ×0.7 at 6), from round 2: round
   // 1 (hp row ×0.35, the tutorial count) keeps its bodies, one group or more for each of 6 heroes spread apart.
   const bodies=index>1?clashBodies(players):1;
-  const raw=Math.max(1,Math.round(def.budget*scale.count*modCount*bodies-(roles&&solo?soloThreat/avgRoleThreat(roles):0)));
+  const raw=halfHorde(Math.max(1,Math.round(def.budget*scale.count*modCount*bodies-(roles&&solo?soloThreat/avgRoleThreat(roles):0))));// inimigos-3x-fortes
   const regular=Math.min(raw,MAX_ROUND_ENEMIES);
   // Threat lost to the cap moves partly into hp.
   const hpComp=Math.min(1.3,raw/Math.max(1,regular));
@@ -444,7 +444,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   const swarmGroups:string[][]=[];
   let left=regular;
   for(const _ of def.swarm?.at??[]){
-    const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*bodies*Math.min(1,regular/raw*modCount)));
+    const size=Math.min(left,halfHorde(Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*bodies*Math.min(1,regular/raw*modCount))));
     swarmGroups.push(Array(size).fill(roles?picks.pick(swarmIds(roster!)):'pombos'));left-=size;
   }
   const pool:string[]=[];
@@ -454,7 +454,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   for(let i=pool.length-1;i>0;i--){const j=rng.int(0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
   const regularGroups:string[][]=[];
   while(pool.length){
-    const size=Math.max(1,Math.round(rng.int(def.group[0],def.group[1])*groupMult));
+    const size=Math.max(1,Math.round(rng.int(def.group[0],def.group[1])*groupMult*HORDE_SHARE));
     regularGroups.push(pool.splice(0,size));
   }
   // Spread groups over the cadence, but finish dispatching by 65% of the round so the team has time to clean up.

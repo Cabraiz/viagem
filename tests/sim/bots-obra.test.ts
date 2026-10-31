@@ -118,7 +118,7 @@ test('room: three bots on a chaveiro run build their roots around the car, and a
   const before=roots.length;
   run(()=>built.filter(b=>b.ok).length>before&&built.at(-1)!.ok);
   const next=built.filter(b=>b.ok).slice(before);
-  assert.ok(next.length>=1,`another root after the move: ${JSON.stringify(built.slice(-4))}`);
+  assert.ok(next.length>=1,`another root after the move (${sim.outcome??'on'} in round ${sim.world.round.index}): ${JSON.stringify(built.slice(-4))}`);
   for(const b of next){
     assert.ok(Math.hypot(b.at!.x-car.x,b.at!.y-car.y)<=BOT_SPOT_REACH+1,`around the new spot: ${JSON.stringify(b)}`);
     assert.ok(Math.hypot(b.at!.x-from.x,b.at!.y-from.y)>Math.hypot(b.at!.x-car.x,b.at!.y-car.y),'nearer the new spot than the old');

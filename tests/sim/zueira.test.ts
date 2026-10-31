@@ -37,7 +37,8 @@ test('run order: zueira right after the director, before the pickups', ()=>{
   assert.ok(order.indexOf('zueira')<order.indexOf('pickups'));
 });
 
-/** Invulnerable standing bots, every critter dies 3 s after it shows up (a round lasts long enough for its event). */
+/** Invulnerable standing bots, every critter dies 6 s after it shows up (a round lasts long enough for its event; 3 s until
+ *  inimigos-3x-fortes: with the horde halved, round 2 never had APAGAO_CROWD critters around the team in 3 s). */
 function labRun(seed:number,plan='apagao',bots=3,untilRound=5){
   const sim=new Simulation(seed);
   sim.zueiraLab=parseZueiraLab(plan);
@@ -47,7 +48,7 @@ function labRun(seed:number,plan='apagao',bots=3,untilRound=5){
   const boss=sim.run.boss,original=boss.step.bind(boss);
   (boss as {step:typeof boss.step}).step=ctx=>{
     original(ctx);
-    for(const e of [...ctx.enemies.values()])if(ctx.tick-e.spawnTick>60&&ctx.tick%7===0)ctx.damageEnemy(e.id,1e6,ids[ctx.tick%ids.length]);
+    for(const e of [...ctx.enemies.values()])if(ctx.tick-e.spawnTick>120&&ctx.tick%7===0)ctx.damageEnemy(e.id,1e6,ids[ctx.tick%ids.length]);
   };
   const events:StampedEvent[]=[],xpByTick:number[]=[],waveTicks=new Map<number,number>();
   for(let t=0;t<20*60*20;t++){

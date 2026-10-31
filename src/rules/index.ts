@@ -34,6 +34,8 @@ export * from './veiculos.ts';
 export * from './calma.ts';
 // D-051: the manual attack's target choice, shared by the server's weapons and the client's reticle.
 export * from './attack-target.ts';
+// The front cone's aim assist of a person's attack (tiro-rapido-e-local): the sim's shot and the client's red arrows.
+export * from './front-assist.ts';
 // BUG-20261023-ORQ-armas-sem-projetil: thrown zones fly before they burst.
 export * from './thrown.ts';
 // Card boss-fim-onda-1: the chefão at the end of the 1st wave (who, the scene's clock), sim, room and client.

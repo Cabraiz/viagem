@@ -84,9 +84,10 @@ test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
   say(room,a,{t:'ready',round:round(room),ready:true},t+=OWNER_GAP_MS);
   for(;room.run.snapshot().phase!=='combat';t+=50)room.advance(t);
 
-  // The bots' sticks, as the driver sets them.
+  // The bots' sticks, as the driver sets them (every argument passed on: dropping attack/work/target left the bots
+  // without their manual attack, tiro-rapido-e-local).
   const stick=new Map<string,Point>(),set=sim.setBotInput.bind(sim);
-  sim.setBotInput=(id,direction,skill)=>{stick.set(id,{x:direction.x,y:direction.y});set(id,direction,skill);};
+  sim.setBotInput=(id,direction,...rest)=>{stick.set(id,{x:direction.x,y:direction.y});set(id,direction,...rest);};
   // Ana walks to the plaza at the city hero speed and stays there.
   const plaza=city.asset.points.praca,route=new FlowField(cityFlowGrid(city),[plaza]),judge=cityPlanner(city),dir={x:0,y:0},v=heroSpeed(city)/SIM_HZ;
   const window=ticks(STUCK_SECONDS);

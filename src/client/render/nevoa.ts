@@ -2,12 +2,12 @@
  * Card jogo-mais-escuro, the user's fog (render/nevoa-rules.ts): a light haze drifting slowly, faint wind bands running
  * across, ash falling, all three camera-fixed at NEVOA_DEPTH and drawn with the fog pipeline (exposure-pipeline.ts), so
  * they fade out around the hero; the world's colours go cold sepia through the default pipeline. Textures from ChatGPT
- * (public/art/nevoa/, white on alpha, tinted here), loaded once the map shows fog. Economy mode keeps the haze only;
+ * (public/art/nevoa/, white on alpha, tinted here), loaded once the map shows fog. Economy mode (Leve) keeps all three, with half the ash (nevoaLayers);
  * `?nevoa=0..3` compares the levels, `?luz=0` turns it off.
  */
 import Phaser from 'phaser';
 import {NEVOA_PIPELINE,setFuro,setSepia} from './exposure-pipeline.ts';
-import {NEVOA_DEPTH,NEVOA_LEVELS,WIND,nevoaFor,windScale,type NevoaLevel} from './nevoa-rules.ts';
+import {NEVOA_DEPTH,NEVOA_LEVELS,WIND,nevoaFor,nevoaLayers,windScale,type NevoaLevel} from './nevoa-rules.ts';
 import type {LightWorld} from './light.ts';
 
 const HAZE='nevoa:haze',BANDS='nevoa:vento',ASH='nevoa:cinza';
@@ -35,7 +35,7 @@ export class Nevoa {
   constructor(private scene:Phaser.Scene,private options:NevoaOptions){}
   /** Screen-space objects: a second camera (the Uno's live window, chaveiro/pip.ts) ignores them. */
   get objects():Phaser.GameObjects.GameObject[]{return [this.haze,this.bands,this.ash].filter(o=>!!o);}
-  /** The map's level (and the sepia grade with it); economy mode drops the bands and the ash. */
+  /** The map's level (and the sepia grade with it); economy mode draws fewer flakes. */
   set(world:LightWorld,economy:boolean){
     this.level=NEVOA_LEVELS[nevoaFor(world)]!;this.economy=economy;
     setSepia(this.level.sepia);
@@ -68,13 +68,18 @@ export class Nevoa {
     this.show();
   }
   private show(){
-    const l=this.level,on=l.haze>0;
+    const l=nevoaLayers(this.level,this.economy),on=l.haze>0;
     this.haze?.setVisible(on).setAlpha(l.haze);
-    this.bands?.setVisible(on&&!this.economy&&l.bands>0).setAlpha(l.bands);
+    this.bands?.setVisible(on&&l.bands>0).setAlpha(l.bands);
     if(this.ash){
-      const ash=on&&!this.economy&&l.ash>0;
+      const ash=on&&l.ash>0;
       this.ash.setVisible(ash);
-      if(ash){this.ash.maxAliveParticles=l.ash;this.ash.frequency=9000/l.ash;if(!this.ash.emitting){this.ash.start();this.ashWarm=false;}}else this.ash.stop(true);
+      if(ash){
+        // Another count (Leve on or off): start over, warmed up again at the new density.
+        if(this.ash.maxAliveParticles!==l.ash){this.ash.killAll();this.ashWarm=false;}
+        this.ash.maxAliveParticles=l.ash;this.ash.frequency=9000/l.ash;
+        if(!this.ash.emitting){this.ash.start();this.ashWarm=false;}
+      }else this.ash.stop(true);
     }
     if(!on)setFuro(-1e4,-1e4,0,0,1);
   }

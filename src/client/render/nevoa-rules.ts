@@ -21,6 +21,16 @@ export const NEVOA_LEVELS:readonly NevoaLevel[]=Object.freeze([
 ]);
 /** The level each world gets with no `?nevoa=`: the city is the board's scene; the tropical maps stay clear. */
 export const NEVOA_DEFAULT:Readonly<Record<LightWorld,number>>=Object.freeze({cidade:2,infinito:0,ilha:0});
+/**
+ * Leve (economy) keeps the wind and the ash, cheaper (card nevoa-cinzas-no-celular: on the phone the user saw only the
+ * haze): the bands as they are (one more full-screen quad) and this share of the flakes.
+ */
+export const ECONOMY_ASH_SHARE=.5;
+/** What each layer draws at level `l`: the haze and bands alpha, the flakes on screen. */
+export function nevoaLayers(l:NevoaLevel,economy:boolean):{haze:number;bands:number;ash:number}{
+  if(!(l.haze>0))return {haze:0,bands:0,ash:0};
+  return {haze:l.haze,bands:l.bands,ash:economy?Math.max(1,Math.round(l.ash*ECONOMY_ASH_SHARE)):l.ash};
+}
 /** Over the world (ground, buildings, the horde), under the blackout (94000), the hero (96500) and the telegraphs (99000). */
 export const NEVOA_DEPTH=93900;
 /** Light sources go over the fog (card muitas-luzes): their halos are not fogged. */

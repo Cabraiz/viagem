@@ -200,7 +200,8 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.hold\.release\(\);/);
   // The input still leaves through net.input (input-10hz); D-051: the attack button rides it as the 4th argument, the
   // mouse's aim (cone-ataque-melee) as the 5th, Trabalhar (bicos) as the 6th: working, it does not attack.
-  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!work&&!frozen&&!out&&!!this\.hooks\.attacking\?\.\(\),aim,work\)/);
+  assert.match(scene,/const attacking=!work&&!frozen&&!out&&\(!!this\.hooks\.attacking\?\.\(\)\|\|this\.autoFiring\);/);
+  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,attacking,aim,work\)/);
   assert.match(scene,/const frozen=this\.paused\|\|!!net\.run\?\.pause;/,'D-050: the level-up pause holds the controls too');
 });
 

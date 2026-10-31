@@ -11,6 +11,10 @@
 //      animation frame, sprite-motion.ts), the first 'fire' event of the hero (shot FX and sound) and its first damage.
 // node scripts/medir-tiro.mjs <outDir> [--url https://viagem.cyou] [--tela celular|pc] [--toques 12] [--intervalo 1500]
 //      [--atraso 0] [--video 1] [--extra "combate=manual"] [--worker http://127.0.0.1:8808] (a local build and Worker)
+//      [--segurar 80] (ms each press is held: a hold is a burst) [--andar 1] (the phone walks during each press, a
+//      quarter turn further each time: the hero turns by walking, tiro-rapido-e-local) [--perto 5] (waits up to 2 min
+//      for a live critter within that many u before the presses) [--dar pistola]
+//      (local Worker only: that weapon in the hand, room.ts labCommand give)
 // Writes <outDir>/medida.json (every tap) and resumo.md (medians and maxima). Exit 0 ok, 1 no entry / no attack seen.
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
@@ -27,8 +31,8 @@ const TELAS={
 };
 
 function parse(argv){
-  const o={out:argv[0],url:'https://viagem.cyou',tela:'celular',toques:12,intervalo:1500,atraso:0,extra:''};
-  for(let i=1;i<argv.length;i++){const k=argv[i].replace(/^--/,'');o[k]=['toques','intervalo','atraso'].includes(k)?Number(argv[++i]):argv[++i];}
+  const o={out:argv[0],url:'https://viagem.cyou',tela:'celular',toques:12,intervalo:1500,atraso:0,extra:'',segurar:80,andar:0};
+  for(let i=1;i<argv.length;i++){const k=argv[i].replace(/^--/,'');o[k]=['toques','intervalo','atraso','segurar','andar','perto'].includes(k)?Number(argv[++i]):argv[++i];}
   if(!o.out)throw new Error('uso: node scripts/medir-tiro.mjs <outDir> [--url] [--tela] [--toques] [--intervalo] [--atraso] [--extra]');
   return o;
 }
@@ -48,6 +52,7 @@ function hook(atraso){
   class Wrapped extends Native{
     constructor(...a){
       super(...a);
+      log.ws=this;
       const add=this.addEventListener.bind(this);
       let onmessage=null;
       // The page sets ws.onmessage: deliver it ourselves (late by `half` when asked), with the arrival noted first.
@@ -138,7 +143,8 @@ async function armar(p,cdp){
     const now=await label(p);
     // In a shop's ring Trabalhar takes the attack's place: step out of it (any way) before the taps.
     if(/trabalhar/i.test(now)){const a=Math.random()*2*Math.PI;await walk({x:Math.cos(a),y:Math.sin(a)},700);continue;}
-    if(!/sem arma/i.test(now))return true;
+    // Empty hands: "Sem arma" before, "Dançar" now (hud/skill.ts UNARMED_WORD).
+    if(!/sem arma|dan[cç]ar/i.test(now))return true;
     const {self,chests}=await live.pull();
     if(!self){await sleep(200);continue;}
     const near=chests.filter(c=>!skip.has(c.id)).map(c=>({c,d:Math.hypot(c.x-self.x,c.y-self.y)})).sort((u,v)=>u.d-v.d)[0];
@@ -201,21 +207,38 @@ async function main(argv){
     const p=await ctx.newPage(),cdp=tela.hasTouch?await ctx.newCDPSession(p):undefined;
     // --worker http://127.0.0.1:8808: the local rooms Worker (wrangler dev) instead of the site's.
     if(o.worker)await p.route('**/multiplayer.json',async r=>{const j=await (await r.fetch()).json();await r.fulfill({json:{...j,endpoint:o.worker}});});
+    if(process.env.MEDIR_DEBUG)p.on('console',m=>{const t=m.text();if(t.startsWith('[foco]'))console.log(t);});
     const entrou=await entrar(p,o.url.replace(/\/$/,''),o.extra);
     console.log(`entrou em ${Math.round(entrou/1000)} s`);
     await sleep(3000);
     if(!await armar(p,cdp))console.log('não conseguiu arma: mede assim mesmo');
+    // --dar pistola (wrangler dev with ALLOW_LOCAL): that weapon in the hand too (room.ts labCommand give), for the shot's GIFs.
+    if(o.dar){await p.evaluate(id=>window.__tiro.ws.send(JSON.stringify({t:'lab',give:id})),o.dar);await sleep(500);}
+    if(o.perto){
+      const live=new Live(p),until=Date.now()+120000;
+      for(;Date.now()<until;await sleep(300)){
+        const {self}=await live.pull();if(!self)continue;
+        const d=Math.min(...[...live.feed.enemies.values()].filter(e=>e.hp>0).map(e=>Math.hypot(e.x-self.x,e.y-self.y)));
+        if(d<=o.perto){console.log(`inimigo a ${d.toFixed(1)} u`);break;}
+      }
+    }
     await p.evaluate(()=>{window.__tiro.taps=[];window.__tiro.local=[];});
     const box=await p.evaluate(()=>{const r=document.querySelector('#coop-attack')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,label:document.querySelector('#coop-attack').textContent.trim()}:null;});
     if(!box)throw new Error('sem #coop-attack na tela');
     console.log(`botão: "${box.label}"`);
     if(o.video)writeFileSync(join(out,'video.json'),JSON.stringify({toquesDesdeOInicio:(Date.now()-t0)/1000,intervalo:o.intervalo}));
+    const stick=o.andar&&cdp?await p.evaluate(()=>{const r=document.querySelector('.explore-stick')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width/2}:null;}):null;
     for(let i=0;i<o.toques;i++){
       if(cdp){
-        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x,y:box.y,id:7}]});
-        await sleep(80);
+        // --andar: the left thumb on the stick first, then the press with both fingers down.
+        const a=i*Math.PI/2,walk=stick?[{x:stick.x+Math.cos(a)*stick.r*.9,y:stick.y+Math.sin(a)*stick.r*.9,id:1}]:[];
+        if(stick){await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:stick.x,y:stick.y,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:walk});await sleep(250);}
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[...walk,{x:box.x,y:box.y,id:7}]});
+        await sleep(o.segurar);
         await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-      }else{await p.keyboard.down('Space');await sleep(80);await p.keyboard.up('Space');}
+      }else{await p.keyboard.down('Space');await sleep(o.segurar);await p.keyboard.up('Space');}
+      // The first press's frame (the focus's red arrows, the shot leaving): toque.png.
+      if(i===0)await p.screenshot({path:join(out,'toque.png')}).catch(()=>{});
       await sleep(o.intervalo);
     }
     await p.screenshot({path:join(out,'fim.png')}).catch(()=>{});

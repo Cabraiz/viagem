@@ -70,12 +70,14 @@ function offRoom(seed:number,ticks:number,combat?:'auto'){
 }
 
 test('combat off: the legacy attack flag still means nothing, no player gets the aim fields, and combat auto is the same run',()=>{
-  const off=offRun(0x51a7,900);
+  // 1800 ticks (900 before tiro-rapido-e-local): with the heroes' faster shots (HERO_SHOT_SLOWDOWN 4/3) the first 900
+  // killed every critter before any got a hit in.
+  const off=offRun(0x51a7,1800);
   // The script really fights and gets hurt, so damagePlayer and the weapons ran with the D-051 branches off.
   assert.ok(off.kills>0&&off.hurt>0,JSON.stringify(off));
   assert.equal(off.marked,0);
-  assert.deepEqual(offRun(0x51a7,900,undefined,false),off);
-  assert.deepEqual(offRun(0x51a7,900,'auto'),off);
+  assert.deepEqual(offRun(0x51a7,1800,undefined,false),off);
+  assert.deepEqual(offRun(0x51a7,1800,'auto'),off);
 });
 
 test('combat off: a room with bots never holds the attack nor marks a player, and combat auto is the same run',()=>{

@@ -49,7 +49,7 @@ test('no yellow reticle anywhere (21/10); the phone\'s aim stick (23/10) shows i
   assert.match(button,/this\.svg\.append\(this\.arrow,this\.ring,this\.knob\);/);
   assert.doesNotMatch(button,/dragAim|dragPick|deps\.choose\(/);
   // Shown only while a finger holds the button (the pointer); the keys never show anything.
-  assert.match(button,/if\(!this\.on\|\|!hero\|\|!this\.press\.held\|\|!this\.centre\|\|this\.pointer===undefined\)\{this\.hide\(true\);return;\}/);
+  assert.match(button,/if\(!this\.on\|\|this\.deps\.drag===false\|\|!hero\|\|!this\.press\.held\|\|!this\.centre\|\|this\.pointer===undefined\)\{this\.hide\(true\);return;\}/);
   assert.match(button,/key\(down:boolean,source='espaco'\)\{\n\s*if\(!this\.on\)return;\n\s*if\(down\)this\.deps\.wake\(\);\n\s*this\.press\.key\(source,down\);/);
 });
 

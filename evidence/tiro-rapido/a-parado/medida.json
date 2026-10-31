@@ -1,0 +1,41 @@
+{
+ "url": "http://127.0.0.1:4208",
+ "build": "",
+ "tela": "celular",
+ "atraso": 0,
+ "me": "c7bd2697-95df-479e-880f-05d728420684",
+ "frames": 553,
+ "taps": [
+  {
+   "tap": 51214,
+   "golpeLocal": 15,
+   "envio": 8,
+   "ataqueTick": 131,
+   "tiro": 131,
+   "dano": null,
+   "tickDoServidor": 893
+  },
+  {
+   "tap": 52709,
+   "golpeLocal": 17,
+   "envio": 12,
+   "ataqueTick": 109,
+   "tiro": 109,
+   "dano": null,
+   "tickDoServidor": 923
+  },
+  {
+   "tap": 54062,
+   "golpeLocal": 14,
+   "envio": 9,
+   "ataqueTick": null,
+   "tiro": null,
+   "dano": null,
+   "tickDoServidor": null
+  }
+ ],
+ "frameGap": {
+  "mediana": 99,
+  "max": 1630
+ }
+}

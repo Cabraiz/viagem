@@ -1,3 +1,4 @@
+import {tiroMode} from './hud/tiro-mode.ts';
 import './explore.css';
 import {putData,putHidden,putText} from './hud/dom-put.ts';
 import {firstShown,shownHolds,stickyQuery} from './hud/dom-find.ts';
@@ -319,11 +320,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     attackBtn=new AttackButton(attack,$('.explore-layout'),{
       hero:()=>controller&&sceneReady?net.predicted:undefined,toScreen:p=>controller!.scene.locate(p).screen,
       enemies:()=>net.feed.enemies.values(),tick:()=>net.tick,
-      chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),
-      wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
+      chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
       // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
       reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
-      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,
+      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,drag:tiroMode()==='velho',
       // tiro-delay-1s-predicao: the press shows at once (swing, flash, sound); the room's copy is skipped.
       pressed:()=>{if(sceneReady)controller?.scene.predictAttack();}});
     net.onCast=result=>skill?.answer(result,performance.now());

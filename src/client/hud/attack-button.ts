@@ -34,6 +34,8 @@ export interface AttackDeps {
   setHeld(held:boolean):void;
   /** The equipped weapon's reach (u), the arrow's length; undefined: no arrow. */
   reach?():number|undefined;
+  /** tiro-rapido-e-local: false keeps the button a plain tap/hold (no ring, knob, arrow or drag aim); only `?tiro=velho` drags. */
+  drag?:boolean;
   /** The ring's radius (CSS px): the left stick's. */
   ringRadius?():number;
   /** A new press (not a key's repeat, not a press while already held): the scene draws it at once (tiro-delay-1s-predicao). */
@@ -107,7 +109,7 @@ export class AttackButton {
   private end(){this.pointer=undefined;this.centre=undefined;this.press.release();this.deps.setHeld(false);this.hide(true);}
   /** The aim stick's screen direction (unit, CSS px axes) while a finger drags it past the dead zone, else undefined. */
   aimScreen():Point|undefined{
-    if(!this.on||this.pointer===undefined||!this.press.held)return undefined;
+    if(!this.on||this.deps.drag===false||this.pointer===undefined||!this.press.held)return undefined;
     const len=Math.hypot(this.drag.x,this.drag.y);
     return len>=AIM_DEAD_ZONE_PX?{x:this.drag.x/len,y:this.drag.y/len}:undefined;
   }
@@ -120,7 +122,7 @@ export class AttackButton {
   frame(){
     const hero=this.deps.hero();
     if(hero)this.track(hero);
-    if(!this.on||!hero||!this.press.held||!this.centre||this.pointer===undefined){this.hide(true);return;}
+    if(!this.on||this.deps.drag===false||!hero||!this.press.held||!this.centre||this.pointer===undefined){this.hide(true);return;}
     const dir=this.aimScreen(),len=Math.hypot(this.drag.x,this.drag.y),k=len>this.radius?this.radius/len:1;
     this.knob.setAttribute('cx',f1(this.centre.x+this.drag.x*k));this.knob.setAttribute('cy',f1(this.centre.y+this.drag.y*k));
     const reach=dir?this.deps.reach?.():undefined;

@@ -17,7 +17,7 @@ import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,
   POP_TEXT_MS,leashMoving,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
-import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
+import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {planAlert} from './telegraph-alert.ts';
@@ -25,7 +25,7 @@ import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from '
 import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_ART_IDS,DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,OP_SPRITE,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
 import {FILL_TEXEL_CSS,TELEGRAPH_BORDER_KEY,TELEGRAPH_FILL_KEY,TELEGRAPH_STRIP_POINTS,borderStrip,decorArtInfo,fillStrip,queueTelegraphArt,repeatable} from './telegraph-art.ts';
-import {token,tokenColor} from '../ui/tokens.ts';
+import {BUBBLE_STYLE,CRIT_STYLE,DAMAGE_STYLE,HURT_STYLE,PALETTE,TAG_RED,TAG_STYLE,applyPalette,paint,popStyle} from './horde-text.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
@@ -34,6 +34,8 @@ import {castContact,castSheetShadow,castSilhouette,contactImage,silhouetteImage}
 import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
+import {OwnShots,adoptFade,type Ghost} from './own-shots.ts';
+import {FocusArrows} from './focus-arrows.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
 import {CedulaCatch,catchFlight} from './cedula-catch.ts';
@@ -185,7 +187,10 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   /** A hero's thrown weapon (render/shot-flight.ts): flies on an arc from `born` while it moves, then lands. */
   thrown:ThrownLook|undefined;
   /** The viaduct (ProjectileView.andar): 1 flying over a deck. */
-  floor?:1}
+  floor?:1;
+  /** tiro-rapido-e-local (own-shots.ts): `ghost` the shot drawn on the press; the room's copy that took it drawn (ox,oy) off
+   * from `adoptAt` (adoptFade); `mute` its late copy after the ghost flew it all. */
+  ghost?:Ghost;ox?:number;oy?:number;adoptAt?:number;mute?:boolean}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -213,7 +218,6 @@ interface DeathFx{image:Image;top:Image;sil:Image;contact:Image;contactW:number;
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16,deaths:24} as const;
 const TAU=Math.PI*2;
-const FONT='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const SNAP_UNITS=3;
 const BUBBLE_MS=2200;
 /** Lift of a player's balloon over their feet, in world px at ui scale 1: above the head of the 100 px hero sprite. */
@@ -236,50 +240,6 @@ export const PRIZE_LIFT_DEPTH=93900;
 /** The elite's or boss's name ficha (plate, then text +1): over the hp bars (95000/95001). */
 const NAME_DEPTH=95002;
 
-const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
-const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
-const HURT_STYLE:TextStyle={fontFamily:FONT,fontSize:'26px',fontStyle:'900',color:'#ff6b6b',stroke:'#2b1620',strokeThickness:5};
-const BUBBLE_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'700',color:'#51425e',backgroundColor:'#fff8ec',padding:{x:10,y:6},align:'center',wordWrap:{width:280}};
-/**
- * Palette of the comic layer on the light tropical scene (D-022, DSG-contraste-mapa): every number and balloon is a
- * light body with a Breu edge (double-edge rule). Read from src/client/ui/tokens.css once the first renderer exists, since
- * Phaser cannot read CSS variables; the hex in PALETTE are the same token values, kept for a page without the stylesheet.
- */
-/** The red tag over a player marked by the agiota's boleto (say key 'devendo', D-033): Papel letters on a red body. */
-const TAG_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'900',color:'#fff8ec',padding:{x:10,y:5},align:'center'};
-const TAG_RED=0xd2392f;
-const PALETTE={breu:0x1e1530,papel:0xeeddb8,cone:0xff7a1f};
-let paletteReady=false;
-function applyPalette(){
-  if(paletteReady||typeof document==='undefined')return;
-  paletteReady=true;
-  const breu=token('--c-breu');
-  DAMAGE_STYLE.color=token('--c-papel');DAMAGE_STYLE.stroke=breu;
-  CRIT_STYLE.color=token('--c-amarelo');CRIT_STYLE.stroke=breu;
-  HURT_STYLE.color=token('--c-cone');HURT_STYLE.stroke=breu;
-  BUBBLE_STYLE.color=breu;BUBBLE_STYLE.backgroundColor='rgba(0,0,0,0)'; // body drawn on the overlay, with its edge
-  TAG_STYLE.color=token('--c-papel');
-  PALETTE.breu=tokenColor('--c-breu');PALETTE.papel=tokenColor('--c-papel');PALETTE.cone=tokenColor('--c-cone');
-}
-const popStyles=new Map<string,TextStyle>();
-const popStyle=(kind:string)=>{
-  const key=styleKey(kind);
-  let style=popStyles.get(key);
-  if(!style){const k=kindStyle(kind);style={fontFamily:FONT,fontSize:'34px',fontStyle:'900',color:k.fill,stroke:k.stroke,strokeThickness:9};popStyles.set(key,style);}
-  return style;
-};
-/** One texture upload per change, even when the label repeats. */
-const painted=new WeakMap<Text,TextStyle>();
-const paint=(text:Text,style:TextStyle,label:string)=>{
-  if(painted.get(text)!==style){
-    painted.set(text,style);
-    // Measure each style once (pixel read-back), then reuse its metrics: a 24px number reused as a 32px crit is not clipped.
-    if(style.metrics)text.style.setStyle(style,false);
-    else{text.setStyle(style);const m=text.style.getTextMetrics();style.metrics={ascent:m.ascent,descent:m.descent,fontSize:m.fontSize};}
-    if(text.text===label){text.updateText();return;}
-  }
-  if(text.text!==label)text.setText(label);
-};
 const SHADOW_W=46,SHADOW_H=16,BAR_W=46,BAR_H=13,FILL_W=40,FILL_H=7;
 /** Owner key of the target ring's imported image (one target at a time). */
 const TARGET_RING={};
@@ -339,6 +299,8 @@ export class HordeRenderer{
   private enemies:KeyedPool<EnemyActor>;
   private pickups:KeyedPool<PickupActor>;
   private projectiles:KeyedPool<ProjectileActor>;
+  /** tiro-rapido-e-local: the local hero's shots drawn before the room's copy, and the friendly radius last seen per source. */
+  private own=new OwnShots();private ownGone:string[]=[];private shotRadius=new Map<string,number>();
   private telegraphs:KeyedPool<TelegraphState>;
   private numbers:Ring<NumberFx>;
   private pops:Ring<PopFx>;
@@ -379,10 +341,13 @@ export class HordeRenderer{
   private nowTick=0;
   private lastEventId=-1;
   private targetId?:string;
+  /** The enemy the hero's shot goes to (tiro-rapido-e-local, rules/front-assist.ts): the 4 red arrows around it. */
+  private focusId?:string;
   private snapNext=false;
   private at:Pt={x:0,y:0};
   /** An elite's or a boss's death pauses the drawn clock (impact-rules.ts); push() asks, the next update() starts it. */
   private readonly hitStop=new HitStop();private stopAsk=0;
+  private readonly focus:FocusArrows;
   /** When the local hero last caught a gem (the kill's cédula): its glow (impact-rules.ts gemGlow). */
   private gemAt=-Infinity;
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
@@ -435,6 +400,7 @@ export class HordeRenderer{
       scene.load.spritesheet(CEDULA_ART.key,CEDULA_ART.url,{frameWidth:CEDULA_ART.cell[0],frameHeight:CEDULA_ART.cell[1]});
       if(!scene.load.isLoading())scene.load.start();
     }
+    this.focus=new FocusArrows(scene);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,away:options.away,
       ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
@@ -481,6 +447,7 @@ export class HordeRenderer{
     this.catcher.push(this.now,view.pickups,this.selfAt);
     this.projectiles.begin();
     for(let i=0;i<view.projectiles.length;i++)this.syncProjectile(view.projectiles[i]);
+    this.keepGhosts();
     this.projectiles.end();
     this.telegraphs.begin();
     for(let i=0;i<view.telegraphs.length;i++)this.syncTelegraph(view.telegraphs[i]);
@@ -514,9 +481,12 @@ export class HordeRenderer{
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.alsoView=this.options.alsoView?.();this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.namesSeen.clear();
+    this.focus.begin();
     this.enemies.forEach(this.drawEnemy);
+    this.focus.end();
     for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
+    this.dropGhosts();
     this.projectiles.forEach(this.drawProjectile);
     this.drawGemGlow();
     this.glow.end();
@@ -546,8 +516,24 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){if(enemyId!==this.targetId)this.capDirty=true;this.targetId=enemyId;}
+  /** The focus of the hero's shot (scene, every frame), or undefined: no arrows. */
+  setFocus(enemyId?:string){this.focusId=enemyId;}
   /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
-  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number,flight?:readonly [number,number]){
+    this.arsenal.ownShot(weapon,x,y,dx,dy);
+    // tiro-rapido-e-local: its projectile too, flying at once (render/own-shots.ts); the room's copy takes its place.
+    const g=this.own.spawn(this.now,weapon,x,y,dx,dy,flight);
+    if(!g)return;
+    this.syncProjectile({id:g.id,source:weapon,x,y,vx:g.vx,vy:g.vy,radius:this.shotRadius.get(weapon)??.25,hostile:false});
+    const a=this.projectiles.get(g.id);if(a)a.ghost=g;
+  }
+  /** The ghosts stay in the pool through a view (they are not in it). */
+  private keepGhosts(){const g=this.own.ghosts;for(let i=0;i<g.length;i++)if(!g[i].spent)this.projectiles.use(g[i].id);}
+  /** Ghosts whose flight ended or that the room never fired (refused): gone. */
+  private dropGhosts(){
+    this.ownGone.length=0;this.own.expire(this.now,this.ownGone);
+    for(let i=0;i<this.ownGone.length;i++)this.projectiles.release(this.ownGone[i]);
+  }
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
@@ -602,9 +588,9 @@ export class HordeRenderer{
   }
 
   destroy(){
-    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();this.catcher.reset();
+    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.own.clear();this.telegraphs.clear();this.catcher.reset();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
-    this.art.destroy();this.arsenal.destroy();this.glow.destroy();
+    this.art.destroy();this.arsenal.destroy();this.glow.destroy();this.focus.destroy();
     for(const label of this.names.values())label.destroy();this.names.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
@@ -679,10 +665,18 @@ export class HordeRenderer{
       a.frames=own?projectileFrames(this.scene.textures,art!):1;a.fps=own?art!.fps:8;a.frame=0;
     }
     if(used.fresh){
-      a.born=this.now;
+      a.born=this.now;a.ghost=undefined;a.ox=undefined;a.oy=undefined;a.adoptAt=undefined;a.mute=undefined;
+      // tiro-rapido-e-local: the room's copy of a shot the phone already flies takes over from the ghost, where it is drawn.
+      const g=!view.hostile&&!view.id.startsWith('eu:')?this.own.adopt(view.source,view.x,view.y,view.vx,view.vy,this.now):undefined;
+      if(g?.spent)a.mute=true;
+      else if(g){
+        const p=this.own.at(g,this.now);a.ox=p.x-view.x;a.oy=p.y-view.y;a.adoptAt=this.now;a.born=g.born;
+        this.projectiles.release(g.id);
+      }
       // Who threw a hostile shot plays its throw (the agiota's boleto): nearest enemy of that kind, art v2 only.
       if(view.hostile&&enemyArtActive()){const cue=projectileAction(view.source,true,view.x,view.y,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     }
+    if(!view.hostile&&!view.id.startsWith('eu:'))this.shotRadius.set(view.source,view.radius);
     a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);a.floor=view.andar;
     this.aim(a);
   }
@@ -991,6 +985,7 @@ export class HordeRenderer{
     if(a.name)this.drawName(a,q.x,q.y-this.barLift(a));
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
+    if(a.id===this.focusId)this.focus.draw(eyeX,eyeY-art.height*art.originY*k*.5,art.width*k,this.body,depth+1.5,now,this.reduced);
     if(a.look!==LOOK_NONE||a.sugar||a.prime)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size*fit);
@@ -1220,7 +1215,11 @@ export class HordeRenderer{
   private drawProjectile=(a:ProjectileActor,id:string)=>{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
-    this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
+    if(a.ghost)this.own.at(a.ghost,this.now,this.at);
+    else{
+      this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
+      if(a.adoptAt!==undefined){const k=adoptFade(this.now-a.adoptAt);this.at.x+=a.ox!*k;this.at.y+=a.oy!*k;if(k<.01)a.adoptAt=undefined;}
+    }
     const q=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q),depth=this.options.projector.depthOn(this.at.x,this.at.y,a.floor),qx=q.x,qy=q.y;
     // A thrown weapon (render/shot-flight.ts) rises on an arc while it flies (its shadow stays on the ground); landed, the
     // rocket is gone in its burst and the brick and the firecrackers lie under theirs.
@@ -1235,7 +1234,8 @@ export class HordeRenderer{
         angle=Math.atan2(ahead.y-qy-throwLiftSlope(age,t.arc)*this.body*1000/THROW_MS,ahead.x-qx)-(t.tilt??0);
       }
     }
-    a.image.setVisible(!t||flying||t.landed);
+    a.image.setVisible(!a.mute&&(!t||flying||t.landed));
+    if(a.mute){a.shadow.setVisible(false);return;}
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
     a.image.setPosition(qx,qy-lift).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(angle);
     // In flight the shadow is the thrown object's, not its burst's.

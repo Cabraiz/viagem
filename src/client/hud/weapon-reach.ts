@@ -38,6 +38,26 @@ export const WEAPON_COOLDOWN_TICKS:Readonly<Record<string,readonly number[]>>={
   'cafe-lendario':[90],'guarda-chuva-lendario':[120],'pombo-lendario':[30],'audio-lendario':[36],
 };
 
+/**
+ * NEW-20261031-ORQ-tiro-rapido-e-local: the travelling shots' flight at base stats by level, the last one repeating:
+ * [speed (u/s), flight (ticks)] of the sim's resolveWeapon (pierce, homing and ricochet; HERO_SHOT_SPEED_MULT counted).
+ * The local hero's projectile is drawn on the press with it (render/own-shots.ts); a test keeps it equal
+ * (tests/client/own-shots.test.ts). A passive that speeds the shot is learned from the room's copy.
+ */
+export const SHOT_FLIGHT:Readonly<Record<string,readonly (readonly [number,number])[]>>={
+  boleto:[[3.375,64],[3.75,69],[3.75,69],[3.75,69],[4.125,75],[4.125,75],[4.5,80],[4.875,85]],
+  pombo:[[1.875,160],[1.875,160],[2.0625,160],[2.0625,160],[2.25,160],[2.25,160],[2.4375,160],[2.625,160]],
+  'boleto-evo':[[4.875,53]],pistola:[[3.75,37]],submetralhadora:[[4.125,29]],rifle:[[6,37]],
+  baladeira:[[4.125,40]],espeto:[[3.375,43]],sacole:[[3.375,40]],'tampa-voadora':[[3.375,32]],'bola-murcha':[[3.375,64]],
+  buscape:[[2.25,133]],'taro-vencido':[[3.75,32]],'boleto-lendario':[[4.875,53]],'pombo-lendario':[[2.625,160]],
+};
+
+/** The held weapon's flight at its level ([u/s, ticks]), undefined when it does not travel. */
+export function heldFlight(owned:Owned|undefined):readonly [number,number]|undefined{
+  const row=owned&&SHOT_FLIGHT[owned.id];
+  return row?row[Math.max(0,Math.min(row.length-1,Math.floor(owned.level)-1))]:undefined;
+}
+
 /** The weapon's refire gap (ms) at base stats at its level, 0 when unknown. */
 export function heldCooldownMs(owned:Owned|undefined):number{
   const row=owned&&WEAPON_COOLDOWN_TICKS[owned.id];

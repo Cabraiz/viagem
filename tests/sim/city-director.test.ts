@@ -754,7 +754,8 @@ test('retreat in the city never vanishes in sight: watched avenues hold the bodi
 test('DirectorState with avenues survives a JSON round-trip mid-round; the copy replays identical spawns',()=>{
   const spot=alongRoute('L',30);
   const build=()=>{const ctx=fakeCtx(31);team(ctx);addPlayer(ctx,'c',spot);return {ctx,log:newLog()};};
-  for(const at of [ticks(9),ticks(25)]){
+  // Late in round 1: 13 s, not 25 (inimigos-3x-fortes: half the bodies, so the wave of 4-15 s here ends sooner).
+  for(const at of [ticks(9),ticks(13)]){
     const a=build(),da=createDirector(options(a.log,{rounds:2,avenues:planner()}));
     run(a.ctx,da,at,killAfter(ticks(3)));
     assert.equal(da.state.stage,'wave',`checkpoint at tick ${at} is mid-round`);
@@ -815,11 +816,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 // Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 // Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 // Re-recorded for modificadores-so-elenco-ativo (29/10): the 7 modifiers naming hidden enemies left the draw, so seeds draw other themes.
+// Re-recorded for inimigos-3x-fortes (31/10): the round table brings half its bodies (halfHorde) and the enemies the hp ramp.
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'cd0704a3aab78da3','ilha kill=40 seed 1':'40d93f5566e309ee',
-  'ilha kill=Infinity seed 0':'bc4defca716dcc30',
-  'infinito kill=40 seed 0':'797a8a412c419c40','infinito kill=40 seed 1':'b42459b22bb092b6',
-  'infinito kill=Infinity seed 0':'33fe83f9727c7d6b', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
+  'ilha kill=40 seed 0':'a64bdba764c5fe1c','ilha kill=40 seed 1':'b9fcc533db3f86f6',
+  'ilha kill=Infinity seed 0':'8009e6c51428be18',
+  'infinito kill=40 seed 0':'f59f44a73baad751','infinito kill=40 seed 1':'929ab71fb449ea66',
+  'infinito kill=Infinity seed 0':'2f310759abcc2555', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

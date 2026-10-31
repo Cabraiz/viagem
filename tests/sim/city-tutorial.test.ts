@@ -51,6 +51,7 @@ import {ROUNDS,ROUND_NAMES,countMult} from '../../src/rules/waves.ts';
 import {CITY_DISTANCE_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+import {halfHorde} from '../../src/rules/forca-inimigos.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
 setRosterOnlyWithArt(false);
 
@@ -401,7 +402,7 @@ test('opt-out: cityTutorial false plays the round table\'s round 1 in the city (
     if(tutorial)assert.equal(s.plan!.total,TUTORIAL_PLAN.behind+TUTORIAL_PLAN.welcome);
     else{
       assert.ok(ROUND_NAMES.includes(rounds[0].name!),'the drawn round name');
-      assert.equal(s.plan!.total,ROUNDS[0].budget,'the table\'s round 1 budget for one player');
+      assert.equal(s.plan!.total,halfHorde(ROUNDS[0].budget),'the table\'s round 1 budget for one player, halved (inimigos-3x-fortes)');
     }
   }
 });
@@ -466,12 +467,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
   const json=JSON.stringify({events:ctx.events,sentAt:ctx.sentAt,created:log.created,ends:log.ends,state:director.state,round:ctx.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies; again for textos-rodada-nivel-tom, only the round name 'Rodada do Pavê' in the events; all again for modificadores-so-elenco-ativo, the modifiers naming hidden enemies out of the draw). */
+/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table and D-040's round-8 ban of giant-everyone; the director itself unchanged; endless again for D-046's wider spawn ring and velocidade-heroi-e-projetil's lead and spawn ring; endless again for D-054, no round-1 crumbs; all again for vida-inimigos-estilo-clash's role hp and ×0.7 bodies; again for textos-rodada-nivel-tom, only the round name 'Rodada do Pavê' in the events; all again for modificadores-so-elenco-ativo, the modifiers naming hidden enemies out of the draw; all again for inimigos-3x-fortes, half the round table's bodies and the hp ramp). */
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'cd0704a3aab78da3','ilha kill=40 seed 1':'40d93f5566e309ee',
-  'ilha kill=Infinity seed 0':'bc4defca716dcc30',
-  'infinito kill=40 seed 0':'797a8a412c419c40','infinito kill=40 seed 1':'b42459b22bb092b6',
-  'infinito kill=Infinity seed 0':'33fe83f9727c7d6b',
+  'ilha kill=40 seed 0':'a64bdba764c5fe1c','ilha kill=40 seed 1':'b9fcc533db3f86f6',
+  'ilha kill=Infinity seed 0':'8009e6c51428be18',
+  'infinito kill=40 seed 0':'f59f44a73baad751','infinito kill=40 seed 1':'929ab71fb449ea66',
+  'infinito kill=Infinity seed 0':'2f310759abcc2555',
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

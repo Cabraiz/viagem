@@ -14,6 +14,7 @@ import {Rng} from '../../src/contract/index.ts';
 import {ELITE_ONLY,MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
   drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
 import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
+import {HORDE_SHARE} from '../../src/rules/forca-inimigos.ts';
 // The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
 setRosterOnlyLiberados(false);
 
@@ -96,7 +97,8 @@ test('planRound with the rotation: the round\'s entries by role, threat budget k
       for(const k of g.members)assert.ok(allowed.has(k),`round ${round}: ${k} is not in the round's rotation`);
     }
     // The regular threat stays within ~10% of the table's (count normalized), less the lone mini-chefe's share.
-    const want=regularThreat(table)-(roster.solo?ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1)):0),got=regularThreat(rot);
+    // inimigos-3x-fortes: the mini's share comes out of the full budget before the horde's cut, so × HORDE_SHARE.
+    const want=regularThreat(table)-(roster.solo?ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1))*HORDE_SHARE:0),got=regularThreat(rot);
     assert.ok(Math.abs(got-want)<=Math.max(3,want*.1),`round ${round} ${players}p: threat ${got.toFixed(1)} vs ${want.toFixed(1)}`);
     if(round===8){assert.equal(rot.groups.filter(g=>g.solo).length,1);assert.ok(rot.miniHp!>0&&rot.miniHp!<rot.eliteHp);}
     else assert.ok(!rot.groups.some(g=>g.solo)&&rot.miniHp===undefined);
@@ -130,7 +132,8 @@ test('round 8: the lone mini-chefe takes its threat (ROLE_PROFILES threat x the 
     const withMini=planRound(8,players,{name:'x'},new Rng(seed),roster),control=planRound(8,players,{name:'x'},new Rng(seed),noSolo);
     assert.equal(withMini.groups.filter(g=>g.solo).length,1);assert.equal(control.groups.filter(g=>g.solo).length,0);
     if(control.groups.filter(g=>!g.boss&&!g.elite).flatMap(g=>g.members).length>=MAX_ROUND_ENEMIES)continue;
-    const soloThreat=ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1)),given=regularThreat(control)-regularThreat(withMini);
+    // inimigos-3x-fortes: × HORDE_SHARE (the regular bodies give up the mini's share of the full budget, then halve).
+    const soloThreat=ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1))*HORDE_SHARE,given=regularThreat(control)-regularThreat(withMini);
     // ×0.7 bodies (CLASH_BODIES): at 1 player the body rounding gives up ~0.68 of it (still about 1 on average).
     assert.ok(given>=soloThreat*.65&&given<=soloThreat*1.25,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
     ratios.push(given/soloThreat);

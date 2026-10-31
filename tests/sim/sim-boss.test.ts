@@ -12,6 +12,7 @@ import type {BossOptions} from '../../src/sim/boss.ts';
 import {BARK_GAP,EnemyAi} from '../../src/sim/enemies/ai.ts';
 import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
 import {MAX_ENEMIES} from '../../src/rules/budget.ts';
+import {ENEMY_HP} from '../../src/rules/forca-inimigos.ts';
 import {MIN_TELEGRAPH_TICKS,DEFAULT_CONE_ANGLE,addTelegraph,cancelTelegraphs,canBeHit,canBeTargeted,telegraphHits,telegraphSystem,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import type {TelegraphShapeData} from '../../src/sim/telegraphs.ts';
 
@@ -230,7 +231,7 @@ test('boss hp scales with 1 to 6 players and the spawn is safe, idempotent and a
   for(const n of [1,6]){
     const {ctx,controller}=arena({players:squad(n)});
     const boss=controller.spawnBoss(ctx)!;
-    assert.equal(boss.kind,BOSS_KIND);assert.ok(boss.boss);assert.equal(boss.maxHp,bossMaxHp(n));assert.equal(boss.damage,0);
+    assert.equal(boss.kind,BOSS_KIND);assert.ok(boss.boss);assert.equal(boss.maxHp,Math.round(bossMaxHp(n)*ENEMY_HP(10)));assert.equal(boss.damage,0);
     assert.ok(walkable(boss,defaultTerrain));
     for(const p of ctx.players.values())assert.ok(Math.hypot(p.x-boss.x,p.y-boss.y)>=4);
     assert.equal(controller.spawnBoss(ctx),boss,'second call returns the living boss');
@@ -239,7 +240,7 @@ test('boss hp scales with 1 to 6 players and the spawn is safe, idempotent and a
     assert.ok(ctx.events.some(e=>e.type==='bark'&&e.enemy===boss.id));
   }
   const mixed=arena({players:[...squad(2),player('ghost',3,3,{online:false}),player('watch',3,3,{spectator:true})]});
-  assert.equal(mixed.controller.spawnBoss(mixed.ctx)!.maxHp,bossMaxHp(2),'offline players and spectators do not inflate hp');
+  assert.equal(mixed.controller.spawnBoss(mixed.ctx)!.maxHp,Math.round(bossMaxHp(2)*ENEMY_HP(10)),'offline players and spectators do not inflate hp');
 });
 
 test('every boss hit is telegraphed at least 0.8 s ahead in all phases, and the boss stays on land',()=>{
@@ -491,9 +492,9 @@ test('announced summons skip a spot a player walked onto and respect the cap wit
 
 test('boss hp uses the injected peak player count and never shrinks below present players',()=>{
   const a=arena({players:squad(2),boss:{scalePlayers:()=>5}});
-  assert.equal(a.controller.spawnBoss(a.ctx)!.maxHp,bossMaxHp(5));
+  assert.equal(a.controller.spawnBoss(a.ctx)!.maxHp,Math.round(bossMaxHp(5)*ENEMY_HP(10)));
   const b=arena({players:squad(4),boss:{scalePlayers:()=>1}});
-  assert.equal(b.controller.spawnBoss(b.ctx)!.maxHp,bossMaxHp(4));
+  assert.equal(b.controller.spawnBoss(b.ctx)!.maxHp,Math.round(bossMaxHp(4)*ENEMY_HP(10)));
 });
 
 test('boss walks around rocks and stops at the coast, chasing only online standing players',()=>{
@@ -551,7 +552,7 @@ test('default minions come from the enemy catalog, wait a moment after arriving 
   assert.ok(minions.length>0);
   for(const m of minions){
     assert.ok((MINION_KINDS as readonly string[]).includes(m.kind));
-    assert.equal(m.maxHp,ENEMIES[m.kind as 'bebado'].hp,'catalog stats');
+    assert.equal(m.maxHp,ENEMIES[m.kind as 'bebado'].hp*ENEMY_HP(10),'catalog stats (× the round-10 ENEMY_HP)');
     assert.equal(m.readyTick-m.spawnTick,MINION_READY_TICKS);
     assert.ok(!m.boss);
   }

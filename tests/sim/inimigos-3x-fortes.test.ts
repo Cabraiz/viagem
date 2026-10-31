@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {cityNestPlan,type NestPlan} from '../../src/maps/index.ts';
 import {BASE_STATS,Rng,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
-import {ENEMY_DAMAGE,ENEMY_HP,ENEMY_POWER,HORDE_SHARE,enemyPower,LEGACY_KINDS,MAX_ROUND_ENEMIES,ROUNDS,halfHorde,planRound} from '../../src/rules/index.ts';
+import {ENEMY_DAMAGE,ENEMY_HP,ENEMY_POWER,HORDE_SHARE,LEGACY_KINDS,MAX_ROUND_ENEMIES,ROUNDS,halfHorde,planRound} from '../../src/rules/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -32,21 +32,22 @@ function addPlayer(w:SimWorld,id:string,armor=0){
   w.players.set(id,player);return player;
 }
 
-/** The ramp (ORQ 31/10, the novice reaches the plaza): ×1.5 in round 1 (and before it), ×2 in round 2, ×3 from round 3. */
-const RAMP:[number,number][]=[[0,1.5],[1,1.5],[2,2],[3,3],[7,3],[12,3]];
+/** The ramps (ORQ 31/10 07:42Z, the novice reaches the plaza), [round, hp, damage]: round 1 (and before it) hp ×1 and
+ * damage ×1.5, round 2 both ×2, ×3 from round 3. */
+const RAMP:[number,number,number][]=[[0,1,1.5],[1,1,1.5],[2,2,2],[3,3,3],[7,3,3],[12,3,3]];
 const atRound=(w:SimWorld,round:number)=>{w.round.index=round;return w;};
 
-test('one knob: ENEMY_POWER=3 at full, climbing ×1.5 → ×2 → ×3 over rounds 1-3; hp and damage share it; the horde share is a half', ()=>{
+test('one knob: ENEMY_POWER=3 at full from round 3; hp ×1 → ×2, damage ×1.5 → ×2 over rounds 1-2; the horde share is a half', ()=>{
   assert.equal(ENEMY_POWER,3);assert.equal(HORDE_SHARE,.5);
-  for(const [round,k] of RAMP){assert.equal(enemyPower(round),k,`round ${round}`);assert.equal(ENEMY_HP(round),k);assert.equal(ENEMY_DAMAGE(round),k);}
-  assert.equal(enemyPower(NaN),1.5,'a broken round is round 1');
+  for(const [round,hp,dmg] of RAMP){assert.equal(ENEMY_HP(round),hp,`round ${round} hp`);assert.equal(ENEMY_DAMAGE(round),dmg,`round ${round} damage`);}
+  assert.equal(ENEMY_HP(NaN),1,'a broken round is round 1');assert.equal(ENEMY_DAMAGE(NaN),1.5);
 });
 
 test('halfHorde: half rounded up, at least 1 when there was any, none stays none', ()=>{
   assert.deepEqual([0,1,2,3,4,5,9,10,41].map(halfHorde),[0,1,1,2,2,3,5,5,21]);
 });
 
-test('createEnemy: every kind is born with the power of its round × its def hp, on top of the caller scale', ()=>{
+test('createEnemy: every kind is born with the hp ramp of its round × its def hp, on top of the caller scale', ()=>{
   for(const [round,k] of RAMP){
     const w=atRound(world(),round);
     for(const kind of LEGACY_KINDS)for(const scale of [1,1.75,.35]){
@@ -67,8 +68,8 @@ test('the boss is born with 3× the bossMaxHp of its room (it comes after round 
   }
 });
 
-test('damagePlayer: a hero takes the power of the round × the hit, before armor (×1.5, ×2, then ×3)', ()=>{
-  for(const [round,k] of RAMP){
+test('damagePlayer: a hero takes the damage ramp of the round × the hit, before armor (×1.5, ×2, then ×3)', ()=>{
+  for(const [round,,k] of RAMP){
     const w=atRound(world(),round),p=addPlayer(w,'a'),q=addPlayer(w,'b',2);
     w.damagePlayer('a',4);assert.equal(p.hp,1000-4*k,`round ${round}`);
     w.damagePlayer('b',4);assert.equal(q.hp,1000-(4*k-2),`round ${round}: armor comes off the multiplied hit`);
@@ -106,7 +107,7 @@ test('the map keeps its sleepers: the nest plan has the same bodies as before', 
 });
 
 test('structures take the ramp too (ORQ 31/10): the wall through hitStructure and the siege, the Uno its hit units', ()=>{
-  for(const [round,k] of RAMP)if(round===1||round===2){
+  for(const [round,,k] of RAMP)if(round===1||round===2){
     const w=atRound(world(),round),sys=createStonewardsSystem({terrain:city,barricades:false,siegeContact:false}),hp0=sys.state.wall.hp;
     sys.hit(w,sys.state.wall.id,4);assert.equal(sys.state.wall.hp,hp0-4*k,`round ${round}: hitStructure`);
   }

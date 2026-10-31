@@ -171,14 +171,14 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 29 'Modo Segunda-feira' (× 0.75; was 4 before modificadores-so-elenco-ativo),
-  // 22 'Sinal do Recreio' (× 1.25), one
+  // City seeds whose round 3 has a speed modifier: 1 'Modo Segunda-feira' (× 0.75; was 29, and 4 before modificadores-so-elenco-ativo:
+  // inimigos-3x-fortes' half horde draws less from the seed), 11 'Sinal do Recreio' (× 1.25; was 22), one
   // player (vida-inimigos-estilo-clash: clashBodies(1) = 1, the stream of before the Clash table).
-  const c29=directorSpeeds(city,29,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
+  const c29=directorSpeeds(city,1,3,s=>citySpeed(s)),c22=directorSpeeds(city,11,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
-  console.log(`[cidade-05c] director speeds: city seed 29 ${c29.checked} bodies (multipliers ${c29.mults.join(', ')}), seed 22 ${c22.checked} (${c22.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
-  for(const [name,r] of [['city 29',c29],['city 22',c22],['island',i],['endless',n]] as const){
+  console.log(`[cidade-05c] director speeds: city seed 1 ${c29.checked} bodies (multipliers ${c29.mults.join(', ')}), seed 11 ${c22.checked} (${c22.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
+  for(const [name,r] of [['city 1',c29],['city 11',c22],['island',i],['endless',n]] as const){
     assert.ok(r.checked>0,`${name}: bodies were spawned`);
     assert.deepEqual(r.bad.slice(0,8),[],`${name}: ${r.bad.length} bodies with another speed`);
   }
@@ -478,7 +478,8 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both again for vida-inimigos-estilo-clash: role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 // Both again for colisao-entre-herois (the heroes solid to each other: b's sweep passes 0.32 u from a, inside HERO_GAP;
 // were ilha f2cdd64acf0330fc, infinito 9d8dabc1887c3e50).
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'0c5beba18278c238',infinito:'a13a025aa294b33e'};
+// Both again for inimigos-3x-fortes (the boss's and minions' hp × ENEMY_HP; were ilha 0c5beba18278c238, infinito a13a025aa294b33e).
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'6638ea54fbf03510',infinito:'6481b04745534f21'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

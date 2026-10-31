@@ -14,7 +14,8 @@ import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems} from '../../src/sim/assemble.ts';
-import {CAR_LIMIT,CAR_REPAIR_SHARE,carLimitFor} from '../../src/sim/chaveiro/system.ts';
+import {CAR_HIT_UNITS,CAR_LIMIT,CAR_REPAIR_SHARE,carLimitFor} from '../../src/sim/chaveiro/system.ts';
+import {ENEMY_DAMAGE,halfHorde} from '../../src/rules/index.ts';
 import {AGGRO,AGGRO_PER_PLAYER,AGGRO_SECONDS,FOCO,FOCO_CACADOR,FOCO_UNO,UNO_FOCUS_SHARE,focoOf} from '../../src/sim/enemies/foco.ts';
 import {WAVE_MEMORY} from '../../src/sim/ninhos/ninhos.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
@@ -109,10 +110,11 @@ test('the Uno\'s limit grows with the room; repair gives a share back; at the li
   for(const n of [1,3,6])assert.equal(rig(n).car.limit,carLimitFor(n),`${n} players`);
   assert.ok(carLimitFor(6)>carLimitFor(3)&&carLimitFor(3)>carLimitFor(1));
   const r=rig(1),hitter=addEnemy(r.world,'h',r.car);
+  const hit=Math.round(CAR_HIT_UNITS.normal*ENEMY_DAMAGE(r.world.round.index));// inimigos-3x-fortes: units × the round's damage
   for(let i=0;i<40;i++)r.ch.hitCar(r.world,hitter);
-  assert.equal(r.car.hits,40);
+  assert.equal(r.car.hits,40*hit);
   r.ch.repair(r.world);
-  assert.equal(r.car.hits,40-Math.round(CAR_REPAIR_SHARE*r.car.limit));
+  assert.equal(r.car.hits,40*hit-Math.round(CAR_REPAIR_SHARE*r.car.limit));
   r.ch.repair(r.world);r.ch.repair(r.world);assert.equal(r.car.hits,0,'never below 0');
   while(r.ch.state.ended===undefined)r.ch.hitCar(r.world,hitter);
   assert.equal(r.ch.state.ended,'defeat');assert.deepEqual(r.outcomes,['defeat']);
@@ -126,6 +128,6 @@ test('every body of a nests wave gets a foco, ~75 % for the Uno',()=>{
     run(r,1);
     for(const e of r.world.enemies.values())if(e.memory?.[WAVE_MEMORY]!==undefined&&!e.boss)seen.set(e.id,e.memory[FOCO]!);
   }
-  assert.ok(seen.size>=10,`waves came (${seen.size} bodies)`);
+  assert.ok(seen.size>=halfHorde(10),`waves came (${seen.size} bodies)`);// the horde is halved
   for(const [id,f] of seen)assert.equal(f,focoOf(id),id);
 });

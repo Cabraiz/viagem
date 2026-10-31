@@ -268,8 +268,8 @@ export class SimWorld implements SimContext {
     if(this.recordLastHit&&source!==undefined&&this.enemies.has(source))player.lastHitBy={id:source,tick:this.tick};
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
-    // inimigos-3x-fortes (rules/forca-inimigos.ts): every hit a hero takes is an enemy's, × the round's ENEMY_DAMAGE before armor.
-    amount*=ENEMY_DAMAGE(this.round.index);
+    // inimigos-3x-fortes (rules/forca-inimigos.ts): every hit a hero takes is an enemy's, × the round's ENEMY_DAMAGE before armor (the lab's hurt is exact).
+    if(source!=='env:lab')amount*=ENEMY_DAMAGE(this.round.index);
     // D-047 Dona Cida's cocada (SimPlayer.guardUntil), before armor like the agiota's mark.
     if(player.guardUntil!==undefined&&this.tick<player.guardUntil)amount*=CIDA_GUARD_MULT;
     if(this.playerDamageScale){

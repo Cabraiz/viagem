@@ -9,17 +9,18 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BARRICADA_OFF,DEFENSES,DEFENSE_IDS,KIT_IDS,KIT_POOL,TOWERS_SHOWN,childrenOf,isDefenseId,isKitId,kitId,pickChild,towerShown,type DefenseId} from '../../src/rules/index.ts';
+import {BARRICADA_OFF,BICHO_ROOTS,DEFENSES,DEFENSE_IDS,KIT_IDS,KIT_POOL,TOWERS_SHOWN,childrenOf,isDefenseId,isKitId,kitId,pickChild,towerShown,type DefenseId} from '../../src/rules/index.ts';
 import {DICT} from '../../src/protocol/protocol4.ts';
 import {drawPrize,otherPrize,prizePools,rollCrate,rollPrize,rollStarter} from '../../src/sim/crates.ts';
 import {Rng} from '../../src/contract/rng.ts';
 
 const RARITIES=[1,2,3,4,5] as const;
-const APPROVED=new Set([...TOWERS_SHOWN,'muro'].map(p=>kitId(p as never)));
+const APPROVED=new Set([...BICHO_ROOTS,'muro'].map(p=>kitId(p as never)));
 
 test('KIT_POOL: no barricada, only the guarita (and the verde muro) in every tier', ()=>{
   assert.equal(BARRICADA_OFF,true);
-  assert.deepEqual([...TOWERS_SHOWN],['vigia-do-predio']);
+  // torres-3-base-9 (31/10): the 12 bichos are shown; only the 3 roots come in a kit.
+  assert.equal(TOWERS_SHOWN.length,12);
   for(const r of RARITIES){
     assert.ok(!KIT_POOL[r].includes('barricada'),`pool ${r}`);
     for(const p of KIT_POOL[r])assert.ok(APPROVED.has(kitId(p)),`${p} in pool ${r}`);
@@ -47,7 +48,7 @@ test('N draws of every crate path and the slot reel never give a barricada nor a
     }
     for(const start of [false,true])check(prizePools(r,start).flat(),`prizePools ${r}`);
   }
-  assert.ok(seen.has(kitId('vigia-do-predio')),'the guarita still comes out of the crates');
+  for(const root of BICHO_ROOTS)assert.ok(seen.has(kitId(root)),`${root} comes out of the crates`);
 });
 
 test('the upgrade tree leads to no hidden tower; a hidden one already built stays a defense', ()=>{

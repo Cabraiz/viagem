@@ -7,7 +7,7 @@
  * Prices (D-048, ficha de torre and Grana): building the Vigia costs 1 ficha and the Gustavão 3 (`tokens`, the rail
  * comes free); every other evolution costs `grana` R$ by the tier it reaches (rules priceOf, price.ts evolvePriceLabel).
  */
-import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,TOWER_TOKENS,childrenOf,priceOf,tokensOf,unitsOf,type Balance,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,TOWER_TOKENS,childrenOf,priceOf,tokensOf,unitsOf,type Balance,type Branch,type DefenseDef,type DefenseId,type DefenseSize,towerArtKind} from '../../../rules/index.ts';
 import {fichasText,granaShort} from '../price.ts';
 import {uiArtUrl} from '../../ui/icon.ts';
 
@@ -15,7 +15,7 @@ import {uiArtUrl} from '../../ui/icon.ts';
  * The imported sticker of a defense (icones-no-hud: `ui/torre-<DefenseId>`, art v2), or undefined: the rail, an unknown
  * key, or the art not loaded (then the menu keeps its suit). Only a DefenseId has one.
  */
-export const towerSticker=(key:string):string|undefined=>Object.hasOwn(DEFENSES,key)?uiArtUrl(`torre-${key}`):undefined;
+export const towerSticker=(key:string):string|undefined=>Object.hasOwn(DEFENSES,key)?uiArtUrl(`torre-${towerArtKind(key)}`):undefined;
 
 /** A tower as the menu sees it (the sim's DefenseState, reduced). */
 export interface ObraTower {id:string;kind:DefenseId;building?:boolean;ruined?:boolean}

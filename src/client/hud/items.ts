@@ -4,7 +4,7 @@
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
 import {goldSticker,isStickerName,type StickerName} from '../ui/sticker.ts';
-import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
+import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece,towerArtKind} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -92,7 +92,7 @@ const items:ItemDisplay[]=[
 for(const id of KIT_IDS){
   const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
   const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
-  items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
+  items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${towerArtKind(piece)}` as StickerName,
     blurb:wall?`Toca e põe ${KIT_CHARGES[piece]} no chão.`:'Toca e põe a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));

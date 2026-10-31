@@ -15,7 +15,7 @@ import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,ticks,type EnemyState,type SimPlayer} from '../../src/contract/types.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {DEFENSES,DEFENSE_LIMIT,KIT_CHANCE,KIT_CHARGES,KIT_IDS,KIT_POOL,TIER_BUILD_SECONDS,isKitId,kitId,kitItem,kitPiece,kitRarity} from '../../src/rules/index.ts';
+import {BICHO_ROOTS,DEFENSES,isBicho,DEFENSE_LIMIT,KIT_CHANCE,KIT_CHARGES,KIT_IDS,KIT_POOL,TIER_BUILD_SECONDS,isKitId,kitId,kitItem,kitPiece,kitRarity} from '../../src/rules/index.ts';
 import {FREE_CELL,onGround} from '../../src/sim/towers/free-build.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
@@ -61,13 +61,15 @@ function square(k:number,size:number){
 
 test('rules: the wall pieces are verde, no Gustavão; every kit id is in the DICT', ()=>{
   // kits-so-torres-boas (31/10): no barricada (BARRICADA_OFF) and only the guarita (TOWERS_SHOWN), every tier.
-  assert.deepEqual([...KIT_POOL[1]].sort(),['muro','vigia-do-predio']);
-  for(const r of [2,3,4,5] as const)assert.deepEqual(KIT_POOL[r],['vigia-do-predio'],`pool ${r}`);
+  // torres-3-base-9: the 3 bicho roots replace the guarita.
+  assert.deepEqual([...KIT_POOL[1]].sort(),[...BICHO_ROOTS,'muro'].sort());
+  for(const r of [2,3,4,5] as const)assert.deepEqual([...KIT_POOL[r]].sort(),[...BICHO_ROOTS].sort(),`pool ${r}`);
   assert.ok(!Object.values(KIT_POOL).flat().includes('gustavao' as never),'the Gustavão rides the rail');
   assert.equal(kitRarity('muro'),1);assert.equal(kitRarity('morteiro'),3);assert.equal(kitRarity('obuseiro'),5);
   assert.equal(kitPiece(kitId('morteiro')),'morteiro');assert.equal(kitPiece('pistola'),undefined);assert.equal(isKitId('kit:gustavao'),false);
   assert.deepEqual(kitItem('muro'),{id:'kit:muro',level:KIT_CHARGES.muro});assert.deepEqual(kitItem('holofote'),{id:'kit:holofote',level:1});
-  for(const id of KIT_IDS)assert.ok(DICT.includes(id),`${id} in the DICT`);
+  // torres-3-base-9: the DICT's one-byte indices are full, so the 3 bicho kits travel inline (protocol4 INLINE_STRING).
+  for(const id of KIT_IDS)if(!isBicho(kitPiece(id)!))assert.ok(DICT.includes(id),`${id} in the DICT`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
 

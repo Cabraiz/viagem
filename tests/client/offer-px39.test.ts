@@ -17,7 +17,6 @@ test('the fan: the default pick in the middle, the others to the sides',()=>{
   assert.deepEqual(fanSlots(3,1),['l','m','r']);
   assert.deepEqual(fanSlots(3,0),['m','l','r']);
   assert.deepEqual(fanSlots(3,2),['l','r','m']);
-  assert.deepEqual(fanSlots(4,3),['l2','r1','r2','l1']);
   assert.deepEqual(fanSlots(2,1),['r1','l1']);
   assert.deepEqual(fanSlots(1,0),['m']);
   assert.deepEqual(fanSlots(3,-1),['m','l','r']);

@@ -75,7 +75,7 @@ test('offer copy distinguishes round upgrades from level-ups; deadline fraction'
   assert.equal(offerDeadlineFraction(level,1000,1000),1);
   assert.equal(offerDeadlineFraction(level,1000+ticks(FIXTURE_INTERMISSION_SECONDS/2),1000),.5);
   assert.equal(offerDeadlineFraction(level,level.deadlineTick+5,1000),0);
-  assert.ok(round.choices.length===4&&level.choices.length===3);
+  assert.ok(round.choices.length===3&&level.choices.length===3);
 });
 
 test('event tally counts each eventId once and ignores late or repeated events',()=>{
@@ -182,7 +182,7 @@ test('offer and result copy helpers are deterministic pt-BR',()=>{
   assert.equal(offerJoke('lvl-12-p1','level'),offerJoke('lvl-12-p1','level'));
   assert.equal(queueLabel(0),'');assert.equal(queueLabel(2),'+2 na fila');
   const offer=fakeView('offer-round',1).offers[0];
-  assert.deepEqual(choiceFlags(offer,2),{isDefault:true,luck:false});assert.deepEqual(choiceFlags(offer,3),{isDefault:false,luck:true});
+  assert.deepEqual(choiceFlags(offer,2),{isDefault:true});assert.deepEqual(choiceFlags(offer,0),{isDefault:false});
   assert.equal(resultHeadline({victory:true,seed:'a'}).title,'Vitória!');assert.equal(resultHeadline({victory:false,seed:'a'}).title,'Derrota…');
   assert.deepEqual(resultHeadline({victory:true,seed:'x'}),resultHeadline({victory:true,seed:'x'}));
   assert.equal(compactNumber(980),'980');assert.equal(compactNumber(18420),'18,4k');assert.equal(compactNumber(21050),'21k');assert.equal(compactNumber(Number.NaN),'0');

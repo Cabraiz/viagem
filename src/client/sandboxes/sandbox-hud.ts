@@ -1,5 +1,5 @@
 /**
- * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-open|offer-prepare|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1][&zueira=boletos|promo|apagao|killcam]`.
+ * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-open|offer-prepare|offer-round|offer-dois|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1][&zueira=boletos|promo|apagao|killcam]`.
  * `full=1` gives every player a 12-item build (layout stress test).
  * Renders the run HUD over a mock island with the real control positions (camera, gear, joystick, attack)
  * so overlaps are visible. Fake data only; nothing talks to the server.
@@ -384,7 +384,7 @@ function load(next:HudScenario){
   else document.body.dataset.hudReady='1';
   // Combat with the compact panel open: D-050's level-up pause (the room's RunState.pause), 9 s of 12 left, the whole
   // team still picking. Every other scenario runs unpaused.
-  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'||scenario==='offer-sem-xp'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
+  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'||scenario==='offer-tomos'||scenario==='offer-sem-xp'||scenario==='offer-dois'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
   // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
   // esperando: drawn only once your card is picked (below), so the print shows the waiting window with it.

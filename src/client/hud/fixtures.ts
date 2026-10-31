@@ -10,7 +10,7 @@ import type {RunResult} from './model.ts';
 /**
  * offer: 2 level offers held in combat outside a pause (D-050: nothing shows); offer-open: the same in the level-up
  * pause (the sandbox sets Hud.setPause), the window open by itself; offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
- * round offer alone (4 tags); offer-heal: the full-build coxinha; offer-new: the production "Tudo novo!" window
+ * round offer alone (3 tags); offer-dois: a level offer of 2 cards (in the pause); offer-heal: the full-build coxinha; offer-new: the production "Tudo novo!" window
  * (BUG-20261012-ORQ-oferta-cortada-retrato): a level offer of three first picks (every tag Nv 1, one-line effects)
  * with the round offer queued behind it, so "Levar os indicados" shows;
  * offer-downed / offer-open-downed: the same intermission window / pause window with two allies down, the last of
@@ -19,8 +19,8 @@ import type {RunResult} from './model.ts';
  * 6 units, 0 fichas de torre); the other scenarios hold 156 units (3 fichas, the ring at 90%: the "falta pouco" look);
  * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave'|'offer-tomos'|'offer-sem-xp';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave','offer-tomos','offer-sem-xp'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave'|'offer-tomos'|'offer-sem-xp'|'offer-dois';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave','offer-tomos','offer-sem-xp','offer-dois'];
 /** Where the fixtures put the wall, and the hero spots the sandbox hands the HUD (in the camp / far away). */
 export const FIXTURE_WALL={x:12,y:12};
 export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?:number}>>={
@@ -72,7 +72,7 @@ export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunV
 export const FIXTURE_INTERMISSION_SECONDS=17;
 function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferView{
   return source==='round'
-    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'guarda-chuva',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
+    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'guarda-chuva',level:6}],deadlineTick,defaultIndex:2}
     :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'guarda-chuva',level:6}],deadlineTick,defaultIndex:0}
     :{id:`lvl-${level}-p1`,source,level,choices:[{itemId:'tenis',level:3},{itemId:'audio',level:1},{itemId:'cartao',level:2}],deadlineTick,defaultIndex:2};
 }
@@ -105,7 +105,9 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
       // upgrades-megabonk: the manual combat's tomes (+1 projétil, the aura, the shot speed, damage), in the pause.
       // ofertas-sem-xp-e-icones: the user's print of 25/10 (two of its stickers came as an empty frame; the cartão said XP).
       :scenario==='offer-sem-xp'?[{id:'lvl-2-p1',source:'level',level:2,choices:[{itemId:'estilingue',level:1},{itemId:'cartao',level:1},{itemId:'cafe-forte',level:1}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]
-      :scenario==='offer-tomos'?[{id:'lvl-12-p1',source:'level',level:12,choices:[{itemId:'pente',level:2},{itemId:'defumador',level:1},{itemId:'estilingue',level:1},{itemId:'oculos',level:3}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]:[],
+      :scenario==='offer-tomos'?[{id:'lvl-12-p1',source:'level',level:12,choices:[{itemId:'pente',level:2},{itemId:'defumador',level:1},{itemId:'estilingue',level:1}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]
+      // Two cards left to upgrade (oferta-3-cartas prints): the default and one side card behind it.
+      :scenario==='offer-dois'?[{id:'lvl-20-p1',source:'level',level:20,choices:[{itemId:'estilingue',level:4},{itemId:'tenis',level:5}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]:[],
     events:[],
   };
   return view;

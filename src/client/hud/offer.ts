@@ -97,9 +97,9 @@ export function trackShownAt(shownAt:Map<string,number>,offers:readonly OfferVie
 
 export const queueLabel=(queued:number)=>queued>0?`+${queued} na fila`:'';
 
-/** Card flags: the default pick (applied when the clock runs out) and the 4th "luck" slot. */
+/** Card flags: the default pick (applied when the clock runs out). No 4th "luck" card since oferta-3-cartas. */
 export function choiceFlags(offer:OfferView,index:number){
-  return {isDefault:index===offer.defaultIndex,luck:index===3};
+  return {isDefault:index===offer.defaultIndex};
 }
 
 /** The chip: "+N" offers waiting, and what a screen reader hears. */

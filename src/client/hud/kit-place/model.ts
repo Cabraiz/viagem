@@ -155,7 +155,7 @@ export class KitPlace {
     const rect=this.rect(ctx.cell);
     if(!rect||!this.kit)return null;
     const answer=this.answers.get(keyOf(this.kit.piece,rect.c,rect.r,this.rot));
-    const local=ctx.ground&&!ctx.ground(rect,ctx.cell)?'fora':ghostRefusal(rect,ctx)??(bodyOn(rect,ctx.bodies)?'ocupado':undefined);
+    const local=ctx.ground&&!ctx.ground(rect,ctx.cell)?'fora':ghostRefusal(rect,{...ctx,piece:this.kit.piece})??(bodyOn(rect,ctx.bodies)?'ocupado':undefined);
     const look=ghostLook(local,answer);
     // Why it is red, in the words the room would use: the local check, else the room's own answer.
     this.blocked=look==='bloqueado'?local??answer?.reason??'ocupado':undefined;

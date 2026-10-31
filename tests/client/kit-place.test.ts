@@ -6,7 +6,8 @@ import {KIT_REACH,KIT_TURN_DRAG,KitArt,KitPlace,kitRefusalText,towerKitsArrived}
 import {inventorySlots,slotLabel,tapCommand} from '../../src/client/hud/inventory.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';
-import {KIT_CHARGES,KIT_PLACE_REACH,kitItem} from '../../src/rules/index.ts';
+import {CAR_BUILD_GAP,KIT_CHARGES,KIT_PLACE_REACH,UNO_BUILD_CELLS,kitItem} from '../../src/rules/index.ts';
+import {CAR_RADIUS} from '../../src/contract/index.ts';
 import {ATTACK_WORD,BUILD_WORD,SKILL_WORD,actionFace} from '../../src/client/hud/skill.ts';
 
 const CELL=.88;
@@ -142,4 +143,13 @@ test('torre-folha-ao-pegar-kit: a tower kit coming into the backpack asks for it
   assert.match(hook,/^kitPlace\.sync\(me\?\.weapons\);kitArt\.sync\(scene,me\?\.weapons\);/);
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   assert.match(scene,/\n  needTowerArt\(kind:TowerKind\)\{/,'public: KitArt calls it');
+});
+test('construir-andando-ate-a-obra: the kit ghost keeps the room gap off the Uno (CAR_BUILD_GAP; a barricada UNO_BUILD_CELLS cells), so the hero never walks to a refusal',()=>{
+  const k=new KitPlace(()=>0);
+  for(const [id,gap] of [['kit:vigia-do-predio',CAR_BUILD_GAP],['kit:barricada',UNO_BUILD_CELLS*CELL]] as const){
+    k.start(1,id);k.press({x:40,y:40},CELL);
+    const r=k.rect(CELL)!,near={x:r.x1+CAR_RADIUS+gap-.1,y:r.cy},clear={x:r.x1+CAR_RADIUS+gap+.1,y:r.cy};
+    assert.equal(k.ghost({cell:CELL,car:near,structures:[]})!.look,'bloqueado',id);assert.equal(k.blocked,'carro');
+    assert.equal(k.ghost({cell:CELL,car:clear,structures:[]})!.look,'ok',id);
+  }
 });

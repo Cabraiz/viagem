@@ -20,7 +20,7 @@ import {
   REVIVE_INVULNERABLE_TICKS,REVIVE_PUSH_KNOCK,REVIVE_PUSH_RADIUS,REVIVE_TICKS,SOLO_SELF_REVIVE_TICKS,
   createReviveSystem,downPlayer,shoveFromRise,
 } from '../../src/sim/revive.ts';
-import {NEAR_START_REACH,OPEN_REACH,START_GRACE_S,heroReach} from '../../src/sim/crates.ts';
+import {NEAR_START_WIDE_REACH,OPEN_REACH,START_GRACE_S,heroReach} from '../../src/sim/crates.ts';
 import {cityLoot} from '../../src/sim/stonewards/loot.ts';
 
 type FakeCtx=SimContext&{tick:number;events:SimEvent[]};
@@ -114,14 +114,15 @@ const standsBy=(f:FlowField,p:Point)=>{
   return false;
 };
 
-test('item 2: a verde crate at most 3 u from each hero\'s spawn, his own, on open ground he reaches, off the Uno (1, 3 and 6 heroes, seeds 1-8)',t=>{
+test('item 2: a verde crate by each hero\'s spawn (3 u; out to NEAR_START_WIDE_REACH in the block, itens-sem-nascer-colados), his own, on open ground he reaches, off the Uno (1, 3 and 6 heroes, seeds 1-8)',t=>{
   for(const players of [1,3,6])for(const seed of [1,2,3,4,5,6,7,8]){
     const m=match(seed,players);
     const spawn=m.heroes().map(p=>({x:p.x,y:p.y}));
     m.step();
     const f=fieldFrom(spawn[0]),chests=m.chests(),car=m.s.run.chaveiro!.state.car;
-    // Each hero his own: a matching of heroes to verde crates within NEAR_START_REACH of their spawn (augmenting paths).
-    const options=spawn.map(at=>chests.filter(c=>c.value===1&&Math.hypot(c.x-at.x,c.y-at.y)<=NEAR_START_REACH+1e-9));
+    // Each hero his own: a matching of heroes to verde crates within NEAR_START_WIDE_REACH of their spawn (augmenting paths).
+    // itens-sem-nascer-colados: the near crates keep ITEM_MIN_GAP apart, so a hero in the block gets his out to NEAR_START_WIDE_REACH.
+    const options=spawn.map(at=>chests.filter(c=>c.value===1&&Math.hypot(c.x-at.x,c.y-at.y)<=NEAR_START_WIDE_REACH+1e-9));
     const owner=new Map<string,number>();
     const assign=(i:number,seen:Set<string>):boolean=>options[i].some(c=>{
       if(seen.has(c.id))return false;
@@ -130,7 +131,7 @@ test('item 2: a verde crate at most 3 u from each hero\'s spawn, his own, on ope
       if(o===undefined||assign(o,seen)){owner.set(c.id,i);return true;}
       return false;
     });
-    spawn.forEach((_,i)=>assert.ok(assign(i,new Set()),`seed ${seed}, ${players} heroes: p${i} has his own verde crate within ${NEAR_START_REACH} u`));
+    spawn.forEach((_,i)=>assert.ok(assign(i,new Set()),`seed ${seed}, ${players} heroes: p${i} has his own verde crate within ${NEAR_START_WIDE_REACH} u`));
     for(const c of chests.filter(c=>owner.has(c.id))){
       assert.ok(standsBy(f,c),`seed ${seed}: ${c.id} reached on foot`);
       assert.ok(walkable(c,city),'on open ground');

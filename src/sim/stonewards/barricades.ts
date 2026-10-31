@@ -42,6 +42,21 @@ const FINE_MARGIN=2*CITY_DISTANCE_SCALE,FINE_OUTSIDE=1*CITY_DISTANCE_SCALE;
 
 export const barricadeId=(mouth:BarricadeMouth)=>`barricada-${mouth}`;
 
+/**
+ * A room checkpoint's city planner: built (`build`) with every blocker but the barricades lifted, the city as a fresh
+ * run starts it, so the planner's fixed plaza and mouth cells come out as in the run that was cut (a ring of muros
+ * would close the plaza for good). Then the blockers go back and its grid and fields re-read every cell.
+ */
+export function plannerOnFreshCity<P extends {readonly grid:{width:number;height:number;refresh(rect:CellRect):void};invalidate(rects:readonly CellRect[]):void}>(city:CityTerrain,build:(city:CityTerrain)=>P):P{
+  const lift=city.blockers().filter(b=>!b.id.startsWith('barricada-'));
+  for(const b of lift)city.setBlocker(b.id,undefined);
+  let planner:P;
+  try{planner=build(city);}finally{for(const b of lift)city.setBlocker(b.id,b);}
+  const all={x0:0,y0:0,x1:planner.grid.width-1,y1:planner.grid.height-1};
+  planner.grid.refresh(all);planner.invalidate([all]);
+  return planner;
+}
+
 /** The city behind a TerrainField when it can hold blockers and has the plaza's mouths; else undefined. */
 export function blockingCity(terrain:TerrainField|undefined):CityTerrain|undefined{
   const t=terrain as Partial<CityTerrain>|undefined;

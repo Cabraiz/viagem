@@ -20,6 +20,7 @@ import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
+import {plannerOnFreshCity} from './stonewards/barricades.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
@@ -342,8 +343,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       banks:()=>banks?.places??[],
     }:{}}:{}),
   },cp?.stonewards);
-  // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
-  const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
+  // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues (a checkpoint's: plannerOnFreshCity).
+  const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cp?plannerOnFreshCity(cityTerrain,cityPlanner):cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
   const reach=avenues?reachMap(avenues.grid):undefined;
   // The boss walks over the plaza barricades (cidade-06; it spawns inside the base and never bashes structures, D-010):
@@ -622,7 +623,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}
   });
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
-
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),...(chefao?{chefao}:{}),sono:()=>sono,...(banks?{banks}:{}),...(vehicles?{vehicles}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),

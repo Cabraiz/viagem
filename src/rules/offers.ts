@@ -21,7 +21,7 @@ export const isHeldOffer=(offer:{deadlineTick:number})=>offer.deadlineTick>=HELD
 /** Choice offered when the build is full: a coxinha that heals. */
 export const HEAL_CHOICE='heal';
 export const HEAL_AMOUNT=30;
-export const BASE_CHOICES=3,MAX_CHOICES=4;
+export const BASE_CHOICES=3,MAX_CHOICES=3;
 
 const EVO_SUFFIX='-evo';
 /** Base weapon of an evolution (boleto-evo -> boleto); other ids map to themselves. */
@@ -46,11 +46,13 @@ export function isEligible(catalog:ItemCatalog,build:PlayerBuild,choice:OfferCho
 }
 
 /**
- * Up to 3 distinct choices, a 4th with probability 1 - 1/luck; a full build gets the coxinha. `skip`: items never
+ * Up to 3 distinct choices (never a 4th: the user, 31/10, oferta-3-cartas); a full build gets the coxinha. `skip`: items never
  * offered this time (a hero with no weapon yet skips the weapon's cards, rules/passives.ts needsWeapon).
  */
 export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rng:Rng,skip?:(itemId:string)=>boolean):OfferChoice[]{
-  const want=BASE_CHOICES+(rng.chance(1-1/Math.max(1,luck))?1:0);
+  // The old 4th-card roll still draws, so the rest of the rng stream (and every seeded match) stays the same; luck keeps its chest effect (sim/evolutions.ts).
+  rng.chance(1-1/Math.max(1,luck));
+  const want=BASE_CHOICES;
   const candidates:OfferChoice[]=[];
   for(const def of catalog.all()){
     if(skip?.(def.id))continue;

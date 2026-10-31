@@ -182,7 +182,7 @@ test('offer and result copy helpers are deterministic pt-BR',()=>{
   assert.equal(offerJoke('lvl-12-p1','level'),offerJoke('lvl-12-p1','level'));
   assert.equal(queueLabel(0),'');assert.equal(queueLabel(2),'+2 na fila');
   const offer=fakeView('offer-round',1).offers[0];
-  assert.deepEqual(choiceFlags(offer,2),{isDefault:true,luck:false});assert.deepEqual(choiceFlags(offer,3),{isDefault:false,luck:true});
+  assert.deepEqual(choiceFlags(offer,2),{isDefault:true});assert.deepEqual(choiceFlags(offer,0),{isDefault:false});
   assert.equal(resultHeadline({victory:true,seed:'a'}).title,'Vitória!');assert.equal(resultHeadline({victory:false,seed:'a'}).title,'Derrota…');
   assert.deepEqual(resultHeadline({victory:true,seed:'x'}),resultHeadline({victory:true,seed:'x'}));
   assert.equal(compactNumber(980),'980');assert.equal(compactNumber(18420),'18,4k');assert.equal(compactNumber(21050),'21k');assert.equal(compactNumber(Number.NaN),'0');

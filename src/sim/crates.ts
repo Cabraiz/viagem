@@ -74,7 +74,7 @@ import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,ca
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
-import {ITEM_MIN_GAP,crateInMouth,crateSpot,gapFree,roomy} from './crates-gap.ts';
+import {ITEM_MIN_GAP,crateInMouth,crateSpot,gapFree,roomy} from './crates-gap.ts';import {floorRoom} from './crates-floor.ts';
 import {MAP_CRATES,NEAR_WEAPON,killDrop} from './crates-abate.ts';
 export {crateInMouth,killDrop};
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
@@ -676,8 +676,8 @@ export function createCrates(options:CratesOptions):Crates{
     for(const p of players)for(;;){
       let live=0,seen=0;
       for(const id in state.crates)if(ctx.pickups.has(id)){live++;if(!hiddenTo(p,state.crates[id]))seen++;}
-      if(live>=FLOOR_LIVE_MAX)return;
       if(seen>=floor)break;
+      if(live>=FLOOR_LIVE_MAX){const dead=floorRoom(state.crates,id=>ctx.pickups.has(id),p,players,hiddenTo);if(dead===undefined)return;ctx.pickups.delete(dead);delete state.crates[dead];continue;}
       const used=usedPoints();
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(o=>Math.hypot(o.x-points[i].x,o.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;

@@ -7,7 +7,7 @@
  * Only tokens (ui/tokens.css); tralha.css.
  */
 import './tralha.css';
-import {icon} from '../../ui/icon.ts';import {BARRICADA_OFF} from '../../../rules/kits-off.ts';
+import {icon} from '../../ui/icon.ts';import {BARRICADA_OFF} from '../../../rules/index.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;

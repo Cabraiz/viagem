@@ -10,6 +10,9 @@ import {OBRA_BUTTON,OBRA_TARGET,cardHeight,layoutObra,markerRect} from '../../sr
 import {blockSpeech,blockText,canEvolve,defaultPick,railTree,selectable,treeFor,type ObraSite,type ObraView} from '../../src/client/hud/towers/model.ts';
 import {DEFENSE_LIMIT,DEFENSES,EVOLVE_PRICE,GUSTAVAO_LIMIT,RAIL,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
 import * as simCatalog from '../../src/sim/towers/catalog.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (rules/kits-off.ts shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 
 // The live layout (hud-topo-uma-linha): the camera buttons and the gear 48 px at 12 px, the one-row band (--rh-t + 40)
 // between them, the minimap where hud.css puts it (portrait: under the gear, part of the band; landscape: the right edge

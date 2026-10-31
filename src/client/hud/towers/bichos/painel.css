@@ -1,0 +1,18 @@
+/* The bicho tower's panel (hud/towers/bichos/painel.ts). Only tokens (src/client/ui/tokens.css).
+   Papel window with a Breu edge over the tapped tower; the evolutions as 3 cards, the Força button in Amarelo (a choice). */
+.rh-bicho{position:fixed;left:0;top:0;z-index:3;width:min(320px,calc(100vw - 16px));padding:10px;border-radius:12px;
+  background:var(--c-papel);color:var(--c-texto);border:var(--borda-mapa);box-shadow:var(--s-2);font:700 var(--t-13)/1.2 var(--f-sistema);
+  pointer-events:auto;touch-action:manipulation}
+.rh-bicho[hidden]{display:none}
+.rh-bicho header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rh-bicho header strong{font-size:var(--t-16)}
+.rh-bicho header span{color:var(--c-texto-papel)}
+.rh-bicho p{margin:4px 0;color:var(--c-texto-papel)}
+.rh-bicho button{font:inherit;color:var(--c-texto);cursor:pointer;border:var(--borda-mapa);border-radius:8px}
+.rh-bicho button:disabled{cursor:default;opacity:.55;border-style:dashed}
+.rh-bicho .rh-bicho-x{margin-left:auto;width:32px;height:32px;padding:0;background:var(--c-papel-claro)}
+.rh-bicho-cartas{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.rh-bicho .rh-bicho-carta{display:flex;flex-direction:column;gap:4px;min-height:96px;padding:6px;text-align:left;background:var(--c-papel-claro)}
+.rh-bicho-carta small{font-weight:600;flex:1}
+.rh-bicho em{font-style:normal;color:var(--c-texto-papel)}
+.rh-bicho .rh-bicho-forca{display:flex;justify-content:space-between;width:100%;min-height:44px;padding:8px 10px;background:var(--c-escolha);box-shadow:var(--s-1)}

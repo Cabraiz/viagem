@@ -193,6 +193,12 @@ const PROJETEIS=Object.freeze({
   // The Rojão de Réveillon's rocket (BUG-20261023-ORQ-armas-sem-projetil): six 64 px frames; guessed as one 384 px frame it
   // flew as a row of six rockets.
   rojao:strip(64,6),
+  // The real guns' bullets and the heavy weapons' shells (NEW-20261031-ORQ-armas-reais-12, the user: "o revólver solta 2
+  // balas ao mesmo tempo"): strips too; guessed as one frame, every shot drew its 2–8 frames side by side.
+  'bala-revolver':strip([32,8],2),'bala-metralhadora':strip([48,8],2),'bala-fuzil':strip([48,8],2),
+  'bala-rotativa':strip([48,12],2),'bala-sniper':strip([96,8],2),'bala-antimaterial':strip([128,16],3),
+  cartucho:strip(16,4),'chumbo-espingarda':strip(48,3),foguete:strip([96,32],4),
+  'granada-gustavao':strip(256,8),'granada-morteiro':strip(48,4),'granada-obuseiro':strip(64,4),
   // Any other critter shot (today's hostile star, keys.ts FX.projHostile); P1: the inventory has no row for it yet.
   'tiro-inimigo':strip(32,[1,4],P1),
   ...Object.fromEntries(['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo']

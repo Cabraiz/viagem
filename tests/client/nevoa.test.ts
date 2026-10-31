@@ -1,6 +1,6 @@
 import {describe,it} from 'node:test';
 import assert from 'node:assert/strict';
-import {FURO_GLSL,LUZES_DEPTH,NEVOA_DEFAULT,NEVOA_DEPTH,NEVOA_LEVELS,SEPIA_GLSL,furo,nevoaFor,nevoaParam,sepiaColor} from '../../src/client/render/nevoa-rules.ts';
+import {ECONOMY_ASH_SHARE,FURO_GLSL,LUZES_DEPTH,NEVOA_DEFAULT,NEVOA_DEPTH,NEVOA_LEVELS,SEPIA_GLSL,furo,nevoaFor,nevoaLayers,nevoaParam,sepiaColor} from '../../src/client/render/nevoa-rules.ts';
 import {BLACKOUT_DEPTH} from '../../src/client/render/blackout-rules.ts';
 import {SELF_DEPTH} from '../../src/client/render/you.ts';
 import {CITY_PALETTE} from '../../src/client/render/city/palette.ts';
@@ -22,6 +22,17 @@ describe('nevoa (jogo-mais-escuro, the user\'s fog)',()=>{
       assert.ok(b.floor>0&&b.clear[1]<.4);
     }
     assert.deepEqual({...NEVOA_DEFAULT},{cidade:2,infinito:0,ilha:0});
+  });
+  it('Leve (economy) keeps the wind and the ash, with fewer flakes; level 0 draws nothing (nevoa-cinzas-no-celular)',()=>{
+    assert.deepEqual(nevoaLayers(NEVOA_LEVELS[0]!,false),{haze:0,bands:0,ash:0});
+    assert.deepEqual(nevoaLayers(NEVOA_LEVELS[0]!,true),{haze:0,bands:0,ash:0});
+    assert.ok(ECONOMY_ASH_SHARE>0&&ECONOMY_ASH_SHARE<1);
+    for(const l of NEVOA_LEVELS.slice(1)){
+      const full=nevoaLayers(l,false),leve=nevoaLayers(l,true);
+      assert.deepEqual(full,{haze:l.haze,bands:l.bands,ash:l.ash});
+      assert.equal(leve.haze,l.haze);assert.equal(leve.bands,l.bands);
+      assert.ok(leve.ash>=Math.floor(l.ash/3)&&leve.ash<l.ash,`ash ${leve.ash} of ${l.ash}`);
+    }
   });
   it('?nevoa= picks the level (clamped), ?luz=0 turns it off',()=>{
     assert.equal(nevoaParam(''),undefined);assert.equal(nevoaParam('?nevoa=x'),undefined);

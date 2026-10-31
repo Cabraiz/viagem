@@ -1,0 +1,50 @@
+{
+ "antes-leve-1": {
+  "fpsDesenhado": 22,
+  "msP50": 27.2,
+  "msP95": 62.6,
+  "quadros": 570
+ },
+ "antes-leve-2": {
+  "fpsDesenhado": 23,
+  "msP50": 25.7,
+  "msP95": 51.2,
+  "quadros": 582
+ },
+ "antes-normal-1": {
+  "fpsDesenhado": 24,
+  "msP50": 26.1,
+  "msP95": 55.5,
+  "quadros": 624
+ },
+ "antes-normal-2": {
+  "fpsDesenhado": 23.9,
+  "msP50": 26.2,
+  "msP95": 51.5,
+  "quadros": 604
+ },
+ "depois-leve-1": {
+  "fpsDesenhado": 22.5,
+  "msP50": 27.3,
+  "msP95": 58.6,
+  "quadros": 591
+ },
+ "depois-leve-2": {
+  "fpsDesenhado": 24.8,
+  "msP50": 22.5,
+  "msP95": 41.7,
+  "quadros": 590
+ },
+ "depois-normal-1": {
+  "fpsDesenhado": 23.1,
+  "msP50": 27.8,
+  "msP95": 50.5,
+  "quadros": 603
+ },
+ "depois-normal-2": {
+  "fpsDesenhado": 18.7,
+  "msP50": 31.3,
+  "msP95": 76.2,
+  "quadros": 501
+ }
+}

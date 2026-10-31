@@ -11,7 +11,7 @@
 // node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|torres|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
 //      [--tipos rojao-de-festa,morteiro,…] [--lento 12]
-//      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
+//      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha] [--qualidade leve|normal|alta] [--cpu 4] [--medir]
 // Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
 // (≤ 10 lines). The coach's hints and the economy question start as already seen (as the ORQ's prod prints did), so
 // the match is in view; --com-dicas keeps them. A level-up offer that opens during the roteiro gets its first card
@@ -87,7 +87,9 @@ export const keysOf=dir=>{
 /** From the screen's center toward a point (the Uno's edge arrow), unit length; undefined at the center. */
 export const toward=(from,to)=>{const dx=to.x-from.x,dy=to.y-from.y,len=Math.hypot(dx,dy);return len>1?{x:dx/len,y:dy/len}:undefined;};
 
-const VALUE_FLAGS=new Set(['roteiro','tela','segundos','fps','modo','dist','url','build','esperar-build','tipos','lento']);
+const VALUE_FLAGS=new Set(['roteiro','tela','segundos','fps','modo','dist','url','build','esperar-build','tipos','lento','qualidade','cpu']);
+/** quality.ts QUALITY_LEVELS: `--qualidade` forces one through `?qualidade=` (never saved). */
+const QUALIDADES=Object.freeze(['leve','normal','alta']);
 /** argv → options (validated); throws on a bad value. */
 export function parseOpts(argv){
   const flags={},pos=[];
@@ -101,6 +103,7 @@ export function parseOpts(argv){
   const list=(v,all,what)=>{const out=v==='todos'?[...TODOS]:v==='ambas'?Object.keys(all):String(v).split(',');for(const x of out)if(!(x in all))throw new Error(`${what} desconhecido: ${x} (${Object.keys(all).join(', ')})`);return out;};
   const num=(v,def,min,max,what)=>{const n=v===undefined?def:Number(v);if(!(Number.isFinite(n)&&n>=min&&n<=max))throw new Error(`--${what}: ${min} a ${max}, veio ${v}`);return n;};
   if(flags.modo!==undefined&&!(flags.modo in MODOS))throw new Error(`modo desconhecido: ${flags.modo}`);
+  if(flags.qualidade!==undefined&&!QUALIDADES.includes(flags.qualidade))throw new Error(`--qualidade: ${QUALIDADES.join(', ')}, veio ${flags.qualidade}`);
   if(flags.url!==undefined&&!/^https?:\/\/[^/]+/.test(flags.url))throw new Error(`--url inválida: ${flags.url}`);
   if(flags.build!==undefined&&!/^[0-9a-f]{7,40}$/.test(flags.build))throw new Error(`--build: um sha, veio ${flags.build}`);
   const tipos=flags.tipos?String(flags.tipos).split(',').filter(Boolean):[...TORRES_TIPOS];
@@ -109,7 +112,7 @@ export function parseOpts(argv){
     segundos:num(flags.segundos,20,3,120,'segundos'),fps:num(flags.fps,5,1,15,'fps'),modo:flags.modo??'normal',dist:resolve(flags.dist??'dist'),
     url:flags.url?.replace(/\/+$/,''),build:flags.build,esperarBuild:num(flags['esperar-build'],12,0,30,'esperar-build'),
     gif:!flags['sem-gif'],zeroErros:!!flags['zero-erros'],dicas:!!flags['com-dicas'],escolher:!flags['sem-escolha'],
-    tipos,lento:num(flags.lento,flags.roteiro==='torres'?12:3,1,20,'lento')};
+    tipos,lento:num(flags.lento,flags.roteiro==='torres'?12:3,1,20,'lento'),qualidade:flags.qualidade,cpu:num(flags.cpu,1,1,20,'cpu'),medir:!!flags.medir};
 }
 
 /** The screencast's frames (it sends one per change, as fast as the page paints) kept at least 1000/fps ms apart. */
@@ -298,12 +301,14 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     // economy.ts ECONOMY_KEY (the question answered "no"), hud/coach.ts COACH_KEY (the first hints seen).
     if(!o.dicas)await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
     // empurra: the scene is only on window in a build with the perf switch (scene.ts __perfScene); its meter stays hidden.
-    if(roteiro==='empurra')await ctx.addInitScript(()=>{try{sessionStorage.setItem('viagem:perf','1');}catch{}
+    if(roteiro==='empurra'||o.medir)await ctx.addInitScript(()=>{try{sessionStorage.setItem('viagem:perf','1');}catch{}
       document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
     const p=await ctx.newPage();
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
     const cdp=await ctx.newCDPSession(p).catch(()=>undefined);
+    // --cpu: DevTools' CPU slowdown (4 = the usual "mid phone" profile), for the fps of the whole match.
+    if(o.cpu>1)await cdp?.send('Emulation.setCPUThrottlingRate',{rate:o.cpu}).catch(()=>{});
     if(roteiro==='nomes'){
       // Modo foto (dev/foto.ts): the page says window.__fotoPronta once the frame is final.
       try{
@@ -313,7 +318,8 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
       }catch(e){r.erros.push(`foto ${FOTO_NOMES}: ${String(e.message??e).split('\n')[0]}`);await p.screenshot({path:join(dir,'nomes.png'),timeout:30000}).catch(()=>{});}
     }
     if(roteiro==='torres'){await gravarTorres(p,cdp,base,o,t,dir,r);return r;}
-    try{r.entrouMs=await entrar(p,base,o.modo,dir,roteiro==='matches'?'matches=demo':'');}
+    const extra=[roteiro==='matches'?'matches=demo':'',o.qualidade?`qualidade=${o.qualidade}`:''].filter(Boolean).join('&');
+    try{r.entrouMs=await entrar(p,base,o.modo,dir,extra);}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
     // seconds more on a phone; then the camera's first second out of the GIF.
@@ -338,6 +344,9 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     if(o.gif&&cdp){cdp.on('Page.screencastFrame',onFrame);await cdp.send('Page.startScreencast',{format:'jpeg',quality:75,maxWidth:t.gifWidth,maxHeight:Math.ceil(t.viewport.height*t.gifWidth/t.viewport.width),everyNthFrame:1}).catch(()=>{});}
     // The game's own pace (requestAnimationFrame), for the summary: CI has no GPU.
     await p.evaluate(()=>{const w=window;w.__gravarRaf={n:0,t0:performance.now()};const tick=()=>{w.__gravarRaf.n++;requestAnimationFrame(tick);};requestAnimationFrame(tick);}).catch(()=>{});
+    // --medir: the frames Phaser drew (the quality's fps gate skips rAFs) and each one's logic + render ms.
+    if(o.medir)await p.evaluate(()=>{const w=window,g=w.__perfScene?.game?.events;if(!g)return;const m=w.__gravarMedir={n:0,t0:performance.now(),ms:[]};let t=0;
+      g.on('prestep',()=>{t=performance.now();});g.on('postrender',()=>{m.n++;m.ms.push(performance.now()-t);});}).catch(()=>{});
     const steps=ROTEIROS[roteiro](o.segundos);let midShot=false,elapsed=0;
     for(const st of steps){
       if(o.escolher&&await escolher(p,tela))r.escolhas++;
@@ -361,6 +370,8 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     }
     if(roteiro==='empurra'){const rows=await p.evaluate(()=>window.__tremor??[]).catch(()=>[]);r.tremor=tremorOf(rows);writeFileSync(join(dir,'tremor.json'),JSON.stringify(r.tremor));}
     r.fpsJogo=await p.evaluate(()=>{const g=window.__gravarRaf;return g?Math.round(g.n/((performance.now()-g.t0)/1000)):0;}).catch(()=>0);
+    if(o.medir)r.medida=await p.evaluate(()=>{const m=window.__gravarMedir;if(!m?.n)return undefined;const s=[...m.ms].sort((a,b)=>a-b),q=f=>Math.round(s[Math.min(s.length-1,Math.floor(f*s.length))]*10)/10;
+      return {fpsDesenhado:Math.round(m.n/((performance.now()-m.t0)/1000)*10)/10,msP50:q(.5),msP95:q(.95),quadros:m.n};}).catch(()=>undefined);
     if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
     const frames=pickFrames(all,o.fps);
     r.duracaoMs=Date.now()-start;r.quadros=frames.length;

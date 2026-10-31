@@ -139,9 +139,9 @@ test('car hit: alarm (+1.5 s per hit, at most 8 s ahead), the moto rides around 
   assert.deepEqual(ofType(got,'moto').map(e=>e.type==='moto'&&e.mode),['volta']);
   r.step(2);
   assert.ok(r.sys.state.moto.s>s0,'rides again when it stops');assert.equal(r.sys.state.moto.mode,'anda');
-  // A crowd: 60 hits in one tick never push the alarm past 8 s, and only the first one starts it.
+  // A crowd: 30 hits in one tick (under CAR_LIMIT at x1,5 per blow) never push the alarm past 8 s, and only the first one starts it.
   const crowd=rig();crowd.step(5);crowd.world.flush();
-  for(let i=0;i<60;i++)crowd.sys.hitCar(crowd.world,addEnemy(crowd.world,`c${i}`,CAR));
+  for(let i=0;i<30;i++)crowd.sys.hitCar(crowd.world,addEnemy(crowd.world,`c${i}`,CAR));
   assert.equal(crowd.sys.state.car.alarmUntil,crowd.world.tick+ticks(ALARM_MAX_SECONDS));
   assert.equal(ofType(crowd.world.flush(),'alarm').length,1);
   const s1=crowd.sys.state.moto.s;crowd.step(ticks(ALARM_MAX_SECONDS)+1);

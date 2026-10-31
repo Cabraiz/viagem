@@ -3,9 +3,10 @@
  * scripts/roster-text.json. Do not edit by hand: change the copy file (or the packs) and run the script.
  *
  * The cast of D-040: the nine hand-tuned kinds (pack 0, `legacy`: their stats and lines live in sim/enemies/catalog.ts
- * and the client) and the 164 pack entries (64 P0). Every entry has its role (enemy-roles.ts) and the pt-BR death gag
- * (≤ 60 chars); P0 entries also their own lines: 4 barks and 3 death lines (≤ 30 chars) and the death pop (ALL CAPS,
- * ≤ 21 chars). P1/P2 entries use their role's generic lines. `accent` is the pack's accent color (fallback tint).
+ * and the client), the 164 pack entries (64 P0) and the 2 extra (pack 5, from no pack). Every entry
+ * has its role (enemy-roles.ts) and the pt-BR death gag (≤ 60 chars); P0 entries also their own lines: 4 barks and 3
+ * death lines (≤ 30 chars) and the death pop (ALL CAPS, ≤ 21 chars). P1/P2 entries use their role's generic lines.
+ * `accent` is the pack's accent color (fallback tint).
  */
 import type {EnemyRole} from './enemy-roles.ts';
 
@@ -15,7 +16,7 @@ export interface RosterEntry {
   /** Sprite cell (px) of the art; the role's default unless the pack overrides it. */
   cell:number;
   priority:RosterPriority;
-  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07. */
+  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07; 5: extra entries from no pack (the aberrações). */
   pack:number;
   /** 0xRRGGBB of the pack's accent. */
   accent:number;
@@ -338,4 +339,13 @@ export const ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
   {id:'polvo-da-enchente',name:'Polvo da Enchente',role:'chefe',cell:384,priority:'P1',pack:4,accent:0x7a3fb0,gag:'O ralo desentope e ele é sugado feito espaguete'},
   {id:'o-engarrafamento',name:'O Engarrafamento',role:'chefe',cell:384,priority:'P1',pack:4,accent:0xe8c22a,gag:'O sinal abre, cada carro vai pra um lado e ele desmonta'},
   {id:'sogra-tita',name:'A Sogra Titã',role:'chefe',cell:384,priority:'P1',pack:4,accent:0x2f6bc4,gag:'É convidada pro almoço de domingo, sorri e some'},
+  {id:'aberracao-saci',name:'Saci Aberração',role:'mini-chefe',cell:256,priority:'P1',pack:5,accent:0xc8322c,gag:'Some num redemoinho e só sobra o cachimbo quicando'},
+  {id:'mendigo',name:'Mendigo',role:'corredor',cell:128,priority:'P1',pack:5,accent:0x8a6a3c,gag:'Pede um trocado e cobra juros no abraço'},
+]);
+
+/** Defined but kept out of the wave draw (enemy-rotation.ts reads ROSTER only) until their art and the user's go land. */
+export const HELD_ROSTER:readonly RosterEntry[]=freeze<RosterEntry>([
+  {id:'sanfoneiro',name:'Sanfoneiro Arrasta-Pé',role:'brutamontes',cell:128,priority:'P0',pack:0,accent:0xc68e3a,gag:'A sanfona dá um último fom-fom e se fecha sozinha',
+    barks:['Bora arrastar o pé, meu povo!','Anarriê! Pro meio do salão!','Quadrilha não tem saída!','Ninguém sai antes do forró'],
+    deathLines:['Furou o fole, acabou o forró','Desafinei pra sempre...','Quem toca no São João agora?'],pop:'FOLE FURADO!'},
 ]);

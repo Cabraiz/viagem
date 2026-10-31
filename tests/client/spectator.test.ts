@@ -34,14 +34,14 @@ test('names are cut like the banner and the chinelo lines cycle in a fixed order
   assert.equal(shortName('Concurseira Eterna da Silva'),'Concurseira');
   assert.equal(shortName('Maximilianos'),'Maximil.');
   // Two bots of one class stay apart on the ‹ › (bot-nome-do-personagem).
-  assert.equal(shortName('Mendigo 2'),'Mendigo 2');
+  assert.equal(shortName('Maromba 2'),'Maromba 2');
   assert.equal(shortName('Concurseira 2'),'Concurs. 2');
-  const watching={id:'b2',name:'Mendigo 2',choices:2};
-  assert.equal(spectatorView({phase:'combat',eliminated:true,watching}).name,'Mendigo 2');
+  const watching={id:'b2',name:'Maromba 2',choices:2};
+  assert.equal(spectatorView({phase:'combat',eliminated:true,watching}).name,'Maromba 2');
   assert.equal(chineloLine(0),CHINELO_LINES[0]);
   assert.equal(chineloLine(CHINELO_LINES.length+1),CHINELO_LINES[1]);
   assert.equal(chineloLine(-1),CHINELO_LINES.at(-1));
-  assert.equal(LEAVE_TEXT,'Voltar ao lobby');
+  assert.equal(LEAVE_TEXT,'Voltar pra sala');
 });
 
 test('the torcida never reaches the room: the bar holds no network handle and sends nothing', ()=>{

@@ -5,6 +5,8 @@
  * holds every group's manifest: {version:2, groups:{[group]:{output, pieces:{[id]:ArtPiece}}}}.
  * Pure (no Phaser, no DOM): renderers ask `artPiece(group,id)` / `artUrl(group,file)`; loading is `loadArtManifest`.
  */
+import {withMendigo} from './mendigo.ts';
+
 export interface ArtPage {file:string;columns:number;rows:number;firstFrame:number;frameCount:number}
 export interface ArtFile {
   /** Single-page sheet, relative to the group's output folder. */
@@ -13,8 +15,13 @@ export interface ArtFile {
   pages?:ArtPage[];
   cell:[number,number];
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
+  /**
+   * Frames per direction row when they differ (scripts/import-saci.mjs: E1's saci turns with 7 to 15 frames per row);
+   * `frames` is the widest row. A row past its own count is empty: it loops on its own frames, never stretched.
+   */
+  dirFrames?:number[];
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
-  /** Menu dances (menu-dance.ts): false plays once; absent loops. */
+  /** Dance sheets of the importer (art-v2 group menu, now in legado/): false plays once; absent loops. */
   loop?:boolean;
   /** R06 movement sheets: the cycle length of the clip (walk 600 ms, attack 1000 ms). */
   durationMs?:number;revision?:number;movementHands?:string;
@@ -61,7 +68,7 @@ let index:ArtIndex=EMPTY;
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
 /** R06 (8 drawn directions) and M16 (5 drawn: S, SW, W, NW, N; E/NE/SE are mirrored, movement128.ts movement16Plan; push: empurrar-uno; pull: puxar-uno-corda). */
-const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build|work|downed)16-(S|SW|W|NW|N|NE|E|SE))$/;
+const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run|push|pull|hurt|build|work|downed|shoved)16-(S|SW|W|NW|N|NE|E|SE))$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -78,6 +85,9 @@ function parseFile(value:unknown):ArtFile|undefined{
       ![p.columns,p.rows,p.firstFrame,p.frameCount].every(n=>Number.isInteger(n)&&(n as number)>=0))return undefined;
   }
   if(file.file===undefined&&file.pages===undefined)return undefined;
+  // One count per direction row, each 1..frames; a malformed list is dropped (every row then plays `frames`).
+  if(file.dirFrames!==undefined&&!(Array.isArray(file.dirFrames)&&file.dirFrames.length===(file.directions??1)&&
+    file.dirFrames.every(n=>Number.isInteger(n)&&n>=1&&n<=(file.frames??1)))){const {dirFrames:_,...rest}=file;return parseFile(rest);}
   // A lite copy's cell (scripts/art-lite.mjs) is never larger than the file's; a malformed one is dropped.
   if(file.liteCell!==undefined&&!(isCell(file.liteCell)&&file.liteCell[0]<=file.cell[0]&&file.liteCell[1]<=file.cell[1])){const {liteCell:_,pcCell:__,...rest}=file;return rest;}
   // The computer's copy sits between the two (cell ≥ pcCell ≥ liteCell); without a lite copy, or malformed, it is dropped.
@@ -157,7 +167,7 @@ export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
 /** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. `pc`: see parseArtIndex. */
 export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'}),pc=false){
-  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?parseArtIndex(await r.json(),pc):EMPTY);}
+  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?withMendigo(parseArtIndex(await r.json(),pc)):EMPTY);}
   catch{setArtIndex(EMPTY);}
   return index;
 }

@@ -498,6 +498,9 @@ export async function sourceAsset():Promise<CityAsset>{
   return d.asset;
 }
 
+/** The cells of a street's mouth the fence lines close (c, r): opened after the loose fences. */
+export const BOCA_NORDESTE:readonly (readonly [number,number])[]=[[67,88],[67,89],[66,90],[67,90]];
+
 /**
  * The asset this script writes: the compacted city with its scenery placed (cenario-cidade.ts decorate, version + 1),
  * then its dead ends opened (scripts/becos-cidade.ts abrirBecos, version + 1: mapa-conexoes-sem-beco). The passages come
@@ -505,30 +508,69 @@ export async function sourceAsset():Promise<CityAsset>{
  * street the Uno drove down); the pieces on an opened cell go. Last, the streets too narrow for the Uno widen
  * (becos-cidade.ts alargarParaUno, version + 1: uno-anda-mapa-todo), then the narrow ways into the hero's ground widen for
  * the Uno's body and the loose fences in the open go (becos-cidade.ts alargarAreaUno, tirarCercasSoltas, version + 1:
- * uno-atravessa-tralha), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
- * version + 1: sem-tralha-nas-entradas).
+ * uno-atravessa-tralha), the solid ground in each entrance's strip opens (becos-cidade.ts abrirChaoDasBocas, version + 1:
+ * bocas-chao-aberto), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
+ * version + 1: sem-tralha-nas-entradas), and then all scenery and props on the ground of any entrance (cenario-cidade.ts
+ * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
-  const {decorate,semDecorNasBocas}=await import('./cenario-cidade.ts');
-  const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno}=await import('./becos-cidade.ts');
-  const {text,log}=await compactText();
-  const decorated=decodeCityAsset(decorate(text));
-  if(!decorated.ok)throw new Error(decorated.error);
-  const opened=abrirBecos(cityAssetToData(decorated.asset));
-  Object.assign(log,{passagens:opened.passagens.length,entulho:opened.rubble.length,ruinas:opened.ruins,caixasBeco:opened.lootAdded,caixasMovidas:opened.lootMoved});
-  // Then the narrow streets the Uno does not get down (version + 1: uno-anda-mapa-todo).
-  const wide=alargarParaUno(opened.data);opened.data.version++;
-  Object.assign(log,{celulasAlargadas:wide.cells.length,ruasAlargadas:wide.widened,alargarRecusado:wide.refused,entulhoUno:wide.rubble.length,caixasAoUno:wide.moved,caixasUno:`${wide.before}→${wide.after}/${wide.total}`});
-  // The hero's ground the Uno's body misses: its narrow ways widened (version + 1: uno-atravessa-tralha).
-  const area=alargarAreaUno(opened.data);opened.data.version++;
-  Object.assign(log,{celulasArea:area.cells.length,areaAlargada:area.widened,areaRecusada:area.refused,caixasAoCorpo:area.moved,areaUno:`${(100*area.before).toFixed(1)}→${(100*area.after).toFixed(1)}%`});
-  // Then the loose fences in the open, junk in the Uno's way (the widening may have left a bit of one alone).
-  const loose=tirarCercasSoltas(opened.data);
-  Object.assign(log,{cercasSoltas:loose.taken.length,celulasCerca:loose.taken.flat().length,cercaRecusada:loose.refused});
-  // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
-  const bocas=semDecorNasBocas(opened.data);opened.data.version++;
-  Object.assign(log,{decorNasBocas:bocas.length});
-  return {text:encodeCityAsset(opened.data),log};
+  const {decorate,semDecorNasBocas,chaoLivreNasBocas}=await import('./cenario-cidade.ts');
+  const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno,abrirChaoDasBocas,rubbleForUno,openCells}=await import('./becos-cidade.ts');
+  const {cityEntradas,faixaCelulas,naBoca}=await import('../src/maps/city/entradas.ts');
+  const {CITY_NEST_POOL,nestArte}=await import('../src/maps/nests.ts');
+  const base=await compactText();
+  // Again: the opening moves and widens the strips, so the places with life keep off the strips the runs before end
+  // with; until no terreno nest a seed may draw is left in a strip (the sidewalk's scenery around it moves with them).
+  const avoid=new Set<number>();
+  for(let run=1;;run++){
+    const out=pipeline([...avoid]),done=decodeCityAsset(out.text);
+    if(!done.ok)throw new Error(done.error);
+    const strips=cityEntradas(done.asset,true).flatMap(e=>faixaCelulas(done.asset,e));
+    const nests=CITY_NEST_POOL.filter(n=>n.kind==='terreno'&&naBoca(done.asset,nestArte(done.asset.unitsPerCell,n,n.maxSize)));
+    console.error(`run ${run}: ${nests.map(n=>n.id).join(' ')||'no nest'} in a strip`);
+    if(run>1&&!nests.length)return out;
+    if(run>=5)throw new Error(`nests in a strip: ${nests.map(n=>n.id).join(' ')}`);
+    for(const t of strips)avoid.add(t);
+  }
+  function pipeline(avoid:number[]):{text:string;log:Record<string,number|string>}{
+    const log={...base.log};
+    const decorated=decodeCityAsset(decorate(base.text,undefined,avoid));
+    if(!decorated.ok)throw new Error(decorated.error);
+    const opened=abrirBecos(cityAssetToData(decorated.asset));
+    Object.assign(log,{passagens:opened.passagens.length,entulho:opened.rubble.length,ruinas:opened.ruins,caixasBeco:opened.lootAdded,caixasMovidas:opened.lootMoved});
+    // Then the narrow streets the Uno does not get down (version + 1: uno-anda-mapa-todo).
+    const wide=alargarParaUno(opened.data);opened.data.version++;
+    Object.assign(log,{celulasAlargadas:wide.cells.length,ruasAlargadas:wide.widened,alargarRecusado:wide.refused,entulhoUno:wide.rubble.length,caixasAoUno:wide.moved,caixasUno:`${wide.before}→${wide.after}/${wide.total}`});
+    // The hero's ground the Uno's body misses: its narrow ways widened (version + 1: uno-atravessa-tralha).
+    const area=alargarAreaUno(opened.data);opened.data.version++;
+    Object.assign(log,{celulasArea:area.cells.length,areaAlargada:area.widened,areaRecusada:area.refused,caixasAoCorpo:area.moved,areaUno:`${(100*area.before).toFixed(1)}→${(100*area.after).toFixed(1)}%`});
+    // Then the loose fences in the open, junk in the Uno's way (the widening may have left a bit of one alone).
+    const loose=tirarCercasSoltas(opened.data);
+    Object.assign(log,{cercasSoltas:loose.taken.length,celulasCerca:loose.taken.flat().length,cercaRecusada:loose.refused});
+    // The bit of fence the joined lines keep across the street's mouth at (101.0,133.1), which the loose ones left open:
+    // nothing solid in a street's mouth (the user, twice; cercas-nordeste-ligadas).
+    openCells(opened.data,BOCA_NORDESTE.map(([c,r])=>c+r*opened.data.cells.w));
+    // The solid ground in the strip behind each mouth, opened: the street keeps the mouth's width (version + 1: bocas-chao-aberto).
+    const chaoAberto=abrirChaoDasBocas(opened.data);opened.data.version++;
+    Object.assign(log,{celulasBocas:chaoAberto.cells.length,bocasRecusadas:chaoAberto.refused,solidoNasBocas:chaoAberto.left});
+    // The sidewalk objects that narrow an entrance (version + 1: sem-tralha-nas-entradas).
+    const bocas=semDecorNasBocas(opened.data);opened.data.version++;
+    Object.assign(log,{decorNasBocas:bocas.length});
+    // Then no scenery on the ground of any entrance, postes and props too (version + 1: bocas-sem-muro-pedra-decor).
+    const chao=chaoLivreNasBocas(opened.data);opened.data.version++;
+    Object.assign(log,{decorNoChaoDasBocas:chao.decor.length,propsNasBocas:chao.props.length});
+    // The walls opened leave bits of fence alone and heaps of rubble that now shut the Uno out, and the props gone from the
+    // entrances can free a wall the defence kept: all of it again until nothing more goes (same versions).
+    for(let pass=0;pass<6;pass++){
+      const heaps=rubbleForUno(opened.data),fences=tirarCercasSoltas(opened.data),more=abrirChaoDasBocas(opened.data);
+      if(!heaps.length&&!fences.taken.length&&!more.cells.length)break;
+      const decor=semDecorNasBocas(opened.data).length,ground=chaoLivreNasBocas(opened.data);
+      Object.assign(log,{entulhoBocas:Number(log.entulhoBocas??0)+heaps.length,cercasBocas:Number(log.cercasBocas??0)+fences.taken.length,
+        celulasBocas:Number(log.celulasBocas)+more.cells.length,solidoNasBocas:more.left,decorNasBocas:Number(log.decorNasBocas)+decor,
+        decorNoChaoDasBocas:Number(log.decorNoChaoDasBocas)+ground.decor.length,propsNasBocas:Number(log.propsNasBocas)+ground.props.length});
+    }
+    return {text:encodeCityAsset(opened.data),log};
+  }
 }
 
 if(process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/compactar-cidade.ts')){

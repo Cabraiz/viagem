@@ -15,17 +15,25 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {MODE,VISIT_COUNT,VISIT_EVERY,VISIT_FAR,VISIT_FROM,VISIT_NEAR,VISIT_QUIET} from '../../src/sim/ninhos/sono.ts';
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 
+/**
+ * A run with the 120 s minute the visits were made for: since missao-proteger-uno-tempo the minute is 30 s (MINERVA_S),
+ * over before VISIT_FROM, so the visits wait for a longer minute (the rooms' option, a test's).
+ */
 function run(seed=1):{world:SimWorld;sys:RunSystems}{
-  const world=new SimWorld({terrain:city.fork(),seed,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',mode:'ninhos'});
-  world.step();
-  return {world,sys};
+  const saved=NEST_PACE.minerva;NEST_PACE.minerva=120;
+  try{
+    const world=new SimWorld({terrain:city.fork(),seed,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',mode:'ninhos'});
+    world.step();
+    return {world,sys};
+  }finally{NEST_PACE.minerva=saved;}
 }
 /** A hero that never falls; `unarmed`: the manual combat's inventory (build.hand) with no weapon in it. */
 function addPlayer(world:SimWorld,id:string,x:number,y:number,unarmed=false){
@@ -73,11 +81,10 @@ test('the minuto de Minerva sends VISIT_COUNT of the weakest sleepers around an 
   const first=visitors(world);
   assert.equal(first.length,VISIT_COUNT,'VISIT_COUNT came');
   const ring=sono.bodies.filter(b=>{const d=Math.hypot(b.home.x-p.x,b.home.y-p.y);return d>=VISIT_NEAR&&d<=VISIT_FAR;});
-  const weakest=Math.min(...ring.map(b=>world.enemies.get(b.id)?.maxHp??sono.sleepers.get(b.id)?.maxHp??Infinity));
-  for(const e of first){
-    assert.equal(e.memory!.sono,MODE.cacando);
-    assert.equal(e.maxHp,weakest,`${e.id} is among the weakest of the ring`);
-  }
+  // The VISIT_COUNT lowest max hp of the ring (they need not tie: the enemy kinds vary).
+  const weakest=ring.map(b=>world.enemies.get(b.id)?.maxHp??sono.sleepers.get(b.id)?.maxHp??Infinity).sort((a,b)=>a-b).slice(0,VISIT_COUNT);
+  for(const e of first)assert.equal(e.memory!.sono,MODE.cacando);
+  assert.deepEqual(first.map(e=>e.maxHp).sort((a,b)=>a-b),weakest,'the visitors are the weakest of the ring');
   // They walk to him (the city's streets, maybe around a block) and hit him; nothing else moves (none within 4 u).
   const hp=p.hp;
   while(world.tick<start+ticks(VISIT_FROM+VISIT_EVERY)-2&&p.hp===hp)world.step();

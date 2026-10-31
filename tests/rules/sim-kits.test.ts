@@ -13,7 +13,7 @@ import {BLEED_OUT_TICKS} from '../../src/sim/revive.ts';
 
 // ---------- Fakes ----------
 const FIXED_WEAPONS=['boleto','cafe','guarda-chuva','pombo','audio'];
-const SKILL_IDS=['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira'];
+const SKILL_IDS=['cidadao-comum','tio-do-churrasco','viciado-em-bet','clt-cansado','motogirl','vizinha-fofoqueira'];
 interface Hit {id:string;amount:number;src?:string;weapon?:string;killed:boolean}
 interface FakeCtx {tick:number;rng:Rng;players:Map<string,SimPlayer>;enemies:Map<string,EnemyState>;pickups:Map<string,PickupState>;
   projectiles:Map<string,unknown>;telegraphs:Map<string,unknown>;team:{xp:number;level:number;nextXp:number};offers:Map<string,unknown>;
@@ -62,8 +62,8 @@ const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
 
 // ---------- 1. Kit data ----------
-test('kits: 29 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
-  assert.equal(KITS.length,29);
+test('kits: 28 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
+  assert.equal(KITS.length,28,'the Mendigo hero was deleted (30/10)');
   assert.deepEqual([...WEAPON_IDS].sort(),[...FIXED_WEAPONS].sort());
   for(const kit of KITS){
     assert.ok(getClass(kit.classId),`class ${kit.classId} exists`);
@@ -75,15 +75,17 @@ test('kits: 29 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
     assert.equal(kitFor(kit.classId),kit);
     assert.ok(hasSkill(kit.classId),kit.classId);
   }
-  assert.equal(new Set(KITS.map(k=>k.classId)).size,29);
+  assert.equal(new Set(KITS.map(k=>k.classId)).size,28);
   assert.deepEqual(KITS.map(k=>k.classId).sort(),classes.map(c=>c.id).sort());
   for(const id of SKILL_IDS)assert.ok(kitFor(id),id);
 });
 test('kits: all 4 roles covered, every fixed weapon is a starting weapon for 4-7 classes, required classes present',()=>{
   assert.deepEqual([...new Set(KITS.map(k=>k.role))].sort(),[...roles].sort());
   // The audio also took the chinelo's classes when it left the game (sem-arma-girando-no-chao): up to 11.
-  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=4&&n<=(w==='audio'?11:7),`${w} starts ${n} classes`);}
-  for(const id of ['cidadao-comum','mendigo','viciado-em-bet'])assert.ok(kitFor(id),id);
+  // The guarda-chuva lost the Mendigo hero when he was deleted (30/10): 3 classes.
+  for(const w of FIXED_WEAPONS){const n=KITS.filter(k=>k.weapon===w).length;assert.ok(n>=(w==='guarda-chuva'?3:4)&&n<=(w==='audio'?11:7),`${w} starts ${n} classes`);}
+  for(const id of ['cidadao-comum','viciado-em-bet'])assert.ok(kitFor(id),id);
+  assert.equal(kitFor('mendigo'),undefined,'the Mendigo hero was deleted (the mendigo is an enemy)');
 });
 test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
   for(const kit of KITS){
@@ -93,7 +95,7 @@ test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
     assert.equal(kit.skill.name,getClass(kit.classId)!.skill,kit.classId);
   }
   // Every card class with the same skill name maps 1:1.
-  assert.equal(classes.filter(c=>kitFor(c.id)).length,29);
+  assert.equal(classes.filter(c=>kitFor(c.id)).length,28);
   // Lines fit the phone balloon and never repeat across classes.
   const all=KITS.flatMap(k=>k.lines.map(l=>l.trim().toLocaleLowerCase('pt-BR')));
   assert.equal(new Set(all).size,all.length,'no line repeated across classes');
@@ -134,7 +136,7 @@ test('kits: classBonusOf returns a copy, unknown class falls back, startingBuild
     assert.deepEqual(startingBuild(id),{weapons:[{id:'audio',level:1}],passives:[]});
     assert.equal(kitFor(id),undefined);assert.equal(hasSkill(id),false);
   }
-  const a=startingBuild('mendigo'),b=startingBuild('mendigo');
+  const a=startingBuild('tio-do-churrasco'),b=startingBuild('tio-do-churrasco');
   a.weapons[0].level=8;assert.equal(b.weapons[0].level,1);
 });
 
@@ -153,7 +155,7 @@ test('cidadao-comum: steps ~1.2 forward, hits within 2.5 of the new spot, knocks
   assert.ok(walkable(start)&&walkable(n)&&clearSegment(start,n));
   assert.ok(near(n.x,11.24,1e-9)&&n.y===10,`${n.x},${n.y}`);
   const p=addPlayer(fake,'p1','cidadao-comum',start.x,start.y);
-  const ally=addPlayer(fake,'p2','mendigo',n.x-2.9,10);
+  const ally=addPlayer(fake,'p2','tio-do-churrasco',n.x-2.9,10);
   const oldOnly=addPlayer(fake,'p3','motogirl',n.x-3.1,10);
   const downed=addPlayer(fake,'p4','clt-cansado',n.x+1,10,DOWNED);
   const top=addEnemy(fake,'top',n.x,n.y),e1=addEnemy(fake,'e1',n.x+1,10),e2=addEnemy(fake,'e2',n.x,8),e3=addEnemy(fake,'e3',n.x+2.49,10);
@@ -234,36 +236,6 @@ test('cidadao-comum: the step only crosses walkable ground (blocked → no move,
   }
 });
 
-// ---------- 3. mendigo ----------
-test('mendigo: heals 20 and shields 1 s standing allies within 3.5, never downed ones',()=>{
-  const {fake,ctx}=makeCtx(3,100);
-  const p=addPlayer(fake,'p1','mendigo',10,10);p.hp=50;p.stats={...p.stats,duration:3};
-  const a=addPlayer(fake,'p2','cidadao-comum',13.5,10);a.hp=a.stats.maxHp-5;
-  const b=addPlayer(fake,'p3','clt-cansado',10,12);b.hp=20;
-  const far=addPlayer(fake,'p4','motogirl',13.6,10);far.hp=10;
-  const d=addPlayer(fake,'p5','motogirl',10,11,{hp:10,...DOWNED});
-  const off=addPlayer(fake,'p6','motogirl',10,11,{hp:10,online:false});
-  const res=cast(ctx,p);
-  assert.ok(res);
-  assert.equal(p.hp,70);assert.equal(a.hp,a.stats.maxHp);assert.equal(b.hp,40);
-  assert.equal(far.hp,10);assert.equal(d.hp,10);assert.equal(off.hp,10);
-  for(const x of [p,a,b])assert.equal(x.invulnerableUntil,100+ticks(1),x.id);
-  for(const x of [far,d,off])assert.equal(x.invulnerableUntil,undefined,x.id);
-  assert.deepEqual(res.helped,['p1','p2','p3']);
-  assert.deepEqual(res.hits,[]);
-});
-test('mendigo: heals and shields around it, and never drops a coxinha, in a wave or between rounds (sem-coxinha-no-chao)',()=>{
-  for(const phase of ['wave','prepare'] as const)for(let seed=1;seed<=20;seed++){
-    const {fake,ctx}=makeCtx(seed,100);
-    fake.round.phase=phase;
-    const p=addPlayer(fake,'p1','mendigo');p.hp=10;
-    const res=cast(ctx,p);
-    assert.ok(res);assert.equal(res.pickup,undefined);
-    assert.equal(fake.pickups.size,0);assert.equal(p.hp,30);
-    assert.ok(skillReadyTick(p)>100);
-  }
-});
-
 // ---------- 4. viciado-em-bet ----------
 const DICE_DAMAGE:Record<DiceOutcome,number>={flop:15,hit:30,miracle:60};
 test('viciado-em-bet: hits a valid player.target within 7, else the nearest enemy',()=>{
@@ -321,7 +293,7 @@ test('viciado-em-bet: no target in range returns null and spends no cooldown',()
 test('clt-cansado: 2.5 s invulnerable and taunts enemies within 5 for 4 s',()=>{
   const {fake,ctx,hits}=makeCtx(7,200);
   const p=addPlayer(fake,'p1','clt-cansado',10,10);
-  const ally=addPlayer(fake,'p2','mendigo',11,10);
+  const ally=addPlayer(fake,'p2','tio-do-churrasco',11,10);
   const a=addEnemy(fake,'a',12,10),b=addEnemy(fake,'b',10,15),c=addEnemy(fake,'c',15.1,10),d=addEnemy(fake,'d',3,3);
   const res=cast(ctx,p);
   assert.ok(res);
@@ -368,10 +340,10 @@ test('motogirl: dashes to the most hurt standing ally in 8, lands 0.5 short, hea
   const a=addPlayer(fake,'a','cidadao-comum',10,13);a.hp=40;
   const b=addPlayer(fake,'b','clt-cansado',16,10,{},{weapons:[],passives:[{id:'marmita',level:3}]});
   assert.equal(b.stats.maxHp,190);b.hp=50;
-  const downed=addPlayer(fake,'d','mendigo',11,10,{hp:1,...DOWNED});
-  const off=addPlayer(fake,'o','mendigo',11,11,{hp:1,online:false});
-  const spec=addPlayer(fake,'s','mendigo',11,12,{hp:1,spectator:true});
-  const away=addPlayer(fake,'far','mendigo',18.1,10);away.hp=1;
+  const downed=addPlayer(fake,'d','tio-do-churrasco',11,10,{hp:1,...DOWNED});
+  const off=addPlayer(fake,'o','tio-do-churrasco',11,11,{hp:1,online:false});
+  const spec=addPlayer(fake,'s','tio-do-churrasco',11,12,{hp:1,spectator:true});
+  const away=addPlayer(fake,'far','tio-do-churrasco',18.1,10);away.hp=1;
   const onPath=addEnemy(fake,'onPath',13,10.5),edge=addEnemy(fake,'edge',14,9.25);
   const offPath=addEnemy(fake,'offPath',12,11.0001),behind=addEnemy(fake,'behind',9,10),beyond=addEnemy(fake,'beyond',16.9,10);
   assert.ok(clearSegment({x:16,y:10},{x:15.5,y:10}));
@@ -394,7 +366,7 @@ test('motogirl: lands on the ally when the spot 0.5 short is not walkable',()=>{
   const {fake,ctx}=makeCtx(8,100);
   // Rock at (11,12) blocks (11,12.5).
   const p=addPlayer(fake,'p1','motogirl',11,9);
-  const ally=addPlayer(fake,'a','mendigo',11,13);ally.hp=10;
+  const ally=addPlayer(fake,'a','tio-do-churrasco',11,13);ally.hp=10;
   assert.ok(walkable(ally));assert.ok(!clearSegment({x:11,y:13},{x:11,y:12.5}));
   const res=cast(ctx,p);
   assert.ok(res);
@@ -405,8 +377,8 @@ test('motogirl: lands on the ally when the spot 0.5 short is not walkable',()=>{
 test('motogirl: heal is capped and ratio ties break by id',()=>{
   const {fake,ctx}=makeCtx(9,100);
   const p=addPlayer(fake,'p1','motogirl',10,10);
-  const z=addPlayer(fake,'z','mendigo',12,10);z.hp=z.stats.maxHp-5;
-  const y=addPlayer(fake,'y','mendigo',8,10);y.hp=y.stats.maxHp-5;
+  const z=addPlayer(fake,'z','tio-do-churrasco',12,10);z.hp=z.stats.maxHp-5;
+  const y=addPlayer(fake,'y','tio-do-churrasco',8,10);y.hp=y.stats.maxHp-5;
   const res=cast(ctx,p);
   assert.ok(res);assert.deepEqual(res.helped,['y']);
   assert.equal(y.hp,y.stats.maxHp);assert.equal(z.hp,z.stats.maxHp-5);
@@ -416,9 +388,9 @@ test('motogirl: heal is capped and ratio ties break by id',()=>{
 test('motogirl: with no hurt ally heals self 15 without moving; at full HP returns null and spends nothing',()=>{
   const {fake,ctx,hits,events}=makeCtx(10,100);
   const p=addPlayer(fake,'p1','motogirl',10,10);p.hp=50;
-  addPlayer(fake,'d','mendigo',11,10,{hp:1,...DOWNED});
-  addPlayer(fake,'far','mendigo',18.5,10,{hp:1});
-  const full=addPlayer(fake,'full','mendigo',12,10);
+  addPlayer(fake,'d','tio-do-churrasco',11,10,{hp:1,...DOWNED});
+  addPlayer(fake,'far','tio-do-churrasco',18.5,10,{hp:1});
+  const full=addPlayer(fake,'full','tio-do-churrasco',12,10);
   addEnemy(fake,'e1',11,10);
   const res=cast(ctx,p);
   assert.ok(res);
@@ -489,17 +461,12 @@ test('scaling: skill radii grow with stats.area (megafone 5 → area 1.5)',()=>{
   for(const big of [false,true]){
     const {fake,res}=reach('cidadao-comum',big,(f,p)=>{
       const n=stepped(p,p.facing);
-      addEnemy(f,'e',n.x,n.y+3.7);addPlayer(f,'a','mendigo',n.x,n.y-4.4);
+      addEnemy(f,'e',n.x,n.y+3.7);addPlayer(f,'a','tio-do-churrasco',n.x,n.y-4.4);
     });
     assert.ok(res);
     assert.deepEqual(res.hits,big?['e']:[]);
     assert.deepEqual(res.helped,big?['a','p1']:['p1']);
     assert.equal(fake.enemies.get('e')!.hp,big?92:100);
-  }
-  // mendigo: 3.5 → 5.25.
-  for(const big of [false,true]){
-    const {fake,res}=reach('mendigo',big,f=>{const a=addPlayer(f,'a','cidadao-comum',10,15.2);a.hp=10;});
-    assert.ok(res);assert.equal(fake.players.get('a')!.hp,big?30:10);
   }
   // viciado-em-bet: 7 → 10.5, both for the tapped target and the nearest fallback.
   for(const big of [false,true]){
@@ -534,8 +501,6 @@ test('scaling: slow and taunt last longer with stats.duration; invulnerability d
     const c=withDuration('clt-cansado');
     assert.equal(c.e.taunt?.untilTick,100+ticks(4*duration));
     assert.equal(c.p.invulnerableUntil,100+ticks(2.5));
-    const m=withDuration('mendigo');
-    assert.equal(m.p.invulnerableUntil,100+ticks(1));
   }
 });
 
@@ -550,7 +515,7 @@ test('common: cooldown enforced, readyTick = tick + ticks(cooldown * stats.coold
       const {fake,ctx,events}=makeCtx(13,1000);
       populate(fake);
       const p=addPlayer(fake,'p1',kit.classId,10,10,{},build);
-      addPlayer(fake,'p2','mendigo',11,11,{hp:50});
+      addPlayer(fake,'p2','tio-do-churrasco',11,11,{hp:50});
       const res=cast(ctx,p);
       assert.ok(res,kit.classId);
       const expected=1000+ticks(kit.skill.cooldown*p.stats.cooldown);
@@ -592,7 +557,7 @@ test('common: resetSkill clears the cooldown (e.g. rematch with ticks restarting
   resetSkill(p);
   const fresh=cast(ctx,p);
   assert.ok(fresh);assert.equal(fresh.readyTick,ticks(15));
-  resetSkill(addPlayer(fake,'p2','mendigo'));
+  resetSkill(addPlayer(fake,'p2','tio-do-churrasco'));
   assert.equal(skillReadyTick(fake.players.get('p2')!),0);
 });
 test('common: downed, eliminated, spectator, offline and 0-hp players cannot cast',()=>{
@@ -604,7 +569,7 @@ test('common: downed, eliminated, spectator, offline and 0-hp players cannot cas
       const {fake,ctx,events,hits}=makeCtx(14,100);
       populate(fake);
       const p=addPlayer(fake,'p1',classId,10,10,extra);
-      addPlayer(fake,'p2','mendigo',11,11,{hp:50});
+      addPlayer(fake,'p2','tio-do-churrasco',11,11,{hp:50});
       const before=clone({players:[...fake.players.values()],enemies:[...fake.enemies.values()],pickups:[...fake.pickups.values()]});
       assert.equal(cast(ctx,p),null,`${classId} ${JSON.stringify(extra)}`);
       assert.deepEqual(clone({players:[...fake.players.values()],enemies:[...fake.enemies.values()],pickups:[...fake.pickups.values()]}),before);
@@ -629,7 +594,7 @@ test('common: exactly one fire event with weapon skill:<classId>, line from kit.
       const {fake,ctx,events}=makeCtx(seed,100);
       populate(fake);
       const p=addPlayer(fake,'p1',kit.classId,10,10);
-      addPlayer(fake,'p2','mendigo',11,11,{hp:50});
+      addPlayer(fake,'p2','tio-do-churrasco',11,11,{hp:50});
       const res=cast(ctx,p);
       assert.ok(res,kit.classId);
       assert.equal(res.player,'p1');assert.equal(res.classId,kit.classId);assert.equal(res.skill,kit.skill.name);
@@ -694,7 +659,7 @@ test('cone with clearShots (Faxineira, Pedreiro): swats hostile shots in the arc
   const {fake,ctx}=makeCtx(2,100);
   shot(fake,'hostile-front',11.5,10.2,true);shot(fake,'hostile-behind',8,10,true);shot(fake,'friendly-front',11,10,false);
   const p=addPlayer(fake,'p1','pedreiro',10,10);
-  const ally=addPlayer(fake,'p2','mendigo',10,12.5);
+  const ally=addPlayer(fake,'p2','tio-do-churrasco',10,12.5);
   const res=cast(ctx,p)!;
   assert.equal(res.blocked,1);
   assert.deepEqual([...fake.projectiles.keys()].sort(),['friendly-front','hostile-behind']);
@@ -753,14 +718,14 @@ test('burst variants: Aposentado pushes and freezes one, Gambiarreiro traps the 
 test('rally (Pagodeiro, Feirante): refunds the others\' skills and readies everyone\'s weapons',()=>{
   const {fake,ctx}=makeCtx(7,100);
   const p=armed(fake,'p1','pagodeiro',10,10);(p as SkillPlayer).skillReady=0;
-  const friend=armed(fake,'p2','mendigo',11,10);(friend as SkillPlayer).skillReady=300;
-  const soon=armed(fake,'p3','mendigo',10,11);(soon as SkillPlayer).skillReady=130;
+  const friend=armed(fake,'p2','tio-do-churrasco',11,10);(friend as SkillPlayer).skillReady=300;
+  const soon=armed(fake,'p3','tio-do-churrasco',10,11);(soon as SkillPlayer).skillReady=130;
   cast(ctx,p);
   assert.equal(skillReadyTick(friend),300-ticks(3));
   assert.equal(skillReadyTick(soon),100,'never earlier than now');
   assert.equal(skillReadyTick(p),100+ticks(18*p.stats.cooldown),'the caster pays the full cooldown');
   const c=makeCtx(7,100);
-  const promo=armed(c.fake,'p1','feirante',10,10),mate=armed(c.fake,'p2','mendigo',12,10),out=armed(c.fake,'p3','mendigo',20,10);
+  const promo=armed(c.fake,'p1','feirante',10,10),mate=armed(c.fake,'p2','tio-do-churrasco',12,10),out=armed(c.fake,'p3','tio-do-churrasco',20,10);
   cast(c.ctx,promo);
   assert.equal(promo.weaponReady.audio,100);assert.equal(mate.weaponReady.audio,100);assert.equal(out.weaponReady.audio,900);
   const f=makeCtx(7,100);const fe=armed(f.fake,'p1','feirante',10,10,50);
@@ -770,10 +735,10 @@ test('rally (Pagodeiro, Feirante): refunds the others\' skills and readies every
 test('rally mostHurt (Merendeira): feeds only the most hurt ally; nobody hurt = no cooldown',()=>{
   const {fake,ctx}=makeCtx(8,100);
   const p=addPlayer(fake,'p1','merendeira',10,10);
-  const a=addPlayer(fake,'p2','mendigo',11,10,{hp:60}),b=addPlayer(fake,'p3','mendigo',10,11,{hp:30});
+  const a=addPlayer(fake,'p2','tio-do-churrasco',11,10,{hp:60}),b=addPlayer(fake,'p3','tio-do-churrasco',10,11,{hp:30});
   const res=cast(ctx,p)!;
   assert.deepEqual(res.helped,['p3']);assert.equal(b.hp,65);assert.equal(a.hp,60);assert.ok((b.invulnerableUntil??0)>100);
-  const full=makeCtx(8,100);addPlayer(full.fake,'p2','mendigo',11,10);
+  const full=makeCtx(8,100);addPlayer(full.fake,'p2','tio-do-churrasco',11,10);
   const m=addPlayer(full.fake,'p1','merendeira',10,10);
   assert.equal(cast(full.ctx,m),null);assert.equal(skillReadyTick(m),0);
 });
@@ -790,12 +755,12 @@ test('volley: the Streamer starts on the tapped enemy and readies weapons',()=>{
 test('fetch (Mãe de Pet): heals the most hurt ally on the spot during a wave only, no coxinha on the ground',()=>{
   const {fake,ctx}=makeCtx(11,100);
   const p=addPlayer(fake,'p1','mae-pet',10,10);
-  const hurt=addPlayer(fake,'p2','mendigo',14,10,{hp:20});
+  const hurt=addPlayer(fake,'p2','tio-do-churrasco',14,10,{hp:20});
   const res=cast(ctx,p)!;
   assert.equal(res.pickup,undefined);assert.deepEqual(res.helped,['p2']);
   assert.equal(fake.pickups.size,0);assert.equal(hurt.hp,50);
   const prep=makeCtx(11,100);prep.fake.round.phase='prepare';
-  addPlayer(prep.fake,'p2','mendigo',14,10,{hp:20});
+  addPlayer(prep.fake,'p2','tio-do-churrasco',14,10,{hp:20});
   const pet=addPlayer(prep.fake,'p1','mae-pet',10,10);
   assert.equal(cast(prep.ctx,pet),null,'no farming between rounds');assert.equal(prep.fake.pickups.size,0);
   const healthy=makeCtx(11,100);const pet2=addPlayer(healthy.fake,'p1','mae-pet',10,10);
@@ -805,7 +770,7 @@ test('fetch (Mãe de Pet): heals the most hurt ally on the spot during a wave on
 test('reused effects with new numbers: Passageira dashes ~3 and only shields herself; Porteiro taunts and slows',()=>{
   const {fake,ctx}=makeCtx(12,100);
   const p=addPlayer(fake,'p1','passageira',10,10);
-  const ally=addPlayer(fake,'p2','mendigo',10.2,10.2);
+  const ally=addPlayer(fake,'p2','tio-do-churrasco',10.2,10.2);
   const res=cast(ctx,p)!;
   assert.ok(res.movedTo&&res.movedTo.x-10>2.5,`moved ${res.movedTo?.x}`);
   assert.deepEqual(res.helped,['p1']);assert.equal(ally.invulnerableUntil,undefined);
@@ -886,4 +851,10 @@ test('velocidade: Só Estou de Passagem keeps its tuned 1.24 u (4 × 0.1 s at th
   assert.ok(near(dist({x:10,y:10},res.movedTo),4*.1*SPEED,1e-9),`dash ${dist({x:10,y:10},res.movedTo)} u`);
   assert.equal(heroSpeed(ctx.terrain),2*SPEED,'the walk is 2×');
   assert.ok(dist({x:10,y:10},res.movedTo)<4*.1*heroSpeed(ctx.terrain)-.5,'not stretched by the 2× walk');
+});
+
+test('kits: skill texts call the enemies bichos, never "inimigos" (texto-kits-tiros-dos-bichos)',()=>{
+  assert.match(kitFor('pedreiro')!.skill.effect,/derruba os tiros dos bichos ali/);
+  assert.match(kitFor('faxineira')!.skill.effect,/limpeza dos tiros dos bichos ali/);
+  for(const kit of KITS)assert.doesNotMatch(kit.skill.effect,/inimig/i,kit.classId);
 });

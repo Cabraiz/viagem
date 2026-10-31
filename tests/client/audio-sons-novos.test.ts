@@ -1,7 +1,8 @@
 /**
  * NEW-20261029-ORQ-sons-novos-tangoflux (auditoria de som, itens 18, 21, 22, 23, 25 e 26): which SimEvents play the new
  * TangoFlux files. Three takes of the critter's hit and death and of the boss's death; the last critter's tcham; the
- * happenings' jingles; a car part's clank and the moto's engine; the money; and a nest waking from its side.
+ * happenings' jingles; a car part's clank; the money; and a nest waking from its side. The chaveiro's moto and the PIX
+ * keep NEW-20261030-ORQ-sons-nos-eventos' choice (tests/client/audio-sons-nos-eventos.test.ts).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ import {cueForEvent,soundForEvent,playEvents,WarnGate,BANK_CASH_CUE,NEST_RANGE,W
   type EventWorld} from '../../src/client/audio/events.ts';
 
 const ME='p1';
-const NEW:readonly SoundId[]=['ultimo-bicho','apagao','caixa-registradora','peca-cai','moto-tranco','moto-morre','pix','ninho-acordou'];
+const NEW:readonly SoundId[]=['ultimo-bicho','apagao','caixa-registradora','peca-cai','ninho-acordou'];
 const id=(event:SimEvent,world?:EventWorld)=>cueForEvent(event,ME,undefined,world)?.id;
 
 test('item 18: three takes each of the critter hit, the critter death and the boss death, every take on disk',()=>{
@@ -43,23 +44,15 @@ test('item 22: each happening has its jingle',()=>{
   assert.equal(id({type:'happening',kind:'boletos',endsTick:9}),'carimbo');
 });
 
-test('item 23: a falling car part clanks; the moto starts, comes back, arrives and dies with its engine',()=>{
+test('item 23: a falling car part clanks',()=>{
   assert.equal(id({type:'part',name:'roda'}),'peca-cai');
-  assert.equal(id({type:'moto',mode:'tranco'}),'moto-tranco');
-  assert.equal(id({type:'moto',mode:'volta',alone:true}),'moto-tranco');
-  assert.equal(id({type:'moto',mode:'chegou'}),'moto-tranco');
-  assert.equal(id({type:'moto',mode:'morta'}),'moto-morre');
-  assert.equal(id({type:'moto',mode:'tombo'}),'peca-cai');
-  assert.equal(id({type:'moto',mode:'lombada'}),undefined,'a bump is silent');
 });
 
-test('item 25: money: my purchase rings full, the team\'s and Cida\'s sale quieter; a pix only for whom it reaches',()=>{
+test('item 25: money: my purchase rings full, the team\'s and Cida\'s sale quieter',()=>{
   assert.deepEqual(cueForEvent({type:'buy',player:ME,item:'brigadeiro'},ME),{id:'caixa-registradora'});
   assert.deepEqual(cueForEvent({type:'buy',player:'p2',item:'brigadeiro'},ME),{id:'caixa-registradora',gain:TEAM_MONEY_GAIN});
   const sale=cueForEvent({type:'sale',enemy:'e1'},ME)!;
   assert.equal(sale.id,'caixa-registradora');assert.ok(sale.gain!<1);
-  assert.equal(id({type:'pix',from:'p2',to:ME,amount:5,memo:0}),'pix');
-  assert.equal(id({type:'pix',from:ME,to:'p2',amount:5,memo:0}),undefined,'the sender hears nothing');
   assert.equal(id({type:'bank-cash',bank:'b1',amount:10,by:'enemy',enemy:'e1'}),'tsc');
   assert.equal(id({type:'bank-prime',bank:'b1',enemy:'e1'}),'caixa-registradora');
   const empty=cueForEvent({type:'bank-empty',bank:'b1',until:99},ME)!;

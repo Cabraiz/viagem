@@ -33,13 +33,14 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_CLOCK,CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
 import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
-import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {createBanks,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {shopCandidates} from './bancos/fora-das-bocas.ts';
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
@@ -253,11 +254,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const {onOutcome}=options;
   // A checkpoint is copied once: every system below mutates the state it is handed.
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
+  // D-051 manual combat: whether a hero has a weapon (the automatic weapons always do).
+  const armed=(p:SimPlayer)=>!hasInventory(p)||p.build.weapons.some(isWeaponItem);
   // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
   const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
     // A cédula with no room on the ground: paid like the kill would have been (read through `stonewards`, created below).
     payGrana:(ctx,amount,owner)=>{payKill(ctx.players,{},amount,stonewards.state,owner);},
-    ...(options.combat==='manual'?{crates:true}:{}),
+    // levelup-sem-arma-e-solo: empty hands get no weapon card.
+    ...(options.combat==='manual'?{crates:true,armed}:{}),
     // D-051 mode 'ninhos': the first level's cost follows the heroes (progression.ts FIRST_LEVEL_XP).
     ...(cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos'?{firstLevelByHeroes:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
@@ -455,10 +459,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
-      // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
-      ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
-      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
-      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
+      // missao-proteger-uno-tempo: in mode 'ninhos' the run is the clock (5:00, each hit on the Uno adds time), then he
+      // rides the last stretch and unlocks; no stops, no ride by room, no nests' ramp to wait for.
+      ...(nestMode?{clock:CHAVEIRO_CLOCK}:{}),
       // balanco-1p-3p-carro: and the car's hit limit too (the nests' waves go for the Uno).
       ...(nestMode?{limit:CHAVEIRO_PACE.limit}:{}),
       ...(nestMode&&CHAVEIRO_PACE.rate?{rate:CHAVEIRO_PACE.rate}:{}),
@@ -494,7 +497,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
             // The minuto de Minerva: no noise wakes anyone, the sight only within MINERVA_REACH (the AI holds them still).
             minerva:ctx=>!!nests?.minerva(ctx.tick),
             // The visitors come to a hero with a weapon (manual combat starts with none: the first crates).
-            armed:p=>!hasInventory(p)||p.build.weapons.some(isWeaponItem)},cp?.sono);
+            armed},cp?.sono);
           world.sleepers=sleep.sleepers;
           // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
           // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).
@@ -538,9 +541,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
   if(cityTerrain){
     const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
-    // The streets around the car first (an intermission trip away), the loot points as a fallback.
-    const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
-    banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
+    // The streets around the car first (an intermission trip away), the loot points as a fallback; none in a street mouth.
+    banks=createBanks({seed:world.seed,candidates:shopCandidates(cityTerrain,{x:wall.x,y:wall.y},(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))),car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
       wallet:{add:(n,to)=>{addGrana(to,n);}},work:id=>work.get(id)},cp?.banks);
     // Veículos: in both city modes too (a ride ends on moving the car).

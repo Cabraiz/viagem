@@ -29,7 +29,7 @@
 @keyframes coop-count-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
 @media(max-height:500px){.coop-wait{top:auto;bottom:max(8px,calc(env(safe-area-inset-bottom) + 8px));width:min(400px,calc(100% - 300px));max-height:calc(100% - 64px);padding:10px}.coop-wait-headline{margin:6px 0 4px}.coop-wait-line{min-height:0;margin:4px 0}.coop-wait-count{font-size:var(--t-48)}}
 @media(prefers-reduced-motion:reduce){.coop-wait-members li.just-ready,.coop-wait[data-phase=countdown] .coop-wait-count{animation:none}.coop-lobby button.coop-nick-roll:active{transform:none}}
-.coop-party{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.coop-party span{font-size:11px;padding:4px 6px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu)}
+.coop-party{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.coop-party span{font-size:12px;padding:4px 6px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu)}
 .coop-debug{margin:0;border:0;padding:12px;border-radius:var(--r-janela);background:var(--c-papel);font:400 12px var(--f-sistema);color:var(--c-lilas);overflow-wrap:anywhere}.coop-debug summary{cursor:pointer;min-height:44px;display:flex;align-items:center}.coop-debug button{margin-top:10px}
 /* Attack is a thumb control: circle, Breu body and Papel edge like every chip over the map. */
 /* Grows with the text scale so "Habilidade" never spills out of the circle at 125%. */
@@ -281,7 +281,7 @@
 .coop-wait-members li>span:has(>.coop-wait-class){line-height:1.15;min-width:0}
 .coop-wait-members button:has(>.coop-wait-class){flex-wrap:wrap;row-gap:0}
 .coop-wait-members button>.coop-wait-class{flex:1 0 100%;margin:-4px 0 0}
-/* Nome numerado ("Mendigo 2", bot com o nome da classe): as reticências ficam no começo, o número nunca some. */
+/* Nome numerado ("Aposentado 2", bot com o nome da classe): as reticências ficam no começo, o número nunca some. */
 .coop-wait-members .coop-wait-numbered{display:flex;min-width:0;font-weight:inherit}
 .coop-wait-members .coop-wait-numbered>b{font-weight:inherit}
 .coop-wait-members .coop-wait-numbered>b:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

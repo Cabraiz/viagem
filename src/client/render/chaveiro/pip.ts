@@ -36,7 +36,7 @@ export class UnoPip {
     this.scene=scene;this.options=options;
     const doc=document;
     this.el=doc.createElement('button');this.el.type='button';this.el.className='rh-pip';this.el.hidden=true;
-    this.el.setAttribute('aria-label','O Uno está apanhando. Toque para ver.');
+    this.el.setAttribute('aria-label','O Uno tá apanhando. Toca pra ver.');
     this.view=doc.createElement('span');this.view.className='rh-pip-view';
     const bar=doc.createElement('span');bar.className='rh-pip-bar';
     this.fill=doc.createElement('i');bar.append(this.fill);

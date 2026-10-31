@@ -16,7 +16,7 @@ import {fileURLToPath} from 'node:url';
 
 const TOKENS='src/client/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
-const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css','src/client/hud/fone.css','src/client/hud/pausa.css']);
+const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/hud/css/topo.css','src/client/hud/css/oferta.css','src/client/hud/css/resultado.css','src/client/hud/css/bordas.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css','src/client/hud/fone.css','src/client/hud/pausa.css']);
 /**
  * O resto do que aparece na partida (inventário, oferta, missão, chefão, perfis, Minerva, Pix, HUD da cidade, fortify;
  * auditoria-legibilidade L6): piso de 12 px, o que essas telas já usam (max(12px,…)).
@@ -28,7 +28,7 @@ const MIN_MATCH=13,MIN_MATCH_12=12,MIN_OTHER=10,ROOT_PX=16;
  * Files still under their own card for L6 (perfis.css: L1; inventory.css: L3). Here only px/rem count, as before; the
  * card that fixes the file takes its line out.
  */
-const PENDING_L6=new Set(['src/client/hud/perfis.css','src/client/hud/inventory.css']);
+const PENDING_L6=new Set(['src/client/hud/perfis.css']);
 /** The floor of a file: 13 px in the HUD, 12 px in the rest of the match, 10 px outside. */
 export function minFont(file){return MATCH_CSS.has(file)?MIN_MATCH:MATCH_12_CSS.has(file)&&!PENDING_L6.has(file)?MIN_MATCH_12:MIN_OTHER;}
 const EMOJI=/(?![★☆])\p{Extended_Pictographic}|✦/gu;// ★/☆ are text stars, and ICU versions (Node 22 × 24) disagree on them

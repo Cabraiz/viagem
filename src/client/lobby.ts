@@ -17,7 +17,7 @@ import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
 import {holdMenuDownload} from './audio/menu-music.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
-import {objectiveFromSearch,soloMemory,soloNext,soloCreateMs,soloOneRetry,soloPlan,soloRefused,soloRetryable,soloWithin,SOLO_FIRST_JOIN_MS,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
+import {objectiveFromSearch,soloMemory,soloNext,soloCreateMs,soloOneRetry,soloPlan,soloRefused,soloRetryable,soloSays,soloWithin,ROOMS_UNREACHABLE,SOLO_FIRST_JOIN_MS,SOLO_MAP,SOLO_STARTING,type SoloPlan,type SoloStep} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -44,9 +44,9 @@ export const WAITING_LINES:readonly string[]=Object.freeze([
   'O Wi-Fi do vizinho está colaborando.',
   'Aquecendo o chinelo…',
   'Conferindo se o boleto venceu.',
-  'O bêbado também está esperando. Na saideira.',
+  'O sanfoneiro está afinando a sanfona.',
   'Quem não estiver pronto paga a coxinha.',
-  'O tio do pavê está ensaiando a piada.',
+  'O saci foi atrás do outro pé do chinelo.',
 ]);
 export const WAITING_LINE_SECONDS=5;
 export const waitingLine=(elapsedSeconds:number)=>WAITING_LINES[Number.isFinite(elapsedSeconds)?Math.floor(Math.max(0,elapsedSeconds)/WAITING_LINE_SECONDS)%WAITING_LINES.length:0];
@@ -56,9 +56,9 @@ export const waitingLine=(elapsedSeconds:number)=>WAITING_LINES[Number.isFinite(
  * known, the first missing role (support first: someone has to bring the coffee) says so; undefined when all is covered.
  */
 export const COMPOSITION_LINES:Readonly<Record<Role,string>>=Object.freeze({
-  'Suporte':'Time sem suporte: quem vai passar o café?',
+  'Suporte':'Turma sem suporte: quem vai passar o café?',
   'Linha de frente':'Ninguém na linha de frente: quem vai levar a primeira chinelada?',
-  'Dano':'Time sem dano: vão vencer a horda no papo?',
+  'Dano':'Turma sem dano: vão vencer a horda no papo?',
   'Controle':'Ninguém de controle: a horda vai entrar sem pedir licença.',
 });
 const COMPOSITION_ORDER:readonly Role[]=['Suporte','Linha de frente','Dano','Controle'];
@@ -72,8 +72,8 @@ export function compositionLine(members:readonly {classId?:string}[]){
 /** The class's short name under a chip's name ("CLT"); empty until the class is known. */
 export const memberClassName=(classId:string|undefined)=>classId?getClass(classId)?.name??'':'';
 /**
- * A chip's name as HTML. A numbered name ("Mendigo 2", a bot named after its class) keeps its number in sight: only
- * the words before it end in reticências in a narrow cell, so "Mendigo 2" and "Mendigo 3" never both read "Mendig…".
+ * A chip's name as HTML. A numbered name ("Aposentado 2", a bot named after its class) keeps its number in sight: only
+ * the words before it end in reticências in a narrow cell, so "Aposentado 2" and "Aposentado 3" never both read "Aposent…".
  */
 export function chipNameHtml(name:string){
   const m=/^(.+) (\d)$/.exec(name);
@@ -112,12 +112,12 @@ export interface WaitingView {
   seatsLeft:number;
 }
 /**
- * What an armed chip says (D-025, design review): the verb (a person is expelled, a bot is taken out), the first name
+ * What an armed chip says (D-025, design review): the verb (one verb, "Expulsar", for a person and a bot alike), the first name
  * as the rail shows it, and what to do: "Expulsar Wagner? Toca de novo."
  */
-export const confirmText=(m:Pick<WaitingMember,'name'|'bot'>)=>`${m.bot?'Tirar':'Expulsar'} ${railName(m.name)}? Toca de novo.`;
+export const confirmText=(m:Pick<WaitingMember,'name'|'bot'>)=>`Expulsar ${railName(m.name)}? Toca de novo.`;
 /** The owner's line in place of the waiting joke (the joke is optional; this line says what the chips do). */
-export const OWNER_HINT='Você é o dono da sala. Toca num nome pra tirar.';
+export const OWNER_HINT='Você é o dono da sala. Toca num nome pra expulsar.';
 /** How long the owner news stays on top of the waiting room (ms). */
 export const OWNER_NEWS_MS=4000;
 /**
@@ -449,7 +449,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         if(view.canManage&&!m.self){
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
-          const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
+          const label=ask?confirmText(m):`${m.name}${said}. Toca pra expulsar.`;
           return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${ask?escapeHtml(confirmText(m)):chipNameHtml(shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})+kind}</button></li>`;
         }
         return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${chipNameHtml(shown)}${m.self?' <small>(você)</small>':''}${kind}</span>${crown}<span class="sr-only">${said}</span></li>`;
@@ -482,10 +482,26 @@ export async function createRoom(endpoint:string,body:object,options:{onRetry?:(
     try{r=await fetcher(new URL('/rooms',endpoint),{method:'POST',body:sent,signal:AbortSignal.timeout(options.timeoutMs??10000)});}
     catch(e){if(attempt>0)throw e;options.onRetry?.();await wait(CREATE_RETRY_MS);continue;}
     const data=await r.json().catch(()=>({}));
-    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não foi possível criar a sala.');
+    if(!r.ok||typeof data.code!=='string')throw new Error(data.error??'Não deu pra criar a sala.');
     return data.code;
   }
 }
+/**
+ * The lobby's line when entering fails (auditoria-erros-cliente E4). A plain Error is ours (the Worker's data.error, the
+ * code check, the room's refusal) and passes; the browser's own never reach the player ('Failed to fetch',
+ * 'The operation was aborted due to timeout', 'Unexpected token <').
+ */
+export const LOBBY_SLOW='A sala demorou a responder. Confere a internet e tenta de novo.';
+export const LOBBY_OFFLINE='Não deu pra falar com as salas. Confere a internet e tenta de novo.';
+export const LOBBY_FAILED='Deu ruim ao entrar na sala. Tenta de novo.';
+export function lobbyErrorText(e:unknown):string{
+  const name=(e as {name?:unknown}|null)?.name,message=(e as {message?:unknown}|null)?.message;
+  if(name==='TimeoutError'||name==='AbortError')return LOBBY_SLOW;
+  if(name==='TypeError')return LOBBY_OFFLINE;
+  return e instanceof Error&&name==='Error'&&typeof message==='string'&&message?message:LOBBY_FAILED;
+}
+/** The rooms' Worker address (public/multiplayer.json); undefined when it did not load (offline, 4G down). */
+const roomsEndpoint=()=>fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
 /** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */
 export interface LobbyOptions {room?:string;autoJoin?:boolean}
 export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
@@ -527,8 +543,12 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   // A room already on the city refuses a join without it: the client then waits for the manifest (the running fetch, or
   // a new one if it failed) and knocks once more (client.ts CITY_RETRY_WAIT_MS), so a slow phone is never left out.
   const manifestAgain=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
-  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
+  // Asked again on Entrar/Criar and when the network comes back: a phone offline at the opening is not stuck (E4).
+  let endpoint=await roomsEndpoint();
   if(closed)return;
+  const online=()=>{if(!dialog.isConnected){window.removeEventListener('online',online);return;}
+    if(!endpoint)void roomsEndpoint().then(e=>{if(closed||endpoint||!e)return;endpoint=e;if(status.textContent===ROOMS_UNREACHABLE)status.textContent='';});};
+  window.addEventListener('online',online);
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
   codeInput.value=formatRoomCode(readRoomCode(options.room??''));
   // Pasted with or without dashes (or the whole invite link): shown grouped as soon as it is a full code.
@@ -536,9 +556,10 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   let busy=false,outdated=false;
   async function enter(create:boolean){
     if(busy||closed||outdated)return;
-    if(!endpoint){status.textContent='As salas ainda não estão disponíveis neste endereço. Tente novamente após a publicação.';return;}
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
+      if(!endpoint){status.textContent='Procurando o servidor das salas…';endpoint=await roomsEndpoint();if(closed)return;}
+      if(!endpoint){status.textContent=ROOMS_UNREACHABLE;return;}
       let code=readRoomCode(codeInput.value);
       if(create){status.textContent='Criando sua sala…';code=await createRoom(endpoint,objectiveFromSearch(location.search),{onRetry:()=>{status.textContent=CREATE_RETRY_TEXT;}});codeInput.value=formatRoomCode(code);}
       if(closed)return;
@@ -572,19 +593,19 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
         panel.showFatal(dialog.querySelector<HTMLElement>('form')!,fatal,{inline:true}).scrollIntoView({block:'center'});
         return;
       }
-      status.textContent=e instanceof Error?e.message:'A conexão falhou. Tente novamente.';
+      status.textContent=lobbyErrorText(e);
     }
     finally{busy=false;for(const b of dialog.querySelectorAll<HTMLButtonElement>('button'))b.disabled=outdated&&!b.matches('.coop-close,.net-fatal-reload');}
   }
   dialog.querySelector('#create-room')!.addEventListener('click',()=>void enter(true));
   dialog.querySelector('form')!.addEventListener('submit',e=>{e.preventDefault();void enter(false);});
   for(const b of actionButtons())b.disabled=false;
-  status.textContent=endpoint?'':'As salas ainda não estão disponíveis neste endereço.';
+  status.textContent=endpoint?'':ROOMS_UNREACHABLE;
   if(options.autoJoin&&endpoint&&codeInput.value)void enter(false);
 }
 /** How long "Jogar sozinho" waits for the city's manifest (a few bytes): the solo match is on the city, so it needs it. */
 export const SOLO_MANIFEST_MS=8000;
-export const SOLO_TEXT={noRooms:'As partidas ainda não estão disponíveis neste endereço.',noCity:'A cidade não baixou. Tente novamente.'} as const;
+export const SOLO_TEXT={noRooms:ROOMS_UNREACHABLE,noCity:'A cidade não baixou. Tenta de novo.'} as const;
 /**
  * What "Jogar sozinho" downloads before the room (cena-nasce-rapido; auditoria-ui-menus 5: started when the choice
  * popup opens, not on the tap, so the seconds the player spends looking at the popup are spent downloading): the game's
@@ -604,7 +625,7 @@ function startWarm():SoloWarm{
     code:Promise.all([import('./explore.ts'),import('./scene.ts'),import('./coop.css'),import('./net/client.ts')]),
     manifest,
     city:manifest.then(ref=>ref&&import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref,f=>{warm.cityFraction=f;for(const l of onCity)l(f);}))).catch(()=>undefined),
-    endpoint:fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined),
+    endpoint:roomsEndpoint(),
   };
   // A part that failed is not kept: the next call (the tap after an error) asks again.
   const drop=()=>{if(soloWarm===warm)soloWarm=undefined;};
@@ -638,9 +659,9 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
   const [{CoopClient}]=await Promise.all([import('./net/client.ts'),import('./coop.css')]);
   const loadManifest=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
   const endpoint=await warm.endpoint;
-  if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
+  if(!endpoint){releaseMenu();throw soloSays(SOLO_TEXT.noRooms);}
   const cityRef=await within(warm.manifest,SOLO_MANIFEST_MS);
-  if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
+  if(!cityRef){releaseMenu();throw soloSays(SOLO_TEXT.noCity);}
   const plan=soloPlan(options.bots),nick=fitName(name)||'Capivara Veloz';
   let client:CoopClient|undefined;
   try{
@@ -650,8 +671,10 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // The room and the join get one silent second try (a cold Worker, solo-plan.ts soloOneRetry): a new room each time,
     // the first on short times (solo-tenta-de-novo), none after a refusal (4xx) or the room's fatal word.
     const joined=await soloOneRetry(async n=>{
-      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(withDevice(body)),signal:AbortSignal.timeout(soloCreateMs(n))});const data=await r.json();
-      if(!r.ok){const message=data.error??'Não foi possível criar a sala.';throw r.status<500?soloRefused(message):new Error(message);}
+      const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(withDevice(body)),signal:AbortSignal.timeout(soloCreateMs(n))});
+      // r.ok before the body: a 502 page or the Worker's plain-text 403 is not JSON (E4).
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||typeof data.code!=='string'){const message=typeof data.error==='string'?data.error:'Não deu pra criar a sala.';throw !r.ok&&r.status<500?soloRefused(message):soloSays(message);}
       step('room');
       const fresh=new CoopClient(endpoint,data.code,nick,hero.id);client=fresh;fresh.cityRef=cityRef;fresh.cityManifest=loadManifest;
       const joining=fresh.join();
@@ -671,6 +694,6 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     // A stale chunk with the reload underway: the resume comes back to this room (same rule as openLobby).
     if(chunkFailed(e)&&reloadUnderway())return;
     const fatal=client?.fatal;client?.leave();
-    throw fatal?new Error(fatal):e;
+    throw fatal?soloSays(fatal):e;
   }
 }

@@ -526,7 +526,7 @@ class CitySandbox extends Phaser.Scene {
    */
   private mountBanks(){
     const fake=fakeBanks(params,this.at),projector=this.cityProjector();
-    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id});
+    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id,playerAt:id=>id==='voce'?this.at:undefined});
     let horde:HordeRenderer|undefined;
     if(this.decoded&&fake.enemies.length){
       const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;

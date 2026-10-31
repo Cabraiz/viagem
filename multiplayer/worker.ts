@@ -31,7 +31,7 @@ export function createDevice(v:unknown):string|undefined{
   const d=(v as {device?:unknown}|null)?.device;
   return typeof d==='string'&&/^[\w-]{8,64}$/.test(d)?d:undefined;
 }
-import { isAllowedOrigin } from './origins.ts';
+import { isAllowedOrigin, ORIGIN_REFUSED } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
 import {RoomIndex,type IndexRow} from './room-index.ts';
@@ -87,7 +87,9 @@ export default {
       if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});
       return Response.json(await env.INDEX.get(env.INDEX.idFromName('index')).summary(),{headers:{'Cache-Control':'no-store'}});
     }
-    if(!allowed(request,env))return new Response('Origin not allowed',{status:403});
+    // Another address (a copy, an old preview): JSON like the other answers, so the lobby shows where the game opens
+    // (auditoria-erros-cliente E5). `*` lets that page read this one line; it holds nothing of a room.
+    if(!allowed(request,env))return Response.json({error:ORIGIN_REFUSED},{status:403,headers:{'Access-Control-Allow-Origin':'*','Cache-Control':'no-store'}});
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/rooms'&&request.method==='POST'){

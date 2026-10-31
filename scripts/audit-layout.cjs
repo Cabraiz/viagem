@@ -159,6 +159,10 @@ const SCENES=[
   ['hud resultado do dono, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos','.rh',13],
   ['hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&bots=4&dev=1','.rh',13],
   ['hud resultado do dono, 6p, derrota, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1','.rh',13],
+  // The real room's end (BUG-20261023-ORQ-resultado-paisagem-e-125): the chaveiro's bill and the six-name vaquinha, whose
+  // two lines pushed the second row of cards out of view in landscape.
+  ['hud resultado do dono, 6p, derrota, conta e vaquinha','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&conta=time&calote=1','.rh',13],
+  ['hud resultado, 6p, conta paga e vaquinha','/?sandbox=hud&players=6&state=result&frozen=1&nomes=longos&conta=aberto','.rh',13],
   // The real room ended by the lab (DSG-adesivos-itens): ties everywhere, so most cards carry a long vice line.
   ['hud resultado do dono, 6p, derrota, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&premios=empates','.rh',13],
   ['hud resultado, 6p, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&premios=empates','.rh',13],
@@ -218,6 +222,9 @@ const SCENES=[
         await page.waitForSelector(roots,{state:'visible',timeout:30000});
         await page.evaluate(()=>document.fonts.ready);
         await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        // The result's cards slide in (rh-rcard-in, ~1 s with six) and slide again when the grid redraws ("Arrumar a sala"):
+        // measured mid-slide they read as out of view. Measure them where they land.
+        await page.evaluate(()=>Promise.race([Promise.all([...document.querySelectorAll('.rh-rcard')].flatMap(c=>c.getAnimations()).map(a=>a.finished.catch(()=>{}))),new Promise(r=>setTimeout(r,3000))]));
       };
       let problems;
       try{
@@ -284,12 +291,12 @@ const SCENES=[
     await run('hud setas na borda, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13,longNames);
     for(const [name,state] of [['combate','wave'],['caído','downed']])
       await run(`hud ${name} no PC (coluna), 6p, nomes longos`,`/?sandbox=hud&players=6&state=${state}&frozen=1`,'.rh',13,()=>longNames(true));
-    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/rules/classes.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
+    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {heroiPadrao}=await import('/src/rules/personagens-liberados.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(heroiPadrao(),'Maria Aparecida');});await page.waitForTimeout(900);});
     // The real SkillButton (sticker + "Habilidade", E7-skill-hud-wiring), ready and cooling with the widest note.
     for(const [label,setup] of [['botão de habilidade','ready'],['botão de habilidade, recarga','cooling'],['botão de habilidade, nota','note']])
-      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/client/coop.css');const {SkillButton}=await import('/src/client/hud/skill.ts');
+      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/client/coop.css');const {SkillButton}=await import('/src/client/hud/skill.ts');const {PERSONAGEM_PADRAO}=await import('/src/rules/personagens-liberados.ts');
         const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack"></button>';document.body.append(d);
-        const b=new SkillButton(d.querySelector('#coop-attack'),'cidadao-comum');
+        const b=new SkillButton(d.querySelector('#coop-attack'),PERSONAGEM_PADRAO);
         if(state==='cooling')b.update({skillTick:1,skillReadyTick:300},100,0);
         if(state==='note'){b.update({skillTick:1,skillReadyTick:300},100,0);b.tap(()=>1,0);}},setup);});
     await ctx.close();

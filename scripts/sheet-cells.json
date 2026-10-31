@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4527,
+  "sheets": 4522,
   "failing": 0,
   "frames": 0
  },
@@ -5113,6 +5113,16 @@
    "ilhas": 39,
    "fails": []
   },
+  "enemies/saci/idle-sombra.webp": {
+   "sha": "e1a2c145095cd9b8661ad6e3e625b620e719afdf1763f2e96e79b088e27f4d3a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "enemies/saci/idle.webp": {
+   "sha": "93d7724f1986ba16cc22de640bf9c9a046603c0bbdbf1523b5558f8ab3a0c663",
+   "ilhas": 6,
+   "fails": []
+  },
   "enemies/sapo-cururu/death.webp": {
    "sha": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",
    "ilhas": 1,
@@ -9761,6 +9771,16 @@
   "lite/enemies-pc/rolo-lava-rapido/walk.webp": {
    "sha": "699495375654f237a1f63818890b161bbc4a2da82c6081edcb55ed12e572a51f",
    "ilhas": 39,
+   "fails": []
+  },
+  "lite/enemies-pc/saci/idle-sombra.webp": {
+   "sha": "bb8b367c5bf999fc88aa7a8052aa7948d39d4a7b092865ecc5120b2c2e0f3272",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies-pc/saci/idle.webp": {
+   "sha": "1d907c3aadc376bead3d809d1e56dfb8d793d992eed7ebb7d09c93c4437a8255",
+   "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/sapo-cururu/death.webp": {
@@ -15588,6 +15608,16 @@
    "ilhas": 23,
    "fails": []
   },
+  "lite/enemies/saci/idle-sombra.webp": {
+   "sha": "71491e88eb3a62f3ab387e63841517c7de1e540adc234bf6e41381380a3c27a4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies/saci/idle.webp": {
+   "sha": "58ec434ef72157945f43b401662a5d23112eb197f2e157ddaf91ab083e0832f7",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/enemies/sapo-cururu/death.webp": {
    "sha": "4a668503ad1ec93548c9be80a44938cdf2dfe31d786dce1e4c1dcf62626da39a",
    "ilhas": 2,
@@ -17813,8 +17843,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
-   "sha": "5badbb47af9fdfef607fc78e6ff6eaafcba0c9a8eb06a74b8dec4dd1b089b36d",
+  "lite/sprites/gato-nada-pra-comer.run16-w.73ceb3122d8b.webp": {
+   "sha": "456aa7d0eabedda374c0153c6b6eeb79221dac0ab0b80e909d3898b27236074d",
    "ilhas": 0,
    "fails": []
   },
@@ -18230,106 +18260,6 @@
   },
   "lite/sprites/maromba.work16-w.65ff30c99f53.webp": {
    "sha": "f1f99e58b3282f3ea7f499ce8de4ba8ec709fe573279d070c797c25d9007fc07",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-e.cb828d6683c9.webp": {
-   "sha": "3154439158bb8541806c0e4c21557bbf474bb167cb00c26f3f8ee5f856120dae",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-n.bbc1172efa42.webp": {
-   "sha": "2fb3a266053d7456c85b17edec150c5b66d3c829216f48bd10fb1b349cd0c9f6",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-ne.01695a70dbd9.webp": {
-   "sha": "f69cfe2352db7302db3cc6a60b960aef4b07825272b85f0e0a2a95c0ea81d016",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-nw.4715ea1d801b.webp": {
-   "sha": "1988e800d93671f50143cd316e9ddeea53f88866f883f755b9448cc6489d4532",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-s.062eee182919.webp": {
-   "sha": "e1023a57a5bce0b2fbbd2ff903fc9556681d08e68cc48132ccefa421d38841f5",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-se.f1d503d7a4be.webp": {
-   "sha": "79b17e8d72e9e4072910f0d94bb29e90372f8c3dc5c26b1092c035091b56d111",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-sw.70d81ea77ac7.webp": {
-   "sha": "d21633e6fc7ae06d1587932a8a1b5defa5a42b4c6bed0f498c9960f959e4520d",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.attack128-w.27fffd7fc687.webp": {
-   "sha": "bc28643f78b56bf87e70eec911bb1bbe16777edb763bacac8123b8684821e306",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.dance128.12335d584beb.webp": {
-   "sha": "c8de779b15a7786c25e4d88f770cd16b24e403ffdad8f2028a866dc7558c0a2a",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.dir4.webp": {
-   "sha": "807d51f79847f92ee8c693fb3d214331f5f97030114b9652a9f2128a02ba0c5b",
-   "ilhas": 4,
-   "fails": []
-  },
-  "lite/sprites/mendigo.dir4c.webp": {
-   "sha": "82f2fc93f9d46cd907a705e910568aa208e7184b0fc86ace528faef0b0a333ca",
-   "ilhas": 9,
-   "fails": []
-  },
-  "lite/sprites/mendigo.idle8.e6a16f6059c8.webp": {
-   "sha": "8017a531567a027b7b2f92b9b5b0566b287d5d70084b97eb0b0acc33afd5adc1",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-e.c2d00dbd2636.webp": {
-   "sha": "ca22e43b8b90f0b0f49b69ba0facd19e8ddfb1b211691bb374b66217e810fc2b",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-n.96fea3bfac61.webp": {
-   "sha": "c1ae108637e835c52210082dcbe0244f8b401b2cabab9940507a1f6b54df20e8",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-ne.7ee55652ab85.webp": {
-   "sha": "f162023baff28322edbd1e8fc009f5667553ac40950cf65935d195305dcec27e",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-nw.a26f2226b6cb.webp": {
-   "sha": "d19410473c564458e9f31ebaf57ee3650eedfc0f20409d760cb858e42f872f05",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-s.068b648fbed6.webp": {
-   "sha": "5f4734164b58416872f57cbeeedd98dc9e6c4e981ff544a5d57cb13a7b79a38d",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-se.a54ae5cfe058.webp": {
-   "sha": "3cd53644f9aef1cf1446169376fc6cd46d43e0714d9edb3fe0ad0cf52e80f552",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-sw.4a8e827e6220.webp": {
-   "sha": "77c0701f45490789dac28c85ca740b48cc882686bb0aa36165165340243bc1e3",
-   "ilhas": 0,
-   "fails": []
-  },
-  "lite/sprites/mendigo.walk128-w.446ed4511d9b.webp": {
-   "sha": "37e6403c828bd70b2226f7effcee0ea4d2ec070da515bfb19f6421ac71aac512",
    "ilhas": 0,
    "fails": []
   },
@@ -19778,6 +19708,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/aposentado.shoved16-n.d0208bd9e23b.webp": {
+   "sha": "d0208bd9e23baab87afc14cd3b177f7cd4949ba5d4aa17ec9ef4fa9f5b2866db",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.shoved16-nw.d68e56b03ec1.webp": {
+   "sha": "d68e56b03ec1888488d4ffda261a8b47cbe91a8cbac6465c21fac1a294e92e9d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.shoved16-s.ea95dee4ead5.webp": {
+   "sha": "ea95dee4ead5b68d224de2dd66a68573a67700f0636bba2cc8cdd7a2e097350c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.shoved16-se.cd2a925a664b.webp": {
+   "sha": "cd2a925a664b4993fd3cf250d7a445ae435298281c4637bd76d3a1c05fcfb0b1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.shoved16-w.0bea132d3f82.webp": {
+   "sha": "0bea132d3f82483444210ea75da0c82af6036642d705acb6353b23ed861c88ab",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/aposentado.walk16-n.b25e20405860.webp": {
    "sha": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299",
    "ilhas": 0,
@@ -20120,6 +20075,31 @@
   },
   "sprites/clt-cansado.run16-w.81aaae8b5a02.webp": {
    "sha": "81aaae8b5a022f1405c532f03edc894e46dc732ae99a73837d4b1b492db02b4f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.shoved16-n.5b2375e0892b.webp": {
+   "sha": "5b2375e0892be5557693bd6642d7675bca69aef9d6e4d84fbb4649930e6980ad",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.shoved16-nw.5dbfbb4936c2.webp": {
+   "sha": "5dbfbb4936c2dd0f91c9346402a06710b1a880e4ba83e56ab45628e67cb62363",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.shoved16-s.bfff487e1e8f.webp": {
+   "sha": "bfff487e1e8f9c40aad45800ba4a86393269df7993eecd751874c23be1ad7a76",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.shoved16-se.2df34dae1db1.webp": {
+   "sha": "2df34dae1db11aea52bf321a12bc928a968ead6074afbb529d79b44c75953631",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.shoved16-w.03f0ea4a1152.webp": {
+   "sha": "03f0ea4a1152c3d3c9eb813dfba7b2717a9deb2d9bf36b7a3a18d337298cb2b5",
    "ilhas": 0,
    "fails": []
   },
@@ -20828,8 +20808,33 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
-   "sha": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
+  "sprites/gato-nada-pra-comer.run16-w.73ceb3122d8b.webp": {
+   "sha": "73ceb3122d8b163eeb0188480caf287540f9a55dbc2642eadeb04966accc5800",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.shoved16-n.001ba72bb494.webp": {
+   "sha": "001ba72bb4940248dc5309761ee421e6b829ff05f854b2851b5df803815be46b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.shoved16-nw.6249d5a7981f.webp": {
+   "sha": "6249d5a7981f1e4071abfedb6b30df7d8ee9091ac5583ddeca0511a38c305226",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.shoved16-s.2d180540fb73.webp": {
+   "sha": "2d180540fb73191fb750c5aba13f329b402692bec360f7833a02ab8e99161fb9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.shoved16-se.0e7d04b422b4.webp": {
+   "sha": "0e7d04b422b4a8bf9afde90807caeacf4ef452262dd9a8469e93e0674493f60e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.shoved16-w.06de87039cec.webp": {
+   "sha": "06de87039cec0da5a4e6dd9f32c74218498a51b43216f9ccc4bb83c72623e14a",
    "ilhas": 0,
    "fails": []
   },
@@ -21168,6 +21173,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.shoved16-n.604215f06847.webp": {
+   "sha": "604215f068475ed989f45f311cd6f4dbce31a5b44ed20eb7ca5f462ad4e1df65",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.shoved16-nw.126c839f6d44.webp": {
+   "sha": "126c839f6d44e1d974cfa23ec3cc01f6e097bbe11c2fc5d65c4249584f0272f6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.shoved16-s.82e4a05f2f10.webp": {
+   "sha": "82e4a05f2f108df71c5d1271e472f7cd1f8be8cd6a1c9b7dbf4e6957e19b030a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.shoved16-se.3ef8c9b949f2.webp": {
+   "sha": "3ef8c9b949f2582c40f63e645d1256c800dbdf6e6c3a6ff4996f46898e07012e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.shoved16-w.0e86c7bd2b11.webp": {
+   "sha": "0e86c7bd2b118abc7d2fe530f5aa9d02d8f3319bb5f2e8fdfa94c23a2a6d14d3",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/maromba.walk128-e.daed1993b619.webp": {
    "sha": "daed1993b6196db80b6ebef00b9278e148fcd1ae19d367cbe43adbfb825dd11a",
    "ilhas": 0,
@@ -21255,111 +21285,6 @@
   },
   "sprites/maromba.work16-w.65ff30c99f53.webp": {
    "sha": "65ff30c99f533dd5c9d641ea5e1f6ed0f9d68172f93d8c2e9d87203d6a13c068",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-e.cb828d6683c9.webp": {
-   "sha": "cb828d6683c90f5524c53e143dbba5c97312239add745d514e4ee50db73fa2b5",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-n.bbc1172efa42.webp": {
-   "sha": "bbc1172efa42b070ca3daabcc7f7e9c350385b6676b382994dd05e816790dab2",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-ne.01695a70dbd9.webp": {
-   "sha": "01695a70dbd92c24574c665ad915770455f24185539474561ade246514ace7e2",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-nw.4715ea1d801b.webp": {
-   "sha": "4715ea1d801b5c021183aec5c2bd4ae805854529acf993eb8e0f0873e7bee187",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-s.062eee182919.webp": {
-   "sha": "062eee1829192b638925ed13f75835a5d95e500640f77dd6e3a4fa3ca29ae57a",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-se.f1d503d7a4be.webp": {
-   "sha": "f1d503d7a4be16d28040250c39318700e07a5d13b81d338d51e4105975d2ffc6",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-sw.70d81ea77ac7.webp": {
-   "sha": "70d81ea77ac75625203939e29dc11eb1832b8b5f3b7eaa1a3fd40ae13ebd68e0",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.attack128-w.27fffd7fc687.webp": {
-   "sha": "27fffd7fc6879a3053104f008a2cf06d3d1b082c1efeaa6493e7be91fae4adc2",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.dance128.12335d584beb.webp": {
-   "sha": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.dir4.webp": {
-   "sha": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8",
-   "ilhas": 4,
-   "fails": []
-  },
-  "sprites/mendigo.dir4c.webp": {
-   "sha": "25751c8bd14887b0aa9430140c1e67fe0f3f4130197c7f4515539618b57fe45a",
-   "ilhas": 9,
-   "fails": []
-  },
-  "sprites/mendigo.downed.webp": {
-   "sha": "3881210f20e22ec0b5869fd4427dca21014ebd98823071088c9c8699664553a8",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.idle8.e6a16f6059c8.webp": {
-   "sha": "5d69a271afc9c1e8f487dfb6779d7bab0cba59604bb75e8267d6a83d37d96f81",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-e.c2d00dbd2636.webp": {
-   "sha": "c2d00dbd26367c7b214de164af0df88fe9fb8daf0a9c4ede541268d0e011c7d9",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-n.96fea3bfac61.webp": {
-   "sha": "96fea3bfac61607d8e67dc19da16412eddf269f6e6121c5572b5971fab86838a",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-ne.7ee55652ab85.webp": {
-   "sha": "7ee55652ab85d32e35561bf49207068d57e16e6a4e0e49c74906951559a3e50d",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-nw.a26f2226b6cb.webp": {
-   "sha": "a26f2226b6cb2a0196ad1b2fd434cc1c63c2bbae6a56f2299ff35d64d6d909f0",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-s.068b648fbed6.webp": {
-   "sha": "068b648fbed640381933cdb29782e42e935b871364c9c7378d95d1684ac6db0b",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-se.a54ae5cfe058.webp": {
-   "sha": "a54ae5cfe0582461bfe39134e44f27b5017c06367754d881fc2444a90fafa343",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-sw.4a8e827e6220.webp": {
-   "sha": "4a8e827e62201f8f47980536483a2ec78309f5e39cf6775436a034e41b3f46c9",
-   "ilhas": 0,
-   "fails": []
-  },
-  "sprites/mendigo.walk128-w.446ed4511d9b.webp": {
-   "sha": "446ed4511d9b97590e298c20e2f8870e731f6a53b239a61756369846432b4400",
    "ilhas": 0,
    "fails": []
   },
@@ -22143,6 +22068,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/vendedor-praia.shoved16-n.401a94d1d892.webp": {
+   "sha": "401a94d1d8929f073cac0167c10b653c37f964f46f01853b61cfbf281ac5359b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.shoved16-nw.1132eae5b995.webp": {
+   "sha": "1132eae5b995f4e9ea50be9ec5e0383b357d45815ae2c18cc3fb77a8526c3179",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.shoved16-s.c9961fdd41a6.webp": {
+   "sha": "c9961fdd41a67554db685f3a0e92122e494de9aad1ca4335a93e0f8791777f5a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.shoved16-se.48c555361e39.webp": {
+   "sha": "48c555361e39a962d5d6102f53181f07f14d2abeaf3e89646f66220599e771b7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.shoved16-w.f61d1a74694a.webp": {
+   "sha": "f61d1a74694a874943a273f2eec9b80fe47ca6a769e3bf719a33b98dae328e77",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
    "sha": "79c664a88da38e3f02734148cce313fdbc7cf4a32aed716d0bc640f96122037a",
    "ilhas": 0,
@@ -22455,6 +22405,31 @@
   },
   "sprites/viciado-em-bet.run16-w.c3c592510524.webp": {
    "sha": "c3c5925105240dbcf0c3b7d0089f315eac7f49a30d406d88fef983a773a17520",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.shoved16-n.b523f5dcec0d.webp": {
+   "sha": "b523f5dcec0db0864be2b818226386d0fd8cc5ee563959b72f410301f824b1c9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.shoved16-nw.2665aeb3c712.webp": {
+   "sha": "2665aeb3c712961d38340591ac0c81bb94f183b84a804839faa18e7794a6cb1f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.shoved16-s.a5ffcef2891f.webp": {
+   "sha": "a5ffcef2891f9f89f35fa75c512264b7d483740f1b3af0773762ed2425cd5b26",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.shoved16-se.94291ccc3c98.webp": {
+   "sha": "94291ccc3c98cf257046bfdf5d056cde789b7ab62fc1e4fdb78b2ea6a9387025",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.shoved16-w.26e8faceed35.webp": {
+   "sha": "26e8faceed35373d2aa6acf78892f50797b566580e37e10727571ecd89149452",
    "ilhas": 0,
    "fails": []
   },

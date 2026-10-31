@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {BankView} from '../../src/contract/index.ts';
-import {BANCO,BICOS,BICO_EXPULSO,BICO_FECHADO} from '../../src/rules/index.ts';
+import {BANCO,BICO,BICOS,BICO_EXPULSO} from '../../src/rules/index.ts';
 import {WORK_WAIT_MS,WorkLatch,bicoLine,bicoRobberyText,bicoTag,workShop,workingIn} from '../../src/client/hud/bicos.ts';
 
 const shop=(id:string,o:Partial<BankView>={}):BankView=>({id,x:0,y:0,name:'posto',saldo:40,state:'aberto',bico:'telemarketing',...o});
@@ -31,15 +31,15 @@ test('WorkLatch: a tap clocks in and nothing is held; moving, a second tap or th
   l.tap(0);l.view(false,false,1);assert.equal(l.asked,false);
 });
 
-test('bicoTag: gig and saldo, the shift with its name and queue, the robbery, the closed sign', ()=>{
+test('bicoTag: gig and pay, the shift with its name and queue, the robbery; no saldo (bico-sem-limite), a closed shop from before is just its name', ()=>{
   const nome=BICOS.telemarketing.nome,name=(id:string)=>id==='me'?'Você':'Zé';
-  assert.deepEqual(bicoTag(shop('a'),0,name),{look:'normal',text:`${nome}: R$ 40`});
-  assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me'],saldo:35}),0,name),{look:'turno',text:`${nome}
-Você no turno · R$ 35`});
-  assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me','z'],fila:2,saldo:30}),0,name),{look:'turno',text:`${nome}
-2 no turno · R$ 30 · 2 na fila`});
-  assert.deepEqual(bicoTag(shop('a',{state:'bicho'}),0,name),{look:'bicho',text:`${nome}: bicho no caixa!`});
-  assert.deepEqual(bicoTag(shop('a',{state:'sem-cedulas'}),130,name),{look:'vazio',text:`${BICO_FECHADO}: 2:10`});
+  assert.deepEqual(bicoTag(shop('a'),name),{look:'normal',text:`${nome}: R$ ${BICO.porSegundo}/s`});
+  assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me'],saldo:35}),name),{look:'turno',text:`${nome}
+Você no turno`});
+  assert.deepEqual(bicoTag(shop('a',{state:'sacando',workers:['me','z'],fila:2,saldo:30}),name),{look:'turno',text:`${nome}
+2 no turno, 2 na fila`});
+  assert.deepEqual(bicoTag(shop('a',{state:'bicho'}),name),{look:'bicho',text:`${nome}: bicho no caixa!`});
+  assert.deepEqual(bicoTag(shop('a',{state:'sem-cedulas',saldo:0}),name),{look:'vazio',text:nome});
   assert.equal(bicoRobberyText(shop('a',{bico:'aura-67'})),`Bicho no caixa do ${BICOS['aura-67'].nome}!`);
 });
 

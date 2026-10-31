@@ -104,7 +104,7 @@ test('the seat survives the mobile grace (held through the run while someone pla
   room.disconnect(held,t);
   for(const end=t+GRACE_MS+1000;t<end;t+=50){say(room,b,{t:'ack',seq:0},t);room.advance(t);}
   const late=peer();join(room,late,'Ana',t,ana.token);
-  assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Sua sessão expirou. Entre novamente.');
+  assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Você ficou fora mais de 2 minutos e sua vaga foi liberada. Entra de novo pela sala.');
 });
 
 test('restart of the room before any checkpoint (round 1): the roster comes back from storage, the run is lost honestly, each player hears it once',()=>{
@@ -131,7 +131,7 @@ test('restart of the room before any checkpoint (round 1): the roster comes back
   assert.equal(welcome(back).id,welcome(a).id);assert.equal(welcome(back).run.phase,'lobby');
   const news=back.messages.filter(m=>m.t==='notice');
   assert.deepEqual(news.map(m=>[m.kind,m.title,m.body]),[['restarted',restartedNotice(roster.lost).title,restartedNotice(roster.lost).body]]);
-  assert.match(news[0].title,/Round \d+ se perdeu/);assert.match(news[0].body,/Não foi ninguém da turma/);assert.doesNotMatch(news[0].message,/servidor/i);
+  assert.match(news[0].title,/rodada \d+ se perdeu/);assert.match(news[0].body,/Não foi ninguém da turma/);assert.doesNotMatch(news[0].message,/servidor/i);
   // Back again later (another drop): no second notice.
   restarted.disconnect(back,t+200);const again=peer();join(restarted,again,'Ana',t+300,welcome(a).token);
   assert.deepEqual(again.messages.filter(m=>m.t==='notice'),[]);
@@ -191,7 +191,7 @@ test('restart of the room mid-run: everyone comes back to the start of the round
   assert.equal(welcome(back).id,welcome(a).id);assert.equal(welcome(back).run.phase,'combat');assert.equal(welcome(back).tick,cp.tick);
   const news=back.messages.filter(m=>m.t==='notice');
   assert.deepEqual(news.map(m=>[m.kind,m.title,m.body]),[['resumed',resumedNotice(2).title,resumedNotice(2).body]]);
-  assert.match(news[0].title,/recomeçando o Round 2/);assert.doesNotMatch(news[0].message,/se perdeu/);
+  assert.match(news[0].title,/recomeçando a rodada 2/);assert.doesNotMatch(news[0].message,/se perdeu/);
   assert.equal(rows.at(-1)?.running,true);assert.deepEqual(rows.at(-1)?.checkpoint,{round:2,tick:cp.tick,run:cp.run.round},'the roster says running again, same link');
   restarted.disconnect(back,t+=50);const again=peer();join(restarted,again,'Ana',t+=50,welcome(a).token);
   assert.deepEqual(again.messages.filter(m=>m.t==='notice'),[],'said once');

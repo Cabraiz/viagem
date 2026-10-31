@@ -9,10 +9,12 @@ import {
   DICT,FrameDecoder,FrameEncoder,FrameError,dictIndexWire,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
-import {KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
-import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+import {ELITE_ONLY,KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
+import {setRosterOnlyLiberados,setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+import {INIMIGOS_LIBERADOS,INIMIGO_PADRAO} from '../../src/rules/inimigos-liberados.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
-setRosterOnlyWithArt(false);
+// The D-040 rotation hordes below are the hidden roster's (ROSTER_ONLY_LIBERADOS off); the 3 enemies' horde has its own test.
+setRosterOnlyWithArt(false);setRosterOnlyLiberados(false);
 
 /**
  * Size of the bandwidth measurements. The default suite uses 2 clients (bytes per client do not depend on how many
@@ -699,8 +701,9 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
   assert.ok(ROTATION_CAST.length>=90&&new Set(ROTATION_CAST).size>=10,'a varied rotation horde');
   assert.ok(ROTATION_CAST.every(k=>DICT.includes(k)));
   // Representative: a rotation draws P1/P2 only when a role runs out of P0 entries, which no rotation does today, so a
-  // run's kinds always travel as dictionary bytes (the P1/P2 ids inline only appear in sandboxes).
-  for(let seed=0;seed<200;seed++)for(const id of rotationIds(drawRotation(new Rng(seed))))assert.ok(DICT.includes(id),`seed ${seed}: ${id}`);
+  // run's kinds always travel as dictionary bytes (the P1/P2 ids inline only appear in sandboxes). The one exception is
+  // the elite-only aberração (ELITE_ONLY, P1): a single round-5 elite inline costs its id's bytes once per full frame.
+  for(let seed=0;seed<200;seed++)for(const id of rotationIds(drawRotation(new Rng(seed))))assert.ok(DICT.includes(id)||ELITE_ONLY.includes(id),`seed ${seed}: ${id}`);
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const [together,apart,legacy]=[
     withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
@@ -727,13 +730,14 @@ test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 
   assert.equal(DICT.indexOf('tiro'),96);
   // The P0 pack entries come in roster order right after 'tiro'; the nine legacy kinds were in the DICT already.
   const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0').map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
-  assert.equal(ROSTER.filter(e=>!e.legacy).length,164);assert.equal(p0.length,64);
+  assert.equal(ROSTER.filter(e=>!e.legacy&&e.pack<=4).length,164);assert.equal(p0.length,64);
   assert.deepEqual(DICT.slice(97,161),p0);
   // The new strings are unique, in the whole DICT too ('heal' is the one protocol-6 duplicate, never a roster id).
   for(const s of DICT.slice(96,161))assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   for(const e of ROSTER)if(e.priority==='P0')assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
-  for(const e of ROSTER)assert.equal(DICT.includes(e.id),e.priority==='P0',`${e.id} (${e.priority})`);
-  assert.equal(inline.length,100,'the 71 P1 and 29 P2 ids travel inline');
+  // The mendigo (a P1 extra) is the one non-P0 roster id in the DICT: every round's bodies (the 3 enemies' horde test).
+  for(const e of ROSTER)assert.equal(DICT.includes(e.id),e.priority==='P0'||e.id===INIMIGO_PADRAO,`${e.id} (${e.priority})`);
+  assert.equal(inline.length,102,'the 71 P1 and 29 P2 pack ids and the extras (the elite-only saci and the mendigo, P1) are P1/P2');
   // One byte where it travels (enemy kind, kill and downed events) and the generic shot as a projectile source.
   const frame=(kind:string,source='boleto')=>{
     const v=busyWorld(new Rng(2),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;v.projectiles=[{...v.projectiles[0],source}];
@@ -1901,4 +1905,20 @@ test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 i
   view.tick+=2;view.players[0]={...view.players[0],fear:undefined};
   const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
   assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.fear,undefined);
+});
+
+test('só 3 inimigos: the mendigo horde holds the wide-map budget (the mendigo is one dictionary byte, the saci inline)',t=>{
+  assert.equal(DICT.indexOf(INIMIGO_PADRAO),253,'the last one-byte index');
+  const ids=INIMIGOS_LIBERADOS.filter(id=>ROSTER.some(e=>e.id===id&&e.role!=='mini-chefe'));
+  assert.deepEqual(ids,[INIMIGO_PADRAO],'the bodies of every round are mendigos');
+  const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
+  const [together,apart]=[
+    withCast(ids,new Set(),()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
+    withCast(ids,new Set(),()=>measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true)),
+  ];
+  t.diagnostic(`só 3 inimigos, wide map, mendigo horde: together ${together.bytesPerSecond} B/s, spread ${apart.bytesPerSecond} B/s`);
+  // Measured 29/10: inline (0xFF + 1 + 7 bytes per enemy) 34 090 together / 34 640 spread, over the guard; the bêbado's
+  // one byte 31 675 / 32 170. The mendigo at DICT index 253 costs the bêbado's.
+  assert.ok(together.bytesPerSecond<32_500,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<32_500,`spread ${apart.bytesPerSecond}`);
 });

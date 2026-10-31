@@ -26,7 +26,8 @@ export const HERO_FEET:Readonly<Record<string,number>>=`;
 // hurt16 (animacao-receber-dano): its feet stay planted (on 84, the rest's sheets on ~74): its own line, never the class's.
 // build16 (animacao-construir-6) and work16 (animacao-trabalhar-6): planted on 84 too, by the hurt16 rule.
 // downed16 (queda-6-herois): pose 0 is the rest standing on 84; the lying poses spill below it, so its line is pose 0's.
-const CELL=96,CLIP=/^(walk|attack|idle|run|hurt|build|work|downed)(16|128)-[A-Z]+$|^idle8$/;
+// shoved16 (anim-ser-empurrado): the same, pose 0 standing, the sit spilling below.
+const CELL=96,CLIP=/^(walk|attack|idle|run|hurt|build|work|downed|shoved)(16|128)-[A-Z]+$|^idle8$/;
 const median=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
 
 const manifest=JSON.parse(fs.readFileSync(MANIFEST,'utf8'));
@@ -46,7 +47,7 @@ for(const [id,piece] of Object.entries(pieces)){
     }
     if(!rows.length)continue;
     // A run leaves the ground (its flight poses are drawn higher): its feet line is the lowest pose's, the landing.
-    table[page.file]=name.startsWith('run')?Math.max(...rows):name.startsWith('downed')?rows[0]:median(rows);
+    table[page.file]=name.startsWith('run')?Math.max(...rows):name.startsWith('downed')||name.startsWith('shoved')?rows[0]:median(rows);
   }
 }
 const sorted=Object.fromEntries(Object.entries(table).sort(([a],[b])=>a.localeCompare(b)));

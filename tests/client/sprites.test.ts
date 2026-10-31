@@ -13,10 +13,10 @@ import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 // Light under memory pressure (many test processes at once): no libvips operation cache, one libvips thread.
 sharp.cache(false);sharp.concurrency(1);
 
-/** The classes drawn before the movement art (28 of the 35 of D-025 left; 7 went to legado/): each has today's 18-frame sheet in the catalog. */
+/** The classes drawn before the movement art (27 of the 35 of D-025 left: 7 went to legado/, the Mendigo hero was deleted on 30/10): each has today's 18-frame sheet in the catalog. */
 const legacy=classes.filter(hero=>hero.id in spriteCatalog);
-test('the 28 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
-  assert.equal(legacy.length,28);
+test('the 27 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
+  assert.equal(legacy.length,27);
   assert.ok(Object.keys(spriteCatalog).every(id=>classes.some(hero=>hero.id===id)));
   // gato-no-menu: a class born with the movement art (16 poses per facing) has no 18-frame sheet; the renderer skips it.
   const pieces=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
@@ -310,15 +310,15 @@ test('4-direction import is all-or-nothing: one bad atlas writes nothing, not ev
     const root=path.join(dir,'lote'),out=path.join(dir,'out'),catalogFile=path.join(dir,'catalog.ts');
     mkdirSync(path.join(root,'cidadao-comum'),{recursive:true});
     await (await labImage()).png().toFile(path.join(root,'cidadao-comum','atlas-4dir.png'));
-    // mendigo: the approved single sheet passed off as a 4-direction atlas (wrong size).
-    await sharp('public/art/sprites/mendigo.webp').png().toFile(path.join(root,'mendigo.dir4.png'));
+    // coach: the approved single sheet passed off as a 4-direction atlas (wrong size).
+    await sharp('public/art/sprites/coach.webp').png().toFile(path.join(root,'coach.dir4.png'));
     copyFileSync('src/client/sprites/sprite-catalog.ts',catalogFile);
     const before=readFileSync(catalogFile,'utf8'),ids=classes.map(c=>c.id);
-    await assert.rejects(importDirectional({root,ids,outDir:out,catalogFile}),(e:Error)=>/Nada foi gravado/.test(e.message)&&/mendigo: atlas de 4 direções com 1152×576/.test(e.message));
+    await assert.rejects(importDirectional({root,ids,outDir:out,catalogFile}),(e:Error)=>/Nada foi gravado/.test(e.message)&&/coach: atlas de 4 direções com 1152×576/.test(e.message));
     assert.ok(!existsSync(path.join(out,'cidadao-comum.dir4.webp')),'no orphan atlas');
     assert.equal(readFileSync(catalogFile,'utf8'),before,'catalog untouched');
     // Without the bad one: the good one goes in, with its catalog entry; a second run refuses to overwrite it.
-    rmSync(path.join(root,'mendigo.dir4.png'));
+    rmSync(path.join(root,'coach.dir4.png'));
     const {report}=await importDirectional({root,ids,outDir:out,catalogFile});
     assert.deepEqual(report.map(r=>r.id),['cidadao-comum']);
     assert.ok(existsSync(path.join(out,'cidadao-comum.dir4.webp')));

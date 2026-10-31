@@ -12,7 +12,8 @@
  *  5. D-048 (ficha de torre): a root only with a whole ficha (UNITS_PER_TOKEN units), the Gustavão's 3 fichas (GUSTAVAO_COST) kept from the
  *     Obuseiro on (its rail is free), and in a real 6-bot run no root order without the ficha nor a forge buy below the reserve.
  *  6. D-048 (Grana): evolutions, tower repairs and the forge are paid in the team's R$, each order only with its price;
- *     with the chaveiro objective no Grana is spent under granaReserve (the bill), in a sweep and in a real run.
+ *     with the chaveiro objective no Grana is spent under spendReserve (the bill, at most half the wallet:
+ *     bot-solo-gasta-grana), in a sweep and in a real run.
  *  7. chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out pushing the moto when a wave starts.
  * D-031: results only.
  */
@@ -27,7 +28,7 @@ import {ticks} from '../../src/contract/types.ts';
 import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
 import {BOT_WALK_MULT} from '../../src/contract/index.ts';
 import {CAR_ID,type RunView} from '../../src/contract/index.ts';
-import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,CHAVEIRO_KEEP_SHARE,CHAVEIRO_SAVE_ETA,REPAIR_BELOW,TOWER_STAND,decide,granaReserve,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
+import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,CHAVEIRO_KEEP_SHARE,CHAVEIRO_KEEP_WALLET,CHAVEIRO_SAVE_ETA,REPAIR_BELOW,TOWER_STAND,decide,granaReserve,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,GUSTAVAO_COST,ROOT_DEFENSE,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {EVOLVE_PRICE as E,RECIPES,TOWER_TOKENS,UNITS_PER_TOKEN,priceOf,tokensOf,type RecipeId} from '../../src/rules/index.ts';
 import {TOWER_REPAIR_COST} from '../../src/sim/towers/system.ts';
@@ -70,7 +71,9 @@ test('pickTowerOrder: branches by site index, A4b on a small site, rail before t
   assert.deepEqual(pickTowerOrder(v([def('a','vigias-armados','s1'),def('b','vigia-do-predio','s2')])),{upgrade:'b',branch:'B'},'lowest tier first; site 1 → B');
   assert.deepEqual(pickTowerOrder(v([def('a','atiradores-do-telhado','s1'),def('b','atiradores-do-telhado','s2')])),{upgrade:'a',branch:'ninho-do-sniper'},'A3 on a size-2 site → A4b');
   assert.deepEqual(pickTowerOrder(v([def('b','atiradores-do-telhado','s2'),def('a','posto-de-radar','s1')])),{upgrade:'b',branch:'ninho-de-metralhadora'},'A3 on a size-3 site → A4');
-  assert.deepEqual(pickTowerOrder(v([def('a','vigia-do-predio','s4'),def('b','posto-de-radar','s2')])),{upgrade:'a',branch:'C'},'a 1×1 site skips A (2×2) for the next branch that fits');
+  assert.deepEqual(pickTowerOrder(v([def('a','vigia-do-predio','s4'),def('b','guarnicao-do-predio','s2')])),{upgrade:'a',branch:'C'},'a 1×1 site skips A (2×2) for the next branch that fits');
+  // bot-solo-gasta-grana: the Holofote (C) only from BOT_SUPPORT_DPS standing; with a Radar (12) and a root (8), B2 instead.
+  assert.deepEqual(pickTowerOrder(v([def('a','vigia-do-predio','s4'),def('b','posto-de-radar','s2')])),{upgrade:'a',branch:'B'},'little DPS: no Holofote');
   const howitzer=[def('h','obuseiro','s2'),def('x','posto-de-radar','s3')];
   assert.deepEqual(pickTowerOrder(v(howitzer)),{build:'trilho'},'the rail first');
   assert.equal(pickTowerOrder(v(howitzer,{railLaid:true,sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),'save','the rail still being laid: saving for the Gustavão');
@@ -206,10 +209,11 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
   const orders:string[]=[],units:number[]=[],grana:{before:number;spent:number;keep:number}[]=[];
   const forges:{recipe:RecipeId;after:number;reserve:number;keep:number;needed:boolean}[]=[];
   const st=()=>sim.run.stonewards;
-  const keep=()=>granaReserve(sim.botView());
+  // bot-solo-gasta-grana: the bill's part, at most CHAVEIRO_KEEP_WALLET of the buyer's wallet (bot-brain spendReserve).
+  const keep=(id:string)=>Math.min(granaReserve(sim.botView()),Math.floor(sim.granaOf(id)*CHAVEIRO_KEEP_WALLET));
   // carteira-e-pix: every order is paid from the wallet of the bot that gives it (the reserve: its part of the bill).
   const log=<R extends {ok:boolean;kind?:string;reason?:string}>(what:string,id:string,run:()=>R)=>{
-    const before=st().state.balance.units,g=sim.granaOf(id),k=keep(),r=run();
+    const before=st().state.balance.units,g=sim.granaOf(id),k=keep(id),r=run();
     orders.push(`${sim.world.round.index}:${what} → ${r.ok?r.kind:r.reason}`);units.push(before);grana.push({before:g,spent:g-sim.granaOf(id),keep:k});return r;
   };
   const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim),forge=sim.forge.bind(sim);
@@ -217,7 +221,7 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
   sim.upgrade=(id,d,branch,req)=>log(`up ${d} ${branch??''}`,id,()=>upgrade(id,d,branch,req));
   sim.repair=(id,d,req)=>log(`repair ${d}`,id,()=>repair(id,d,req));
   sim.forge=(id,recipe,req)=>{
-    const s=st(),wall=s.state.wall,reserve=towerReserve(towerBrainView(s.state,s.plan,sim.tick,sim.world.round.index)).grana,k=keep();
+    const s=st(),wall=s.state.wall,reserve=towerReserve(towerBrainView(s.state,s.plan,sim.tick,sim.world.round.index)).grana,k=keep(id);
     const needed=recipe==='reparo'&&wall.hp<wall.maxHp*REPAIR_BELOW,r=forge(id,recipe,req);
     if(r.ok)forges.push({recipe:recipe as RecipeId,after:sim.granaOf(id),reserve,keep:k,needed});
     return r;
@@ -235,9 +239,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(5,3,6);
+  const a=cityRun(1,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 5, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 1, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -258,12 +262,17 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // Seed 3 since map v7 (uno-atravessa-tralha: the loose fences out, the narrow ways widened for the Uno's body)
   // met bots-resgatam: seeds 3, 4, 8, 12, 14, 15, 16 of 1–16 start the B line. Seed 4 since levelup-espalhado (levels 2/3
   // cheaper, the first cards earlier): seeds 1, 2, 4, 5, 8, 10, 13, 15, 16 of 1–16 start the B line. Seed 5 since levelup-espalhado met
-  // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line.
+  // economia-caixa-e-forja (the bico's shift by seat, the softer forge): seeds 5, 8, 12, 14, 16 of 1–16 start the B line. Seed 6 since so-3-inimigos (only the mendigo horde in the
+  // rotation): seeds 1, 2, 3, 6, 7, 8, 9, 13, 16 of 1–16 start the B line.
+  // Seed 6 still with colisao-entre-herois (the heroes solid to each other): seeds 2, 3, 6, 7, 9, 11, 12, 16 of 1–16 start the B line.
+  // Seed 2 since bico-sem-limite-pix-voando (the bico without a cap, the PIX flying to the forger): seeds 2, 11, 12, 16
+  // of 1–16 start the B line; with colisao-entre-herois, seeds 1, 2, 5, 13. Seed 1 since lojas-bico-fora-das-bocas (the shops
+  // moved off the street mouths change the bots' walks to the bico): seeds 1, 4, 5, 12, 14, 16 of 1–16 start the B line.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(5,3,6);
+  const b=cityRun(1,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });
@@ -350,10 +359,11 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
     towers:view({units:0,grana,rail:null,defenses:two})});
   const bill=Math.ceil(120*CHAVEIRO_KEEP_SHARE);
   assert.deepEqual(at(E[2]).build,{upgrade:'d1',branch:'A'},'no objective: the EVOLVE_PRICE[2] evolves');
-  assert.equal(at(E[2],400).build,undefined,'with the chaveiro: the bill\'s share kept first');
+  assert.equal(at(2*E[2]-2,400).build,undefined,'with the chaveiro: half the wallet kept first (under the share)');
+  assert.deepEqual(at(2*E[2],400).build,{upgrade:'d1',branch:'A'},'bot-solo-gasta-grana: half the wallet pays it, though the share is more');
   assert.deepEqual(at(bill+E[2],400).build,{upgrade:'d1',branch:'A'},'above the share: it evolves');
-  assert.equal(at(119,CHAVEIRO_SAVE_ETA).build,undefined,'the last stretch: nothing under the whole bill');
-  assert.equal(at(119,CHAVEIRO_SAVE_ETA).forge,undefined,'nor the forge');
+  assert.equal(at(2*E[2]-2,CHAVEIRO_SAVE_ETA).build,undefined,'the last stretch: half the wallet kept too');
+  assert.equal(at(2*E[2]-2,CHAVEIRO_SAVE_ETA).forge,undefined,'nor the forge');
   // A real chaveiro run (3 bots): every Grana spend (evolution, repair, forge) leaves the bill's reserve then.
   const c=cityRun(4,3,6,'chaveiro');
   const spends=c.grana.filter(g=>g.spent>0);
@@ -362,6 +372,14 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
   assert.ok(spends.every(g=>g.before-g.spent>=g.keep),'no tower order under the bill\'s reserve');
   assert.ok(c.forges.every(f=>f.needed||f.after>=f.keep+f.reserve),'no forge buy under it');
   assert.ok(c.orders.every(o=>!o.endsWith('→ grana')&&!o.endsWith('→ balance')),'no order refused for money');
+  // bot-solo-gasta-grana: alone the bill's share was more than the bot ever earned, so it never evolved; now it does.
+  // To round 7 (so-3-inimigos): with the mendigo alone, seed 4 has the solo bot's first evolutions in round 7 (seeds 1-3, 5, 6: by round 6).
+  const solo=cityRun(4,1,7,'chaveiro'),soloSpends=solo.grana.filter(g=>g.spent>0);
+  console.log(`[D-048 chaveiro] 1 bot, seed 4, to round ${solo.sim.world.round.index}: ${soloSpends.length} Grana orders (${soloSpends.map(g=>`${g.before}-${g.spent} keep ${g.keep}`).join(', ')}), `+
+    `${solo.forges.length} forge buys, Grana at the end ${solo.sim.teamGrana()}`);
+  assert.ok(soloSpends.length>0,'a bot alone spends its Grana');
+  assert.ok(soloSpends.every(g=>g.before-g.spent>=g.keep),'still never under half its wallet');
+  assert.ok(solo.forges.every(f=>f.needed||f.after>=f.keep+f.reserve),'nor a forge buy');
 });
 
 test('bot-gasta-material: a defense a person here built is never the bot\'s to evolve; it still counts on the map',()=>{

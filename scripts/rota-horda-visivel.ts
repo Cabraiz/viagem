@@ -12,6 +12,7 @@ import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
 import {walkable} from '../src/maps/index.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
+import {PERSONAGEM_PADRAO} from '../src/rules/personagens-liberados.ts';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
@@ -24,7 +25,7 @@ const loaded=await cityTerrainFrom(text,hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 const sim=new Simulation(SEED,{world:'cidade',terrain:city,cityStructures:true,objective:'chaveiro',mode:'ninhos'});
-for(let i=0;i<PLAYERS;i++)sim.addBot(`p${i}`,`p${i}`,'cidadao-comum');
+for(let i=0;i<PLAYERS;i++)sim.addBot(`p${i}`,`p${i}`,PERSONAGEM_PADRAO);
 sim.resetRun();sim.step(sim.tick*50);
 const start=[...sim.players.values()][0];
 const plan=sim.run.nests!.plan();

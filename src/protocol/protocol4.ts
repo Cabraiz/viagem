@@ -125,9 +125,17 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
  * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
  * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
+ * Next (the queue numbers it) since only the 3 enemies (card NEW-20261029-ORQ-so-3-inimigos): 'mendigo', the common
+ * enemy of every round (a P1 roster extra), at the DICT's last one-byte index (253); an older decoder would read it as
+ * the DICT_EXTENDED escape.
+ * 42 given by the integration queue (tools/fila.mjs, lote 20261030-063957) to: NEW-20261029-ORQ-so-3-inimigos.
+ * Next (the queue numbers it) since the heroes' collision (card NEW-20261030-ORQ-colisao-entre-herois): `pushing` and
+ * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
+ * refuse the masks.
+ * 43 given by the integration queue (tools/fila.mjs, lote 20261030-124249) to: NEW-20261030-ORQ-colisao-entre-herois.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=41;
+export const PROTOCOL_VERSION=43;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -221,6 +229,10 @@ export const DICT:readonly string[]=[
   // the last one-byte index, whatever comes after it travels through DICT_EXTENDED, two bytes up to index 381.
   'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
   'entrou','saiu','expulso',
+  // Só 3 inimigos (card NEW-20261029-ORQ-so-3-inimigos): the mendigo is every round's bodies (rules/inimigos-liberados.ts);
+  // inline (0xFF + 1 + 7 bytes on every enemy) its horde went over D-042's 32 500 B/s, so it takes index 253, the last
+  // one-byte index. The other P1/P2 roster ids (the saci elite included: one per run) stay inline.
+  'mendigo',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 /**
@@ -468,6 +480,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     moveSpeed:c(optional(milli)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
     andar:c(optional(deckFlag)),
+    // colisao-entre-herois: "empurrando" / "empurrado" with the push's direction (the animation's), while it lasts.
+    pushing:c(slipDir),pushed:c(slipDir),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -481,6 +495,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     andar:c(optional(deckFlag)),
     // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
     radius:c(optional(milli)),
+    // colisao-entre-herois: a mendigo a hero is pushing ("empurrado"), the push's direction.
+    pushed:c(slipDir),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),

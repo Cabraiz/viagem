@@ -4,17 +4,18 @@
  *   button says Trabalhar there, in the interaction colour (Cartolina, like the ring on the ground);
  * - WorkLatch: a tap on Trabalhar clocks in (PlayerInput.work rides every step) and nothing has to be held; moving the
  *   stick, a second tap, leaving the ring, the shop closing or the manager throwing the hero out clocks out;
- * - the shop's tag and the HUD's lines: the gig's name, who is on the shift, the queue, "O dono fugiu com o caixa".
+ * - the shop's tag and the HUD's lines: the gig's name and its pay, who is on the shift, the queue (no limit since
+ *   bico-sem-limite-pix-voando: no saldo, no closed sign).
  */
 import type {BankView,BicoId,Point,SimEvent} from '../../contract/index.ts';
-import {BANCO,BICOS,BICO_EXPULSO,BICO_FECHADO} from '../../rules/index.ts';
+import {BANCO,BICO,BICOS,BICO_EXPULSO} from '../../rules/index.ts';
 
 /** The action button's word and accessible names while the hero stands in a shop's ring, and while inside. */
 export const WORK_WORD='Trabalhar',WORKING_WORD='No turno';
 export const workLabel=(bico:BicoId)=>`Trabalhar de ${BICOS[bico].nome}: toque para entrar no turno, mexa para sair`;
 export const workingLabel=(bico:BicoId)=>`No turno de ${BICOS[bico].nome}: toque ou mexa para sair`;
 
-/** The open shop whose ring the hero stands in (the nearest), else undefined. A closed one ('sem-cedulas') takes nobody. */
+/** The open shop whose ring the hero stands in (the nearest), else undefined. A closed one ('sem-cedulas', only from a room before bico-sem-limite) takes nobody. */
 export function workShop(banks:readonly BankView[]|undefined,hero:Point|undefined):BankView|undefined{
   if(!hero)return undefined;
   let best:BankView|undefined,bestD=Infinity;
@@ -57,25 +58,22 @@ export class WorkLatch {
   off(){this.on=false;this.inside=false;}
 }
 
-/** m:ss */
-const clock=(s:number)=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 export type BicoTagLook='normal'|'bicho'|'vazio'|'turno';
 /**
- * The tag over a shop: "Telemarketing: R$ 32" open, "Telemarketing" over "Você no turno · R$ 32 · 2 na fila" with a
- * shift (two lines: one is wider than a phone's third),
- * "Telemarketing: bicho no caixa!" while a critter robs it, "O dono fugiu com o caixa: 2:10" while it is closed.
- * `nameOf`: a player's name ("Você" for the local one).
+ * The tag over a shop: "Telemarketing: R$ 2/s" open, "Telemarketing" over "Você no turno, 2 na fila" with a shift (two
+ * lines: one is wider than a phone's third), "Telemarketing: bicho no caixa!" while a critter robs it; just the name if a
+ * room from before closed it. `nameOf`: a player's name ("Você" for the local one).
  */
-export function bicoTag(b:Pick<BankView,'bico'|'state'|'saldo'|'workers'|'fila'>,closedSeconds:number,nameOf:(id:string)=>string):{look:BicoTagLook;text:string}{
+export function bicoTag(b:Pick<BankView,'bico'|'state'|'workers'|'fila'>,nameOf:(id:string)=>string):{look:BicoTagLook;text:string}{
   const nome=BICOS[b.bico].nome;
-  if(b.state==='sem-cedulas')return {look:'vazio',text:closedSeconds>0?`${BICO_FECHADO}: ${clock(closedSeconds)}`:BICO_FECHADO};
+  if(b.state==='sem-cedulas')return {look:'vazio',text:nome};
   if(b.state==='bicho')return {look:'bicho',text:`${nome}: bicho no caixa!`};
   if(b.workers?.length){
-    const who=b.workers.length===1?nameOf(b.workers[0]):`${b.workers.length} no turno`,fila=b.fila?` · ${b.fila} na fila`:'';
+    const who=b.workers.length===1?`${nameOf(b.workers[0])} no turno`:`${b.workers.length} no turno`,fila=b.fila?`, ${b.fila} na fila`:'';
     return {look:'turno',text:`${nome}
-${b.workers.length===1?`${who} no turno`:who} · R$ ${b.saldo}${fila}`};
+${who}${fila}`};
   }
-  return {look:'normal',text:`${nome}: R$ ${b.saldo}`};
+  return {look:'normal',text:`${nome}: R$ ${BICO.porSegundo}/s`};
 }
 /** How long the HUD's line of one's own shift stays (ms). */
 export const BICO_LINE_MS=3200;

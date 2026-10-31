@@ -10,7 +10,7 @@ import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {ART_CELL,DECOR_PROP_SCALE,DECOR_WALL_FAMILIES,WALL_RETO_SPAN,buildCityArtPlan,wallScale,cityLiteFile,cityLiteFiles,cityLiteScale,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
 import {liteOnly} from '../../src/client/art/horde-art.ts';
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
-import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
+import {decorChunk,decorFootprint,decorSprite,wallBase} from '../../src/client/render/city/decor-art.ts';
 import {cityRenderAsset,leftoverWallLines} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,buildingAnchor,frontCorner} from '../../src/client/render/city/materials.ts';
 import {TILE_X,VIEW_PIVOT,depth,project,viewPoint} from '../../src/client/render/city/projection.ts';
@@ -143,6 +143,17 @@ test('decorSprite: objects stand at their cells centre, centred on their feet', 
   const at=project(4.5*1.5,3.5*1.5,0,1,VIEW_PIVOT);
   assert.ok(Math.abs(d.x-at.x)<1e-9&&Math.abs(d.y-at.y)<1e-9);
   assert.equal(d.originX,.5);assert.equal(d.artView,0);
+});
+
+test('cercas-nordeste-ligadas: a straight wall run stands level over a dipped terrace corner, never above the ground', ()=>{
+  // Corners all 2.5 but one 0.3 under the run's middle (the raw terraces wall cells keep): the pieces' centre ground
+  // jumped 2.5 -> 1.4 -> 2.5, steps and gaps along one line.
+  const corners=new Array(9*7).fill(2.5);corners[3*9+4]=.3;
+  const a=parseCityAsset({version:1,name:'t',cell:1.5,width:8,height:6,origin:{x:0,y:0},heights:new Array(48).fill(2.5),corners,
+    ground:'s'.repeat(48),blocks:[],props:[],points:{},decor:[]});
+  const plan=buildCityArtPlan(cenarioIndex(),{cell:1.5,decor:['muro-pichado-reto-intacto']}),s=plan.decor['muro-pichado-reto-intacto'];
+  for(const c of [2,3,4])assert.equal(decorSprite({id:'muro-pichado-reto-intacto',c,r:2,w:2,h:2,rot:90},s,0,a,VIEW_PIVOT).base,.3,`c${c}: the lowest corner under the piece`);
+  assert.equal(wallBase(a,{c:0,r:0,w:2,h:2}),2.5,'away from the dip the run keeps its ground');
 });
 
 test('decorChunk: the chunk holding the piece\'s centre cell', ()=>{

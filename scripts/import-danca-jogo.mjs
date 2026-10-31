@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Card danca-no-jogo (23/10): the user's frontal dances (menu group, 128 cells of 768×512, public/art/menu/danca/) become
+ * Card danca-no-jogo (23/10): the user's frontal dances (menu group, 128 cells of 768×512, public/art/menu/danca/; since
+ * menu-sem-danca (29/10) out of the index, in legado/menu-danca/menu/danca/ with its own manifest) become
  * an in-match clip of each hero: one 16×8 sheet of 96 px cells like the R06 walk (movement128.ts), the `dance128` file of
  * its `personagens` piece. Nothing is redrawn or interpolated: every pose is the menu's, cut by one window per hero and
  * scaled once, so the dance keeps its own sway and bounce.
@@ -40,6 +41,8 @@ const SRC=[768,512],ALPHA=20,MARGIN=1;
 /** Heroes whose menu dance is not of the in-game drawing (the old maromba): stage 3 of the card draws theirs. */
 export const SKIP=new Set(['maromba']);
 const SHA=b=>createHash('sha256').update(b).digest('hex');
+/** Where the menu dances went when menu-sem-danca took the menu group out of public/art (29/10). */
+export const LEGADO_MENU='legado/menu-danca/menu/danca';
 const median=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
 
 /** The 128 poses of a menu dance as raw RGBA cells, in order. */
@@ -88,6 +91,14 @@ async function cellOf(rgba,win){
   return sharp(out,{raw:{width:size,height:size,channels:4}}).resize(CELL,CELL,{kernel:'lanczos3'}).raw().toBuffer();
 }
 
+/** The menu dances: the index's menu group while it has one, else the legado copy's manifest. */
+async function menuGroup(outRoot,index){
+  if(index?.groups?.menu)return {dir:path.join(outRoot,index.groups.menu.output),pieces:index.groups.menu.pieces};
+  const dir=path.join(outRoot,LEGADO_MENU);
+  const manifest=JSON.parse(await readFile(path.join(dir,'manifest.json'),'utf8'));
+  return {dir,pieces:manifest.pieces};
+}
+
 /** A Codex dance of --input: its sheet as the one page of a menu-shaped dance, and its standing poses. */
 async function inputDance(dir,id){
   const meta=JSON.parse(await readFile(path.join(dir,`${id}.meta.json`),'utf8'));
@@ -98,14 +109,14 @@ async function inputDance(dir,id){
 export async function importDance({outRoot=ROOT,ids,write=false,input}={}){
   const index=await readIndex(path.join(outRoot,'public/art/manifest.json')),manifestFile=path.join(outRoot,SPEC.output,'manifest.json');
   const previous=await readManifest(manifestFile);
-  assert.ok(index?.groups?.menu&&previous,'menu and personagens groups required');
-  const menuDir=path.join(outRoot,index.groups.menu.output);
-  const all=Object.keys(index.groups.menu.pieces).filter(id=>previous.pieces[id]&&!SKIP.has(id));
+  assert.ok(previous,'personagens group required');
+  const menu=await menuGroup(outRoot,index),menuDir=menu.dir;
+  const all=Object.keys(menu.pieces).filter(id=>previous.pieces[id]&&!SKIP.has(id));
   assert.ok(!input||ids,'--input needs --ids');
   const chosen=ids??all;
   const report=[],entries={};
   for(const id of chosen){
-    const dance=input?await inputDance(input,id):index.groups.menu.pieces[id]?.files?.dance;
+    const dance=input?await inputDance(input,id):menu.pieces[id]?.files?.dance;
     assert.ok(dance&&dance.frames===FRAMES&&dance.cell[0]===SRC[0]&&dance.cell[1]===SRC[1],`${id}: 128-pose menu dance required`);
     assert.ok(previous.pieces[id],`${id}: personagens piece required`);
     const cells=await poses(dance,input??menuDir),boxes=cells.map(c=>boxOf(c,SRC[0],SRC[1]));

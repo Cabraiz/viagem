@@ -6,11 +6,13 @@
 /**
  * The procedural sounds (recipes.ts): each also has a file (sfx.ts) and falls back to its recipe when the file fails;
  * `sos` (the caído's ping, NEW-20261028-ORQ-sons-da-partida-ligados), `ufa` and `tsc` (NEW-20261029-ORQ-som-golpe-e-resgate)
- * are only their recipe.
+ * are only their recipe, as are the six of NEW-20261030-ORQ-sons-ganhos-e-receitas (the run's ends, the chaveiro, the
+ * critter's bite, the saci and the sanfona) until TangoFlux makes their files.
  */
 export const SOUND_IDS=[
   'golpe','gema','nivel','upgrade','queda','resgate','chefe','round-inicio','round-fim',
   'buzina','boing','risada','carimbo','sos','ufa','tsc',
+  'vitoria','derrota','chaveiro-chega','bicho-ataque','saci-assobio','sanfona',
 ] as const;
 /**
  * Sounds that exist only as files (NEW-20261022-ORQ-sons-ia-ace-step: made by TangoFlux, public/audio/sfx/): UI, the
@@ -28,7 +30,7 @@ export const FILE_SOUND_IDS=[
   'bicho-acerto','bicho-morte','chefe-acerto','chefe-morte','chefe-passo',
   'bau-comum','bau-raro','bau-epico','bau-lendario','caca-niquel',
   'coxinha','ima',
-  'ultimo-bicho','apagao','caixa-registradora','peca-cai','moto-tranco','moto-morre','pix','ninho-acordou',
+  'ultimo-bicho','apagao','caixa-registradora','peca-cai','ninho-acordou',
 ] as const;
 export type ProceduralId=typeof SOUND_IDS[number];
 export type SoundId=ProceduralId|typeof FILE_SOUND_IDS[number];

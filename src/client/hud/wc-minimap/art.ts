@@ -13,9 +13,9 @@
  */
 import type {TerrainImage} from './terrain.ts';
 
-/** The faces' order in the atlas (class ids): every playable class (rules PLAYABLE_CLASS_IDS), the bots' too. */
+/** The faces' order in the atlas (class ids): the 6 playable classes (rules PLAYABLE_CLASS_IDS) first, then the legacy ones (herois-legados-escondidos: still in the atlas, never on a minimap). */
 export const MM_FACES=Object.freeze(['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','aposentado','vendedor-praia',
-  'coach','concurseira','faxineira','feirante','mendigo','passageira','pedreiro','streamer','universitario','vizinha-fofoqueira'] as const);
+  'coach','concurseira','faxineira','feirante','passageira','pedreiro','streamer','universitario','vizinha-fofoqueira'] as const);
 /** The icons' order in the atlas, after the faces. */
 export const MM_ICONS=Object.freeze(['barricada','torre','banco','ninho','uno','moto','entrega','chefao','base','obra','inimigo','bau'] as const);
 export type MmIcon=typeof MM_ICONS[number];

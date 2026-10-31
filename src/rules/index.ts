@@ -2,6 +2,7 @@
 export * from './budget.ts';
 export * from './classes.ts';
 export * from './personagens-liberados.ts';
+export * from './inimigos-liberados.ts';
 export * from './kits.ts';
 export * from './names.ts';
 export * from './offers.ts';
@@ -17,6 +18,7 @@ export * from './telegraph-geometry.ts';
 export * from './waves.ts';
 export * from './zueira-cidade.ts';
 export * from './enemy-roles.ts';
+export * from './enemy-feel.ts';
 export * from './enemy-roster.ts';
 export * from './enemy-cast.ts';
 export * from './enemy-rotation.ts';

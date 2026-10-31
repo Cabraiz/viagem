@@ -171,9 +171,9 @@ test('solo (solo-sem-sala-de-espera): a loading line, the 3-2-1 on the cover, th
   for(const phase of [undefined,'lobby','countdown'])assert.equal(coverUp(true,phase,true),true,String(phase));
   for(const phase of ['combat','result'])assert.equal(coverUp(true,phase,true),false,phase);
   assert.equal(coverUp(false,'combat',true),true);
-  // The texts: the city's cover outside the island; the share line has no drunk; solo hides the room's parts.
+  // The texts: one cover line for every match (match-boot.ts); the share line has no drunk; solo hides the room's parts.
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.match(explore,/net\?'Arrumando a cidade…':'Arrumando a ilha pra visita…'/);
+  assert.match(explore,/\$\{BOOT_TEXT\.loading\}/);
   const lobby=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
   assert.match(lobby,/A cidade não espera\./);assert.doesNotMatch(lobby,/bêbado não espera/);
   assert.match(lobby,/openExploration\(hero,nick,joined,\{solo:true\}\)/);
@@ -190,10 +190,10 @@ test('compositionLine: 3+ with every class known names the first missing role, s
   // CLT (frente), Viciado em Bet (dano), Fofoqueira (controle): no support.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet','vizinha-fofoqueira')),COMPOSITION_LINES['Suporte']);
   assert.match(COMPOSITION_LINES['Suporte'],/café/);
-  // Mendigo (suporte), Maromba (dano), Fofoqueira: nobody up front.
-  assert.equal(compositionLine(m('mendigo','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
+  // Tio do Churrasco (suporte), Maromba (dano), Fofoqueira: nobody up front.
+  assert.equal(compositionLine(m('tio-do-churrasco','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
   // All four roles: nothing to say.
-  assert.equal(compositionLine(m('clt-cansado','mendigo','viciado-em-bet','vizinha-fofoqueira')),undefined);
+  assert.equal(compositionLine(m('clt-cansado','tio-do-churrasco','viciado-em-bet','vizinha-fofoqueira')),undefined);
   // Two players, or a class still unknown: no verdict yet.
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet')),undefined);
   assert.equal(compositionLine(m('clt-cansado','viciado-em-bet',undefined)),undefined);
@@ -205,7 +205,7 @@ test('memberClassName: the class short name under the chip, empty until known',(
 });
 
 test('chipNameHtml: a numbered name keeps its number apart (the words before it take the reticências); others plain, escaped',()=>{
-  assert.equal(chipNameHtml('Mendigo 2'),'<b class="coop-wait-numbered"><b>Mendigo</b><b>&nbsp;2</b></b>');
+  assert.equal(chipNameHtml('Aposentado 2'),'<b class="coop-wait-numbered"><b>Aposentado</b><b>&nbsp;2</b></b>');
   assert.equal(chipNameHtml('Passage. 3'),'<b class="coop-wait-numbered"><b>Passage.</b><b>&nbsp;3</b></b>');
   assert.equal(chipNameHtml('CLT'),'CLT');assert.equal(chipNameHtml('Bet 365'),'Bet 365');assert.equal(chipNameHtml('2'),'2');
   assert.equal(chipNameHtml('<i> 2'),'<b class="coop-wait-numbered"><b>&lt;i&gt;</b><b>&nbsp;2</b></b>');

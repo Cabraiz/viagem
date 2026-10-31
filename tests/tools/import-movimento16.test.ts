@@ -30,7 +30,7 @@ async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;in
     await write(manifestFile,{version:2,group:'personagens',pieces:{aposentado:old}});
     await write(indexFile,{version:2,groups:{personagens:{output:'public/art/sprites',pieces:{aposentado:old}}}});
     for(const [motion,m] of Object.entries(MOVEMENT16_META.motions)){
-      if(motion==='run'&&!run||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work'||motion==='downed')continue;
+      if(motion==='run'&&!run||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work'||motion==='downed'||motion==='shoved')continue;
       const bytes=await sheet(m.columns,m.rows,{distinct:motion!=='idle'});
       for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado',motion,d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
     }
@@ -55,7 +55,7 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   assert.deepEqual(Object.keys(entry.files).filter(k=>k.includes('16-')).sort(),
     ['attack','idle','walk'].flatMap(m=>MOVEMENT16_META.directions.map(d=>`${m}16-${d}`)).sort());
   for(const [motion,m] of Object.entries(MOVEMENT16_META.motions))for(const d of MOVEMENT16_META.directions){
-    if(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work'||motion==='downed')continue;
+    if(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt'||motion==='build'||motion==='work'||motion==='downed'||motion==='shoved')continue;
     const f=entry.files[`${motion}16-${d}`],webp=path.join(outRoot,'public/art/sprites',f.file),meta=await sharp(webp).metadata();
     assert.deepEqual([meta.width,meta.height],[m.columns*96,m.rows*96]);assert.equal(f.frames,m.frames);assert.equal(f.durationMs,m.durationMs);assert.equal(f.loop,m.loop);
     assert.equal(f.revision,16);assert.match(f.file,new RegExp(`^aposentado\\.${motion}16-${d.toLowerCase()}\\.[0-9a-f]{12}\\.webp$`));
@@ -216,6 +216,25 @@ test('hurt (animacao-receber-dano): --motions hurt imports the flinch, its last 
   setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
   assert.equal(hasHurt16('aposentado'),true);
   const se=hurtPlan('aposentado','SE');assert.equal(se?.key,'sprite16:aposentado:hurt:SW');assert.equal(se?.flip,true);assert.equal(se?.loop,false);assert.equal(se?.frameCount,6);
+}));
+
+test('shoved (anim-ser-empurrado): --motions shoved imports the 16-pose shove, played once, ending on its first pose',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files,m=MOVEMENT16_META.motions.shoved;
+  assert.deepEqual([m.columns,m.rows,m.frames,m.durationMs,m.loop],[4,4,16,1400,false]);
+  const shove=(poses:number[])=>sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="768" height="768">${poses.map((k,i)=>
+    `<rect x="${i%4*192+66-k*2}" y="${Math.floor(i/4)*192+60+k*3}" width="60" height="${108-k*3}" fill="rgb(${k*15},${k*9},90)"/>`).join('')}</svg>`)).png().toBuffer();
+  // back to the rest it started from: the last pose repeats the first
+  const back=await shove([...Array.from({length:15},(_,i)=>i),0]);
+  for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado','shoved',d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,back);}
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],motions:['shoved'],write:true});
+  assert.equal(result.characters[0].outputs.length,5);assert.deepEqual(result.characters[0].motions,['shoved']);
+  const files=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const [k,f] of Object.entries(before))assert.deepEqual(files[k],f,`${k} kept`);
+  for(const d of MOVEMENT16_META.directions){const f=files[`shoved16-${d}`];assert.deepEqual([f.frames,f.durationMs,f.loop,f.pages[0].columns,f.pages[0].rows],[16,1400,false,4,4]);}
+  // a pose that comes back in the middle is refused
+  await writeFile(movement16Source(input,'aposentado','shoved','N'),await shove([...Array.from({length:14},(_,i)=>i),3,15]));
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],motions:['shoved']}),/poses must be distinct/);
 }));
 
 test('downed (queda-6-herois): --motions downed imports the 16-pose fall, held poses allowed, pivot on the cell centre, played once',async()=>fixture(async({input,outRoot,manifestFile})=>{

@@ -8,10 +8,11 @@
  * Not solid: the flying (pombos, voadores: a hero walks under them), the asleep (out of ctx.enemies), the dead; and
  * the downed, eliminated, spectating or offline heroes (enemies walk over a body on the ground).
  */
-import {BODY_REACH,RADIUS as PLAYER_RADIUS,bodyBlock,enemyTerrain,floorOf,onFloor,settleFloor,setFloor,type Shove} from '../maps/index.ts';
+import {BODY_REACH,RADIUS as PLAYER_RADIUS,bodyBlock,enemyTerrain,floorOf,heroShare,onFloor,settleFloor,setFloor,type Body,type Shove} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
-import type {EnemyState,SimPlayer} from '../contract/index.ts';
+import type {EnemyState,Point,PushMark,SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
+import {shovedEnemy} from '../rules/index.ts';
 import {isFlying} from './enemies/catalog.ts';
 import {moveSafely} from './enemies/ai.ts';
 
@@ -19,6 +20,12 @@ import {moveSafely} from './enemies/ai.ts';
 export const solidEnemy=(e:EnemyState)=>e.hp>0&&!isFlying(e);
 /** EnemyView.radius, spread into the view: the body's radius when it is solid, else nothing (the phone walks through it). */
 export const bodyRadius=(e:EnemyState):{radius?:number}=>solidEnemy(e)&&e.radius>0?{radius:e.radius}:{};
+
+/**
+ * The part of a hero's walk into an enemy the hero takes (bodyBlock's share): heroShare for the mendigo, all of it for
+ * the saci, the sanfoneiro and the chefões (card colisao-entre-herois, rules shovedEnemy; the phone: Body.fixed).
+ */
+export const enemyHeroShare=(b:Body)=>{const e=b as EnemyState;return shovedEnemy(e.kind,e.boss)?heroShare(b):1;};
 
 /** The room's shove: moveSafely on the enemies' view of the body's floor (walls and barricades stop it). */
 export function enemyShove(terrain:TerrainField):Shove{
@@ -44,6 +51,23 @@ export const standingHero=(p:SimPlayer,autopilot?:(id:string)=>boolean)=>
   (p.online||!!autopilot?.(p.id))&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
 const enemyOnly=()=>0;
+
+/**
+ * Card colisao-entre-herois: how long (ticks) a push mark stays after the last tick that pushed (SimPlayer.pushing /
+ * pushed, EnemyState.pushed): a push held along a wall or a crowd is one animation, not a flicker each tick it misses.
+ */
+export const PUSH_HOLD=4;
+export function markPush(on:{pushing?:PushMark;pushed?:PushMark},key:'pushing'|'pushed',x:number,y:number,tick:number){
+  const m=on[key];
+  if(m){m.x=x;m.y=y;m.until=tick+PUSH_HOLD;}else on[key]={x,y,until:tick+PUSH_HOLD};
+}
+/** The live push marks as the views send them (absent past `until`). */
+export function pushView(on:{pushing?:PushMark;pushed?:PushMark},tick:number):{pushing?:Point;pushed?:Point}{
+  const out:{pushing?:Point;pushed?:Point}={};
+  if(on.pushing&&tick<on.pushing.until)out.pushing={x:on.pushing.x,y:on.pushing.y};
+  if(on.pushed&&tick<on.pushed.until)out.pushed={x:on.pushed.x,y:on.pushed.y};
+  return out;
+}
 
 /** After the enemies moved: no body stands inside a standing hero (see the header). */
 export function heroBodiesPass(ctx:SimContext,autopilot?:(id:string)=>boolean,scratch:EnemyState[]=[],moved?:(id:string)=>void){

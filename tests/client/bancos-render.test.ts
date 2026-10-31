@@ -37,6 +37,7 @@ test('the tracker: notes fly NOTE_MS, the hero\'s beep, a screen line on every L
   t.push([bank()],0,0);
   t.push([bank({saldo:38,state:'sacando'})],60,1000);
   assert.equal(t.notes.length,1);assert.equal(t.balloons[0].text,lineAt('banco-0',0),'the first hero note brings a line');
+  assert.deepEqual(t.paid,[{bank:'banco-0',count:1}],'the PIX swarm pops one +R$ per hero note');
   t.push([bank({saldo:36,state:'sacando'})],120,4000);
   assert.equal(t.balloons.length,1);assert.equal(t.balloons[0].text,BANK_BEEP);assert.ok(t.balloons[0].beep);
   t.push([bank({saldo:34,state:'bicho'})],160,6000);
@@ -57,6 +58,7 @@ test('the tracker with the room\'s events: bank-cash says who took the note (the
   t.push([bank({saldo:0,state:'sem-cedulas'})],61,1100,[cash(1,'enemy')]);assert.equal(t.notes.length,1);
   t.push([bank({saldo:36,state:'sacando'})],120,2000,[cash(1,'enemy'),cash(2,'enemy'),cash(3,'hero'),cash(4,'hero','outro')]);
   assert.deepEqual(t.notes.slice(1).map(n=>n.by),['hero','enemy']);assert.equal(t.balloons.length,1);
+  assert.deepEqual(t.paid,[{bank:'banco-0',count:1}],'only the hero notes, of a bank in view');
   // A refill (saldo up) with no event: no note.
   t.push([bank({saldo:40,state:'aberto'})],180,3000,[]);assert.equal(t.notes.length,3);
 });

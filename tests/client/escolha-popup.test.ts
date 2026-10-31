@@ -37,7 +37,8 @@ test('moldura de tricô e X existem; o texto do botão fica num span (o "Prepara
   assert.match(main,/<button id="enter-island" class="secondary-button"><span class="escolha-rotulo">Jogar sozinho<\/span><\/button>/);
   assert.match(main,/coopButton\.innerHTML='<span class="escolha-rotulo">Jogar com amigos<\/span>'/);
   assert.doesNotMatch(main,/coopButton\.textContent=|button\.textContent=/,'texto do botão sempre pelo rotulo()');
-  assert.match(main,/mostrarEscolha\(dialog,selected\.id\);\n\s*dialog\.showModal\(\);dialog\.focus\(\);/,'o foco ao abrir não cai no X');
+  assert.match(main,/function showChosen\(\) \{[^]*?mostrarEscolha\(dialog,selected\.id\);\n\}/,'o popup se monta no showChosen');
+  assert.match(main,/showChosen\(\);\n[^]*?\n\s*dialog\.showModal\(\);dialog\.focus\(\);/,'o foco ao abrir não cai no X');
   assert.match(main,/<div class="solo-row"><button id="enter-island"[^]*?<div class="solo-bots"/,'os bots ficam dentro do bloco do "Jogar sozinho"');
   const css=readFileSync('src/client/ui/escolha.css','utf8');
   assert.match(css,/border-image:url\('\/art\/menu\/escolha\/moldura-trico\.webp'\)/);

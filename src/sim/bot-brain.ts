@@ -61,6 +61,7 @@ import {BASE_STATS,BOT_WALK_MULT,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
+import {peril,perilAhead} from './bot-peril.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
@@ -192,8 +193,7 @@ export const TURN_HOLD=8,TURN_BACK_COS=-.4;
  * kiting), so two pulls in a tug of war (the leash against a lure, a circle against a repel) no longer swap every 400 ms.
  */
 export const TURN_CALM=20;
-/** A critter this close (u, its centre), a shot heading in or a telegraph lets the bot turn back at once. */
-export const PERIL_R=1.4;
+export {PERIL_R} from './bot-peril.ts';
 /**
  * (a) Arrival: a bot that reached a place (an ATM's ring, the dead moto, a fallen friend, a crate) holds it until it is
  * ARRIVE_SLACK u past its stand, and there only a peril moves it: the repel of a critter at DANGER pushed it out of the
@@ -610,14 +610,26 @@ export function granaReserve(view:Pick<RunView,'objective'>&{players?:readonly P
   return Math.ceil((o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:o.budget*CHAVEIRO_KEEP_SHARE)/seats);
 }
 
+/**
+ * auditoria-economia item 1 (bot-solo-gasta-grana): of its own wallet (view.camp.grana) a bot keeps for the bill at
+ * most CHAVEIRO_KEEP_WALLET (rounded down) when it buys. Alone, granaReserve is the whole bill × 1.3, more than a solo
+ * run earns (R$ 155 for a R$ 300+ bill): the bot never evolved, repaired nor forged, and lost the car in 3 of 4 runs.
+ * A buy now leaves at least half the wallet; the reserve still caps it where it is smaller (3p/6p mostly).
+ */
+export const CHAVEIRO_KEEP_WALLET=.5;
+/** The Grana a bot never spends its wallet below when it buys: granaReserve, at most CHAVEIRO_KEEP_WALLET of the wallet. */
+export function spendReserve(view:Pick<RunView,'objective'|'camp'>&{players?:readonly Pick<PlayerRunView,'spectator'>[]}):number{
+  return Math.min(granaReserve(view),Math.floor(Math.max(0,view.camp?.grana??0)*CHAVEIRO_KEEP_WALLET));
+}
+
 /** Wall share under which the forger repairs it even out of the chaveiro's reserve (review: the bill never beats a defeat). */
 export const WALL_CRITICAL=.5;
 /**
  * What the forger buys with its wallet (view.camp.grana; D-048: the forge is paid in R$, never material), or nothing: repair a
  * hurt wall, then towers up to the forge's cap, then gambiarras. A recipe the forge refused this round (`refused`:
- * recipe -> round index) is skipped; `keep` (default granaReserve: the chaveiro's bill) is never spent.
+ * recipe -> round index) is skipped; `keep` (default spendReserve: the chaveiro's bill, at most half the wallet) is never spent.
  */
-export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=granaReserve(view)):RecipeId|undefined{
+export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=spendReserve(view)):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
   const wall=wallOf(view),round=view.round?.index??0;
   const ok=(id:RecipeId,reserve=keep)=>refused[id]!==round&&canPay((camp.grana??0)-reserve,forgePrice(id,camp.forge));
@@ -910,8 +922,9 @@ export function decide(input:BrainInput):Decision{
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
     const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId;
-    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs below).
-    const keep=granaReserve(view);
+    // D-048: the chaveiro's bill is kept out of every Grana buy (the forge here, the towers' evolutions and repairs
+    // below), at most half the wallet (spendReserve: a bot alone kept it all and never bought).
+    const keep=spendReserve(view);
     let recipe=forger?pickRecipe(view,memory.refused,keep):undefined;
     // Towers first (torres-sim): only a needed wall repair goes ahead. The caller hands `towers` to the bot that builds
     // (the room bots: the forger, or the forger-to-be). torres-ajustes: the sim takes an order only next to the obra, so
@@ -1253,17 +1266,21 @@ function finish(decision:Decision,input:BrainInput):Decision{
 }
 /** Modes that walk to a place: a turn back held by TURN_HOLD stands there instead of going on. */
 const ARRIVING=new Set<Decision['mode']>(['bank','rescue','push','loot','clear','home','gather','forge','build','veiculo','carro']);
-/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril. */
-function holdHeading(decision:Decision,input:BrainInput):Decision{
+/** TURN_HOLD: a turn back on a heading younger than 400 ms waits (held or standing), unless in peril ahead. */
+export function holdHeading(decision:Decision,input:BrainInput):Decision{
   const {memory,view,at}=input,tick=view.tick,d=decision.direction,h=memory.heading;
   const turn=h?d.x*h.x+d.y*h.y:1,back=!!h&&turn<TURN_BACK_COS;
   const soon=tick-(memory.headingTick??-Infinity)<TURN_HOLD||tick-(memory.turnBackTick??-Infinity)<TURN_CALM;
   const calm=decision.mode!=='dodge'&&!peril(view,at);
   // A bot that stood still stands TURN_HOLD (walk, stand, walk each think was the same tique, legs only).
   if(calm&&memory.standTick!==undefined&&tick-memory.standTick<TURN_HOLD){decision.direction={x:0,y:0};return decision;}
-  if(back&&soon&&calm){
+  // In peril a kiting bot still turns back at once for a critter ahead, but not into another one within PERIL_R (a
+  // walk to a place in peril turns at once, as before: standing there by the critter lost papeis-inimigo's run in round 6):
+  // a critter behind (the heading already goes away from it) or one each way held nothing in the crowd at the car
+  // (fence map, seed 1: 28 half-turns 200 ms after the last in 120 s, the repel flipping over the bot every think).
+  const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
+  if(back&&soon&&(calm||kiting&&decision.mode!=='dodge'&&!(peril(view,at,h)&&!perilAhead(view,at,d)))){
     // Kiting (a critter within DANGER) goes on the way it went; anything else stands.
-    const kiting=!ARRIVING.has(decision.mode)&&view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<DANGER);
     if(kiting)decision.direction=clearPath(at,h!,onFloor(input.terrain,at.andar),h);
     else{decision.direction={x:0,y:0};memory.standTick=tick;}
     return decision;
@@ -1273,15 +1290,6 @@ function holdHeading(decision:Decision,input:BrainInput):Decision{
   if(!h||turn<0)memory.headingTick=tick;
   memory.heading={x:d.x,y:d.y};
   return decision;
-}
-function peril(view:RunView,at:Point){
-  if(view.enemies.some(e=>e.hp>0&&!e.asleep&&dist(e,at)<PERIL_R*(e.boss?1.8:e.elite?1.3:1)))return true;
-  if(view.telegraphs.some(t=>telegraphHits(t,at,.4)))return true;
-  return view.projectiles.some(s=>{
-    if(!s.hostile)return false;
-    const rx=at.x-s.x,ry=at.y-s.y,speed=Math.hypot(s.vx,s.vy);
-    return Math.hypot(rx,ry)<4&&speed>1e-3&&rx*s.vx+ry*s.vy>0;
-  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1297,7 +1305,7 @@ export interface TowerBrainView {
   units:number;
   /** The builder's own wallet, R$ (D-048; NEW-20261014-ORQ-carteira-e-pix): every other evolution and the tower repairs. */
   grana:number;
-  /** Grana the towers never spend (decide fills it with granaReserve: the chaveiro's bill); unset: 0. */
+  /** Grana the towers never spend (decide fills it with spendReserve: the chaveiro's bill, at most half the wallet); unset: 0. */
   granaKeep?:number;
   /** x/y: the site's centre, where the bot walks to give the order (absent: the order goes out from anywhere). */
   sites:readonly {id:string;maxSize:number;x?:number;y?:number}[];
@@ -1345,6 +1353,18 @@ export function orderSpot(v:TowerBrainView,order:TowerOrder):Point|undefined{
 
 /** Branch a bot picks for the root on the n-th site of the plan (cycled): twice A, then B and C. */
 export const BOT_BRANCHES:readonly Branch[]=Object.freeze(['A','B','A','C'] as Branch[]);
+/**
+ * auditoria-economia item 5 (bot-solo-gasta-grana): a root takes branch C (the Holofote: no damage, only a slow) only
+ * once the defenses standing add up to BOT_SUPPORT_DPS (defenseDps); before that BOT_BRANCHES goes on to the next
+ * branch (A or B). The 6p bought the Holofote 3× a run, as often as A2, on teams with little to shoot with. 60: about an
+ * A3, an A2, a B2 and a root (66).
+ */
+export const BOT_SUPPORT_DPS=60;
+/** A defense's damage a second over its targets (damage × shots ÷ cooldown; the area and the slow left out). */
+export function defenseDps(kind:DefenseId):number{
+  const d=DEFENSES[kind];
+  return d.cooldown>0?d.damage*d.shots*HZ/d.cooldown:0;
+}
 /** The forger keeps at least this many defenses standing before it evolves any. */
 export const BOT_MIN_DEFENSES=2;
 /** A defense of the bots at or under this share of its maxHp is repaired first, when the Grana pays it. */
@@ -1419,7 +1439,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
  *     Obuseiro) when its money pays it; towerReserve keeps that step aside for the rest of the rule;
  *  4. the cheapest-tier evolution among the bots' other ready defenses, when what is left pays it (ties: plan order).
  *     Branch at the root: B on a 3×3 site while the bots have no line (on a map with a rail), else BOT_BRANCHES by the
- *     site's index (the next one that fits the site's size); at A3 the main line
+ *     site's index (the next one that fits the site's size; C only from BOT_SUPPORT_DPS standing); at A3 the main line
  *     when the site fits A4, else A4b; at the Obuseiro the Gustavão (laying the rail first), while none was built;
  *  5. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root, when the material left
  *     over is a whole ficha;
@@ -1483,8 +1503,10 @@ function nextStep(v:TowerBrainView,d:BrainDefense,at:number,size:number,startLin
   if(d.kind===ROOT_DEFENSE){
     // The Gustavão's line needs a 3×3 site (the Lança-Foguetes and the Obuseiro).
     if(startLine&&size>=3)return {cost:costOf(pickChild(d.kind,'B')!),order:{upgrade:d.id,branch:'B'}};
+    let support:number|undefined;
     for(let k=0;k<BOT_BRANCHES.length;k++){
       const branch=BOT_BRANCHES[(at+k)%BOT_BRANCHES.length],child=pickChild(d.kind,branch);
+      if(branch==='C'&&(support??=v.defenses.reduce((n,x)=>x.ruined?n:n+defenseDps(x.kind),0))<BOT_SUPPORT_DPS)continue;
       if(child&&fits(child.id))return {cost:costOf(child),order:{upgrade:d.id,branch}};
     }
     return undefined;

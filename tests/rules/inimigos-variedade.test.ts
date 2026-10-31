@@ -1,11 +1,15 @@
 // Card inimigos-variedade (the user 25/10: "muitos inimigos repetidos e iguais"): the map's loose sleepers draw from
 // the rotation's early fodder slots, so the art-only rotation gives them more entries (ART_SLOT_WIDEN); a role's
-// entries share its numbers, so the mix changes and the threat does not.
+// entries share its numbers (each clone with its feel on top, speed × hp ≈ 1), so the mix changes and the threat does not.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
 import {ART_SLOT_WIDEN,ENEMY_ART_IDS,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,drawRotation,isRotation,rotationSize,roundRoster,slotPools} from '../../src/rules/index.ts';
 import {enemyDef} from '../../src/sim/enemies/catalog.ts';
+import {enemyFeel} from '../../src/rules/enemy-feel.ts';
+import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
+// The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
+setRosterOnlyLiberados(false);
 
 const art=new Set(ENEMY_ART_IDS);
 const artOf=(role:string)=>ROSTER.filter(e=>e.role===role&&art.has(e.id)).length;
@@ -45,13 +49,19 @@ test('a stored rotation past the widened max is refused; the whole roster keeps 
   assert.ok((full.roles.corredor?.length??0)<=slot.max);
 });
 
-test('same role, same numbers: swapping the entry inside a role never changes the fight',()=>{
+test('same role, same numbers: swapping the entry inside a role changes only its feel (29/10 H)',()=>{
+  // Without its feel (rules/enemy-feel.ts) every entry of a role has the role's numbers; the feel's speed × hp ≈ 1.
+  const bare=(id:string)=>{const d=enemyDef(id),f=enemyFeel(id)??{hp:1,speed:1};return {hp:d.hp/f.hp,speed:d.speed/f.speed,d};};
   for(const role of Object.keys(ART_SLOT_WIDEN)){
     const ids=ROSTER.filter(e=>e.role===role&&art.has(e.id)&&!e.legacy).map(e=>e.id);
-    const first=enemyDef(ids[0]);
+    const first=bare(ids[0]);
     for(const id of ids){
-      const d=enemyDef(id);
-      assert.deepEqual([d.hp,d.speed,d.damage,d.xp,d.behavior],[first.hp,first.speed,first.damage,first.xp,first.behavior],id);
+      const b=bare(id);
+      assert.ok(Math.abs(b.hp-first.hp)<=1.5,`${id} hp ${b.hp} vs ${first.hp}`);
+      assert.ok(Math.abs(b.speed-first.speed)<1e-9,`${id} speed`);
+      assert.deepEqual([b.d.damage,b.d.xp,b.d.behavior],[first.d.damage,first.d.xp,first.d.behavior],id);
+      const f=enemyFeel(id);
+      if(f)assert.ok(Math.abs(f.speed*f.hp-1)<=.05,`${id} speed × hp`);
     }
   }
 });

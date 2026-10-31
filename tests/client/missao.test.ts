@@ -7,7 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SIM_HZ} from '../../src/contract/index.ts';
-import {DARK_PRESS,DEFEND_LATE_S,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,ORDER_GAP_S,RETURN_SECONDS,TOWERS_MAX_S,UNO_LEAVE_U,UNO_NEAR_U,missionFacts} from '../../src/client/hud/missao.ts';
+import {MINERVA_S} from '../../src/sim/ninhos/ninhos.ts';
+import {DARK_PRESS,DEFEND_LATE_S,DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,ORDER_GAP_S,ROTATE_S,RETURN_SECONDS,TOWERS_MAX_S,UNO_LEAVE_U,UNO_NEAR_U,missionFacts} from '../../src/client/hud/missao.ts';
 import {MOTO_ACTIONS} from '../../src/client/hud/chaveiro.ts';
 import {missionKeys,nestKey,nestTarget,shownTargets} from '../../src/client/hud/arrows.ts';
 
@@ -138,21 +139,22 @@ test('the moto stopped for the team: a verb and the moto\'s arrow; the reason ro
   const dead=m.step({tick:START,towerKit:false,playing:true,facts:{moto:'morta'}});
   assert.deepEqual(dead.line,{key:'moto',text:'Moto do chaveiro: vá empurrar',big:true,urgent:true},'the chaveiro named: the moto is his, the Uno the team\'s');
   assert.deepEqual(dead.arrow,{kind:'moto'});
-  // The other verb is a new order: inside the gap it waits (the line empties: "vá empurrar" no longer holds).
-  assert.equal(m.step({tick:START+1,towerKit:false,playing:true,facts:{moto:'tombo'}}).line,undefined);
+  // The other verb is a new order: inside the gap it waits ("vá empurrar" no longer holds: the objective's calm line fills).
+  assert.equal(m.step({tick:START+1,towerKit:false,playing:true,facts:{moto:'tombo'}}).line?.key,'proteja');
   const fell=m.step({tick:START+s(ORDER_GAP_S),towerKit:false,playing:true,facts:{moto:'tombo'}});
   assert.equal(fell.line?.text,'Chaveiro caiu: tire os bichos');assert.equal(fell.line?.big,true);
-  assert.equal(m.step({tick:START+s(ORDER_GAP_S)+1,towerKit:false,playing:true,facts:{moto:'anda'}}).line,undefined);
+  const calm=m.step({tick:START+s(ORDER_GAP_S)+1,towerKit:false,playing:true,facts:{moto:'anda'}}).line;
+  assert.equal(calm?.key,'proteja');assert.equal(calm?.big,false);
   for(const text of Object.values(MOTO_ACTIONS))assert.ok(text!.length<=31,text);
 });
 
-test('the nests mode out of a window: "Derrube os ninhos (5)" with the nearest nest\'s arrow; none standing, no line',()=>{
+test('the nests mode out of a window: "Opcional: derrube ninhos (5)" (calm) with the nearest nest\'s arrow; none standing, no line',()=>{
   const m=new MissionTracker(),nearest={id:'ninho-3',x:4,y:5};
   const out=m.step({tick:START,towerKit:false,playing:true,facts:{nests:{alive:5,nearest}}});
-  assert.deepEqual(out.line,{key:'ninhos',text:'Derrube os ninhos (5)',big:true,urgent:false});
+  assert.deepEqual(out.line,{key:'ninhos',text:'Opcional: derrube ninhos (5)',big:false,urgent:false});
   assert.deepEqual(out.arrow,{kind:'ninho',...nearest});
   assert.equal(out.pointUno,false);
-  assert.equal(m.step({tick:START+s(5),towerKit:false,playing:true,facts:{nests:{alive:4,nearest}}}).line?.text,'Derrube os ninhos (4)');
+  assert.equal(m.step({tick:START+s(5),towerKit:false,playing:true,facts:{nests:{alive:4,nearest}}}).line?.text,'Opcional: derrube ninhos (4)');
   assert.equal(m.step({tick:START+s(6),towerKit:false,playing:true,facts:{nests:{alive:0}}}).line,undefined);
   // The moto outranks the nests, once the gap opens (the nests line holds until then).
   assert.equal(m.step({tick:START+s(7),towerKit:false,playing:true,facts:{nests:{alive:3},moto:'morta'}}).line?.key,'ninhos');
@@ -185,8 +187,10 @@ test('the gap: a new order at most every ORDER_GAP_S; the most important one wan
   assert.equal(at(START+s(10),{nests:{alive:5},moto:'tombo'}).line?.big,false);
   const moto=at(START+s(ORDER_GAP_S),{nests:{alive:5},moto:'tombo'});
   assert.equal(moto.line?.key,'moto');assert.equal(moto.line?.big,true);assert.deepEqual(moto.arrow,{kind:'moto'});
-  // The moto up again 5 s later: "tire os bichos" no longer holds, and the nests wait out the gap (an empty line).
-  assert.equal(at(START+s(ORDER_GAP_S+5),{nests:{alive:4}}).line,undefined);
+  // The moto up again 5 s later: "tire os bichos" no longer holds; the calm nests line fills it (small, the gap untouched).
+  const fill=at(START+s(ORDER_GAP_S+5),{nests:{alive:4}});
+  assert.equal(fill.line?.key,'ninhos');assert.equal(fill.line?.big,false);
+  assert.equal(m.orderAge(START+s(ORDER_GAP_S+5)),s(5),'the gap still counts from the moto');
   assert.equal(at(START+s(2*ORDER_GAP_S),{nests:{alive:4}}).line?.key,'ninhos');
 });
 
@@ -194,7 +198,7 @@ test('the gap: the nests count changing is the same order (no new band, the gap 
   const m=new MissionTracker(),at=(tick:number,alive:number)=>m.step({tick,towerKit:false,playing:true,facts:{nests:{alive}}});
   at(START,5);
   const four=at(START+s(6),4);
-  assert.equal(four.line?.text,'Derrube os ninhos (4)');assert.equal(four.line?.big,false);
+  assert.equal(four.line?.text,'Opcional: derrube ninhos (4)');assert.equal(four.line?.big,false);
   assert.equal(m.orderAge(START+s(6)),s(6));
 });
 
@@ -246,4 +250,54 @@ test('the first 3 minutes solo: from seven orders to one every 30 s at most',()=
   for(let i=1;i<lines.length;i++)assert.ok(lines[i]!.t-lines[i-1]!.t>=ORDER_GAP_S,JSON.stringify(lines));
   assert.equal(lines[0]!.text,MISSION_TEXT.minerva);
   if(process.env.LINHA_DO_TEMPO)console.log(JSON.stringify(lines));
+});
+
+// Card missao-proteger-uno-tempo (the user 29/10: the nests are NOT needed to win).
+test("the objective: 'Proteja o Uno até o chaveiro' (calm, the Uno's arrow), in turns with the optional nests",()=>{
+  const m=new MissionTracker(),at=(tick:number,facts:Facts)=>m.step({tick,towerKit:false,playing:true,facts});
+  const turn=s(ROTATE_S),t0=2*turn;
+  const first=at(t0,{moto:'anda',nests:{alive:5,nearest:{id:'n1',x:1,y:1}}});
+  assert.deepEqual(first.line,{key:'proteja',text:'Proteja o Uno até o chaveiro',big:false,urgent:false});
+  assert.deepEqual(first.arrow,{kind:'uno',urgent:false});
+  const nests=at(t0+turn,{moto:'anda',nests:{alive:5,nearest:{id:'n1',x:1,y:1}}});
+  assert.equal(nests.line?.text,'Opcional: derrube ninhos (5)');assert.equal(nests.line?.big,false);assert.equal(nests.arrow?.kind,'ninho');
+  assert.equal(at(t0+2*turn,{moto:'anda',nests:{alive:4}}).line?.key,'proteja');
+  // No nest standing: the Uno's line only.
+  assert.equal(at(t0+3*turn,{moto:'anda',nests:{alive:0}}).line?.key,'proteja');
+  // The moto stopped for the team still outranks it (the gap open).
+  assert.equal(at(t0+4*turn,{moto:'tombo',nests:{alive:4}}).line?.key,'moto');
+  assert.ok(MISSION_TEXT.proteja.length<=31);
+});
+
+// Card celular-objetivo-e-grana (auditoria-primeira-partida-30-10 item 1): the real Minerva is 30 s (ninhos.ts MINERVA_S).
+test('the 30 s Minerva at the Uno: its line, then "Proteja o Uno até o chaveiro" instead of an empty line',()=>{
+  const end=START+s(MINERVA_S),m=new MissionTracker(),at=(tick:number,uno:number)=>m.step({tick,minervaAte:end,towerKit:false,playing:true,facts:{moto:'anda',uno}});
+  assert.equal(at(START,2).line?.key,'minerva');
+  const calm=at(end-s(RETURN_SECONDS),2);
+  assert.deepEqual(calm.line,{key:'proteja',text:MISSION_TEXT.proteja,big:false,urgent:false});
+  assert.equal(calm.pointUno,true,'the Uno still pointed');
+  assert.equal(at(end-1,2).line?.key,'proteja');
+  // Away from the Uno: "Volte ao Uno." over the calm line, at once (a calm line holds back no order).
+  assert.equal(at(end-s(5),UNO_LEAVE_U+1).line?.key,'volta');
+});
+
+test("the objective seen a frame before the Minerva's tick does not hold back the Minerva's line",()=>{
+  const end=START+s(MINERVA_S),m=new MissionTracker();
+  assert.equal(m.step({tick:START,towerKit:false,playing:true,facts:{moto:'anda',uno:2}}).line?.key,'proteja');
+  const first=m.step({tick:START+1,minervaAte:end,towerKit:false,playing:true,facts:{moto:'anda',uno:2}}).line;
+  assert.equal(first?.key,'minerva');assert.equal(first?.big,true);
+});
+
+test('a time to explore at the Uno: the quiet "Volte ao Uno." gives way to the objective; without it the line stays empty',()=>{
+  const explora={from:5000,until:5000+s(60)},t=explora.until-s(5);
+  const step=(facts:Facts)=>new MissionTracker().step({tick:t,explora,towerKit:false,playing:true,facts});
+  assert.equal(step({moto:'anda',uno:2}).line?.key,'proteja');
+  assert.equal(step({uno:2}).line,undefined);
+});
+
+test('the 30 s Minerva away from the Uno: "Volte ao Uno." right after its line, though the gap is longer than the Minerva',()=>{
+  const end=START+s(MINERVA_S),m=new MissionTracker(),at=(tick:number)=>m.step({tick,minervaAte:end,towerKit:false,playing:true,facts:{moto:'anda',uno:30}});
+  at(START);
+  const back=at(end-s(RETURN_SECONDS));
+  assert.deepEqual(back.line,{key:'volta',text:MISSION_TEXT.volta,big:true,urgent:true});
 });

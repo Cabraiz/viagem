@@ -88,6 +88,10 @@ function body(t){
 
 const CSS=`*{box-sizing:border-box}body{margin:0;background:#f6f0df;color:#554963;font:16px/1.6 system-ui,sans-serif}main{max-width:780px;padding:36px 20px 48px;margin:auto}a{color:#786494}a:focus-visible,summary:focus-visible{outline:3px solid #7c559c;outline-offset:3px}header{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:30px}.logo{font-size:28px;font-weight:900;text-decoration:none;letter-spacing:-1px}.langs{position:relative}.langs summary{list-style:none;cursor:pointer;font-size:13px;background:#ece3f2;border:1px solid #d4c5df;padding:6px 12px;border-radius:20px;white-space:nowrap}.langs summary::-webkit-details-marker{display:none}.langs summary::after{content:" ▾"}.langs[open] summary::after{content:" ▴"}.langs ul{position:absolute;z-index:2;top:calc(100% + 8px);inset-inline-end:0;width:min(360px,calc(100vw - 28px));max-height:min(70vh,560px);overflow:auto;margin:0;padding:8px;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:0 4px;align-content:start;background:#fffcf4;border:2px solid #b3a1c6;border-radius:14px;box-shadow:0 5px 0 #d8cbdc}.langs li{margin:0}.langs ul a{display:block;padding:7px 10px;border-radius:8px;text-decoration:none;color:#554963}.langs ul a:hover{background:#f1eadb}.langs ul a[aria-current]{background:#ece3f2;font-weight:700}h1{font:700 clamp(27px,6vw,38px)/1.15 Georgia,serif;margin:0 0 8px}.updated{margin:0 0 24px;font-size:13px;color:#93859a}.panel{padding:24px 28px;border:2px solid #b3a1c6;border-radius:18px;background:#fffcf4;box-shadow:0 5px 0 #d8cbdc}h2{font-size:18px;margin:28px 0 6px;color:#6d5a82}h2:first-child{margin-top:0}p,li{color:#6f6278}ul{margin:6px 0 14px;padding:0;padding-inline-start:22px}li{margin:4px 0}code{font-size:13px;background:#f1eadb;padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}.note{margin:18px 0 0;font-size:13px;color:#93859a}.back{display:inline-block;padding:14px 0 0;font-size:14px}@media(max-width:420px){main{padding:22px 14px 36px}.panel{padding:18px}header{margin-bottom:22px}}`;
 
+const attr=s=>esc(s).replace(/"/g,'&quot;');
+/** The /sobre/ page (Portuguese only for now) sits in the footer of every policy page and in the sitemap. */
+export const ABOUT='/sobre/';
+
 export function page(t,all){
   const dir=RTL.has(t.code)?' dir="rtl"':'';
   const alt=all.map(o=>`  <link rel="alternate" hreflang="${o.code}" href="${SITE}${pathOf(o.code)}">`);
@@ -100,9 +104,20 @@ export function page(t,all){
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#81709f">
-  <meta name="description" content="${esc(t.description).replace(/"/g,'&quot;')}">
+  <meta name="description" content="${attr(t.description)}">
   <title>viagem · ${esc(t.title)}</title>
   <link rel="canonical" href="${SITE}${pathOf(t.code)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="viagem">
+  <meta property="og:url" content="${SITE}${pathOf(t.code)}">
+  <meta property="og:title" content="viagem · ${attr(t.title)}">
+  <meta property="og:description" content="${attr(t.description)}">
+  <meta property="og:image" content="${SITE}/og.jpg?v=2c">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="${t.code.replace('-','_')}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${SITE}/og.jpg?v=2c">
 ${alt.join('\n')}
   <link rel="icon" href="/favicon.svg">
   <style>
@@ -121,7 +136,7 @@ ${menu.join('\n')}
   <article class="panel">
 ${body(t)}
   </article>${note}
-  <a class="back" href="/">${esc(t.back)}</a>
+  <a class="back" href="/">${esc(t.back)}</a> · <a class="back" href="${ABOUT}">${t.code==='pt-BR'?'Sobre o jogo e contato':'About viagem · contact'}</a>
 </main>
 </body>
 </html>
@@ -129,7 +144,7 @@ ${body(t)}
 }
 
 export function sitemap(all){
-  const urls=['/',...all.map(t=>pathOf(t.code))];
+  const urls=['/',ABOUT,...all.map(t=>pathOf(t.code))];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map(u=>`  <url><loc>${SITE}${u}</loc></url>`).join('\n')}

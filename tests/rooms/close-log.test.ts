@@ -125,7 +125,7 @@ test('room-side closes log their reason: binary message (1003), flood (4008), re
   e.fire('message',{data:JSON.stringify({t:'leave'})});assert.equal(e.closed?.code,1000);
   const f=join(o,room,'Lu');await o.alarm();assert.equal(f.closed?.code,4004);
   assert.deepEqual(logs.map(l=>[l.by,l.code,l.reason]),[
-    ['room',1003,'Texto esperado.'],['room',4008,'Limite de mensagens.'],['room',4003,'Nome ou classe inválidos.'],
+    ['room',1003,'Texto esperado.'],['room',4008,'Limite de mensagens.'],['room',4003,'Nome ou herói inválido. Escolhe de novo.'],
     ['room',4009,'Personagem entrou por outra conexão.'],['room',1000,'Saiu da sala.'],['room',4004,'Sala encerrada.']]);
   assert.equal(o.loop.active,false);
 });

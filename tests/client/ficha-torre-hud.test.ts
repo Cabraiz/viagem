@@ -13,6 +13,7 @@ import {blockSpeech,blockText,canEvolve,selectable,treeFor,type ObraView} from '
 import {DEFENSES,EVOLVE_PRICE,RECIPES,RECIPE_IDS,TOWER_TOKENS,UNITS_PER_TOKEN,forgePrice,priceOf,tokenProgress,tokensOf} from '../../src/rules/index.ts';
 import {icon} from '../../src/client/ui/icon.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
+import {HUD_CSS} from './hud-css.ts';
 
 const read=(path:string)=>readFileSync(new URL(`../../src/client/hud/${path}`,import.meta.url),'utf8');
 
@@ -78,7 +79,7 @@ test('the top bar\'s Grana: "R$ N" in .rh-camp-grana before the fichas, spoken "
   assert.match(css,/\.rh-camp-grana\{flex:none;[^}]*white-space:nowrap\}/,'the Grana never shrinks nor wraps');
   assert.match(css,/\.rh-camp-barra\{[^}]*flex:0 1 auto;min-width:16px\}/,'the bar gives way first');
   assert.match(css,/\.rh-camp-wall>\.ic,\.rh-camp-num\{flex:none\}/,'the sticker and the life never shrink');
-  assert.match(read('hud.css'),/\.rh-top \.rh-camp-barra\{flex:0 1 auto;min-width:16px\}/);
+  assert.match(HUD_CSS,/\.rh-top \.rh-camp-barra\{flex:0 1 auto;min-width:16px\}/);
 });
 
 test('prices: fichas for building, "🗼⬆ R$ N" for an evolution, "R$ N" for the forge, no material crate',()=>{

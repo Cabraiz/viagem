@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {BOTS_DEFAULT,BOTS_KEY,SOLO_FAILED,SOLO_GAP_MS,SOLO_MAP,SOLO_RETRY_MS,botsLabel,clampBots,islandFlag,readBots,saveBots,soloErrorText,
+import {BOTS_DEFAULT,BOTS_KEY,SOLO_FAILED,SOLO_GAP_MS,SOLO_MAP,SOLO_RETRY_MS,botsLabel,clampBots,islandFlag,readBots,saveBots,soloErrorText,soloSays,
   objectiveFromSearch,soloMemory,soloNext,soloCreateMs,soloOneRetry,soloPlan,soloProgress,soloRefused,soloRetryable,soloWithin,SOLO_CREATE_MS,SOLO_FIRST_CREATE_MS,SOLO_FIRST_JOIN_MS,SOLO_RETRY_GAP_MS,SOLO_STEPS,SOLO_STARTING,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
@@ -96,7 +96,11 @@ test('solo driver: waits offline / before the run / without the owner post, and 
 });
 
 test('solo errors are pt-BR: our messages pass, platform ones become the generic line',()=>{
-  assert.equal(soloErrorText(new Error('A cidade não baixou. Tente novamente.')),'A cidade não baixou. Tente novamente.');
+  assert.equal(soloErrorText(soloSays('A cidade não baixou. Tente novamente.')),'A cidade não baixou. Tente novamente.');
+  assert.equal(soloErrorText(soloRefused('Aguarde um minuto.')),'Aguarde um minuto.');
+  // A plain Error is not proof of a player text (a library's English one, auditoria-erros-cliente E4 item 5).
+  assert.equal(soloErrorText(new Error('WebSocket is already in CLOSING state')),SOLO_FAILED);
+  assert.equal(soloErrorText(new SyntaxError('Unexpected token <')),SOLO_FAILED);
   assert.equal(soloErrorText(new TypeError('Failed to fetch')),SOLO_FAILED);
   const timeout=new Error('signal timed out');timeout.name='TimeoutError';
   assert.equal(soloErrorText(timeout),SOLO_FAILED);
@@ -115,8 +119,8 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
   assert.match(main,/aria-label="Menos um bot"/);assert.match(main,/aria-label="Mais um bot"/);
   assert.match(main,/class="solo-bots-value" aria-live="polite"/);
   assert.match(main,/const island=islandFlag\(location\.search\);/);
-  // danca-no-podio: the menu dance lets go of its pages before the island loads (menu-dance.ts hold).
-  assert.match(main,/if\(island\)\{\s*const releaseDance=menuDance\.hold\(\);\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
+  // menu-sem-danca: no menu dance to hold before the island loads.
+  assert.match(main,/if\(island\)\{\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
   assert.match(main,/await openSolo\(selected,nickname\.trim\(\),\{bots,\s*onStep:[^\n]*\n\s*onJoined:/);
   assert.equal(main.match(/openExploration\(/g)?.length,1,'the island opens from one place only');
   const lobby=read('src/client/lobby.ts');
@@ -236,6 +240,6 @@ test('solo start: a first try without a socket enters on the second without an e
   assert.equal(soloRetryable(new DOMException('timeout','TimeoutError'),false),true);
   const lobby=read('src/client/lobby.ts');
   assert.match(lobby,/AbortSignal\.timeout\(soloCreateMs\(n\)\)/);
-  assert.match(lobby,/throw r\.status<500\?soloRefused\(message\):new Error\(message\)/,'a 5xx is a cold Worker: retried');
+  assert.match(lobby,/throw !r\.ok&&r\.status<500\?soloRefused\(message\):soloSays\(message\)/,'a 5xx is a cold Worker: retried');
   assert.match(lobby,/n===0\?soloWithin\(joining,SOLO_FIRST_JOIN_MS,\(\)=>!fresh\.connected&&!fresh\.mapLoad\):joining/);
 });

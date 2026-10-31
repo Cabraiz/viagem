@@ -23,6 +23,7 @@ import {ART_CELL} from '../city/art-plan.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {TILE_X} from '../city/projection.ts';
 import {HERO_DRAW_SCALE} from '../draw-scale.ts';
+import {CREW_PX} from './tower-crew.ts';
 import {CITY_DISTANCE_SCALE,DEFENSES} from '../../../rules/index.ts';
 
 export type TowerKind=
@@ -354,17 +355,16 @@ export function shakeOffset(amplitude:number,ms:number,out:{x:number;y:number}={
 export const ART_CELL_U=ART_CELL;
 export const towerArtScale=(diamondPx:number,cell:number=ART_CELL)=>diamondPx/(2*TILE_X)/ART_SCALE*cell/ART_CELL;
 /**
- * The ramo A posts (card torres-ramo-a-postos, the user's option B, 28/10): base and crew drawn together at the hero's
- * size instead of the scenery's, so a soldier stands as tall as the hero drawn now (96 world px reference × actor scale
- * × HERO_DRAW_SCALE). One parameter: their crews stand RAMO_A_CREW_PX art px in the sheets (one ruler for the 7, the
- * Andaime's at 155), so the posts follow HERO_DRAW_SCALE alone when it changes.
+ * Every crewed defense (the ramo A posts since 28/10, all of them since 31/10) draws base and crew at the hero's size
+ * instead of the scenery's, so a soldier stands as tall as the hero drawn now (96 world px reference × actor scale ×
+ * HERO_DRAW_SCALE) in fantasma, obra and pronta alike. Ruler: CREW_PX (tower-crew.ts), the ramo A's at 155.
  */
 export const RAMO_A_POSTS:ReadonlySet<TowerKind>=new Set<TowerKind>(['vigia-do-predio','vigias-armados','atiradores-do-telhado',
   'ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper','equipe-antimaterial']);
 export const RAMO_A_CREW_PX=155;
-/** World px per art px of a defense's delivered sheets: the scenery's (`artScale`), or the hero's for the ramo A posts. */
+/** World px per art px of a defense's delivered sheets: the hero's for a crewed kind, else the scenery's (`artScale`). */
 export const towerKindScale=(kind:TowerKind,artScale:number,actorScale:number)=>
-  RAMO_A_POSTS.has(kind)?96*actorScale*HERO_DRAW_SCALE/RAMO_A_CREW_PX:artScale;
+  CREW_PX[kind]?96*actorScale*HERO_DRAW_SCALE/CREW_PX[kind]!:artScale;
 /** Texture px per art px of a sheet: its lite copy's cell (scripts/art-lite.mjs) over the delivered cell. */
 export const textureRatio=(file:Pick<ArtFile,'cell'|'liteCell'>)=>file.liteCell?file.liteCell[0]/file.cell[0]:1;
 

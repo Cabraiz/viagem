@@ -282,7 +282,7 @@ const INV_HERO={x:12,y:15};
 const INV_FIXTURE={
   meio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'coxinha',level:2}],
   cheio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'escopeta',level:3},{id:'rifle',level:4},{id:'coxinha',level:3},{id:'kit-torre',level:1}],
-  kit:[{id:'faca',level:1},{id:'pistola',level:2},{id:'kit:morteiro',level:1},{id:'coxinha',level:2},{id:'kit:muro',level:6}],
+  kit:[{id:'faca',level:1},{id:'pistola',level:2},{id:'kit:vigia-do-predio',level:1},{id:'coxinha',level:2},{id:'kit:muro',level:6}],
 };
 /** What the sim would do to p1 for a command the sandbox accepts (no checks: `recusa=` shows the refusals). */
 function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:number}>(p:P,command:InventoryCommand):P{

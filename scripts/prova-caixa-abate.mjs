@@ -3,7 +3,7 @@
 // swiftshader). 1) the start: the crates on screen (only the hero's near one, the pistola) → inicio.png;
 // 2) the hero wipes the horde ({t:'lab',wipe:true}) and the kill crates fall where the monsters died: CDP screencast frames
 // + frames.json. For step 2 run it with KILL_CRATE_CHANCE forced to 1 (a local edit, never committed).
-//   npx vite build --mode development --outDir <dist>
+//   NODE_ENV=development npx vite build --mode development --outDir <dist>
 //   node scripts/prova-caixa-abate.mjs --dist <dist> --saida <dir> [--port 8806] [--web-port 4216] [--horda 6]
 // Needs the heavy slot (board tools/pesado.mjs) and a browser slot (locks/browser-1|2) taken by the caller.
 import {spawn} from 'node:child_process';
@@ -38,7 +38,7 @@ try{
   await p.evaluate(()=>document.getElementById('enter-island').click());
   await p.waitForFunction(()=>window.__partidaPronta===true,null,{timeout:300000,polling:1000});
   await sleep(4000);
-  const takeOffer=()=>p.evaluate(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/Levar os indicados/.test(x.textContent??''));b?.click();return !!b;});
+  const takeOffer=()=>p.evaluate(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/Levar os indicados|^\s*Pular/.test(x.textContent??''));b?.click();return !!b;});
   const send=m=>p.evaluate(m=>{const s=window.__island.scene.hooks.net.socket;if(s?.readyState===1)s.send(JSON.stringify(m));},m);
   const state=()=>p.evaluate(()=>{const net=window.__island.scene.hooks.net,view=net.feed.peek(),me=net.predicted;
     let near=0;for(const e of view.enemies)if(e.hp>0&&Math.hypot(e.x-me.x,e.y-me.y)<12)near++;
@@ -54,11 +54,24 @@ try{
   await sleep(600);
   const marks=[{what:'wipe',t:Date.now()/1000}];
   await send({t:'lab',wipe:true});
-  for(let i=0;i<12;i++){await takeOffer();await sleep(250);}
-  await sleep(2500);
+  for(let i=0;i<28;i++){await takeOffer();await sleep(250);}
+  await sleep(1000);
   await cdp.send('Page.stopScreencast');
   const depois=await state();console.log('depois',JSON.stringify(depois));
   await p.screenshot({path:join(OUT,'depois.png')});
+  // Each crate on screen: its sprite (horde renderer's pickup pool) and a ring + label over it → depois-marcado.png.
+  const marcas=await p.evaluate(()=>{const sc=window.__island.scene,cam=sc.cameras.main,out=[];
+    for(const [id,e] of sc.horde.pickups.entries){const a=e.item;if(a.kind!=='chest')continue;const im=a.image;
+      const q=sc.project({x:a.nx,y:a.ny}),x=(q.x-cam.worldView.x)*cam.zoom,y=(q.y-cam.worldView.y)*cam.zoom;
+      out.push({id,resource:a.resource,visible:im.visible,alpha:+im.alpha.toFixed(2),hidden:!!a.hidden,x:Math.round(x),y:Math.round(y)});
+      const d=document.createElement('div');d.className='prova-marca';
+      d.style.cssText=`position:fixed;left:${x-22}px;top:${y-40}px;width:44px;height:44px;border:3px solid #ff2d55;border-radius:50%;z-index:99999;pointer-events:none`;
+      const t=document.createElement('div');t.textContent=a.resource??'?';
+      t.style.cssText=`position:fixed;left:${x-50}px;top:${y+6}px;width:100px;text-align:center;font:bold 11px sans-serif;color:#fff;background:#ff2d55;border-radius:4px;z-index:99999;pointer-events:none`;
+      document.body.append(d,t);}
+    return out;});
+  console.log('marcas',JSON.stringify(marcas));
+  await p.screenshot({path:join(OUT,'depois-marcado.png')});
   frames.forEach((f,i)=>writeFileSync(join(OUT,`f${String(i).padStart(4,'0')}.jpg`),Buffer.from(f.data,'base64')));
   writeFileSync(join(OUT,'frames.json'),JSON.stringify({marks,times:frames.map(f=>f.t),inicio,depois,errors},null,1));
   console.log('frames',frames.length,'errors',errors.length,errors.slice(0,3));

@@ -138,6 +138,20 @@ test('place refused: the kit stays (taken, off the ground, too far, not a kit, t
   assert.ok(ana.build.weapons.some(i=>i.id==='kit:holofote'),'every refusal kept the kit');
 });
 
+test('bots: a bicho root kit (torres-3-base-9) goes the same way: planLoot builds it, placeNear spends it, the teto counts it', ()=>{
+  for(const root of BICHO_ROOTS){
+    const {sys,ana,inv}=run();
+    const at=square(6,1);ana.x=centre(at.c,at.r).x;ana.y=centre(at.c,at.r).y;
+    ana.build.weapons.push(kitItem(root));
+    const me={...ana,weapons:ana.build.weapons,hand:0,maxHp:ana.stats.maxHp} as never;
+    assert.deepEqual(planLoot({players:[me],pickups:[],enemies:[]},me,ana).command,{t:'kit',slot:1},root);
+    const r=inv.placeNear('ana',1);
+    assert.equal(r.ok,true,`${root}: ${JSON.stringify(r)}`);
+    assert.ok(sys.stonewards.state.defenses!.list.some(x=>x.kind===root),root);
+    assert.equal(sys.stonewards.state.defenses!.built,1,`${root} counts against the teto`);
+  }
+});
+
 test('a muro kit lays its charges one by one, then leaves the slot', ()=>{
   const {sys,ana,inv}=run();
   ana.build.weapons.push(kitItem('muro'));

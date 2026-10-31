@@ -133,6 +133,8 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
  * refuse the masks.
  * 43 given by the integration queue (tools/fila.mjs, lote 20261030-124249) to: NEW-20261030-ORQ-colisao-entre-herois.
+ * Next (the queue numbers it) since the towers' força (card torres-3-base-9-evolucoes-regras): `level` on the structures
+ * (absent at 1); an older decoder would refuse the structure mask.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=43;
@@ -515,9 +517,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     parts:c(optional(count)),
     // D-051: a nest's size and whether the team has seen it (the minimap's fog).
     size:c(optional(str)),seen:c(optional(trueFlag)),
-    // D-052 (free build): a piece's top-left cell on the build grid and its rot; only a tower evolving to a larger
-    // square moves its cell (the square stays centred, sim towers/system.ts).
-    c:c(optional(count)),r:c(optional(count)),rot:c(optional(count))}},
+    // D-052: a piece's top-left cell and rot (a tower growing keeps its square centred); torres-3-base-9: a bicho's força.
+    c:c(optional(count)),r:c(optional(count)),rot:c(optional(count)),level:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
@@ -1477,7 +1478,6 @@ export class FrameDecoder {
       return {ok:false,error:error instanceof FrameError?error.message:'malformed frame'};
     }
   }
-
   /**
    * Call on every reconnect (new socket, restarted room): forgets baselines and the last seq, so the new
    * server encoder's frames are accepted; keeps the seen event ids, so resent events are not applied twice.

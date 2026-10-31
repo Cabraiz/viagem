@@ -53,7 +53,9 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
    * D-052, free build: a built piece's top-left cell on the build grid (contract/build.ts) and its rot (absent = 0).
    * Every defense, the root included, and the kinds 'muro' and 'barricada'; x,y stay the footprint's centre.
    */
-  c?:number;r?:number;rot?:number}
+  c?:number;r?:number;rot?:number;
+  /** torres-3-base-9-evolucoes: a bicho tower's força, absent at 1 (sim towers/forca.ts). */
+  level?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

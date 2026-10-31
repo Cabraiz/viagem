@@ -116,6 +116,7 @@ export const ENEMY_STRIDES:Readonly<Record<string,number>>=Object.freeze({
   'robo-de-atendimento':0.158,
   'rodinho-do-sinal':0.567,
   'rolo-lava-rapido':0.452,
+  'sanfoneiro':0.557,
   'sapo-cururu':1.394,
   'seguranca-de-shopping':0.854,
   'servidor-fossilizado':1.225,

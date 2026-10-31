@@ -5,6 +5,7 @@ import {setArtIndex,parseArtIndex,artPiece} from '../../src/client/art/manifest.
 import {enemyFrame,enemyPieceLoads,fileInfo,loopAnim,rowFrames} from '../../src/client/art/horde-art.ts';
 import {MENDIGO,gameEnemyArt,keepsOwnArt} from '../../src/client/art/mendigo.ts';
 import {INIMIGOS_LIBERADOS} from '../../src/rules/inimigos-liberados.ts';
+import {ENEMY_STRIDES} from '../../src/client/art/enemy-strides.ts';
 
 // Card sanfoneiro-brinquedo-no-jogo: the wooden toy sanfoneiro, 16-frame idle in 8 directions plus its cast shadow.
 const EMPTY={version:2,groups:{}};
@@ -25,7 +26,7 @@ test('the sanfoneiro piece: idle 16 × 8 and its shadow on the same grid',()=>{
   assert.ok(enemyPieceLoads('sanfoneiro').map(l=>l.key).includes('art:enemy:sanfoneiro:shadow/idle'),'the shadow sheet loads');
 });
 
-test('every row loops its 16 frames and the idle serves the walk until the walk sheet lands',()=>{
+test('every row loops its 16 frames, the idle standing and the walk moving',()=>{
   load();
   const info=fileInfo('sanfoneiro','idle',SANF.files.idle),frameMs=1000/info.fps;
   for(let r=0;r<8;r++){
@@ -36,7 +37,17 @@ test('every row loops its 16 frames and the idle serves the walk until the walk 
   }
   const piece=artPiece('inimigos','sanfoneiro')!;
   assert.equal(loopAnim(piece,false,false),'idle');
-  if(!SANF.files.walk)assert.equal(loopAnim(piece,true,false),'idle');
+  assert.equal(loopAnim(piece,true,false),'walk');
+});
+
+test('the walk: 16 × 8 and its shadow on the idle grid, the stride from scripts/passada-inimigos.mjs',()=>{
+  const walk=SANF.files.walk,shadow=SANF.files['shadow/walk'],idle=SANF.files.idle;
+  assert.equal(walk.frames,16);assert.equal(walk.directions,8);
+  for(const k of ['cell','frames','directions','dirFrames','anchor','fps'])assert.deepEqual(shadow[k],walk[k],k);
+  assert.deepEqual(walk.cell,idle.cell,'the same cell as the idle');assert.deepEqual(walk.anchor,idle.anchor,'the same feet');
+  assert.ok(ENEMY_STRIDES.sanfoneiro>0.3&&ENEMY_STRIDES.sanfoneiro<0.9,`stride ${ENEMY_STRIDES.sanfoneiro}`);
+  load();
+  assert.ok(enemyPieceLoads('sanfoneiro').map(l=>l.key).includes('art:enemy:sanfoneiro:shadow/walk'),'the walk shadow loads');
 });
 
 test('liberated with his own art: never drawn as the mendigo',()=>{

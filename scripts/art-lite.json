@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3199,
-  "bytes": 1949165636,
-  "liteBytes": 664437714,
+  "files": 3203,
+  "bytes": 1955216148,
+  "liteBytes": 665773274,
   "worstPsnr": 31.3,
   "worstShownPsnr": 30.4
  },
@@ -11916,6 +11916,30 @@
    ],
    "psnr": 38,
    "shownPsnr": 39.9
+  },
+  "enemies-pc/sanfoneiro/walk-sombra.webp": {
+   "source": "b4ffeb93b2b582c6eea02af683036a4b4fb7b9dd436a6efea73f4584e6f61a59",
+   "lite": "74230fb7c0863121ba24d06af1a0f2ec25e1e4a38f7f3c5eac0a315ec16835d9",
+   "bytes": 91818,
+   "liteBytes": 85018,
+   "liteCell": [
+    93,
+    93
+   ],
+   "psnr": 62.8,
+   "shownPsnr": 56.8
+  },
+  "enemies-pc/sanfoneiro/walk.webp": {
+   "source": "abb740aeb3dee633f8d396ceb3d4edca787d4ff831777e6f40d266b1eea8a0d0",
+   "lite": "eed8fd37042118676947216ac6b26eb0599a40286f234ccbc455614f309d02ae",
+   "bytes": 2933438,
+   "liteBytes": 743826,
+   "liteCell": [
+    185,
+    185
+   ],
+   "psnr": 38.3,
+   "shownPsnr": 40.4
   },
   "enemies-pc/sapo-cururu/death.webp": {
    "source": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",
@@ -24924,6 +24948,30 @@
    ],
    "psnr": 37.6,
    "shownPsnr": 37.9
+  },
+  "enemies/sanfoneiro/walk-sombra.webp": {
+   "source": "b4ffeb93b2b582c6eea02af683036a4b4fb7b9dd436a6efea73f4584e6f61a59",
+   "lite": "ced3937a2abad01c4c15fec9bffbae8ff7241fee39b93b67fab92333e23e5abf",
+   "bytes": 91818,
+   "liteBytes": 61918,
+   "liteCell": [
+    67,
+    67
+   ],
+   "psnr": 61.4,
+   "shownPsnr": 44.3
+  },
+  "enemies/sanfoneiro/walk.webp": {
+   "source": "abb740aeb3dee633f8d396ceb3d4edca787d4ff831777e6f40d266b1eea8a0d0",
+   "lite": "d99c749ee46e4728ff26aec6219ae4e007d42b4d03d732d17dbc87b67e386da3",
+   "bytes": 2933438,
+   "liteBytes": 444798,
+   "liteCell": [
+    133,
+    133
+   ],
+   "psnr": 38.1,
+   "shownPsnr": 38.5
   },
   "enemies/sapo-cururu/death.webp": {
    "source": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",

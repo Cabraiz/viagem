@@ -36722,9 +36722,95 @@
             93,
             93
           ]
+        },
+        "walk": {
+          "file": "sanfoneiro/walk.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 16,
+          "directions": 8,
+          "dirFrames": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ],
+          "anchor": [
+            0.37109375,
+            0.7421875
+          ],
+          "fps": 16,
+          "pages": [
+            {
+              "file": "sanfoneiro/walk.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "abb740aeb3dee633f8d396ceb3d4edca787d4ff831777e6f40d266b1eea8a0d0"
+            }
+          ],
+          "sha256": "abb740aeb3dee633f8d396ceb3d4edca787d4ff831777e6f40d266b1eea8a0d0",
+          "liteCell": [
+            133,
+            133
+          ],
+          "pcCell": [
+            185,
+            185
+          ]
+        },
+        "shadow/walk": {
+          "file": "sanfoneiro/walk-sombra.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 16,
+          "directions": 8,
+          "dirFrames": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ],
+          "anchor": [
+            0.37109375,
+            0.7421875
+          ],
+          "fps": 16,
+          "pages": [
+            {
+              "file": "sanfoneiro/walk-sombra.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "b4ffeb93b2b582c6eea02af683036a4b4fb7b9dd436a6efea73f4584e6f61a59"
+            }
+          ],
+          "sha256": "b4ffeb93b2b582c6eea02af683036a4b4fb7b9dd436a6efea73f4584e6f61a59",
+          "liteCell": [
+            67,
+            67
+          ],
+          "pcCell": [
+            93,
+            93
+          ]
         }
       },
-      "sha256": "a9e5dd878e48fffe32f3d287419afaf4e3f1ec3bcdebf29caa759f9223d9827f"
+      "sha256": "70222f6ad42f39e9e2f197946e139fe329be70edc7bc6e738d50b56bcb6e864a"
     },
     "sapo-cururu": {
       "kind": "animations",

@@ -31,7 +31,9 @@ import {pointAt} from '../../src/sim/chaveiro/route.ts';
 import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS,BUDGET_BASE,BUDGET_PER_HIT,CAR_HIT_UNITS,CAR_LIMIT,CAR_STOP,
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
   GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,CHAVEIRO_CLOCK,clockWait,createChaveiro,planChaveiro,type ChaveiroClockRule,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
-import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
+import {ENEMY_DAMAGE,ROUND_COUNT,planRound} from '../../src/rules/index.ts';
+/** inimigos-3x-fortes: a blow's hit units on the car in the world's round (CAR_HIT_UNITS × ENEMY_DAMAGE, rounded). */
+const units=(w:{round:{index:number}},k:keyof typeof CAR_HIT_UNITS)=>Math.round(CAR_HIT_UNITS[k]*ENEMY_DAMAGE(w.round.index));
 import {NEST_PUSH_NEAR,NEST_PUSH_TEAM,PUSH_BOTS,PUSH_TRIP_SECONDS,botSpeed,objectiveTask} from '../../src/sim/bot-brain.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
 
@@ -127,10 +129,10 @@ test('car hit: alarm (+1.5 s per hit, at most 8 s ahead), the moto rides around 
   const s0=r.sys.state.moto.s,tick=r.world.tick;
   r.sys.hitCar(r.world,addEnemy(r.world,'e1',CAR));
   assert.equal(r.sys.state.car.alarmUntil,tick+ticks(ALARM_PER_HIT_SECONDS));
-  assert.equal(r.sys.state.budget,BUDGET_BASE+BUDGET_PER_HIT);
+  assert.equal(r.sys.state.budget,BUDGET_BASE+units(r.world,'normal')*BUDGET_PER_HIT);
   const ev=r.world.flush();
   assert.equal(ofType(ev,'alarm').length,1);
-  assert.deepEqual(ofType(ev,'structure').map(e=>e.type==='structure'&&[e.id,e.hp,e.maxHp]),[[CAR_ID,CAR_LIMIT-1,CAR_LIMIT]]);
+  assert.deepEqual(ofType(ev,'structure').map(e=>e.type==='structure'&&[e.id,e.hp,e.maxHp]),[[CAR_ID,CAR_LIMIT-units(r.world,'normal'),CAR_LIMIT]]);
   const got=r.step(ticks(ALARM_PER_HIT_SECONDS)-1);
   assert.equal(r.sys.state.moto.s,s0,'no progress while the alarm sounds');
   assert.equal(r.sys.state.moto.mode,'volta');
@@ -164,11 +166,11 @@ test('car limit: elite 3 and boss 2 hits (one alarm each), parts at 25/50/75/90 
   const r=rig();r.step(2);r.world.flush();
   const t0=r.world.tick;
   r.sys.hitCar(r.world,addEnemy(r.world,'el',CAR,{elite:true}));
-  assert.equal(r.sys.state.car.hits,CAR_HIT_UNITS.elite);
+  assert.equal(r.sys.state.car.hits,units(r.world,'elite'));
   // The alarm counts the blow, not its weight (a boss at the car stalls the moto half the time, not for good).
   assert.equal(r.sys.state.car.alarmUntil,t0+ticks(ALARM_PER_HIT_SECONDS));
   r.sys.hitCar(r.world,addEnemy(r.world,'bo',CAR,{boss:true}));
-  const both=CAR_HIT_UNITS.elite+CAR_HIT_UNITS.boss;
+  const both=units(r.world,'elite')+units(r.world,'boss');
   assert.deepEqual([CAR_HIT_UNITS.elite,CAR_HIT_UNITS.boss],[3,2]);
   assert.equal(r.sys.state.car.alarmUntil,t0+2*ticks(ALARM_PER_HIT_SECONDS));
   assert.equal(r.sys.state.car.hits,both);assert.equal(r.sys.state.budget,BUDGET_BASE+both*BUDGET_PER_HIT);
@@ -290,7 +292,7 @@ test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phas
   assert.deepEqual(r.sys.buy(r.world,'p','pacoca'),{ok:false,reason:'phase'});
   // The buffs: damage dealt × 1.3, damage taken × 0.7 (core), walking × 1.25 (players step / prediction).
   const q=addPlayer(r.world,'q',{x:m.x,y:m.y+1});q.stats.armor=0;
-  q.guardUntil=r.world.tick+100;r.world.damagePlayer('q',10);assert.equal(q.hp,1e6-7);
+  q.guardUntil=r.world.tick+100;r.world.damagePlayer('q',10);assert.equal(q.hp,1e6-10*ENEMY_DAMAGE(r.world.round.index)*.7);
   const target=addEnemy(r.world,'dummy',{x:0,y:0},{hp:100,maxHp:100});
   q.mightUntil=r.world.tick+100;r.world.damageEnemy('dummy',10,'q');assert.equal(target.hp,100-13);
   // Sales to enemies (stock untouched): the nearest within 3 u, then a 20 s gap.
@@ -345,9 +347,9 @@ test('the bill: kills pay the wallets (1/5/50), abrindo 15 s at the car, victory
     assert.deepEqual(ofType(got,'moto').map(e=>e.type==='moto'&&e.mode),['chegou','abrindo']);
     r.step(ticks(ABRINDO_SECONDS)-1);assert.deepEqual(r.outcomes,[]);
     r.step(1);assert.deepEqual(r.outcomes,['victory']);
-    const res=r.sys.result(r.world.tick,r.world.round)!,budget=BUDGET_BASE+5*BUDGET_PER_HIT;
+    const hits=5*units(r.world,'normal'),res=r.sys.result(r.world.tick,r.world.round)!,budget=BUDGET_BASE+hits*BUDGET_PER_HIT;
     assert.deepEqual({budget:res.budget,grana:res.grana,paid:res.paid,debt:res.debt,eta:res.eta,hits:res.hits},
-      {budget,grana,paid:Math.min(grana,budget),debt:Math.max(0,budget-grana),eta:0,hits:5});
+      {budget,grana,paid:Math.min(grana,budget),debt:Math.max(0,budget-grana),eta:0,hits});
     assert.deepEqual(res.share,[{id:'p',had:grana,paid:Math.min(grana,budget)}]);
     assert.equal(payer.grana,grana-Math.min(grana,budget),'the wallet paid the bill');
     assert.deepEqual(r.sys.result(r.world.tick,r.world.round),res,'paid once: the same bill again, nothing more taken');
@@ -389,7 +391,7 @@ test('the boss besieges the car when no player is nearer: one blow (2 hits) ever
   assert.ok(Math.hypot(b.x-CAR.x,b.y-CAR.y)<=BOSS_SIEGE_REACH+1e-9,'walked to the car');
   assert.ok(hits.length>=2,`${hits.length} blows`);
   for(let i=1;i<hits.length;i++)assert.equal(hits[i]-hits[i-1],BOSS_SIEGE_EVERY);
-  assert.equal(r.sys.state.car.hits,CAR_HIT_UNITS.boss*hits.length);
+  assert.equal(r.sys.state.car.hits,units(r.world,'boss')*hits.length);
   // A player nearer than the car: the boss goes for the player.
   far.x=b.x+1.5;far.y=b.y;const n=hits.length;
   for(let i=0;i<ticks(6);i++){r.world.step();r.sys.step(r.world);}
@@ -566,9 +568,9 @@ test("clock: the game's opens at 5:00 (etaS 300) with no stops; the rig's 40 s w
 test('clock: each hit unit on the car adds perHit s (elite 3 units, the rate cap counts), the alarm sounds but never stops him',()=>{
   const r=rig(7,{clock:CLOCK,rate:3});r.step(ticks(1)-r.world.tick%ticks(1));r.world.flush();
   const w0=r.sys.state.wait!,eta0=r.sys.eta(r.world.tick);
-  r.sys.hitCar(r.world,addEnemy(r.world,'n',CAR));
-  assert.equal(r.sys.state.wait,w0+ticks(CLOCK.perHit));assert.equal(r.sys.state.added,ticks(CLOCK.perHit));
-  assert.ok(Math.abs(r.sys.eta(r.world.tick)-eta0-CLOCK.perHit)<1e-9,'the ETA grows by the same');
+  r.sys.hitCar(r.world,addEnemy(r.world,'n',CAR));const u=units(r.world,'normal');
+  assert.equal(r.sys.state.wait,w0+u*ticks(CLOCK.perHit));assert.equal(r.sys.state.added,u*ticks(CLOCK.perHit));
+  assert.ok(Math.abs(r.sys.eta(r.world.tick)-eta0-u*CLOCK.perHit)<1e-9,'the ETA grows by the same');
   r.sys.hitCar(r.world,addEnemy(r.world,'el',CAR,{elite:true}));
   assert.equal(r.sys.state.car.hits,3,'capped at 3 units this second');
   assert.equal(r.sys.state.added,3*ticks(CLOCK.perHit),'only the units taken add');
@@ -587,8 +589,8 @@ test('clock: hits on the last stretch add nothing; on the unlocking they put abr
   while(r.sys.state.moto.task==='anda')r.step(1);
   r.step(ticks(3));const left=r.sys.state.moto.left;
   r.sys.hitCar(r.world,addEnemy(r.world,'b',CAR));
-  assert.equal(r.sys.state.moto.left,left+ticks(CLOCK.abrindoPerHit));
-  assert.equal(r.sys.state.added,ticks(CLOCK.abrindoPerHit));
+  assert.equal(r.sys.state.moto.left,left+units(r.world,'normal')*ticks(CLOCK.abrindoPerHit));
+  assert.equal(r.sys.state.added,units(r.world,'normal')*ticks(CLOCK.abrindoPerHit));
   for(let i=0;i<10;i++)r.sys.hitCar(r.world,addEnemy(r.world,`c${i}`,CAR));
   assert.equal(r.sys.state.moto.left,ticks(ABRINDO_SECONDS),'never more than the whole unlocking');
   const m=r.sys.moto();addEnemy(r.world,'t',{x:m.x+.5,y:m.y});
@@ -601,8 +603,8 @@ test('clock: hits on the last stretch add nothing; on the unlocking they put abr
 test("clock: the car's hit limit is the defeat (the time added has no ceiling of its own)",()=>{
   const r=rig(7,{clock:CLOCK});r.step(2);
   const normal=addEnemy(r.world,'n',CAR);
-  while(r.sys.state.car.hits<CAR_LIMIT-1)r.sys.hitCar(r.world,normal);
-  assert.equal(r.sys.state.added,(CAR_LIMIT-1)*ticks(CLOCK.perHit),'every unit added');
+  while(r.sys.state.car.hits+units(r.world,'normal')<CAR_LIMIT)r.sys.hitCar(r.world,normal);
+  assert.equal(r.sys.state.added,r.sys.state.car.hits*ticks(CLOCK.perHit),'every unit added');
   assert.deepEqual(r.outcomes,[]);
   r.sys.hitCar(r.world,normal);
   assert.deepEqual(r.outcomes,['defeat']);assert.equal(r.sys.result(r.world.tick,r.world.round)!.cause,'car');

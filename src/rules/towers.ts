@@ -27,7 +27,7 @@
  * camp's 1×1 ones included, can hold a Vigia; a tier larger than its site's maxSize is refused (on a 1×1 site the root
  * can only become a Rojão or a Holofote). The Gustavão is not built on a site: it moves onto the laid rail (RailSite).
  */
-import {ticks,type FreePiece} from '../contract/index.ts';import {towerShown} from './kits-off.ts';
+import {SIM_HZ,ticks,type FreePiece} from '../contract/index.ts';import {towerShown} from './kits-off.ts';
 import {CITY_DISTANCE_SCALE} from './scale.ts';
 import {UNITS_PER_TOKEN} from './stonewards.ts';
 /** Site size a defense needs (structurally the maps port's BuildSize; rules may not import maps). */
@@ -37,7 +37,18 @@ export type DefenseId=
   | 'vigia-do-predio'
   | 'vigias-armados'|'atiradores-do-telhado'|'ninho-de-metralhadora'|'guarnicao-do-predio'|'ninho-do-sniper'|'equipe-antimaterial'
   | 'rojao-de-festa'|'morteiro'|'lanca-foguetes'|'obuseiro'|'gustavao'
-  | 'holofote'|'arame-e-sirene'|'antiaerea-quadrupla'|'posto-de-radar';
+  | 'holofote'|'arame-e-sirene'|'antiaerea-quadrupla'|'posto-de-radar'
+  | BichoId;
+/**
+ * Card NEW-20261031-ORQ-torres-3-base-9-evolucoes-regras (the user, 31/10): the tower tree of today, 3 initial towers
+ * (the only kits) that each evolve into 3 = 9 evolutions (never a kit, an offer or a drop). Ids by their way of
+ * hurting; the art (card torres-bichos-gore-arte: armed cartoon gore critters) names them later. The 16 above are
+ * legacy: hidden (kits-off TOWERS_SHOWN), kept for the DICT, old checkpoints and live rooms.
+ */
+export type BichoId=
+  | 'bicho-tiro'|'bicho-rajada'|'bicho-mira'|'bicho-metralha'
+  | 'bicho-bomba'|'bicho-morteiro'|'bicho-foguete'|'bicho-fogo'
+  | 'bicho-gosma'|'bicho-teia'|'bicho-choque'|'bicho-farol';
 export type Branch='A'|'B'|'C';
 export type Hits='ground'|'air'|'all';
 export type TargetMode='nearest'|'strongest'|'cluster'|'aura'|'none';
@@ -60,6 +71,8 @@ export interface DefenseDef {
   slow?:number;dazzle?:{ticks:number;chance:number};radar?:{reach:number;bonus:number};
   /** Needs the laid rail (the Gustavão). */
   rail?:true;
+  /** The tree of today (BichoId): size 1 like the Guarita, damage from TOWER_DPS_BASE, levels of força paid in Grana. */
+  bicho?:true;
 }
 
 /**
@@ -87,12 +100,42 @@ export const DEFENSE_LIMIT=12,GUSTAVAO_LIMIT=1;
 /** Share of maxHp at or under which a defense is `danificada`. */
 export const DAMAGED_AT=.5;
 
+/**
+ * torres-3-base-9-evolucoes: every tower of the tree of today hurts the same, TOWER_DPS_BASE damage per second at força 1
+ * (the Guarita did 8). They differ only in the way (one target, several, the strongest, area, around itself, slow,
+ * dazzle, radar). Counted like the ramo B (NEW-20261030-ORQ-ramo-b-e-6p-facil): an impact of radius `a` reaches
+ * hitsPerImpact(a) = 1 + 0.1·π·a² enemies, the aura its whole range. Slow, dazzle and radar come on top (control).
+ */
+export const TOWER_DPS_BASE=10;
+export const hitsPerImpact=(radius:number)=>radius>0?1+.1*Math.PI*radius*radius:1;
+/** A defense's effective damage per second (força 1, no tomes): damage × targets × enemies per impact ÷ cooldown. */
+export const effectiveDps=(d:Pick<DefenseDef,'damage'|'shots'|'area'|'range'|'target'|'cooldown'>)=>
+  d.damage*(d.target==='aura'?hitsPerImpact(d.range):d.shots*hitsPerImpact(d.area))*SIM_HZ/d.cooldown;
+/**
+ * Força (the user: "com dinheiro você pudesse aumentar a força da torre"): a built tower of the tree of today goes from
+ * força 1 to TOWER_LEVEL_MAX, each step paid in R$ from the wallet of who orders it, at once (no obra). Per step +50 %
+ * of the base damage and +25 % of the base life; the price grows (TOWER_LEVEL_PRICE[n] takes it to força n). Evolving
+ * keeps the força.
+ */
+export const TOWER_LEVEL_MAX=5;
+export const TOWER_LEVEL_PRICE:Readonly<Record<2|3|4|5,number>>=Object.freeze({2:15,3:30,4:50,5:80});
+export const levelDamage=(level=1)=>1+.5*(Math.max(1,level)-1);
+export const levelHp=(level=1)=>1+.25*(Math.max(1,level)-1);
+/** What the next força of a tower at `level` costs (R$), or undefined at the top. */
+export const levelPrice=(level=1):number|undefined=>level>=TOWER_LEVEL_MAX?undefined:TOWER_LEVEL_PRICE[(Math.max(1,level)+1) as 2|3|4|5];
+/** The `upgrade` branch that asks for one more força instead of an evolution (room.ts, the HUD, the bots). */
+export const FORCA_BRANCH='forca';
+/** Evolving one of the 3 initials into one of its 3 (R$, from the wallet; the obra takes TIER_BUILD_SECONDS[2]). */
+export const BICHO_EVOLVE_PRICE=20;
+/** The user (31/10): at most this many towers of the tree of today built per run, per team (ruins count). */
+export const TOWER_BUILT_LIMIT=12;
+
 type Spec=Omit<DefenseDef,'cost'|'buildSeconds'|'size'|'minRange'|'shots'|'area'|'hits'|'target'>&Partial<Pick<DefenseDef,'minRange'|'shots'|'area'|'hits'|'target'>>;
 const sizeOf=(f:readonly [number,number]):DefenseSize=>Math.max(1,Math.min(3,Math.max(f[0],f[1]))) as DefenseSize;
 function def(s:Spec):DefenseDef{
   return Object.freeze({minRange:0,shots:1,area:0,hits:'all',target:'nearest',...s,
     cost:s.id==='gustavao'?GUSTAVAO_COST:TIER_COST[s.tier as 1|2|3|4|5],buildSeconds:TIER_BUILD_SECONDS[s.tier],
-    size:s.rail?null:s.from===null?1:sizeOf(s.footprint),footprint:Object.freeze([...s.footprint]) as unknown as readonly [number,number]}) as DefenseDef;
+    size:s.rail?null:s.from===null||s.bicho?1:sizeOf(s.footprint),footprint:Object.freeze([...s.footprint]) as unknown as readonly [number,number]}) as DefenseDef;
 }
 const s=(seconds:number)=>ticks(seconds);
 
@@ -138,8 +181,44 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
     // torres-animacao-idle-tiro (the user, 25/10: "Radar ganha ataque"): it keeps the range bonus and sends a pulse at the
     // densest group (ground and air), control like the rest of branch C: ~12 dps to each enemy in it (C4: 160, air only).
     range:8,cooldown:s(1.5),damage:18,area:1.6,target:'cluster',slow:s(1),radar:{reach:9,bonus:.3}}),
+  ...bichoTree(),
 });
 export const DEFENSE_IDS=Object.keys(DEFENSES) as DefenseId[];
+/**
+ * The 12 of the tree of today, damage set so effectiveDps = TOWER_DPS_BASE exactly (from the cooldown in ticks). All
+ * hit ground and air, all size 1 (the Guarita's footprint, the art at the hero's height).
+ */
+function bichoTree():Record<BichoId,DefenseDef>{
+  type B=Omit<Spec,'damage'|'tier'|'footprint'|'hp'>&{hp?:number};
+  const b=(x:B)=>{
+    const per=x.target==='aura'?hitsPerImpact(x.range):(x.shots??1)*hitsPerImpact(x.area??0);
+    return def({...x,bicho:true,tier:x.from===null?1:2,footprint:[2,2],hp:x.hp??(x.from===null?400:550),damage:TOWER_DPS_BASE*x.cooldown/(SIM_HZ*per)});
+  };
+  return {
+    // A: shooting (one target, several, the strongest, a hail on one).
+    'bicho-tiro':b({id:'bicho-tiro',name:'Gatilho',label:'A1',branch:'A',from:null,range:7,cooldown:s(1)}),
+    'bicho-rajada':b({id:'bicho-rajada',name:'Rajada',label:'A2',branch:'A',from:'bicho-tiro',range:7,cooldown:s(1),shots:3}),
+    'bicho-mira':b({id:'bicho-mira',name:'Mira',label:'A2b',branch:'A',from:'bicho-tiro',range:12,cooldown:s(2),target:'strongest'}),
+    'bicho-metralha':b({id:'bicho-metralha',name:'Metralha',label:'A2c',branch:'A',from:'bicho-tiro',range:6.5,cooldown:s(.25)}),
+    // B: explosives (area).
+    'bicho-bomba':b({id:'bicho-bomba',name:'Bomba',label:'B1',branch:'B',from:null,range:7,cooldown:s(1.6),area:1.4,target:'cluster'}),
+    'bicho-morteiro':b({id:'bicho-morteiro',name:'Morteiro',label:'B2',branch:'B',from:'bicho-bomba',range:10,minRange:2,cooldown:s(3),area:2.4,target:'cluster'}),
+    'bicho-foguete':b({id:'bicho-foguete',name:'Foguete',label:'B2b',branch:'B',from:'bicho-bomba',range:8,cooldown:s(2.4),shots:3,area:1.2}),
+    'bicho-fogo':b({id:'bicho-fogo',name:'Fogo',label:'B2c',branch:'B',from:'bicho-bomba',range:3,cooldown:s(.5),target:'aura',hp:700}),
+    // C: control (slow, dazzle, radar), same damage.
+    'bicho-gosma':b({id:'bicho-gosma',name:'Gosma',label:'C1',branch:'C',from:null,range:6.5,cooldown:s(1),slow:s(1.5)}),
+    'bicho-teia':b({id:'bicho-teia',name:'Teia',label:'C2',branch:'C',from:'bicho-gosma',range:7,cooldown:s(1.6),area:1.8,target:'cluster',slow:s(2)}),
+    'bicho-choque':b({id:'bicho-choque',name:'Choque',label:'C2b',branch:'C',from:'bicho-gosma',range:7,cooldown:s(1),shots:2,dazzle:{ticks:s(.8),chance:.35}}),
+    'bicho-farol':b({id:'bicho-farol',name:'Farol',label:'C2c',branch:'C',from:'bicho-gosma',range:7,cooldown:s(1),slow:s(1),radar:{reach:9,bonus:.3}}),
+  };
+}
+/** One of the 12 of the tree of today. */
+export const isBicho=(id:unknown):id is BichoId=>typeof id==='string'&&Object.hasOwn(DEFENSES,id)&&!!DEFENSES[id as DefenseId].bicho;
+/** The 3 initials: the only towers a kit builds (their 9 evolutions only come from evolving one). */
+export const BICHO_ROOTS:readonly BichoId[]=Object.freeze((Object.keys(DEFENSES) as DefenseId[]).filter(id=>DEFENSES[id].bicho&&DEFENSES[id].from===null) as BichoId[]);
+/** The art a tower is drawn with until its own (card torres-bichos-gore-arte): the Guarita for the 12. */
+export const towerArt=(kind:string):string=>isBicho(kind)?'vigia-do-predio':kind;
+
 /** D-052, free build: what {t:'build'} may name (contract/build.ts): a tower (the root) or a wall piece. */
 export type BuildPiece=DefenseId|FreePiece;
 

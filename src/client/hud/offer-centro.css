@@ -8,9 +8,11 @@
    corners, the snow or the icicles. No text under 12 px. The cards open spinning from the middle (px39-leque).
    The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc). Nothing in it scrolls. */
 .rh .rh-offer.rh-ofc{
-  /* --mw / --sw: the middle and side cards' width; --tall their height for it (about the reference's), the fan's
-     own height (cqh) capping it. --bw: each button about 40 % of the width, as in the reference. */
-  --mw:min(46vw,280px);--sw:min(28vw,180px);--tall:1.62;--side-h:.9;--asp:.7;
+  /* --mw: the middle card's width; --tall its height for it (about the reference's), the fan's own height (cqh)
+     capping it. A side card is --side-h of the middle's height and keeps its art's proportion (--asp-lado, 480×805),
+     behind the middle (oferta-3-cartas: the user, 31/10, "não é para espremer"). --bw: each button about 40 % of the
+     width, as in the reference. */
+  --mw:min(46vw,280px);--tall:1.62;--side-h:.9;--asp:.7;--asp-lado:calc(480 / 805);
   --tw:min(92vw,440px);--bw:min(41vw,300px);--bh:calc(var(--bw) * 248 / 600);
   --px-line:1px 0 0 var(--px39-tinta),-1px 0 0 var(--px39-tinta),0 1px 0 var(--px39-tinta),0 -1px 0 var(--px39-tinta),
     1px 1px 0 var(--px39-tinta),-1px 1px 0 var(--px39-tinta),1px -1px 0 var(--px39-tinta),-1px -1px 0 var(--px39-tinta),
@@ -38,7 +40,7 @@
 .rh .rh-offer.rh-ofc[data-mode=pause]{--pausa-reserva:88px;padding-top:calc(max(2dvh,env(safe-area-inset-top)) + var(--pausa-reserva))}
 /* Portrait phones narrower than the fan: the side cards a little smaller, so the turned ones stay on screen (item 18:
    at 390 px they stood at x = -3 and 393). */
-@media (max-width:430px){.rh .rh-offer.rh-ofc{--mw:min(45vw,280px);--sw:26vw}}
+@media (max-width:430px){.rh .rh-offer.rh-ofc{--mw:min(45vw,280px)}}
 .rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:10%;right:10%;height:3px;border-radius:0}
 /* The title on its plaque (purple board, gold frame, snow and icicles), wide at the top. */
 .rh .rh-ofc .rh-offer-head{position:relative;flex:0 0 auto;margin:0;padding:0;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;
@@ -55,10 +57,12 @@
 .rh .rh-ofc .rh-offer-cards{flex:0 1 auto;height:calc(var(--mw) * var(--tall) * 1.04);align-self:stretch;min-height:0;container-type:size;
   display:flex;flex-direction:row;justify-content:center;align-items:center;gap:0;padding:0}
 .rh .rh-ofc .rh-card{
-  --h:calc(min(calc(var(--mw) * var(--tall)),100cqh) * var(--side-h));--w:min(var(--sw),calc(var(--h) * var(--asp)));
-  --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.08);
+  /* Never wider than 90 % of the middle's cap, so a tall landscape fan can't make the side the bigger one. */
+  --mh:min(calc(var(--mw) * var(--tall)),100cqh);
+  --h:min(calc(var(--mh) * var(--side-h)),calc(var(--mw) * .9 / var(--asp-lado)));--w:calc(var(--h) * var(--asp-lado));
+  --rot:0deg;--dy:0px;--fx:0px;--in:calc(var(--w) * -.38);--pad:calc(var(--w) * 64 / 480);
   position:relative;z-index:1;flex:0 0 auto;box-sizing:border-box;width:var(--w);height:var(--h);min-height:0;margin:0;
-  padding:calc(var(--w) * 142 / 480) calc(var(--w) * 64 / 480) calc(var(--w) * 64 / 480);
+  padding:calc(var(--w) * 142 / 480) var(--pad) calc(var(--w) * 64 / 480);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:calc(var(--w) * .03);
   border:0 solid transparent;border-radius:0;background:none;box-shadow:none;
   border-image:url('/art/ui-extra/px39/cartao-lateral.webp') 142 50 56 50 fill/
@@ -72,14 +76,12 @@
 .rh .rh-ofc .rh-card[data-fan=l]{order:1;margin-right:var(--in);--rot:-3.5deg;--dy:3%;--fx:calc(var(--w) * .9)}
 .rh .rh-ofc .rh-card[data-fan=m]{order:4;z-index:3}
 .rh .rh-ofc .rh-card[data-fan=r]{order:7;margin-left:var(--in);--rot:3.5deg;--dy:3%;--fx:calc(var(--w) * -.9)}
-/* Four cards: all narrower; the default one stands second from the left. */
-.rh .rh-ofc .rh-offer-cards[data-count='4']{--mw:min(34vw,200px);--sw:min(24vw,150px)}
-.rh .rh-ofc .rh-card[data-fan=l2]{order:1;margin-right:var(--in);--rot:-9deg;--dy:5%;--fx:calc(var(--w) * 1.5)}
-.rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;--fx:calc(var(--w) * .5)}
-.rh .rh-ofc .rh-card[data-fan=r1]{order:5;z-index:2;margin-left:var(--in);--rot:4deg;--dy:3%;--fx:calc(var(--w) * -.5)}
-.rh .rh-ofc .rh-card[data-fan=r2]{order:7;margin-left:var(--in);--rot:9deg;--dy:5%;--fx:calc(var(--w) * -1.5)}
-.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=r1]{margin-left:calc(var(--w) * .04);--rot:5deg}
-.rh .rh-ofc .rh-offer-cards[data-count='2'] .rh-card[data-fan=l1]{margin-right:calc(var(--w) * .04);--rot:-5deg}
+/* The part of a side card under the middle one: its icon and text move to the part still showing. */
+.rh .rh-ofc .rh-card[data-fan=l]:not(.rh-card-default){padding-right:calc(var(--pad) - var(--in) * .8)}
+.rh .rh-ofc .rh-card[data-fan=r]:not(.rh-card-default){padding-left:calc(var(--pad) - var(--in) * .8)}
+/* Two cards (never 4: oferta-3-cartas): side by side, nothing covered. */
+.rh .rh-ofc .rh-card[data-fan=l1]{order:3;z-index:3;margin-right:calc(var(--w) * .04);--rot:-5deg;--fx:calc(var(--w) * .5)}
+.rh .rh-ofc .rh-card[data-fan=r1]{order:5;z-index:2;margin-left:calc(var(--w) * .04);--rot:5deg;--dy:3%;--fx:calc(var(--w) * -.5)}
 /* The default pick: the bigger, taller one, the gold frame on the dark teal, rays behind the icon. */
 .rh .rh-ofc .rh-card.rh-card-default{--h:min(calc(var(--mw) * var(--tall)),100cqh);--w:min(var(--mw),calc(var(--h) * var(--asp)));
   --rot:0deg;--dy:0px;margin-left:0;margin-right:0;font-size:max(12px,calc(var(--w) / 12));
@@ -93,6 +95,8 @@
   min-width:44%;padding:.3em .55em .34em;background:url('/art/ui-extra/px39/selo-nova.webp') center/100% 100% no-repeat;
   font:700 1em/1 var(--f-pixel);color:var(--px39-selo);text-shadow:none;white-space:nowrap}
 .rh .rh-ofc .rh-card-default .rh-card-rarity{top:calc(var(--w) * .21)}
+/* The right side card's tag on its own outer corner, the left one being under the middle card. */
+.rh .rh-ofc .rh-card[data-fan=r]:not(.rh-card-default) .rh-card-rarity{left:auto;right:calc(var(--w) * .02)}
 /* The icon fills what the words leave; it rises a little into the frame's top, as in the reference. */
 .rh .rh-ofc .rh-card-icon{position:relative;z-index:0;flex:1 1 0;display:grid;place-items:center;align-self:stretch;
   width:auto;height:auto;min-width:0;min-height:0;margin:calc(var(--w) * -.1) 0 0;border:0;border-radius:0;background:none}
@@ -154,9 +158,10 @@
 .rh .rh-ofc.rh-ofc-only-wait .rh-card:disabled{opacity:1}
 /* Short screens (phone landscape): the same composition, scaled to the height; the cards wider for their height. */
 @media (max-height:500px){
-  .rh .rh-offer.rh-ofc{--mw:min(42vw,230px);--sw:min(27.5vw,165px);--tall:2.75;--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:min(30vw,calc(var(--bh) * 5));
+  .rh .rh-offer.rh-ofc{--mw:min(42vw,230px);--tall:2.75;--asp:.8;--side-h:.9;--tw:min(60vw,calc(22dvh * 900 / 303));--bh:max(44px,12dvh);--bw:min(30vw,calc(var(--bh) * 5));
     padding-top:max(1.5dvh,env(safe-area-inset-top));padding-bottom:max(1.5dvh,env(safe-area-inset-bottom));gap:1dvh}
-  .rh .rh-ofc .rh-card{--in:calc(var(--w) * -.04);font-size:max(12px,calc(var(--w) / 13))}
+  /* Lying down the height caps the cards and there is width to spare: the sides overlap less, so their text keeps room. */
+  .rh .rh-ofc .rh-card{--in:calc(var(--w) * -.15);font-size:max(12px,calc(var(--w) / 13))}
   .rh .rh-ofc .rh-card.rh-card-default{font-size:max(12px,calc(var(--w) / 14))}
   .rh .rh-ofc :is(.rh-ofc-btn,.rh-offer-all){font-size:max(16px,calc(var(--bh) * .42))}
   .rh .rh-offer.rh-ofc{justify-content:space-between}

@@ -22,7 +22,7 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
-import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
+import {WAVE_BOSS_IDS,halfHorde} from '../../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,pace,
   wavePeriod,waveShares,type NestCause,type NestsOptions,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
@@ -95,7 +95,7 @@ test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map
   for(const n of r.nests.state.nests)assert.equal(n.hp,n.maxHp);
   until(r,first+1);
   assert.equal(r.nests.state.sent,1);
-  assert.deepEqual(r.recruited,[[DOOR.route,5]],'the whole quota, nobody killed');
+  assert.deepEqual(r.recruited,[[DOOR.route,halfHorde(5)]],'the whole quota (half a horde, inimigos-3x-fortes), nobody killed');
   const bodies=[...r.world.enemies.values()];
   assert.ok(bodies.every(e=>e.memory?.[SIEGE_FLAG]===1&&e.memory?.[WAVE_MEMORY]===0),'all besiege the car, wave 0');
   const born=bodies.filter(e=>typeof e.memory?.[NEST_MEMORY]==='number'),outside=bodies.filter(e=>e.memory?.[NEST_MEMORY]===undefined);
@@ -104,11 +104,11 @@ test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map
     assert.ok(mine.length>=NEST_PACE.perNest[0]&&mine.length<=NEST_PACE.perNest[1],`${PLAN.nests[i].id}: ${mine.length}`);
     for(const e of mine)assert.ok(PLAN.nests[i].sleepers.some(p=>p.x===e.x&&p.y===e.y),'born in its yard');
   }
-  const [lo,hi]=outsideRange(0);
+  const [lo,hi]=outsideRange(0).map(halfHorde);
   assert.ok(outside.length>=lo&&outside.length<=hi,`outside group of ${outside.length}`);
   for(const e of outside)assert.ok(Math.hypot(e.x-DOOR.x,e.y-DOOR.y)<4,'at the avenue end');
   const log=r.nests.state.log!.at(-1)!;
-  assert.deepEqual({...log,tick:0},{tick:0,entrance:'N',quota:5,kills:0,map:5,nests:born.length,outside:outside.length,total:5+born.length+outside.length});
+  assert.deepEqual({...log,tick:0},{tick:0,entrance:'N',quota:5,kills:0,map:halfHorde(5),nests:born.length,outside:outside.length,total:halfHorde(5)+born.length+outside.length});
   // inicio-no-uno-caixas-120: open until it is over; the next wave only after the time to explore (the backstop here).
   assert.equal(r.nests.state.waveOpen,first);
   assert.equal(r.nests.state.nextWave,first+ticks(NEST_PACE.waveCap+NEST_PACE.explore));
@@ -162,10 +162,10 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
   r.world.step();
   until(r,r.nests.state.nextWave!+1);
   r.world.enemies.clear();
-  // 3 of the quota of 5 killed: 2 come.
+  // 3 of the quota of 5 killed: 2 come (half of them).
   r.kill(3);
   until(r,r.nests.state.nextWave!+1);
-  assert.equal(r.recruited.at(-1)![1],2);
+  assert.equal(r.recruited.at(-1)![1],halfHorde(2));
   assert.equal(r.nests.state.log!.at(-1)!.kills,3);
   r.world.enemies.clear();
   // 9 killed: none from the map, the outside group 4 smaller, never under half.
@@ -175,7 +175,7 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
   const log=r.nests.state.log!.at(-1)!;
   assert.equal(log.map,0);assert.equal(log.kills,9);
   const [lo,hi]=outsideRange((r.world.tick-1-r.nests.state.startTick!)/ticks(NEST_PACE.ramp));
-  const fits=Array.from({length:hi-lo+1},(_,i)=>lo+i).some(b=>log.outside===Math.max(Math.ceil(b*NEST_PACE.floor),b-4));
+  const fits=Array.from({length:hi-lo+1},(_,i)=>lo+i).some(b=>log.outside===halfHorde(Math.max(Math.ceil(b*NEST_PACE.floor),b-4)));
   assert.ok(fits,`outside ${log.outside} of ${lo}-${hi}, 4 past the quota`);
 }));
 
@@ -193,7 +193,7 @@ test('a trickle under 1 a second adds up: one with the wave, then one every 1/tr
     until(r,due+ticks(2)+1);
     assert.deepEqual(r.recruited.map(x=>x[1]),[1,1],'the next after 2 s');
     until(r,due+ticks(8)+1);
-    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1,1,1,1],'all 5, one every 2 s');
+    assert.deepEqual(r.recruited.map(x=>x[1]),[1,1,1],'all halfHorde(5) = 3, one every 2 s');
     assert.equal(r.nests.state.drip,undefined);
   }finally{Object.assign(NEST_PACE,saved);}
   assert.ok(pace(NEST_PACE.trickle,1)<1,'1p under 1 a second');
@@ -211,10 +211,10 @@ test('the map share trickles out (NEST_PACE.trickle a second, the first batch wi
     assert.deepEqual(r.recruited.map(x=>x[1]),[2],'2 with the wave');
     assert.equal(r.nests.state.log!.at(-1)!.map,2);
     until(r,due+ticks(1)+1);
-    assert.deepEqual(r.recruited.map(x=>x[1]),[2,2],'2 a second later');
+    assert.deepEqual(r.recruited.map(x=>x[1]),[2,1],'the last one a second later (halfHorde(5) = 3)');
     until(r,due+ticks(3)+1);
-    assert.deepEqual(r.recruited.map(x=>x[1]),[2,2,1],'the last one, then done');
-    assert.equal(r.nests.state.log!.at(-1)!.map,5);assert.equal(r.nests.state.drip,undefined);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[2,1],'then done');
+    assert.equal(r.nests.state.log!.at(-1)!.map,halfHorde(5));assert.equal(r.nests.state.drip,undefined);
     const e=[...r.world.enemies.values()][0],fresh=createEnemy(r.world,e.kind,{x:0,y:0},1);
     r.world.enemies.delete(fresh.id);
     assert.equal(e.memory?.tuned,1);

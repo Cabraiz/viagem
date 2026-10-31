@@ -4,7 +4,8 @@ import { getClass, heroiPadrao, isLiberado, playableClasses, type HeroClass } fr
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { ROLE_LINE, suit } from './client/ui/suit.ts';
-import { mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
+import { DEITADO, mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
+import { fotoEscolhida, menuArtNoNavegador, previaAte, saveData } from './client/ui/menu-art-boot.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { startAds } from './client/ui/ads-boot.ts';
@@ -162,9 +163,6 @@ cutoutScreen.addEventListener('change',placeHero);
 placeHero();
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
-function artStyle(hero: HeroClass, detailed=false) {
-  return `background-image:url('/art/portraits/${hero.id}${detailed?'':'-thumb'}.webp')`;
-}
 // BUG-menu-travando: the big portrait is an <img> with srcset (768/1024 for the real DPR), decoded off-screen before it
 // swaps in, so a class change never waits on a decode inside a frame. Neighbours are warmed so the next tap is instant.
 const portraitSizes='(orientation: landscape) 60vh, 70vw';
@@ -185,13 +183,15 @@ function portraitImage(hero: HeroClass, first=false) {
   return img;
 }
 const idle=(task: () => void)=>('requestIdleCallback' in window ? requestIdleCallback(task,{timeout:2000}) : setTimeout(task,300));
+// menu-imagens-sem-buraco: the popup's pictures come down in idle time once the page is in, so BORA! opens it whole.
+const menuArt=menuArtNoNavegador(idle,()=>selected.id);
 // Only once the player touches the carousel: the first screen downloads a single portrait.
 function forget(img: HTMLImageElement) {
   const id=img.dataset.portraitOf!;
   if(warmed.get(id)===img) warmed.delete(id);
 }
 function warmNeighbours(hero: HeroClass) {
-  if((navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData) return;
+  if(saveData()) return;
   const index=classes.indexOf(hero);
   idle(()=>{
     for(const step of [1,-1]) { const img=portraitImage(classes[(index+step+classes.length)%classes.length]); img.decode().catch(()=>forget(img)); }
@@ -282,11 +282,7 @@ function setArt(id: string,hero: HeroClass) {
   if(id==='portrait') return showPortrait(hero,true);
   const element=document.getElementById(id)!;
   if(element instanceof HTMLImageElement) lazySrc(element,thumbUrl(hero));
-  else {
-    // The dialog reuses the file the portrait already shows (768 or 1024), so confirming never downloads a second copy.
-    const shown=document.querySelector<HTMLImageElement>('#portrait img');
-    element.style.cssText=shown?.currentSrc.includes(`/${hero.id}`)?`background-image:url('${shown.currentSrc}')`:artStyle(hero,true);
-  }
+  else fotoEscolhida(element,hero.id,menuArt);
 }
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
@@ -327,6 +323,7 @@ function renderSelected(announce=false) {
   showCutout(); // first: a hero drawn in place hides the portrait
   // The profile (phone upright) shows no portrait: it does not download until the stadium comes back.
   if(instaScreen.matches) renderInsta(); else showPortrait(selected,announce);
+  menuArt.warm(selected.id);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
@@ -364,6 +361,7 @@ function renderInsta() {
   insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
+  for(const img of [...insta.perfil.querySelectorAll('img'),...insta.grade.querySelectorAll('img')]) previaAte(img,menuArt);
   void document.fonts.ready.then(fitHandle);
 }
 // The @handle's size was a guess from its letters (insta.ts handleFit): measured once the font is in, a handle wider than
@@ -488,7 +486,7 @@ function showChosen() {
   text('chosen-name',nickname.trim());setArt('chosen-art',selected);
   const line=ROLE_LINE[selected.role];
   document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role" title="${line}">${suit(selected.role)}${selected.role}</span> ${selected.name}<small class="chosen-role-linha">${line}</small>`;
-  mostrarEscolha(dialog,selected.id);
+  mostrarEscolha(dialog,selected.id,menuArt,matchMedia(DEITADO).matches);
 }
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.innerHTML='<span class="escolha-rotulo">Jogar com amigos</span>';document.querySelector('#confirmation .solo-row')!.before(coopButton);

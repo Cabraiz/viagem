@@ -73,3 +73,16 @@
 #enter-island .carga[hidden]{display:none}
 #enter-island .carga-cheio{display:block;width:var(--carga,0%);height:100%;border-radius:inherit;background:var(--c-amarelo);transition:width .3s ease-out}
 @media (prefers-reduced-motion:reduce){#enter-island .carga-cheio{transition:none}}
+/* menu-imagens-sem-buraco: the popup's files come down in the menu's idle time (preload/menu-art-preload.ts). Until the
+   frame, the X and the blocks are in (.arte-pronta, main.ts), a plain stand-in of the same colours keeps the popup whole:
+   the purple panel with its lilac rim, the yellow and purple blocks, the X and − + as text. */
+#confirmation:not(.arte-pronta){background:var(--c-violeta);border-radius:22px;box-shadow:inset 0 0 0 6px color-mix(in srgb,var(--c-papel-claro) 70%,var(--c-violeta))}
+#confirmation:not(.arte-pronta) .close-dialog{background:var(--c-lilas)}
+#confirmation:not(.arte-pronta) .close-dialog>svg{visibility:visible}
+#confirmation.escolha-arte:not(.arte-pronta) #enter-coop{background:var(--c-amarelo);border-radius:var(--r-janela)}
+#confirmation.escolha-arte:not(.arte-pronta) .solo-row{background:color-mix(in srgb,var(--c-violeta) 70%,var(--c-papel-claro));border-radius:var(--r-janela)}
+#confirmation.escolha-arte:not(.arte-pronta) .solo-bots-step{color:var(--c-papel-claro)}
+/* A picture still on the way shows its 24 px preview blurred; the real one takes its place and the blur fades out. */
+#confirmation :is(.escolha-img,#chosen-art){transition:filter .2s ease-out}
+#confirmation .previa{filter:blur(6px)}
+@media (prefers-reduced-motion:reduce){#confirmation :is(.escolha-img,#chosen-art){transition:none}}

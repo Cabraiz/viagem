@@ -53,21 +53,24 @@ export function shiftRows({data,width,height},cell,shifts){
 const raw=async file=>{const {data,info}=await sharp(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});return {data,width:info.width,height:info.height};};
 const webp=s=>sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(WEBP).toBuffer();
 
-/** One animation: {file entries (body and shadow), the target ground point}. */
-async function importAnim(from,anim,ground){
-  const meta=JSON.parse(readFileSync(join(from,`saci-${anim}-8dir.json`),'utf8'));
+/**
+ * One animation of `prefix`-<anim>-8dir.png/-sombra.png/.json into public/art/enemies/<dir>/: {file entries (body and
+ * shadow), the target ground point}. Shared with scripts/import-sanfoneiro.mjs (the same 8-row sheets).
+ */
+export async function importAnim(from,anim,ground,{prefix='saci',dir=SACI_DIR}={}){
+  const meta=JSON.parse(readFileSync(join(from,`${prefix}-${anim}-8dir.json`),'utf8'));
   const cell=meta.celula,order=meta.ordem;
   if(String(order)!==String(DIRS))throw new Error(`${anim}: ordem ${order} ≠ ${DIRS}`);
   const dirFrames=DIRS.map(d=>meta.quadros[d]),frames=Math.max(...dirFrames),fps=Math.round(1000/meta.ms);
-  const body=await raw(join(from,`saci-${anim}-8dir.png`)),shadow=await raw(join(from,`saci-${anim}-8dir-sombra.png`));
+  const body=await raw(join(from,`${prefix}-${anim}-8dir.png`)),shadow=await raw(join(from,`${prefix}-${anim}-8dir-sombra.png`));
   if(body.width!==cell*frames||body.height!==cell*DIRS.length)throw new Error(`${anim}: folha ${body.width}×${body.height} ≠ ${frames}×${DIRS.length} células de ${cell}`);
   const points=DIRS.map((_,r)=>groundPoint(body,cell,r,dirFrames[r]));
   ground??=points[0];
   const shifts=points.map(p=>({dx:0,dy:ground.y-p.y}));
   const files={};
   for(const [key,name,sheet] of [[anim,`${anim}.webp`,body],[`shadow/${anim}`,`${anim}-sombra.webp`,shadow]]){
-    const moved=shiftRows(sheet,cell,shifts),buffer=await webp(moved),file=`${SACI_DIR}/${name}`,hash=sha256(buffer);
-    mkdirSync(join(ROOT,'public/art/enemies',SACI_DIR),{recursive:true});
+    const moved=shiftRows(sheet,cell,shifts),buffer=await webp(moved),file=`${dir}/${name}`,hash=sha256(buffer);
+    mkdirSync(join(ROOT,'public/art/enemies',dir),{recursive:true});
     writeFileSync(join(ROOT,'public/art/enemies',file),buffer);
     files[key]={file,cell:[cell,cell],frames,directions:DIRS.length,dirFrames,anchor:[ground.x/cell,ground.y/cell],fps,
       pages:[{file,columns:frames,rows:DIRS.length,firstFrame:0,frameCount:frames*DIRS.length,sha256:hash}],sha256:hash};

@@ -18,7 +18,7 @@ test('só o mendigo: todo inimigo comum desenha o mendigo; chefões e a aberraç
   setArtIndex(withMendigo(parseArtIndex(raw)));
   try{
   for(const id of ['bebado','pombos','tio-pave','agiota','coach','rato-de-boteco'])assert.equal(gameEnemyArt(id),MENDIGO,id);
-  for(const id of ['chefe','rainha-das-baratas','rei-do-boteco',...WAVE_BOSS_IDS,'aberracao-saci'])assert.ok(keepsOwnArt(id),id);
+  for(const id of ['chefe','rainha-das-baratas','rei-do-boteco',...WAVE_BOSS_IDS,'aberracao-saci','sanfoneiro'])assert.ok(keepsOwnArt(id),id);
   assert.equal(enemyArtId('bebado','bebado'),MENDIGO);
   assert.equal(enemyArtId('rato-de-boteco','pombos'),MENDIGO);
   assert.equal(enemyArtId('chefe','chefe'),'chefe');

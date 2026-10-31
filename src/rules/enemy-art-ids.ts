@@ -138,6 +138,7 @@ export const ENEMY_ART_IDS:readonly string[]=Object.freeze([
   'robo-de-atendimento',
   'rodinho-do-sinal',
   'rolo-lava-rapido',
+  'sanfoneiro',
   'sapo-cururu',
   'seguranca-de-shopping',
   'servidor-fossilizado',

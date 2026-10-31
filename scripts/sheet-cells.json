@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4522,
+  "sheets": 4528,
   "failing": 0,
   "frames": 0
  },
@@ -5123,6 +5123,16 @@
    "ilhas": 6,
    "fails": []
   },
+  "enemies/sanfoneiro/idle-sombra.webp": {
+   "sha": "7803199bd94906e2824edb7129154362c72e9132570e8d16ca8f2043fb4fa443",
+   "ilhas": 0,
+   "fails": []
+  },
+  "enemies/sanfoneiro/idle.webp": {
+   "sha": "8831d058478ab1f4914316d4646801ec5ee71cd6fe5f42d05642cd74dae21899",
+   "ilhas": 0,
+   "fails": []
+  },
   "enemies/sapo-cururu/death.webp": {
    "sha": "2ae7dbc7bfb90fea108725502155309b57de3754c58530d50e67119044e35538",
    "ilhas": 1,
@@ -9780,6 +9790,16 @@
   },
   "lite/enemies-pc/saci/idle.webp": {
    "sha": "1d907c3aadc376bead3d809d1e56dfb8d793d992eed7ebb7d09c93c4437a8255",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies-pc/sanfoneiro/idle-sombra.webp": {
+   "sha": "a3ea83f93c62ed3c28abde7e5500914ef057db98289f07892660db5ae2b8d845",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies-pc/sanfoneiro/idle.webp": {
+   "sha": "752ce01b4806f4c51169b1c1ce233cd83d3fd32cb217005fbea4d1a70cddaa5f",
    "ilhas": 0,
    "fails": []
   },
@@ -15615,6 +15635,16 @@
   },
   "lite/enemies/saci/idle.webp": {
    "sha": "58ec434ef72157945f43b401662a5d23112eb197f2e157ddaf91ab083e0832f7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies/sanfoneiro/idle-sombra.webp": {
+   "sha": "b76bf1a0b39613c86d022f776619b3286c8d3f718894d38f5a3b80923335c148",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/enemies/sanfoneiro/idle.webp": {
+   "sha": "f9eb3c84aaaddc02a594c159fb32c2cc270e196c600bd9244fb97163637543ee",
    "ilhas": 0,
    "fails": []
   },

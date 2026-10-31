@@ -4,18 +4,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
-import {ELITE_ONLY,INIMIGOS_LIBERADOS,INIMIGO_PADRAO,ROSTER,ROSTER_ONLY_LIBERADOS,drawRotation,inimigoLiberadoId,isInimigoLiberado,
+import {ELITE_ONLY,HELD_ROSTER,INIMIGOS_LIBERADOS,INIMIGO_PADRAO,ROSTER,ROSTER_ONLY_LIBERADOS,drawRotation,inimigoLiberadoId,isInimigoLiberado,
   isRotation,liberadosDoPapel,planRound,roleOf,roundRoster} from '../../src/rules/index.ts';
 import {ENEMIES,enemyDef} from '../../src/sim/enemies/catalog.ts';
 
 const SEEDS=Array.from({length:120},(_,i)=>i*7919+3);
 
-test('the list: the mendigo (common) and the saci (elite), in the roster, the mendigo the default',()=>{
-  assert.deepEqual([...INIMIGOS_LIBERADOS],['mendigo','aberracao-saci']);
+// NEW-20261030-ORQ-sanfoneiro-brinquedo-no-jogo: the sanfoneiro (his toy art) is liberated; he is drawn in waves once he
+// moves from HELD_ROSTER to ROSTER (rules/enemy-roster.ts, not this card), so the rotation tests below stay as they are.
+test('the list: the mendigo (common), the saci (elite) and the sanfoneiro (brutamontes), the mendigo the default',()=>{
+  assert.deepEqual([...INIMIGOS_LIBERADOS],['mendigo','aberracao-saci','sanfoneiro']);
   assert.ok(Object.isFrozen(INIMIGOS_LIBERADOS));
   assert.equal(INIMIGO_PADRAO,'mendigo');
-  for(const id of INIMIGOS_LIBERADOS)assert.ok(ROSTER.some(e=>e.id===id),`${id} is in the roster`);
+  for(const id of INIMIGOS_LIBERADOS)assert.ok([...ROSTER,...HELD_ROSTER].some(e=>e.id===id),`${id} is in the roster`);
   assert.equal(roleOf('mendigo'),'corredor');assert.equal(roleOf('aberracao-saci'),'mini-chefe');
+  assert.equal(roleOf('sanfoneiro'),'brutamontes');
   assert.ok(ELITE_ONLY.includes('aberracao-saci'),'the saci is elite-only');
   assert.deepEqual(liberadosDoPapel('corredor'),['mendigo']);assert.deepEqual(liberadosDoPapel('atirador'),[]);
   assert.equal(ROSTER_ONLY_LIBERADOS,true,'the game draws only the liberated ones');

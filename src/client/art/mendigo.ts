@@ -30,10 +30,10 @@ const FILES:Readonly<Record<string,ArtFile>>={
 /** O que o mendigo ainda não tem (vira o card "mendigo completo", skill personagem-animado). */
 export const MENDIGO_FALTA=['attack','hit','death','elite/*'] as const;
 
-/** Um inimigo que mantém a arte própria: os chefões e a aberração-saci. */
+/** Um inimigo que mantém a arte própria: os chefões, a aberração-saci e o sanfoneiro (boneco de madeira, card sanfoneiro-brinquedo-no-jogo). */
 export const keepsOwnArt=(id:string)=>{
   const role=roleOf(id);
-  return role==='chefe'||role==='mini-chefe'||WAVE_BOSS_IDS.includes(id)||id.includes('saci');
+  return role==='chefe'||role==='mini-chefe'||WAVE_BOSS_IDS.includes(id)||id.includes('saci')||id==='sanfoneiro';
 };
 /** A arte que o jogo desenha para o inimigo de arte `id`: a própria, ou o mendigo (quando o índice tem a peça, isto é,
  * sempre que o manifest do jogo carregou; um índice montado à mão sem ela fica com as artes próprias). */

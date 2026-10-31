@@ -3,7 +3,9 @@
  * arrasta-pé ... Foco com testes e tudo tem que ser só com eles por enquanto"). The rotation (rules/enemy-rotation.ts)
  * draws only these; the other roster entries are legacy: hidden, never deleted. Model: personagens-liberados.ts.
  *  - mendigo: the common enemy (role corredor: the bêbado's numbers, catalog.ts rosterDef);
- *  - aberracao-saci: the elite (round 5, rules/enemy-rotation.ts ELITE_ONLY).
+ *  - aberracao-saci: the elite (round 5, rules/enemy-rotation.ts ELITE_ONLY);
+ *  - sanfoneiro: the arrasta-pé (role brutamontes, sim/enemies/sanfoneiro.ts plays and drags), the wooden toy art
+ *    (NEW-20261030-ORQ-sanfoneiro-brinquedo-no-jogo, public/art/enemies/sanfoneiro).
  * Chefões (the round-8 mini-chefe and the round-10 boss) stay as they are until the user answers.
  */
 import {ROSTER} from './enemy-roster.ts';
@@ -11,7 +13,7 @@ import {ROSTER} from './enemy-roster.ts';
 export const INIMIGOS_LIBERADOS:readonly string[]=Object.freeze([
   'mendigo',
   'aberracao-saci',
-  // 'sanfoneiro', // o arrasta-pé: entra quando a regra NEW-20261029-ORQ-sanfoneiro-regra-arrastar estiver na main
+  'sanfoneiro',
 ]);
 /** The common enemy: a hidden or unknown kind asked by link or test (?inimigo=x) falls back to it. */
 export const INIMIGO_PADRAO=INIMIGOS_LIBERADOS[0];

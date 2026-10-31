@@ -31,8 +31,9 @@ test('the room sends the drawn rotation once when the run draws it, and to a joi
   const sent=elencos(a);
   assert.equal(sent.length,1,'once per rotation, not per tick');
   const ids:string[]=sent[0].ids,known=new Set(ROSTER.map(r=>r.id));
-  // Só 3 inimigos (ROSTER_ONLY_LIBERADOS): the liberated ones and the drawn minis; the hidden roster: a full rotation.
-  if(ROSTER_ONLY_LIBERADOS)assert.ok(INIMIGOS_LIBERADOS.every(id=>ids.includes(id))&&ids.length<=INIMIGOS_LIBERADOS.length+MINI_COUNT,`${ids.join()}`);
+  // Só 3 inimigos (ROSTER_ONLY_LIBERADOS): the liberated ones in the wave draw (the sanfoneiro, still in HELD_ROSTER, not
+  // yet) and the drawn minis; the hidden roster: a full rotation.
+  if(ROSTER_ONLY_LIBERADOS)assert.ok(INIMIGOS_LIBERADOS.filter(id=>known.has(id)).every(id=>ids.includes(id))&&ids.length<=INIMIGOS_LIBERADOS.length+MINI_COUNT,`${ids.join()}`);
   else assert.ok(ids.length>=ROTATION_SIZE.min&&ids.length<=ROTATION_SIZE.max+2,`${ids.length} ids`);
   assert.ok(ids.every(id=>known.has(id)),'roster ids');
   assert.deepEqual(ids,room.sim.rotationIds());

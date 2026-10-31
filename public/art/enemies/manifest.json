@@ -36634,6 +36634,98 @@
         "width": 1.5
       }
     },
+    "sanfoneiro": {
+      "kind": "animations",
+      "files": {
+        "idle": {
+          "file": "sanfoneiro/idle.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 16,
+          "directions": 8,
+          "dirFrames": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ],
+          "anchor": [
+            0.37109375,
+            0.7421875
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "sanfoneiro/idle.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "8831d058478ab1f4914316d4646801ec5ee71cd6fe5f42d05642cd74dae21899"
+            }
+          ],
+          "sha256": "8831d058478ab1f4914316d4646801ec5ee71cd6fe5f42d05642cd74dae21899",
+          "liteCell": [
+            166,
+            166
+          ],
+          "pcCell": [
+            231,
+            231
+          ]
+        },
+        "shadow/idle": {
+          "file": "sanfoneiro/idle-sombra.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 16,
+          "directions": 8,
+          "dirFrames": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ],
+          "anchor": [
+            0.37109375,
+            0.7421875
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "sanfoneiro/idle-sombra.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "7803199bd94906e2824edb7129154362c72e9132570e8d16ca8f2043fb4fa443"
+            }
+          ],
+          "sha256": "7803199bd94906e2824edb7129154362c72e9132570e8d16ca8f2043fb4fa443",
+          "liteCell": [
+            83,
+            83
+          ],
+          "pcCell": [
+            116,
+            116
+          ]
+        }
+      },
+      "sha256": "a9e5dd878e48fffe32f3d287419afaf4e3f1ec3bcdebf29caa759f9223d9827f"
+    },
     "sapo-cururu": {
       "kind": "animations",
       "files": {

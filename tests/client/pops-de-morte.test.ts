@@ -12,8 +12,10 @@ const LEGACY=/s[íi]ndico|condom[íi]nio|assembleia|story|pav[êe]|agiota|porra/
 test('pops de morte: a body drawn as the mendigo pops the mendigo, the saci its own, never the legacy kind', ()=>{
   setArtIndex(withMendigo(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{}}}})));
   try{
-    for(const kind of ['bebado','agiota','influencer','coach','sanfoneiro'])assert.equal(deathLines(kind),MENDIGO_POPS,kind);
+    for(const kind of ['bebado','agiota','influencer','coach'])assert.equal(deathLines(kind),MENDIGO_POPS,kind);
     assert.equal(deathLines('aberracao-saci'),SACI_POPS);
+    // sanfoneiro-brinquedo-no-jogo: he keeps his own art (mendigo.ts keepsOwnArt), so his own pop.
+    assert.ok(deathLines('sanfoneiro').includes('FOLE FURADO!'));
     for(let i=0;i<40;i++)assert.ok(MENDIGO_POPS.includes(deathLine('influencer',`e-${i}`)));
     const commons=[...ENEMY_KINDS,...ROSTER.map(e=>e.id)].filter(k=>deathLines(k)===MENDIGO_POPS);
     assert.ok(commons.length>100,'every plain enemy, legacy or roster, pops the mendigo');

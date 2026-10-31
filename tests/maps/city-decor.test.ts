@@ -37,7 +37,7 @@ const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.start
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
   assert.equal(asset.version,11);
   // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city); v10
-  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left); v11 (esconder-dejetos) the hidden junk and the rubble heaps' pieces (2 427).
+  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left); v11 (esconder-dejetos) the hidden junk and the rubble heaps' pieces (2 416).
   assert.ok(asset.decor.length>2400,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
   const keys=Object.keys(JSON.parse(TEXT));

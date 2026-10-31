@@ -511,8 +511,9 @@ export const BOCA_NORDESTE:readonly (readonly [number,number])[]=[[67,88],[67,89
  * uno-atravessa-tralha), the solid ground in each entrance's strip opens (becos-cidade.ts abrirChaoDasBocas, version + 1:
  * bocas-chao-aberto), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
  * version + 1: sem-tralha-nas-entradas), and then all scenery and props on the ground of any entrance (cenario-cidade.ts
- * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor). Last, the junk without shine goes (dejetos/esconder.ts
- * semDejetos, version + 1: esconder-dejetos-sem-brilho).
+ * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor). Then the junk without shine goes (dejetos/esconder.ts
+ * semDejetos, version + 1: esconder-dejetos-sem-brilho; the heaps plugging a cliff gap stand as cliff), before the last
+ * clearing of the entrances.
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
   const {decorate,semDecorNasBocas,chaoLivreNasBocas}=await import('./cenario-cidade.ts');
@@ -561,19 +562,21 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
     // Then no scenery on the ground of any entrance, postes and props too (version + 1: bocas-sem-muro-pedra-decor).
     const chao=chaoLivreNasBocas(opened.data);opened.data.version++;
     Object.assign(log,{decorNoChaoDasBocas:chao.decor.length,propsNasBocas:chao.props.length});
+    // The junk without shine goes: the rubble heaps open, the hidden decor and props go (version + 1:
+    // esconder-dejetos-sem-brilho), but the heaps plugging a cliff gap become cliff. The heaps opened widen some streets into new entrances: the pass below clears them.
+    const dejetos=semDejetos(opened.data);opened.data.version++;
+    Object.assign(log,{dejetosEntulho:dejetos.rubble.length,dejetosPenhasco:dejetos.cliff.length,dejetosCelulas:dejetos.cells,dejetosDecor:dejetos.decor.length,dejetosProps:dejetos.props.length});
     // The walls opened leave bits of fence alone and heaps of rubble that now shut the Uno out, and the props gone from the
-    // entrances can free a wall the defence kept: all of it again until nothing more goes (same versions).
+    // entrances can free a wall the defence kept: all of it again until nothing more goes (same versions). The first pass
+    // always clears the entrances (the ones the heaps opened).
     for(let pass=0;pass<6;pass++){
       const heaps=rubbleForUno(opened.data),fences=tirarCercasSoltas(opened.data),more=abrirChaoDasBocas(opened.data);
-      if(!heaps.length&&!fences.taken.length&&!more.cells.length)break;
+      if(pass&&!heaps.length&&!fences.taken.length&&!more.cells.length)break;
       const decor=semDecorNasBocas(opened.data).length,ground=chaoLivreNasBocas(opened.data);
       Object.assign(log,{entulhoBocas:Number(log.entulhoBocas??0)+heaps.length,cercasBocas:Number(log.cercasBocas??0)+fences.taken.length,
         celulasBocas:Number(log.celulasBocas)+more.cells.length,solidoNasBocas:more.left,decorNasBocas:Number(log.decorNasBocas)+decor,
         decorNoChaoDasBocas:Number(log.decorNoChaoDasBocas)+ground.decor.length,propsNasBocas:Number(log.propsNasBocas)+ground.props.length});
     }
-    // Last, the junk without shine goes: the rubble heaps open, the hidden decor and props go (version + 1: esconder-dejetos-sem-brilho).
-    const dejetos=semDejetos(opened.data);opened.data.version++;
-    Object.assign(log,{dejetosEntulho:dejetos.rubble.length,dejetosCelulas:dejetos.cells,dejetosDecor:dejetos.decor.length,dejetosProps:dejetos.props.length});
     return {text:encodeCityAsset(opened.data),log};
   }
 }

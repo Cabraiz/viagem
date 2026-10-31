@@ -42,12 +42,18 @@ test('the hidden debris props are PROP_REMOVED (indices kept) and no drawn prop 
   }
 });
 
-test('nothing hidden blocks walking: the cells of the old heaps and of the hidden junk are walkable ground',()=>{
+test('nothing hidden blocks walking: the cells of the old heaps and of the hidden junk are walkable ground, but a heap plugging a cliff gap is cliff',()=>{
   const old=JSON.parse(readFileSync('tests/fixtures/dejetos-ocultos.json','utf8')) as {rubbleCells:[number,number][];decorCells:[number,number][]};
   const u=asset.unitsPerCell,per=asset.samples.w/asset.cells.w;
   const allWalk=(c:number,r:number)=>{for(let j=0;j<per;j++)for(let i=0;i<per;i++)if(!asset.walkable(c*per+i,r*per+j))return false;return true;};
   assert.ok(old.rubbleCells.length>=35&&old.decorCells.length>=13);
-  for(const [c,r] of [...old.rubbleCells,...old.decorCells]){
+  const blockAt=(c:number,r:number)=>asset.blocks.find(b=>b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));
+  // Opened, b-0143 (74.8, 118.2) would cut a passage through cliff b-0127: a new street mouth that took the shops' ring
+  // spots (esconder.ts). The few heaps plugging a cliff gap stand as cliff, nothing new walkable through the wall.
+  const plug=old.rubbleCells.filter(([c,r])=>blockAt(c,r)?.kind==='cliff');
+  assert.ok(plug.some(([c,r])=>c===50&&r===79)&&plug.length<=6,`the cliff plugs: ${plug.join(' ')}`);
+  for(const [c,r] of plug)assert.ok(blockAt(c-1,r)?.kind==='cliff'&&blockAt(c+1,r)?.kind==='cliff'||blockAt(c,r-1)?.kind==='cliff'&&blockAt(c,r+1)?.kind==='cliff',`${c},${r} sits between cliff`);
+  for(const [c,r] of [...old.rubbleCells.filter(q=>!plug.includes(q)),...old.decorCells]){
     assert.ok(allWalk(c,r),`cell ${c},${r} walkable`);
     assert.ok(!asset.blocks.some(b=>b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h)),`no block on ${c},${r}`);
   }

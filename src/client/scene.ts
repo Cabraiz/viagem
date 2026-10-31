@@ -447,8 +447,8 @@ export class IslandScene extends Phaser.Scene {
     // kind's (needTowerArt), the defense hidden meanwhile (TOWER_ART_WAIT_MS).
   }
   private towerArtAsked=new Set<string>();
-  /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
-  private needTowerArt(kind:TowerKind){
+  /** A defense made before its sheets, or its kit just in the backpack (hud/kit-place KitArt): those two now, at high priority, past Phaser's first-in first-out queue. */
+  needTowerArt(kind:TowerKind){
     for(const l of towerLoads(kind)){
       if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key)||this.loaderTakes(l.key))continue;
       this.towerArtAsked.add(l.key);

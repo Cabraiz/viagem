@@ -16,9 +16,10 @@
  */
 import type {BuildRot} from '../../../contract/index.ts';
 import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/index.ts';
-import {KIT_PLACE_REACH,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
+import {KIT_PLACE_REACH,isTowerKit,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
+import type {TowerKind} from '../../render/towers/tower-rules.ts';
 import {fortRefusalText} from '../fortify/model.ts';
 
 /** The room's reach for a kit (rules KIT_PLACE_REACH, from the hero to the footprint's edge): farther, the ghost is red. */
@@ -61,6 +62,30 @@ const bodyOn=(rect:CellRect,bodies:Iterable<{x:number;y:number}>|undefined)=>{
   return false;
 };
 const keyOf=(piece:string,c:number,r:number,rot:BuildRot)=>`${piece}:${c}:${r}:${rot}`;
+const NO_KITS:readonly KitPiece[]=Object.freeze([]);
+/**
+ * torre-folha-ao-pegar-kit: the tower kits in the backpack not in `seen` yet (added to it), for the scene to fetch
+ * their kind's sheets as the kit comes in, not at its first ghost (~2.5 s of a green box on a phone). The walls'
+ * (muro, barricada) are the base art, already there.
+ */
+export function towerKitsArrived(slots:readonly (KitSlotLike|undefined)[]|undefined,seen:Set<string>):readonly KitPiece[]{
+  let out:KitPiece[]|undefined;
+  if(slots)for(const s of slots){
+    const piece=kitPiece(s?.id);
+    if(!piece||!isTowerKit(piece)||seen.has(piece))continue;
+    seen.add(piece);(out??=[]).push(piece);
+  }
+  return out??NO_KITS;
+}
+/** torre-folha-ao-pegar-kit, the host's side: every frame's backpack; a new scene starts over (its textures are its own). */
+export class KitArt {
+  private scene:unknown;
+  private readonly seen=new Set<string>();
+  sync(scene:{needTowerArt(kind:TowerKind):void},slots:readonly (KitSlotLike|undefined)[]|undefined){
+    if(this.scene!==scene){this.scene=scene;this.seen.clear();}
+    for(const kind of towerKitsArrived(slots,this.seen))scene.needTowerArt(kind as TowerKind);
+  }
+}
 
 export class KitPlace {
   /** The kit being placed: its inventory slot and item id. */

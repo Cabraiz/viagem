@@ -126,7 +126,7 @@ test('towers.ts: a defense made before its sheet is not drawn until it lands (fe
   assert.match(draw,/else if\(this\.now<t\.hideUntil\)\{if\(t\.base\.visible\)\{t\.base\.setVisible\(false\);t\.weapon\.setVisible\(false\);\}return;\}/,'unseen meanwhile');
   const scene=read('scene.ts');
   assert.match(scene,/needArt:kind=>this\.needTowerArt\(kind\)/);
-  assert.match(scene.slice(scene.indexOf('  private needTowerArt(')),/fetchBitmap\(l\.url,'high'\)/,'past the loader\'s queue');
+  assert.match(scene.slice(scene.indexOf('  needTowerArt(kind:TowerKind)')),/fetchBitmap\(l\.url,'high'\)/,'past the loader\'s queue');
 });
 
 // Q3 fatia 3: the LRU of the city's art by camera proximity.

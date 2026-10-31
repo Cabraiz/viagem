@@ -1,0 +1,54 @@
+[
+  {
+    "rodada": "antes",
+    "entrouMs": 9806,
+    "baseAntesDoKitMs": null,
+    "prints": [
+      {
+        "at": 150,
+        "base": false,
+        "fantasmaArte": false,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\antes-fantasma-150ms.png"
+      },
+      {
+        "at": 1000,
+        "base": true,
+        "fantasmaArte": true,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\antes-fantasma-1000ms.png"
+      },
+      {
+        "at": 2500,
+        "base": true,
+        "fantasmaArte": true,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\antes-fantasma-2500ms.png"
+      }
+    ],
+    "erros": []
+  },
+  {
+    "rodada": "depois",
+    "entrouMs": 8544,
+    "baseAntesDoKitMs": null,
+    "prints": [
+      {
+        "at": 150,
+        "base": true,
+        "fantasmaArte": true,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\depois-fantasma-150ms.png"
+      },
+      {
+        "at": 1000,
+        "base": true,
+        "fantasmaArte": true,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\depois-fantasma-1000ms.png"
+      },
+      {
+        "at": 2500,
+        "base": true,
+        "fantasmaArte": true,
+        "path": "evidence\\NEW-20261028-ORQ-torre-folha-ao-pegar-kit\\depois-fantasma-2500ms.png"
+      }
+    ],
+    "erros": []
+  }
+]

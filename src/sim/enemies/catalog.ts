@@ -442,7 +442,7 @@ export interface CreateEnemyOptions {
 export function createEnemy(ctx:SimContext,kind:EnemyKind,point:Point,scale=1,options:CreateEnemyOptions={}):EnemyState{
   const def=isLegacyKind(kind)?ENEMIES[kind]:rosterDef(kind);
   if(!def)throw new Error(`unknown enemy kind: ${kind}`);
-  const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)*ENEMY_HP));// inimigos-3x-fortes
+  const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)*ENEMY_HP(ctx.round.index)));// inimigos-3x-fortes
   const id=ctx.nextId('e');
   const enemy:EnemyState={
     id,kind,x:point.x,y:point.y,hp:maxHp,maxHp,speed:def.speed,damage:def.damage,radius:def.radius,

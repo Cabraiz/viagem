@@ -68,7 +68,7 @@ export function siegeStep(ctx:SimContext,state:StonewardsState):boolean{
     if(!(Math.hypot(e.x-w.x,e.y-w.y)<=w.radius+e.radius))continue;
     if(ctx.tick<(w.hitReady[id]??0))continue;
     w.hitReady[id]=ctx.tick+SIEGE_HIT_COOLDOWN;
-    if(damageWall(ctx,state,e.damage*ENEMY_DAMAGE))return true;// inimigos-3x-fortes
+    if(damageWall(ctx,state,e.damage*ENEMY_DAMAGE(ctx.round.index)))return true;// inimigos-3x-fortes
   }
   return false;
 }

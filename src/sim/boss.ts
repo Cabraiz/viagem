@@ -253,7 +253,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const players=[...ctx.players.values()].filter(inRun);
     const hpScale=options.hpScale?.(ctx)??1;
     const hpTuning=hpScale!==1&&hpScale>0&&Number.isFinite(hpScale)?{...tuning,baseHp:tuning.baseHp*hpScale}:tuning;
-    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=Math.round(bossMaxHp(count,hpTuning)*ENEMY_HP);// inimigos-3x-fortes
+    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=Math.round(bossMaxHp(count,hpTuning)*ENEMY_HP(ctx.round.index));// inimigos-3x-fortes
     if(count<=1&&tuning.soloDamage!==undefined&&tuning.soloDamage!==1)state.solo=true;
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.

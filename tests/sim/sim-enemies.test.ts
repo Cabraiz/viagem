@@ -134,16 +134,16 @@ test('createEnemy registers, scales hp only, applies elite/boss, readyIn; death 
   const at=BY_CENTER[0];
   const g=createEnemy(ctx,'bebado',at);
   assert.equal(g.id,'e1');assert.equal(ctx.enemies.get('e1'),g);
-  assert.equal(g.hp,ENEMIES.bebado.hp*ENEMY_HP);assert.equal(g.maxHp,g.hp);assert.equal(g.x,at.x);assert.equal(g.y,at.y);
+  assert.equal(g.hp,Math.round(ENEMIES.bebado.hp*ENEMY_HP(ctx.round.index)));assert.equal(g.maxHp,g.hp);assert.equal(g.x,at.x);assert.equal(g.y,at.y);
   assert.equal(g.spawnTick,10);assert.equal(g.readyTick,10);assert.ok(!g.elite&&!g.boss);
   const s=createEnemy(ctx,'bebado',at,2.5);
-  assert.equal(s.id,'e2');assert.equal(s.hp,Math.round(ENEMIES.bebado.hp*2.5*ENEMY_HP));assert.equal(s.maxHp,s.hp);
+  assert.equal(s.id,'e2');assert.equal(s.hp,Math.round(ENEMIES.bebado.hp*2.5*ENEMY_HP(ctx.round.index)));assert.equal(s.maxHp,s.hp);
   assert.deepEqual([s.speed,s.damage,s.radius,s.xp],[g.speed,g.damage,g.radius,g.xp]);
-  for(const bad of [0,-1,NaN,Infinity]){const b=createEnemy(ctx,'agiota',at,bad);assert.equal(b.hp,ENEMIES.agiota.hp*ENEMY_HP,`scale ${bad}`);}
+  for(const bad of [0,-1,NaN,Infinity]){const b=createEnemy(ctx,'agiota',at,bad);assert.equal(b.hp,Math.round(ENEMIES.agiota.hp*ENEMY_HP(ctx.round.index)),`scale ${bad}`);}
   const el=createEnemy(ctx,'tio-pave',at,2,{elite:true});
   const t=ENEMIES['tio-pave'];
   assert.equal(el.elite,true);
-  assert.equal(el.maxHp,Math.round(t.hp*2*ENEMY_HP*ELITE.hp));assert.equal(el.hp,el.maxHp);
+  assert.equal(el.maxHp,Math.round(Math.round(t.hp*2*ENEMY_HP(ctx.round.index))*ELITE.hp));assert.equal(el.hp,el.maxHp);
   assert.ok(Math.abs(el.radius-t.radius*ELITE.radius)<1e-12);assert.ok(Math.abs(el.xp-t.xp*CLASH_XP*ELITE.xp)<1e-9,'xp × CLASH_XP × ELITE.xp');
   assert.ok(Math.abs(el.speed-t.speed*ELITE.speed)<1e-12);assert.equal(el.damage,Math.round(t.damage*ELITE.damage));
   const boss=createEnemy(ctx,'chefe',at);assert.equal(boss.boss,true);assert.ok(!boss.elite);
@@ -481,11 +481,11 @@ test('retreating enemies are left to the director; elite is explicit and never d
   assert.equal(ctx.hits.length,0);assert.equal(ctx.projectiles.size,0);assert.equal(ctx.barks().length,0);
   // Director path: hp scale only, then elite flag and its own radius multiplier.
   const scaled=createEnemy(ctx,'tio-pave',c.at(2),8);scaled.elite=true;scaled.radius*=1.35;
-  assert.equal(scaled.maxHp,ENEMIES['tio-pave'].hp*8*ENEMY_HP);assert.equal(scaled.speed,ENEMIES['tio-pave'].speed);
-  assert.equal(applyElite(scaled).maxHp,ENEMIES['tio-pave'].hp*8*ENEMY_HP,'applyElite skips enemies already elite');
+  assert.equal(scaled.maxHp,Math.round(ENEMIES['tio-pave'].hp*8*ENEMY_HP(ctx.round.index)));assert.equal(scaled.speed,ENEMIES['tio-pave'].speed);
+  assert.equal(applyElite(scaled).maxHp,scaled.maxHp,'applyElite skips enemies already elite');
   const plain=applyElite(createEnemy(ctx,'bebado',c.at(2)));
-  assert.equal(plain.maxHp,ENEMIES.bebado.hp*ENEMY_HP*ELITE.hp);assert.equal(plain.hp,plain.maxHp);
-  assert.equal(applyElite(plain).maxHp,ENEMIES.bebado.hp*ENEMY_HP*ELITE.hp);
+  assert.equal(plain.maxHp,Math.round(Math.round(ENEMIES.bebado.hp*ENEMY_HP(ctx.round.index))*ELITE.hp));assert.equal(plain.hp,plain.maxHp);
+  assert.equal(applyElite(plain).maxHp,plain.maxHp);
 });
 
 // ---------- 16. Review regressions ----------

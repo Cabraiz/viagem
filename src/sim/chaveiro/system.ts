@@ -571,7 +571,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.ended)return;
       countCrew(ctx);
       // The last blow counts only the hits left to the limit (the bill stays BUDGET_BASE + BUDGET_PER_HIT per hit taken).
-      let units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)]*ENEMY_DAMAGE,car.limit-car.hits);// inimigos-3x-fortes
+      let units=Math.min(Math.round(CAR_HIT_UNITS[unitsOf(enemy)]*ENEMY_DAMAGE(ctx.round.index)),car.limit-car.hits);// inimigos-3x-fortes
       if(options.rate){
         const at=Math.floor(ctx.tick/ticks(1));
         if(car.rateAt!==at){car.rateAt=at;car.rateUsed=0;}

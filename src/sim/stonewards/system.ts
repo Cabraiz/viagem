@@ -317,7 +317,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       Object.assign(target,fresh);
       for(const rect of syncBarricades(options.terrain,state))options.onTerrainChanged?.(rect);
     },
-    hit(ctx,structureId,amount){amount*=ENEMY_DAMAGE;// inimigos-3x-fortes (rules/forca-inimigos.ts): every structure hit is an enemy's
+    hit(ctx,structureId,amount){amount*=ENEMY_DAMAGE(ctx.round.index);// inimigos-3x-fortes (rules/forca-inimigos.ts): every structure hit is an enemy's
       if(structureId===state.wall.id)damageWall(ctx,state,amount);
       else if(state.defenses&&isPiece(state,structureId))damagePiece(ctx.terrain,state,structureId,amount,options.onTerrainChanged);
       else if(state.defenses&&!findBarricade(state,structureId))damageDefense(state,structureId,amount);

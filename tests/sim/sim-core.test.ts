@@ -98,28 +98,28 @@ test('damageEnemy ignores unknown ids and non-positive or non-finite amounts, ap
 });
 
 test('damagePlayer applies armor, invulnerability and skips spectators, downed, eliminated and dead players',()=>{
-  // inimigos-3x-fortes: every hit a hero takes is × ENEMY_DAMAGE; the amounts here are the old ones over it.
+  // inimigos-3x-fortes: every hit a hero takes is × the round's ENEMY_DAMAGE; the amounts here are the old ones over it.
   const w=mkWorld();
   const p=mkPlayer('p1',{hp:50,stats:{...BASE_STATS,armor:3}});w.players.set('p1',p);
   const zero:string[]=[];w.onPlayerZero((pl,src)=>zero.push(`${pl.id}:${src}`));
-  w.damagePlayer('p1',10/ENEMY_DAMAGE,'e-1');
+  w.damagePlayer('p1',10/ENEMY_DAMAGE(w.round.index),'e-1');
   assert.equal(p.hp,43);
   assert.deepEqual(w.flush().map(({eventId:_,...rest})=>rest),[{type:'damage',target:'p1',amount:7,source:'e-1'}]);
-  w.damagePlayer('p1',2/ENEMY_DAMAGE);assert.equal(p.hp,43);assert.deepEqual(w.flush(),[]);
+  w.damagePlayer('p1',2/ENEMY_DAMAGE(w.round.index));assert.equal(p.hp,43);assert.deepEqual(w.flush(),[]);
   for(const amount of [NaN,-4,0,Infinity])w.damagePlayer('p1',amount);
-  w.damagePlayer('ghost',10/ENEMY_DAMAGE);
+  w.damagePlayer('ghost',10/ENEMY_DAMAGE(w.round.index));
   assert.equal(p.hp,43);assert.deepEqual(w.flush(),[]);
-  w.tick=5;p.invulnerableUntil=6;w.damagePlayer('p1',10/ENEMY_DAMAGE);assert.equal(p.hp,43);
-  w.tick=6;w.damagePlayer('p1',10/ENEMY_DAMAGE);assert.equal(p.hp,36);w.flush();
+  w.tick=5;p.invulnerableUntil=6;w.damagePlayer('p1',10/ENEMY_DAMAGE(w.round.index));assert.equal(p.hp,43);
+  w.tick=6;w.damagePlayer('p1',10/ENEMY_DAMAGE(w.round.index));assert.equal(p.hp,36);w.flush();
   const others=[
     mkPlayer('spec',{spectator:true}),mkPlayer('down',{downed:{sinceTick:0,bleedOutTick:100,progress:0}}),
     mkPlayer('elim',{eliminated:true}),mkPlayer('dead',{hp:0}),
   ];
-  for(const o of others){w.players.set(o.id,o);w.damagePlayer(o.id,10/ENEMY_DAMAGE);}
+  for(const o of others){w.players.set(o.id,o);w.damagePlayer(o.id,10/ENEMY_DAMAGE(w.round.index));}
   assert.deepEqual(others.map(o=>o.hp),[100,100,100,0]);assert.deepEqual(w.flush(),[]);
-  w.damagePlayer('p1',1000/ENEMY_DAMAGE,'boss');
+  w.damagePlayer('p1',1000/ENEMY_DAMAGE(w.round.index),'boss');
   assert.equal(p.hp,0);assert.equal(ofType(w.flush(),'damage')[0].amount,36);
-  w.damagePlayer('p1',10/ENEMY_DAMAGE,'boss');w.damagePlayer('p1',10/ENEMY_DAMAGE,'boss');
+  w.damagePlayer('p1',10/ENEMY_DAMAGE(w.round.index),'boss');w.damagePlayer('p1',10/ENEMY_DAMAGE(w.round.index),'boss');
   assert.deepEqual(zero,['p1:boss']);assert.deepEqual(w.flush(),[]);
 });
 

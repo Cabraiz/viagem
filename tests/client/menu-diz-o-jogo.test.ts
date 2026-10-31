@@ -5,22 +5,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {INVITER_MAX,inviteCode,inviterName,setInviter,shareLink} from '../../src/client/ui/invite.ts';
-import {CONFIRM_TEXT,INVITE_TEXT,MENU_OQUE,confirmText,showEtapa,type EtapaParts} from '../../src/client/ui/menu-etapa.ts';
+import {CONFIRM_TEXT,INVITE_TEXT,confirmText,showEtapa,type EtapaParts} from '../../src/client/ui/menu-etapa.ts';
 import {ROLE_LINE} from '../../src/client/ui/suit.ts';
 import {abasHtml,barraHtml} from '../../src/client/ui/insta.ts';
-import {MAX_PLAYERS} from '../../src/protocol/index.ts';
 import {roles} from '../../src/rules/index.ts';
 
 const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
 const insta=readFileSync(new URL('../../src/client/ui/insta.css',import.meta.url),'utf8');
 const estadio=readFileSync(new URL('../../src/client/estadio.css',import.meta.url),'utf8');
 
-test('#2: one line says what the game is, with the room size, under the name on every screen',()=>{
-  assert.ok(MENU_OQUE.includes(`até ${MAX_PLAYERS-1} amigos`),MENU_OQUE);
-  assert.ok(MENU_OQUE.length<=90,'two lines on a phone');
-  assert.match(main,/<\/h2><\/div>\n\s*<p class="menu-oque">\$\{MENU_OQUE\}<\/p>/,'right after the title box');
-  assert.match(estadio,/\n\.menu-oque \{/,'PC and the phone on its side');
-  assert.match(insta,/\n {2}\.menu-oque \{\n\s*order: -1;/,'the upright phone: under the profile, over the grid');
+test('#2 undone (menu-sem-subtexto-oque, the user 31/10: "isso é ruído"): no line under the 6 heroes says what the game is',()=>{
+  for(const src of [main,estadio,insta])assert.doesNotMatch(src,/menu-oque|MENU_OQUE|Sozinho ou com até|rodada a rodada/);
 });
 
 test('#11: the invite link says who called; the name is cleaned and cut, never trusted as HTML',()=>{

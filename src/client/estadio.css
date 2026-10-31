@@ -86,11 +86,6 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   background: var(--c-amarelo); color: var(--c-lilas); box-shadow: var(--s-1);
   font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere; text-wrap: balance;
 }
-/* What the game is (menu-diz-o-jogo-e-convite #2): one quiet line under the hero's name, on every screen. */
-.menu-oque {
-  flex: none; max-width: min(100%, 34em); margin: 0; font: 600 clamp(13px, 1.9vh, 18px)/1.3 var(--f-sistema);
-  color: var(--c-papel-claro); text-shadow: 0 2px 0 var(--c-breu), 1px 0 0 var(--c-breu), -1px 0 0 var(--c-breu); text-wrap: balance;
-}
 /* An invite (?sala=, #11): who called and which room, a pill at the top centre; the button says ENTRAR (main.ts). */
 .estadio .convite-faixa {
   position: fixed; z-index: 7; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
@@ -250,7 +245,6 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 38vh; }
   .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 38vh / var(--sinal-ar)); }
   .estadio-classe { font-size: 18px; border-width: 2px; }
-  .menu-oque { font-size: 12px; }
   .estadio .convite-faixa { font-size: 16px; top: max(6px, env(safe-area-inset-top)); }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
@@ -291,7 +285,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   top: var(--tec-top); bottom: auto; height: var(--tec-h); justify-content: flex-end; overflow: hidden;
   padding-top: 0; padding-bottom: 8px;
 }
-.estadio .estadio-escolha[data-teclado] > :is(.estadio-caixa-titulo, .menu-oque, .convite-faixa) { display: none; }
+.estadio .estadio-escolha[data-teclado] > :is(.estadio-caixa-titulo, .convite-faixa) { display: none; }
 .estadio:has(.estadio-escolha[data-teclado]) .menu-rodape { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }

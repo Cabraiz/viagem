@@ -13,7 +13,7 @@ import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode, inviterName, setInviter } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
-import { confirmText, etapaOf, MENU_OQUE, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
+import { confirmText, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { manterAcimaDoTeclado } from './client/ui/teclado.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, updateNow, type ResumeIntent } from './client/ui/update-toast.ts';
 import { startPullToRefresh } from './client/ui/pull-refresh.ts';
@@ -91,7 +91,6 @@ app.innerHTML = `
     <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
     <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2></div>
-    <p class="menu-oque">${MENU_OQUE}</p>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>

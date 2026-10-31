@@ -7,10 +7,11 @@ import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
   BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,CRATE_WEAPONS,MAX_CRATES,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
-  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,NEAR_START_REACH,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
+  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,NEAR_START_REACH,NEAR_START_WIDE_REACH,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
   VERDE_PISTOL,createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
+import {ITEM_MIN_GAP} from '../../src/sim/crates-gap.ts';
 import {ARSENAL_WEAPONS,NEW_WEAPONS,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_MARGIN,CRATE_SCALE} from '../../src/rules/crate-size.ts';
@@ -147,7 +148,8 @@ test('the nearest crate, one at a time; roxa and up make noise once at the start
   const hooks:CrateHooks={onNoise:(_ctx,at,radius,source)=>noise.push({at,radius,source})};
   const ctx=makeCtx(),crates=createCrates({seed:1,points:[],hooks});
   addPlayer(ctx,'a',0,0);
-  const far=crates.dropCrate(ctx,{x:.9,y:0},2),near=crates.dropCrate(ctx,{x:0,y:.3},3);
+  // itens-sem-nascer-colados: two crates stand ITEM_MIN_GAP apart, so both are never in reach; the far one waits for him.
+  const far=crates.dropCrate(ctx,{x:ITEM_MIN_GAP+.5,y:0},2),near=crates.dropCrate(ctx,{x:0,y:.3},3);
   run(ctx,crates,5);
   assert.equal(crates.opening('a')?.crate,near.id);
   assert.deepEqual(noise,[{at:{x:0,y:.3},radius:OPEN_NOISE_RADIUS,source:near.id}]);
@@ -155,7 +157,8 @@ test('the nearest crate, one at a time; roxa and up make noise once at the start
   assert.deepEqual(opened(ctx).map(e=>e.pickup),[near.id]);
   assert.equal(opened(ctx)[0].value,3);
   // Next the azul one: silent.
-  run(ctx,crates,ticks(1.5)+1);
+  ctx.players.get('a')!.x=far.x;
+  run(ctx,crates,ticks(1.5)+2);
   assert.deepEqual(opened(ctx).map(e=>e.pickup),[near.id,far.id]);
   assert.equal(noise.length,1,'azul is silent');
 });
@@ -189,7 +192,13 @@ test('start crates (caixas-sumiram): START_CRATES_PER_PLAYER a player (1..6), on
     assert.equal(all.length,want,`${players} players`);
     assert.ok(all.every(c=>crates.state.crates[c.id].origin==='dropped'&&Math.hypot(c.x,c.y)<=48+1e-9));
     // comeca-armado-e-levanta-seguro: a verde one by each hero (NEAR_START_REACH), the rest in the bands, azul.
-    const near=all.filter(c=>Math.hypot(c.x,c.y)<=NEAR_START_REACH+1e-9),start=all.filter(c=>!near.includes(c));
+    // itens-sem-nascer-colados: all of them on one spot, the near crates (ITEM_MIN_GAP apart) take NEAR_START_WIDE_REACH.
+    // A band crate sits exactly on its spot; a near one off them (rounded), out to NEAR_START_WIDE_REACH.
+    const onSpot=(c:{x:number;y:number})=>bands.some(b=>b.some(p=>p.x===c.x&&p.y===c.y));
+    const start=all.filter(onSpot),near=all.filter(c=>!onSpot(c));
+    assert.ok(near.every(c=>Math.hypot(c.x,c.y)<=(players>1?NEAR_START_WIDE_REACH:NEAR_START_REACH)+1e-9),'near ones by the heroes');
+    const pairs=all.flatMap((a,i)=>all.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.y-b.y)));
+    assert.ok(Math.min(...pairs)>=ITEM_MIN_GAP-1e-9,`${players} players: no two within ITEM_MIN_GAP`);
     assert.equal(near.length,Math.min(players,START_PLAYERS_MAX),'one near crate a hero');
     assert.ok(near.every(c=>c.value===1));
     assert.deepEqual(start.map(c=>c.value),start.map((_,i)=>near.length||i%2?2:1),'verde and azul alternate (all azul beside the near verdes)');

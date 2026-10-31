@@ -68,12 +68,14 @@
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,carGap,ticks} from '../contract/index.ts';
-import {RADIUS,bocaFaixa,cityEntradas,walkable,type CarPlace,type CityTerrain,type TerrainField} from '../maps/index.ts';
+import {RADIUS,walkable,type CarPlace,type CityTerrain,type TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_RADIUS,START_GRACE_S,KIT_CHANCE,KIT_POOL,cartaoCashback,isKitId,kitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
+import {ITEM_MIN_GAP,crateInMouth,crateSpot,gapFree,roomy} from './crates-gap.ts';
+export {crateInMouth};
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
@@ -125,8 +127,8 @@ const HEADING_KEEP=.9;
 /** placeNear's passes: [room for the crate's body, a mouth's strip allowed]. */
 const NEAR_PASSES:readonly (readonly [boolean,boolean])[]=[[true,false],[false,false],[true,true],[false,true]];
 export const NEAR_START_REACH=3,NEAR_START_RADII:readonly number[]=[2.5,2.25,2.75,2,3],NEAR_START_ANGLES=32;
-/** Item 2: near crates keep this far apart (their bodies, CRATE_BODY_RADIUS 1.5, may touch; a hero still tells them apart). */
-export const NEAR_START_SPACING=2;
+/** Near crates keep ITEM_MIN_GAP apart (itens-sem-nascer-colados); a hero boxed in gets his NEAR_START_WIDE out to NEAR_START_WIDE_REACH u. */
+export const NEAR_START_SPACING=ITEM_MIN_GAP,NEAR_START_WIDE:readonly number[]=[3.5,4,4.5,5,5.5,6,6.5,7,7.5,8],NEAR_START_WIDE_REACH=8;
 export {START_GRACE_S};
 /** A prize equal to the opener's last one is drawn again (same stream) up to this many times. */
 export const PRIZE_REDRAWS=6;
@@ -456,14 +458,6 @@ export function heroReach(terrain:TerrainField|undefined,from:readonly Point[]):
  * index (the cap needs every point: the 29 outside are fewer than six players' 36); none found, it stays.
  */
 export const MOUTH_REACH=24,MOUTH_STEP=.5,MOUTH_ANGLES=48,MOUTH_SPACING=4;
-const stripsMemo=new WeakMap<object,readonly {x:number;y:number;w:number;h:number}[]>();
-/** Whether a crate body at (x, y) overlaps an entrance's free strip. */
-export function crateInMouth(city:CityTerrain,x:number,y:number):boolean{
-  const a=city.asset,R=CRATE_BODY_RADIUS;
-  let strips=stripsMemo.get(a);
-  if(!strips)stripsMemo.set(a,strips=cityEntradas(a).map(e=>bocaFaixa(a,e)));
-  return strips.some(f=>x-R<f.x+f.w&&f.x<x+R&&y-R<f.y+f.h&&f.y<y+R);
-}
 /** The points with every crate in a mouth's strip moved out of it (see MOUTH_REACH); the others as they were. */
 export function foraDasBocas<T extends Point>(city:CityTerrain,points:readonly T[],spacing=MOUTH_SPACING):T[]{
   const out=points.map(p=>({...p})),taken=out.filter(p=>!crateInMouth(city,p.x,p.y));
@@ -541,8 +535,10 @@ export function createCrates(options:CratesOptions):Crates{
       record.item=item;pickup.resource=item;
     }
   }
-  function addCrate(ctx:SimContext,at:Point,record:CrateRecord,avoid?:string):PickupState{
-    const pickup:PickupState={id:ctx.nextId(CRATE_ID_PREFIX),kind:'chest',value:record.rarity,x:at.x,y:at.y,spawnTick:ctx.tick};
+  /** A crate's spot ITEM_MIN_GAP from every ground item, reached on foot (crates-gap.ts crateSpot). */
+  const settle=(ctx:SimContext,at:Point,except?:string)=>crateSpot(ctx,at,p=>reachable(ctx,p),except);
+  function addCrate(ctx:SimContext,to:Point,record:CrateRecord,avoid?:string):PickupState{
+    const at=settle(ctx,to),pickup:PickupState={id:ctx.nextId(CRATE_ID_PREFIX),kind:'chest',value:record.rarity,x:at.x,y:at.y,spawnTick:ctx.tick};
     stock(ctx,pickup,record,avoid??state.lastItem);
     ctx.pickups.set(pickup.id,pickup);
     state.crates[pickup.id]=record;
@@ -564,7 +560,7 @@ export function createCrates(options:CratesOptions):Crates{
     const cap=state.cap=crateCap(players);
     const free=points.map((_,i)=>i).filter(i=>pointReachable(ctx,i)),live:Point[]=[];
     for(let n=0;n<cap&&free.length;n++){
-      const point=spreadPick(rng,points,free,live);
+      const point=spreadPick(rng,points,roomy(ctx.pickups,free,i=>points[i]),live);
       free.splice(free.indexOf(point),1);live.push(points[point]);
       place(ctx,rng,point);
     }
@@ -577,7 +573,7 @@ export function createCrates(options:CratesOptions):Crates{
     const want=Math.min(starts.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players))-near);
     const bands=startBands(starts),taken:StartPoint[]=[];
     while(taken.length<want){
-      const band=bands[taken.length%bands.length].filter(c=>!taken.includes(c)),from=band.length?band:starts.filter(c=>!taken.includes(c));
+      const band=bands[taken.length%bands.length].filter(c=>!taken.includes(c)),from=roomy(ctx.pickups,band.length?band:starts.filter(c=>!taken.includes(c)),c=>c);
       if(!taken.length){taken.push(rng.pick(from));continue;}
       let best=from[0],bestD=-1;
       for(const c of from){let d=Infinity;for(const t of taken)d=Math.min(d,Math.hypot(t.x-c.x,t.y-c.y));if(d>bestD){best=c;bestD=d;}}
@@ -602,17 +598,18 @@ export function createCrates(options:CratesOptions):Crates{
     // Outside the city (no mask) any spot counts, like heroReach.
     const fits=(at:Point,body:boolean,mouth:boolean,near:readonly Point[])=>(!city||(city.clearDisc(at.x,at.y,body?CRATE_BODY_RADIUS:RADIUS)&&(mouth||!crateInMouth(city,at.x,at.y))))
       &&(!car||carGap(car,at)>=(body?CRATE_BODY_RADIUS:RADIUS))
-      &&reachable(ctx,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
+      &&reachable(ctx,at)&&gapFree(ctx.pickups,at)&&near.every(c=>Math.hypot(c.x-at.x,c.y-at.y)>=NEAR_START_SPACING)
       &&heroes.every(o=>Math.hypot(o.x-at.x,o.y-at.y)>=CRATE_BODY_RADIUS+RADIUS);
     const owners=heroes.slice(0,START_PLAYERS_MAX),a0=owners.map(()=>rng.next()*2*Math.PI);
     const plan=(order:readonly number[])=>{
       const near:Point[]=[];
       for(const i of order){
         const p=owners[i];
-        search:for(const [body,mouth] of NEAR_PASSES)for(const r of NEAR_START_RADII)for(let k=0;k<NEAR_START_ANGLES;k++){
+        search:for(const [radii,reach] of [[NEAR_START_RADII,NEAR_START_REACH],[NEAR_START_WIDE,NEAR_START_WIDE_REACH]] as const)
+          for(const [body,mouth] of NEAR_PASSES)for(const r of radii)for(let k=0;k<NEAR_START_ANGLES;k++){
           const a=a0[i]+k*2*Math.PI/NEAR_START_ANGLES;
           const c={x:Math.round((p.x+Math.cos(a)*r)*100)/100,y:Math.round((p.y+Math.sin(a)*r)*100)/100};
-          if(Math.hypot(c.x-p.x,c.y-p.y)<=NEAR_START_REACH&&fits(c,body,mouth,near)){near.push(c);break search;}
+          if(Math.hypot(c.x-p.x,c.y-p.y)<=reach&&fits(c,body,mouth,near)){near.push(c);break search;}
         }
       }
       return near;
@@ -683,7 +680,7 @@ export function createCrates(options:CratesOptions):Crates{
       const used=usedPoints();
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(o=>Math.hypot(o.x-points[i].x,o.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;
-      const point=spreadPick(rng,points,free,livePlaced(ctx));
+      const point=spreadPick(rng,points,roomy(ctx.pickups,free,i=>points[i]),livePlaced(ctx));
       let rarity=shifted(roll(rng,TIER_ODDS[tierOf[point]]),stageShift(ctx.round));
       while(rarity<GOLD_RARITY&&state.took?.[p.id]?.includes(rarity))rarity=rarity+1 as Rarity;
       addCrate(ctx,points[point],{rarity,origin:'dropped',point});
@@ -710,7 +707,7 @@ export function createCrates(options:CratesOptions):Crates{
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;
       state.respawns.shift();
-      place(ctx,rng,spreadPick(rng,points,free,livePlaced(ctx)));
+      place(ctx,rng,spreadPick(rng,points,roomy(ctx.pickups,free,i=>points[i]),livePlaced(ctx)));
     }
   }
 
@@ -724,7 +721,8 @@ export function createCrates(options:CratesOptions):Crates{
     for(const pickup of ctx.pickups.values()){
       if(pickup.kind!=='chest'||state.crates[pickup.id])continue;
       const rarity:Rarity=isRarity(pickup.value)&&pickup.value>1?pickup.value:pickup.id.startsWith(BOSS_CHEST_PREFIX)?5:roll(rng,ELITE_ODDS);
-      pickup.value=rarity;
+      // A drop beside another item opens in a fan around the body (settle's rings).
+      const at=settle(ctx,pickup,pickup.id);pickup.x=at.x;pickup.y=at.y;pickup.value=rarity;
       const record:CrateRecord=state.crates[pickup.id]={rarity,origin:'dropped'};
       stock(ctx,pickup,record);
     }
@@ -791,7 +789,7 @@ export function createCrates(options:CratesOptions):Crates{
       prize=record.start?{items:[weaponItem(rng.pick(STARTER_WEAPONS),rarity)]}:rollPrize(rng,rarity);
     }
     state.last[p.id]=prizeKey(prize);
-    for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
+    for(const item of prize.items)if(!add(p,item))dropItem(ctx,settle(ctx,crate),item);
     // The Cartão Fidelidade's cashback (rules/passives.ts CARTAO_CASHBACK): Grana into the opener's wallet.
     const cashback=cartaoCashback(p.build.passives.find(i=>i.id==='cartao')?.level??0);
     if(cashback)addGrana(p,cashback);

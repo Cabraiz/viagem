@@ -7,7 +7,7 @@
  * Only tokens (ui/tokens.css); tralha.css.
  */
 import './tralha.css';
-import {icon} from '../../ui/icon.ts';
+import {icon} from '../../ui/icon.ts';import {BARRICADA_OFF} from '../../../rules/kits-off.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -75,7 +75,7 @@ export class TralhaHud {
     this.el.hidden=!show;
     if(!show)return;
     for(const [b,dx] of [[this.coletar,-38],[this.destruir,38]] as const){
-      b.hidden=!state.at;
+      b.hidden=!state.at||(b===this.coletar&&BARRICADA_OFF);
       if(state.at){b.style.left=`${state.at.x+dx}px`;b.style.top=`${state.at.y-60}px`;}
     }
     this.barra.hidden=state.progress===undefined||!state.hero;

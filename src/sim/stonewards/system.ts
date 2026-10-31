@@ -119,7 +119,7 @@ export interface StonewardsOptions {
    * first step; `give` hands a collected square to the hero (a kit:barricada; false: no room), `carrying` counts the
    * kits a hero has (CARREGA_MAX). Absent: no tralha (tests, the wall mode).
    */
-  tralha?:{give(p:SimPlayer):boolean;carrying(p:SimPlayer):number};
+  tralha?:{give(p:SimPlayer):boolean;carrying(p:SimPlayer):number;/** false: no coleta (kits-off BARRICADA_OFF), destruir only. */coleta?:boolean};
   /**
    * D-051 mode 'ninhos' (assemble.ts; card ninhos-rounds-fora): no intermission. The forge and the towers' orders open
    * through `gate` (ninhos/calma.ts: no critter awake near the player), the crates are gathered at any time and the
@@ -300,7 +300,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     destruir(ctx,playerId,id){return destruirTralha(ctx,ctx.terrain,state,playerId,id,free?.onTerrainChanged);},
     coletar(ctx,playerId,id,req){
       const p=ctx.players.get(playerId);
-      return options.tralha&&p?coletarTralha(ctx,state,playerId,id,options.tralha.carrying(p),req):{ok:false,reason:'player'};
+      return options.tralha?.coleta===false?{ok:false,reason:'nada'}:options.tralha&&p?coletarTralha(ctx,state,playerId,id,options.tralha.carrying(p),req):{ok:false,reason:'player'};
     },
     drainColetas(){const out=coletaOutcomes;coletaOutcomes=[];return out;},
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId,options.calm?.gate);},

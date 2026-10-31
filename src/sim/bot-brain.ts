@@ -1423,7 +1423,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
   if(line){const l=lineReserve(v);return {units:Math.max(roots,l.units),grana:l.grana};}
   if(!v.rail||v.gustavoes>=GUSTAVAO_LIMIT)return {units:roots,grana:0};
   const root=live.some(d=>!d.person&&d.kind===ROOT_DEFENSE&&sizeAt(v,at(d))>=3);
-  const start=scaled(costOf(root?pickChild(ROOT_DEFENSE,'B')!:DEFENSES[ROOT_DEFENSE]),BOT_GUSTAVAO_SAVE);
+  const start=scaled(costOf((root?pickChild(ROOT_DEFENSE,'B'):undefined)??DEFENSES[ROOT_DEFENSE]),BOT_GUSTAVAO_SAVE);
   return {units:Math.max(roots,start.units),grana:start.grana};
 }
 

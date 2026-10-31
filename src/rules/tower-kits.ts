@@ -12,6 +12,7 @@
  */
 import {DEFENSES,DEFENSE_IDS,type BuildPiece,type DefenseId} from './towers.ts';
 import type {FreePiece} from '../contract/index.ts';
+import {BARRICADA_OFF,towerShown} from './kits-off.ts';
 
 export const KIT_PREFIX='kit:';
 /** A crate gives a kit (of its rarity's tier) instead of its row's prize this often. */
@@ -21,13 +22,12 @@ export const KIT_CHARGES:Readonly<Record<Exclude<FreePiece,'barraca'>,number>>=O
 /** What a kit may build: every tower that stands on the grid (not the rail's Gustavão) and the wall pieces. */
 export type KitPiece=Exclude<DefenseId,'gustavao'>|Exclude<FreePiece,'barraca'>;
 const TOWER_KITS=DEFENSE_IDS.filter(id=>DEFENSES[id].size!==null) as Exclude<DefenseId,'gustavao'>[];
-/** The kits a crate of each rarity rolls, even odds (rarity 1..5 → tier; verde adds the wall pieces). */
+/** The shown tower kits (kits-off TOWERS_SHOWN) of the tier nearest `t`: a tier with none takes the nearest shown. */
+const tierKits=(t:number)=>{const on=TOWER_KITS.filter(towerShown),gap=(id:typeof on[number])=>Math.abs(DEFENSES[id].tier-t),min=Math.min(...on.map(gap));return on.filter(id=>gap(id)===min);};
+/** The kits a crate of each rarity rolls, even odds (rarity 1..5 → tier; verde adds the wall pieces, no barricada while BARRICADA_OFF). */
 export const KIT_POOL:Readonly<Record<1|2|3|4|5,readonly KitPiece[]>>=Object.freeze({
-  1:Object.freeze([...TOWER_KITS.filter(id=>DEFENSES[id].tier===1),'muro','barricada'] as KitPiece[]),
-  2:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===2)),
-  3:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===3)),
-  4:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===4)),
-  5:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===5)),
+  1:Object.freeze([...tierKits(1),'muro',...BARRICADA_OFF?[]:['barricada']] as KitPiece[]),
+  2:Object.freeze(tierKits(2)),3:Object.freeze(tierKits(3)),4:Object.freeze(tierKits(4)),5:Object.freeze(tierKits(5)),
 });
 /** Every kit item id, in a fixed order (the protocol's DICT appends them). */
 export const KIT_IDS:readonly string[]=Object.freeze([...TOWER_KITS,'muro','barricada'].map(p=>`${KIT_PREFIX}${p}`));

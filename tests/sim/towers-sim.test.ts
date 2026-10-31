@@ -24,6 +24,9 @@ import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../
 import {prizeBlocks} from '../../src/sim/assemble.ts';
 import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
 import {EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
+// kits-so-torres-boas: the whole upgrade tree, as before the card (the room shows only the guarita).
+import {showEveryTower} from '../../src/rules/kits-off.ts';
+showEveryTower();
 import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DEFENSE,TIER_BUILD_SECONDS,TIER_COST,childrenOf,payUnits,phaseOf,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';

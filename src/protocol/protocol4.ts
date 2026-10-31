@@ -134,9 +134,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * refuse the masks.
  * 43 given by the integration queue (tools/fila.mjs, lote 20261030-124249) to: NEW-20261030-ORQ-colisao-entre-herois.
  * Next (the queue numbers it) since the towers' força (torres-3-base-9): structures' `level` (absent at 1); old decoders refuse.
+ * 44 given by the integration queue (tools/fila.mjs, lote 20261031-103358) to: NEW-20261031-ORQ-torres-3-base-9-evolucoes-regras.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=43;
+export const PROTOCOL_VERSION=44;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

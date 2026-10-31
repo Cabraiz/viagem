@@ -483,10 +483,7 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
   if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
-/**
- * The popup's card: the chosen hero, the player's name, the class with its suit (confirmacao-70h) and what the role does
- * (#9). Not the hero's long name (escolha-subtitulo-3-linhas: the art and the menu already show who it is).
- */
+/** The popup's card: the hero, the player's name, the class with its suit and what the role does (not the long name). */
 function showChosen() {
   text('chosen-name',nickname.trim());setArt('chosen-art',selected);
   const line=ROLE_LINE[selected.role];

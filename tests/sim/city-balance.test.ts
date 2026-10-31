@@ -46,7 +46,7 @@ import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,addTelegraph,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import type {ProjectileState} from '../../src/contract/types.ts';
-import {MAX_ROUND_ENEMIES,ROUND_COUNT,drawTheme,planRound} from '../../src/rules/waves.ts';
+import {MAX_ROUND_ENEMIES,ROUND_COUNT,drawTheme,planRound} from '../../src/rules/waves.ts';import {ENEMY_DAMAGE} from '../../src/rules/index.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
 // ---------- The real city, built once ----------
@@ -222,8 +222,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
 // Re-recorded for textos-rodada-nivel-tom (29/10): only the round name 'Round do Pavê' → 'Rodada do Pavê' in the events.
 // Re-recorded for modificadores-so-elenco-ativo (29/10): the 7 modifiers naming hidden enemies left the draw, so seeds draw other themes.
 // Re-recorded for bocas-chao-aberto (30/10): map v10 (on cercas-nordeste), the walls and rock behind the mouths cut, so routes and spawn spots move.
+// Re-recorded for inimigos-3x-fortes (31/10): half horde (HORDE_SHARE), enemy hp by round ENEMY_HP_RAMP 1/2/3.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'04489244b1873351','tutorial seed 8 r4':'541b6625efebbf2f','plain seed 21 r10':'ef72d953c3d559cc',
+  'tutorial seed 3 r4':'1c3fdc99601d9a49','tutorial seed 8 r4':'ec3cc58937f9823f','plain seed 21 r10':'407ae94583960d7d',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -242,11 +243,11 @@ test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and outpu
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
-  // Seed 2 (was 8 before modificadores-so-elenco-ativo, 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
-  // modifier (its hpMult) can differ between the two runs; on seed 2 rounds 2-4 draw the same theme in both.
-  const base=cityRun(2,4,true);
+  // Seed 5 (2 before inimigos-3x-fortes' half horde, 8 before modificadores-so-elenco-ativo, 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
+  // modifier (its hpMult) can differ between the two runs; on seed 5 rounds 2-4 draw the same theme in both.
+  const base=cityRun(5,4,true);
   const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
-  const tuned=cityRun(2,4,true,{cityBalance:knobs});
+  const tuned=cityRun(5,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
   assert.ok(r1(base.bodies).length>0,'the tutorial spawned');
@@ -345,7 +346,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // tick 4000 hashes the same with the old curve.
 // The city again for lojas-bico-fora-das-bocas (the shops' lots off the street mouths: the banks, their crates and the
 // bots' trips move).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'44a881217be6f3a4',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+// The city, the island and endless again for inimigos-3x-fortes (half horde, enemy hp/damage by round: every map).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'bf9b2a33c465dd48',ilha:'f0c9d02585278c95',infinito:'65ef0625c27c445f'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);
@@ -587,7 +589,7 @@ function hostileHits(terrain:SimWorld['terrain'],heroes:number,cityBalance?:City
 test('damage per team: ×0.5 for 1 player halves contact, projectile and telegraph hits on a solo city hero; 2 heroes, round 1 and the island untouched',()=>{
   const half=cityBalanceFrom({players:{1:{damage:.5}}},NEUTRAL_CITY_BALANCE);
   const solo=hostileHits(city,1,NEUTRAL_CITY_BALANCE);
-  assert.deepEqual(solo.taken,{contact:solo.pomboDamage,projectile:12,telegraph:20},'every source hit at its raw damage');
+  const x=ENEMY_DAMAGE(solo.world.round.index);assert.deepEqual(solo.taken,{contact:solo.pomboDamage*x,projectile:12*x,telegraph:20*x},'every source hit at its raw damage × ENEMY_DAMAGE');
   assert.equal(solo.world.playerDamageScale,undefined,'neutral city knobs: no hook');
   // The default city is CITY_BALANCE: hooked, the same hits as passing it explicitly.
   const byDefault=hostileHits(city,1);
@@ -605,7 +607,7 @@ test('damage per team: ×0.5 for 1 player halves contact, projectile and telegra
   const island=hostileHits(new TerrainField(3),1),islandTuned=hostileHits(new TerrainField(3),1,half);
   assert.equal(islandTuned.world.playerDamageScale,undefined,'island: no hook');
   assert.deepEqual(islandTuned.taken,island.taken,'island: unchanged');
-  assert.deepEqual(island.taken,{contact:island.pomboDamage,projectile:12,telegraph:20});
+  assert.deepEqual(island.taken,{contact:island.pomboDamage*x,projectile:12*x,telegraph:20*x});
   // The run's dispose removes its hook (a rematch wires its own).
   tuned.sys.dispose();
   assert.equal(tuned.world.playerDamageScale,undefined,'disposed');

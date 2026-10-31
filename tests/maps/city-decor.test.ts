@@ -35,9 +35,9 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,10);
+  assert.equal(asset.version,11);
   // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city); v10
-  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left).
+  // (bocas-chao-aberto) took the walls and rocks of the cells opened in the mouths (2 451 left); v11 (esconder-dejetos) the hidden junk and the rubble heaps' pieces (2 416).
   assert.ok(asset.decor.length>2400,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
   const keys=Object.keys(JSON.parse(TEXT));
@@ -135,7 +135,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,9);
+  assert.equal(b.decor.length,0);assert.equal(b.version,10);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);

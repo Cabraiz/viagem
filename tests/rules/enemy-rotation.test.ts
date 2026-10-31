@@ -15,6 +15,8 @@ import {ELITE_ONLY,MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,
   drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
 import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
 import {HORDE_SHARE} from '../../src/rules/forca-inimigos.ts';
+/** The heaviest regular body's threat (not the mini-chefe nor the boss). */
+const HEAVIEST=Math.max(...Object.entries(ROLE_PROFILES).filter(([r])=>r!=='mini-chefe'&&r!=='chefe').map(([,p])=>p.threat));
 // The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
 setRosterOnlyLiberados(false);
 
@@ -135,7 +137,9 @@ test('round 8: the lone mini-chefe takes its threat (ROLE_PROFILES threat x the 
     // inimigos-3x-fortes: × HORDE_SHARE (the regular bodies give up the mini's share of the full budget, then halve).
     const soloThreat=ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1))*HORDE_SHARE,given=regularThreat(control)-regularThreat(withMini);
     // ×0.7 bodies (CLASH_BODIES): at 1 player the body rounding gives up ~0.68 of it (still about 1 on average).
-    assert.ok(given>=soloThreat*.65&&given<=soloThreat*1.25,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
+    // At 1 player the halved share (4) is ~1.5 bodies: the halved rounding keeps it within one body (the heaviest regular).
+    const ok=players===1?Math.abs(given-soloThreat)<=HEAVIEST:given>=soloThreat*.65&&given<=soloThreat*1.25;
+    assert.ok(ok,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
     ratios.push(given/soloThreat);
   }
   assert.ok(ratios.length>=200,`${ratios.length} uncapped cases`);

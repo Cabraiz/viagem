@@ -93,7 +93,7 @@ import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts'
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {CAR_ROPE,HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isPlayableClass,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isPlayableClass,isTowerKit,kitPiece,towerArtKind} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -777,7 +777,7 @@ class CitySandbox extends Phaser.Scene {
       towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,listFires?{}:{fireTick:1e9}));});
     }else if(kitParam){
       // kit=: only the kit's tower, in obra (the showcase would hide it).
-      if(isTowerKit(kitParam))this.defenses.push(make(kitParam,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
+      if(isTowerKit(kitParam))this.defenses.push(make(towerArtKind(kitParam) as TowerKind,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
     }else if(towersParam===12){
       const kinds:TowerKind[]=['vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
         'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','holofote','arame-e-sirene'];

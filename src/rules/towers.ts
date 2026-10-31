@@ -217,7 +217,7 @@ export const isBicho=(id:unknown):id is BichoId=>typeof id==='string'&&Object.ha
 /** The 3 initials: the only towers a kit builds (their 9 evolutions only come from evolving one). */
 export const BICHO_ROOTS:readonly BichoId[]=Object.freeze((Object.keys(DEFENSES) as DefenseId[]).filter(id=>DEFENSES[id].bicho&&DEFENSES[id].from===null) as BichoId[]);
 /** The art a tower is drawn with until its own (card torres-bichos-gore-arte): the Guarita for the 12. */
-export const towerArt=(kind:string):string=>isBicho(kind)?'vigia-do-predio':kind;
+export const towerArtKind=(kind:string):string=>isBicho(kind)?'vigia-do-predio':kind;
 
 /** D-052, free build: what {t:'build'} may name (contract/build.ts): a tower (the root) or a wall piece. */
 export type BuildPiece=DefenseId|FreePiece;

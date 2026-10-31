@@ -19,7 +19,7 @@ import {createFearSystem} from './fear.ts';
 import {BARRICADA_OFF,UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,killDrop,type Crates,type CratesState} from './crates.ts';
-import {cityLoot} from './stonewards/loot.ts';
+import {cityLoot} from './stonewards/loot.ts';import {kitsFull} from './towers/forca.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
@@ -395,8 +395,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
     ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     ...(options.goldLab!==undefined?{goldChance:options.goldLab}:{}),
-    // comeca-armado item 2: the near start crates stay off the Uno's body (the team spawns beside it).
-    car:()=>chaveiro?.state.car,
+    // comeca-armado item 2: the near start crates stay off the Uno's body (the team spawns beside it); torres-3-base-9: the teto.
+    car:()=>chaveiro?.state.car,kitsFull:(ctx:SimContext)=>kitsFull(stonewards.state,ctx.players.values()),
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),

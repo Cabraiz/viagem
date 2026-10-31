@@ -320,13 +320,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     attackBtn=new AttackButton(attack,$('.explore-layout'),{
       hero:()=>controller&&sceneReady?net.predicted:undefined,toScreen:p=>controller!.scene.locate(p).screen,
       enemies:()=>net.feed.enemies.values(),tick:()=>net.tick,
-      chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),
-      wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
+      chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
       // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
       reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
-      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,
-      // tiro-rapido-e-local: the drag aim only with ?tiro=velho; else the shot goes where the hero looks (front cone).
-      drag:tiroMode()==='velho',
+      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,drag:tiroMode()==='velho',
       // tiro-delay-1s-predicao: the press shows at once (swing, flash, sound); the room's copy is skipped.
       pressed:()=>{if(sceneReady)controller?.scene.predictAttack();}});
     net.onCast=result=>skill?.answer(result,performance.now());
@@ -740,8 +737,6 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           const busy=manual&&net.handsBusy&&!skill?.towing,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
-          // tiro-rapido-e-local: a held button refires on its own; each refire the room would take is drawn at once too.
-          if((attackBtn?.press.held||controller?.scene.autoFiring)&&sceneReady)controller?.scene.predictAttack(true);
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;

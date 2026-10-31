@@ -17,7 +17,7 @@ import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,
   POP_TEXT_MS,leashMoving,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
-import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
+import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {planAlert} from './telegraph-alert.ts';
@@ -25,7 +25,7 @@ import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from '
 import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_ART_IDS,DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,OP_SPRITE,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
 import {FILL_TEXEL_CSS,TELEGRAPH_BORDER_KEY,TELEGRAPH_FILL_KEY,TELEGRAPH_STRIP_POINTS,borderStrip,decorArtInfo,fillStrip,queueTelegraphArt,repeatable} from './telegraph-art.ts';
-import {token,tokenColor} from '../ui/tokens.ts';
+import {BUBBLE_STYLE,CRIT_STYLE,DAMAGE_STYLE,HURT_STYLE,PALETTE,TAG_RED,TAG_STYLE,applyPalette,paint,popStyle} from './horde-text.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {BAR_HEAD_GAP,BOSS_BAR_FILL,ENEMY_BAR_FILL,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,enemyBarWidth,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
@@ -188,12 +188,9 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   thrown:ThrownLook|undefined;
   /** The viaduct (ProjectileView.andar): 1 flying over a deck. */
   floor?:1;
-  /** tiro-rapido-e-local (render/own-shots.ts): the local hero's shot drawn on the press, until the room's copy takes it. */
-  ghost?:Ghost;
-  /** The room's copy that took a ghost: drawn this far (u) off its own spot from `adoptAt`, the gap fading (adoptFade). */
-  ox?:number;oy?:number;adoptAt?:number;
-  /** The room's late copy of a shot whose ghost already flew its whole flight: not drawn again. */
-  mute?:boolean}
+  /** tiro-rapido-e-local (own-shots.ts): `ghost` the shot drawn on the press; the room's copy that took it drawn (ox,oy) off
+   * from `adoptAt` (adoptFade); `mute` its late copy after the ghost flew it all. */
+  ghost?:Ghost;ox?:number;oy?:number;adoptAt?:number;mute?:boolean}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -221,7 +218,6 @@ interface DeathFx{image:Image;top:Image;sil:Image;contact:Image;contactW:number;
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16,deaths:24} as const;
 const TAU=Math.PI*2;
-const FONT='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const SNAP_UNITS=3;
 const BUBBLE_MS=2200;
 /** Lift of a player's balloon over their feet, in world px at ui scale 1: above the head of the 100 px hero sprite. */
@@ -244,50 +240,6 @@ export const PRIZE_LIFT_DEPTH=93900;
 /** The elite's or boss's name ficha (plate, then text +1): over the hp bars (95000/95001). */
 const NAME_DEPTH=95002;
 
-const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
-const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
-const HURT_STYLE:TextStyle={fontFamily:FONT,fontSize:'26px',fontStyle:'900',color:'#ff6b6b',stroke:'#2b1620',strokeThickness:5};
-const BUBBLE_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'700',color:'#51425e',backgroundColor:'#fff8ec',padding:{x:10,y:6},align:'center',wordWrap:{width:280}};
-/**
- * Palette of the comic layer on the light tropical scene (D-022, DSG-contraste-mapa): every number and balloon is a
- * light body with a Breu edge (double-edge rule). Read from src/client/ui/tokens.css once the first renderer exists, since
- * Phaser cannot read CSS variables; the hex in PALETTE are the same token values, kept for a page without the stylesheet.
- */
-/** The red tag over a player marked by the agiota's boleto (say key 'devendo', D-033): Papel letters on a red body. */
-const TAG_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'900',color:'#fff8ec',padding:{x:10,y:5},align:'center'};
-const TAG_RED=0xd2392f;
-const PALETTE={breu:0x1e1530,papel:0xeeddb8,cone:0xff7a1f};
-let paletteReady=false;
-function applyPalette(){
-  if(paletteReady||typeof document==='undefined')return;
-  paletteReady=true;
-  const breu=token('--c-breu');
-  DAMAGE_STYLE.color=token('--c-papel');DAMAGE_STYLE.stroke=breu;
-  CRIT_STYLE.color=token('--c-amarelo');CRIT_STYLE.stroke=breu;
-  HURT_STYLE.color=token('--c-cone');HURT_STYLE.stroke=breu;
-  BUBBLE_STYLE.color=breu;BUBBLE_STYLE.backgroundColor='rgba(0,0,0,0)'; // body drawn on the overlay, with its edge
-  TAG_STYLE.color=token('--c-papel');
-  PALETTE.breu=tokenColor('--c-breu');PALETTE.papel=tokenColor('--c-papel');PALETTE.cone=tokenColor('--c-cone');
-}
-const popStyles=new Map<string,TextStyle>();
-const popStyle=(kind:string)=>{
-  const key=styleKey(kind);
-  let style=popStyles.get(key);
-  if(!style){const k=kindStyle(kind);style={fontFamily:FONT,fontSize:'34px',fontStyle:'900',color:k.fill,stroke:k.stroke,strokeThickness:9};popStyles.set(key,style);}
-  return style;
-};
-/** One texture upload per change, even when the label repeats. */
-const painted=new WeakMap<Text,TextStyle>();
-const paint=(text:Text,style:TextStyle,label:string)=>{
-  if(painted.get(text)!==style){
-    painted.set(text,style);
-    // Measure each style once (pixel read-back), then reuse its metrics: a 24px number reused as a 32px crit is not clipped.
-    if(style.metrics)text.style.setStyle(style,false);
-    else{text.setStyle(style);const m=text.style.getTextMetrics();style.metrics={ascent:m.ascent,descent:m.descent,fontSize:m.fontSize};}
-    if(text.text===label){text.updateText();return;}
-  }
-  if(text.text!==label)text.setText(label);
-};
 const SHADOW_W=46,SHADOW_H=16,BAR_W=46,BAR_H=13,FILL_W=40,FILL_H=7;
 /** Owner key of the target ring's imported image (one target at a time). */
 const TARGET_RING={};

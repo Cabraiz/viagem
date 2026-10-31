@@ -4,7 +4,7 @@
  * profile's blurred stand-ins.
  */
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
-import {browserLoad,chosenArtUrl,createMenuArtPreload,DEITADO,type MenuArtPreload} from '../preload/menu-art-preload.ts';
+import {browserLoad,chosenArtUrl,createMenuArtPreload,DEITADO,popupArtUrls,type MenuArtPreload} from '../preload/menu-art-preload.ts';
 
 /** The phone asked for light pages (Save-Data): nothing downloads in the background. */
 export const saveData=()=>!!(navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData;
@@ -18,6 +18,13 @@ export function menuArtNoNavegador(idle:(fn:()=>void)=>unknown,chosen:()=>string
   addEventListener('load',()=>art.start(chosen()),{once:true}); // main.ts is a module: it always runs before load
   return art;
 }
+
+/**
+ * BORA!: the popup's own files first. The match's warm-up (lobby.ts warmSolo: the code, the city, MBs) waits for them,
+ * 4 s at most; on a slow 4G it took the whole link and the popup stayed empty for 5 s and more.
+ */
+export const popupPrimeiro=(art:MenuArtPreload,classId:string)=>Promise.race([
+  art.now(popupArtUrls(classId,matchMedia(DEITADO).matches,devicePixelRatio||1)),new Promise<void>(r=>setTimeout(r,4000))]);
 
 /**
  * The hero's picture on top of the popup (a background): the file the portrait already shows when it is his (768 or

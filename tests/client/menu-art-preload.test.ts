@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {chosenArtUrl,createMenuArtPreload,popupArtUrls,POPUP_FIXOS,type MenuArtEnv} from '../../src/client/preload/menu-art-preload.ts';
+import {chosenArtUrl,createMenuArtPreload,popupArtUrls,POPUP_FIXOS,progressivo,type MenuArtEnv} from '../../src/client/preload/menu-art-preload.ts';
 
 function fake(over:Partial<MenuArtEnv>={}){
   const loads:{url:string;priority:string}[]=[],idles:(()=>void)[]=[],frees:(()=>void)[]=[];
@@ -82,4 +82,36 @@ test('a failed download is not "ready" and is asked again later',async()=>{
   assert.equal(art.ready(POPUP_FIXOS[0]),false);
   fail=false;await art.now([POPUP_FIXOS[0]]);
   assert.equal(loads.length,2);assert.ok(art.ready(POPUP_FIXOS[0]));
+});
+
+test('BORA! before the previews chunk: the real file goes at once, the preview takes the place when the chunk comes, the real one wins at the end',async()=>{
+  const real='/art/menu/escolha/maromba-amigos.webp';
+  let previasOk!:(p:Record<string,string>)=>void,realOk!:()=>void;
+  const f=fake({previas:()=>new Promise(r=>{previasOk=r;}),load:url=>url===real?new Promise<void>(r=>{realOk=r;}):Promise.resolve()});
+  const art=createMenuArtPreload(f.env);
+  const classes=new Set<string>(),el={dataset:{} as Record<string,string>,classList:{add:(c:string)=>classes.add(c),remove:(c:string)=>classes.delete(c)}};
+  const g=globalThis as {requestAnimationFrame?:(fn:()=>void)=>void};g.requestAnimationFrame=fn=>fn();
+  const shown:string[]=[];
+  progressivo(el as unknown as HTMLElement,real,u=>shown.push(u),art);
+  assert.deepEqual(shown,[real],'no preview yet: the real file');
+  previasOk({[real]:'data:image/webp;base64,AA'});await tick();
+  assert.deepEqual(shown,[real,'data:image/webp;base64,AA']);assert.ok(classes.has('previa'));
+  realOk();await tick();
+  assert.equal(shown.at(-1),real);assert.ok(!classes.has('previa'));
+  progressivo(el as unknown as HTMLElement,real,u=>shown.push(u),art);
+  assert.equal(shown.at(-1),real,'decoded: at once, no blur');assert.ok(!classes.has('previa'));
+});
+
+test('a late preview never covers a real file that came first, nor a newer call on the same element',async()=>{
+  const real='/art/menu/escolha/maromba-amigos.webp';
+  let previasOk!:(p:Record<string,string>)=>void;
+  const f=fake({previas:()=>new Promise(r=>{previasOk=r;})});
+  const art=createMenuArtPreload(f.env);
+  const el={dataset:{} as Record<string,string>,classList:{add:()=>undefined,remove:()=>undefined}};
+  (globalThis as {requestAnimationFrame?:(fn:()=>void)=>void}).requestAnimationFrame=fn=>fn();
+  const shown:string[]=[];
+  progressivo(el as unknown as HTMLElement,real,u=>shown.push(u),art);
+  await tick(); // the real file is in
+  previasOk({[real]:'data:image/webp;base64,AA'});await tick();
+  assert.ok(!shown.includes('data:image/webp;base64,AA'));
 });

@@ -5,7 +5,7 @@ import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { ROLE_LINE, suit } from './client/ui/suit.ts';
 import { DEITADO, mostrarEscolha, rotulo } from './client/ui/escolha-popup.ts';
-import { fotoEscolhida, menuArtNoNavegador, previaAte, saveData } from './client/ui/menu-art-boot.ts';
+import { fotoEscolhida, menuArtNoNavegador, popupPrimeiro, previaAte, saveData } from './client/ui/menu-art-boot.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { startAds } from './client/ui/ads-boot.ts';
@@ -479,7 +479,7 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   if(invite) {toMatch();void openInvite();return;}
   dialog.showModal();dialog.focus(); // o foco não cai no X (o anel dele aparecia como um quadrado escuro)
   // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
-  if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
+  if(!island)void popupPrimeiro(menuArt,selected.id).then(()=>import('./client/lobby.ts')).then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
 /** The popup's card: the hero, the player's name, the class with its suit and what the role does (not the long name). */
 function showChosen() {

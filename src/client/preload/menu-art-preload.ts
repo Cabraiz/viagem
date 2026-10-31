@@ -47,6 +47,8 @@ export interface MenuArtPreload {
   ready(url:string):boolean;
   /** The blurred preview of `url`, once the previews' chunk is in. */
   previa(url:string):string|undefined;
+  /** Asks for the previews' chunk (once); resolves when it is in or failed. */
+  previasProntas():Promise<void>;
   /** `progressivo` below, on this preloader. */
   progressivo(el:HTMLElement,real:string,put:(url:string)=>void):void;
 }
@@ -54,6 +56,8 @@ export interface MenuArtPreload {
 export function createMenuArtPreload(env:MenuArtEnv):MenuArtPreload{
   const asked=new Map<string,Promise<void>>(),done=new Set<string>();
   let previas:Readonly<Record<string,string>>|undefined,started=false,wanted:string|undefined,off:(()=>void)|undefined;
+  let previasP:Promise<void>|undefined;
+  const pedirPrevias=()=>previasP??=env.previas().then(p=>{previas=p;},()=>{previasP=undefined;});
   const fetch1=(url:string,priority:'low'|'high')=>{
     let p=asked.get(url);
     if(!p){
@@ -65,18 +69,19 @@ export function createMenuArtPreload(env:MenuArtEnv):MenuArtPreload{
   const run=()=>{
     if(!wanted||env.saveData())return;
     if(env.held()){off??=env.onFree(()=>{off?.();off=undefined;run();});return;}
-    if(!previas)void env.previas().then(p=>{previas=p;},()=>undefined);
+    void pedirPrevias();
     for(const url of popupArtUrls(wanted,env.deitado(),env.dpr()))void fetch1(url,'low');
   };
   const art:MenuArtPreload={
     start(classId){wanted=classId;if(started)return;started=true;env.idle(run);},
     warm(classId){if(wanted===classId)return;wanted=classId;if(started)env.idle(run);},
     now(urls){
-      if(!previas)void env.previas().then(p=>{previas=p;},()=>undefined);
+      void pedirPrevias();
       return Promise.all(urls.map(url=>fetch1(url,'high'))).then(()=>undefined);
     },
     ready:url=>done.has(url),
     previa:url=>previas?.[url],
+    previasProntas:pedirPrevias,
     progressivo:(el,real,put)=>progressivo(el,real,put,art),
   };
   return art;
@@ -84,18 +89,24 @@ export function createMenuArtPreload(env:MenuArtEnv):MenuArtPreload{
 
 /**
  * Shows `real` through `put` (an <img> src, a background): at once when it is decoded, else its preview first, blurred
- * (`el` gets .previa, escolha.css), and the real one when it comes. A later call on the same element wins.
+ * (`el` gets .previa, escolha.css), and the real one when it comes. BORA! tapped before the previews' chunk was in: the
+ * real file goes at once and its preview takes the place when the chunk comes, if the real one is still on the way.
+ * A later call on the same element wins.
  */
 export function progressivo(el:HTMLElement,real:string,put:(url:string)=>void,art:MenuArtPreload):void{
   const token=String((Number(el.dataset.previaToken)||0)+1);el.dataset.previaToken=token;
-  const previa=art.previa(real);
-  if(art.ready(real)||!previa){el.classList.remove('previa');put(real);return;}
-  put(previa);el.classList.add('previa');
+  const meu=()=>el.dataset.previaToken===token;
+  if(art.ready(real)){el.classList.remove('previa');put(real);return;}
+  const borrar=()=>{const previa=art.previa(real);if(!previa)return false;put(previa);el.classList.add('previa');return true;};
+  if(!borrar()){
+    el.classList.remove('previa');put(real);
+    void art.previasProntas().then(()=>{if(meu()&&!art.ready(real))borrar();});
+  }
   void art.now([real]).then(()=>{
-    if(el.dataset.previaToken!==token)return;
+    if(!meu())return;
     put(real);
     // The blur goes on the next frame, once the real picture is painted (the filter's transition fades it out).
-    requestAnimationFrame(()=>{if(el.dataset.previaToken===token)el.classList.remove('previa');});
+    requestAnimationFrame(()=>{if(meu())el.classList.remove('previa');});
   });
 }
 

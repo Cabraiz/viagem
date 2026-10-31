@@ -20,26 +20,24 @@ test('the kit slot: its tier is the border, a tap starts the mode (nothing to th
   assert.match(slotLabel(slots[1]),/Kit Morteiro \(roxa\): tocar para construir/);
 });
 
-test('barricada-tocar-no-mapa: no ghost until the map is pressed; there, with the room footprint; green, red when taken or out of reach',()=>{
+test('barricada-tocar-no-mapa: no ghost until the map is pressed; there, with the room footprint; green, red when taken; far is still green (the hero walks)',()=>{
   assert.equal(KIT_REACH,KIT_PLACE_REACH,'the reach is the room one');
-  assert.ok(KIT_REACH>BUILD_REACH,'farther than the build menu: the hero does not walk there');
+  assert.equal(KIT_REACH,BUILD_REACH,'construir-andando-ate-a-obra: the build menu reach, the hero walks there');
   const k=new KitPlace(()=>0),hero={x:20,y:20};
   assert.equal(k.start(0,'pistola'),false,'no kit, no mode');
   assert.equal(k.start(1,'kit:vigia-do-predio'),true);
-  assert.equal(k.ghost({cell:CELL,structures:[]},hero),null,'nothing before the tap');
+  assert.equal(k.ghost({cell:CELL,structures:[]}),null,'nothing before the tap');
   const p={x:24.3,y:22.1};
   k.press(p,CELL);
   assert.deepEqual(k.footprint(),[1,1],'the root takes one cell, as in the sim');
-  const g=k.ghost({cell:CELL,structures:[]},hero)!;
+  const g=k.ghost({cell:CELL,structures:[]})!;
   assert.equal(g.look,'ok');assert.deepEqual([g.w,g.h],[1,1]);
   assert.ok(Math.abs((g.c+.5)*CELL-p.x)<=CELL/2&&Math.abs((g.r+.5)*CELL-p.y)<=CELL/2,'where the finger is');
   // A standing structure on that cell, or a cell beyond the reach: red.
-  assert.equal(k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]},hero)!.look,'bloqueado');
-  k.release();k.move({x:hero.x+KIT_REACH+2,y:hero.y},CELL);
-  assert.equal(k.ghost({cell:CELL,structures:[]},hero)!.look,'bloqueado','the mouse hovering past the reach');
-  assert.equal(kitRefusalText(k.blocked),'Longe demais, chega mais perto');
-  k.move({x:hero.x+KIT_REACH-1,y:hero.y},CELL);
-  assert.equal(k.ghost({cell:CELL,structures:[]},hero)!.look,'ok',`${KIT_REACH-1} u away, no walking`);
+  assert.equal(k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]})!.look,'bloqueado');
+  k.release();k.move({x:hero.x+KIT_REACH+20,y:hero.y},CELL);
+  assert.equal(k.ghost({cell:CELL,structures:[]})!.look,'ok','far away: green, the hero walks there (hud/kit-place/walk.ts)');
+  assert.equal(k.blocked,undefined);
   // A 3×2 tower takes its 3×3 square and never turns.
   k.start(1,'kit:lanca-foguetes');assert.deepEqual(k.footprint(),[3,3]);assert.equal(k.canTurn(),false);
   k.press({x:10,y:10},CELL);k.move({x:10,y:14},CELL);assert.equal(k.rot,0);
@@ -112,18 +110,18 @@ test('construir-no-botao: the selected kit is the slot in the hand and the butto
 test('barricada-tocar-no-mapa: a red ghost says why (no confirm sent); the hero walking never moves it',()=>{
   const k=new KitPlace(()=>0),hero={x:30,y:30};
   k.start(1,'kit:muro');k.press({x:33,y:30},CELL);
-  const g=k.ghost({cell:CELL,structures:[]},hero)!;
+  const g=k.ghost({cell:CELL,structures:[]})!;
   assert.equal(g.look,'ok');assert.equal(k.blocked,undefined);
-  k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]},hero);
+  k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]});
   assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
   // Off walkable ground (the room's onGround, kitGround): red, 'fora'; the room's own refusal is the word after it.
-  k.ghost({cell:CELL,structures:[],ground:()=>false},hero);assert.equal(kitRefusalText(k.blocked),'Aí não dá pra construir');
+  k.ghost({cell:CELL,structures:[],ground:()=>false});assert.equal(kitRefusalText(k.blocked),'Aí não dá pra construir');
   // A friend or a critter standing on it: red, as the room's 'taken' (the builder itself never counts).
-  k.ghost({cell:CELL,structures:[],bodies:[{x:(g.c+.5)*CELL,y:(g.r+.5)*CELL}]},hero);assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
+  k.ghost({cell:CELL,structures:[],bodies:[{x:(g.c+.5)*CELL,y:(g.r+.5)*CELL}]});assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
   // The hero walks away: the ghost stays where the finger put it.
   const moved=k.ghost({cell:CELL,structures:[]},{x:36,y:34})!;
   assert.deepEqual([moved.c,moved.r],[g.c,g.r]);
-  k.cancel();assert.equal(k.ghost({cell:CELL,structures:[]},hero),null,'no kit, no ghost');
+  k.cancel();assert.equal(k.ghost({cell:CELL,structures:[]}),null,'no kit, no ghost');
 });
 
 test('torre-folha-ao-pegar-kit: a tower kit coming into the backpack asks for its sheets once, before its first ghost',()=>{

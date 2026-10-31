@@ -201,11 +201,11 @@ for(const rot of [0,1] as const)test(`a row of barricadas end to end (rot ${rot}
   }
 });
 
-test('kit reach (barricada-tocar-no-mapa): a kit is placed up to KIT_PLACE_REACH from the hero; farther, away; the build menu keeps BUILD_REACH', ()=>{
+test('kit reach (construir-andando-ate-a-obra): a kit too needs the hero BUILD_REACH from the footprint; farther, away (the client walks first)', ()=>{
   const at=spot2(0),r={x:at.c*FREE_CELL,y:at.r*FREE_CELL,w:2*FREE_CELL,h:FREE_CELL};
   const place=(dx:number)=>{const g=rig();g.ana.x=r.x+r.w+dx;g.ana.y=r.y+r.h/2;return g.sys.buildKit(g.ctx,'ana',{piece:'barricada',c:at.c,r:at.r});};
-  assert.equal(KIT_PLACE_REACH,8);
-  assert.equal(place(KIT_PLACE_REACH-.1).ok,true,'7.9 u away');
+  assert.equal(KIT_PLACE_REACH,BUILD_REACH);
+  assert.equal(place(BUILD_REACH-.1).ok,true,`${BUILD_REACH-.1} u away`);
   assert.deepEqual(place(KIT_PLACE_REACH+.1),{ok:false,reason:'away'});
   const g=rig(),m=spot(0);g.ana.x=(m.c+.5)*FREE_CELL+BUILD_REACH+1;g.ana.y=(m.r+.5)*FREE_CELL;
   assert.deepEqual(g.sys.build(g.ctx,'ana',{piece:'muro',c:m.c,r:m.r}),{ok:false,reason:'away'},'a bought muro still needs the hero by it');

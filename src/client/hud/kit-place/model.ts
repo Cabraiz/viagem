@@ -2,14 +2,15 @@
  * Kits de torre (card NEW-20261020-ORQ-torre-pela-caixa), pure rules kept apart from the DOM so node tests import them.
  * barricada-tocar-no-mapa (the user, 25/10: "clicar no inventário da barricada e clicar no mapa, e você segura após o
  * clique para pôr a direção"): a tap on the kit's slot (hud/inventory.ts {t:'kit'}) selects it; the hero no longer
- * walks to the spot nor presses Construir.
+ * walks to the spot nor presses Construir. NEW-20261031-ORQ-construir-andando-ate-a-obra: the release walks the hero
+ * there again (walk.ts BuildWalk), so the order goes from by the obra (KIT_REACH = the sim's BUILD_REACH).
  * - The map's press (hud/kit-place/gesture.ts) puts the ghost there (press), with the room's own footprint (rules
  *   pieceCells: the root takes 1 cell, a 3×2 tower its 3×3 square); the mouse hovering shows it before the press.
  * - Held and dragged past KIT_TURN_DRAG u, a barricade turns to the drag's axis (rot 0 along x, 1 along y); the ghost
  *   stays where the press was. R turns it on the PC.
  * - Letting go builds there (release → confirm); a red ghost says why instead and the mode stays.
  * - Its colour: the room's answer for that very cell wins, else the local check (render/fortify-rules ghostRefusal:
- *   the car, a nest, a standing piece) plus the reach (KIT_REACH from the hero, the room's KIT_PLACE_REACH).
+ *   the car, a nest, a standing piece); never the reach any more: far away, the hero walks there (walk.ts).
  * - Tapping the kit again, or a weapon, ends the mode; Esc does it on the PC.
  * - One {t:'place',slot,c,r,rot?} per confirm (net.place); the room answers {t:'built'}. A tower kit is done when the
  *   room takes it; a wall kit stays in the mode while it has charges. The kit leaving its slot (spent, dropped) ends it.
@@ -21,8 +22,10 @@ import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type 
 import type {GhostInput} from '../../render/fortify.ts';
 import type {TowerKind} from '../../render/towers/tower-rules.ts';
 import {fortRefusalText} from '../fortify/model.ts';
+import type {BuildOrder} from './walk.ts';
+export {BuildWalk,WALK_WORDS,standGround} from './walk.ts';
 
-/** The room's reach for a kit (rules KIT_PLACE_REACH, from the hero to the footprint's edge): farther, the ghost is red. */
+/** The room's reach for a kit (rules KIT_PLACE_REACH, from the hero to the footprint's edge): farther, the hero walks. */
 export const KIT_REACH=KIT_PLACE_REACH;
 /** A press dragged this far (world u) turns a barricade to the drag's axis; shorter, a tap keeps its rot. */
 export const KIT_TURN_DRAG=.35;
@@ -148,17 +151,24 @@ export class KitPlace {
     return cellRect(this.cell.c,this.cell.r,w,h,cell);
   }
   /** The ghost for the scene (scene.setBuildGhost), or null when not placing. */
-  ghost(ctx:KitGhostContext,hero?:{x:number;y:number}):GhostInput|null{
+  ghost(ctx:KitGhostContext):GhostInput|null{
     const rect=this.rect(ctx.cell);
     if(!rect||!this.kit)return null;
     const answer=this.answers.get(keyOf(this.kit.piece,rect.c,rect.r,this.rot));
-    const far=!!hero&&distToRect(hero.x,hero.y,rect)>KIT_REACH;
-    const local=far||(ctx.ground&&!ctx.ground(rect,ctx.cell))?'fora':ghostRefusal(rect,ctx)??(bodyOn(rect,ctx.bodies)?'ocupado':undefined);
+    const local=ctx.ground&&!ctx.ground(rect,ctx.cell)?'fora':ghostRefusal(rect,ctx)??(bodyOn(rect,ctx.bodies)?'ocupado':undefined);
     const look=ghostLook(local,answer);
-    // Why it is red, in the words the room would use: the reach, the local check, else the room's own answer.
-    this.blocked=look==='bloqueado'?(far?'away':local??answer?.reason??'ocupado'):undefined;
+    // Why it is red, in the words the room would use: the local check, else the room's own answer.
+    this.blocked=look==='bloqueado'?local??answer?.reason??'ocupado':undefined;
     return {piece:this.kit.piece,c:rect.c,r:rect.r,w:rect.w,h:rect.h,...(this.rot?{rot:this.rot}:{}),look};
   }
+  /** The ghost's cell, rot and rect frozen for the walk there (walk.ts), its ghost green; undefined without a cell. */
+  order(cell:number):BuildOrder|undefined{
+    const rect=this.rect(cell);
+    if(!rect||!this.kit||!this.cell)return undefined;
+    return {cell:{...this.cell},rot:this.rot,rect,ghost:{piece:this.kit.piece,c:rect.c,r:rect.r,w:rect.w,h:rect.h,...(this.rot?{rot:this.rot}:{}),look:'ok'}};
+  }
+  /** Back on a frozen order (the hero got there): confirm sends that cell, whatever the mouse hovered since. */
+  aim(order:Pick<BuildOrder,'cell'|'rot'>){this.cell={...order.cell};this.rot=order.rot;}
   /** The kit's slot after an inventory change: follows the same id, or ends the mode when it is gone. */
   sync(slots:readonly (KitSlotLike|undefined)[]|undefined){
     if(!this.kit)return;

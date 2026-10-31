@@ -200,8 +200,10 @@ export const TRALHA_REACH=3;
  * NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "não gostei de eu ter que me mexer para pôr a barricada"): a kit
  * from the inventory (a barricada, a kit de torre) is placed by a tap on the map, this far (u) from the hero to the
  * footprint's edge, not BUILD_REACH. The nest keep-out (CAR_NEST_KEEP_OUT) still holds, so no nest is shut from afar.
+ * NEW-20261031-ORQ-construir-andando-ate-a-obra: the tap stays, but the hero now walks to the obra (client
+ * hud/kit-place/walk.ts) and the order is the sim's BUILD_REACH (src/sim/towers/system.ts) again, so build16 shows.
  */
-export const KIT_PLACE_REACH=8;
+export const KIT_PLACE_REACH=3;
 /** A piece a hero may build (the barraca is the map's own: never). */
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
 /**

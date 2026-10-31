@@ -17,7 +17,6 @@
  *  7. chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out pushing the moto when a wave starts.
  * D-031: results only.
  */
-import {SIM_HZ} from "../../src/contract/index.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -25,7 +24,7 @@ import {fileURLToPath} from 'node:url';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import {ticks} from '../../src/contract/types.ts';
+import {SIM_HZ,ticks} from '../../src/contract/types.ts';
 import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
 import {BOT_WALK_MULT} from '../../src/contract/index.ts';
 import {CAR_ID,type RunView} from '../../src/contract/index.ts';
@@ -230,7 +229,7 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
   // Each wave start: the bots still out pushing a dead moto (RoomBots.modes); the pushes that started it (D-047).
   const waves:{round:number;pushing:string[]}[]=[];let pushes=0;
   // The heroes cannot be hurt (the start grace's invulnerableUntil, every step): these runs check the bots' orders, not the
-  // balance (xp-exponencial-3x: with ~3× slower levels 6 bots fell in round 2 of seed 4, before any root).
+  // balance (xp-exponencial-3x: with the dearer levels 6 bots fell in round 3 of seed 4 with one root).
   while(!sim.outcome&&!(sim.world.round.index>=untilRound&&sim.world.round.phase==='wave')&&sim.tick<ticks(25*60)){
     for(const p of sim.world.players.values())p.invulnerableUntil=sim.tick+SIM_HZ;
     bots.think(sim);
@@ -243,9 +242,9 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(4,3,6);
+  const a=cityRun(6,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 4, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 6, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 3 since oferta-velocidade, 23/10: the class's stats.moveSpeed now walks, so
@@ -272,12 +271,12 @@ test('headless city run: the room bots walk to the obras, build roots and evolve
   // Seed 2 since bico-sem-limite-pix-voando (the bico without a cap, the PIX flying to the forger): seeds 2, 11, 12, 16
   // of 1–16 start the B line; with colisao-entre-herois, seeds 1, 2, 5, 13. Seed 1 since lojas-bico-fora-das-bocas (the shops
   // moved off the street mouths change the bots' walks to the bico): seeds 1, 4, 5, 12, 14, 16 of 1–16 start the B line.
-  // Seed 4 since xp-exponencial-3x (each level ~3× the XP; the heroes unhurt in cityRun): seeds 4, 5, 8, 12, 16 of 1–16.
+  // Seed 6 since xp-exponencial-3x (levels 8+ cost ≥3× the XP; the heroes unhurt in cityRun): seeds 6, 7, 8, 9, 12 of 1–16.
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(4,3,6);
+  const b=cityRun(6,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });

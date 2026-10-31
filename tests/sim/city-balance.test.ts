@@ -345,8 +345,7 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // tick 4000 hashes the same with the old curve.
 // The city again for lojas-bico-fora-das-bocas (the shops' lots off the street mouths: the banks, their crates and the
 // bots' trips move).
-// The city again for xp-exponencial-3x (each level ~3× the XP, growing by a fixed ratio: the picks come later).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'dbd8d04dfb409691',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'44a881217be6f3a4',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

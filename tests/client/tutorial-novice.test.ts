@@ -211,7 +211,7 @@ test('D-054: round 1 pays the XP of the old crumbs with its first kill (or at it
   }
   const island=new Simulation(SEEDS[0]);island.add('p0','P0','cidadao-comum');island.resetRun();
   while(island.world.round.phase!=='wave')island.step();
-  assert.equal(ROUND1_XP,18);
+  assert.equal(ROUND1_XP,6);
 });
 
 test('D-054: round 1 lays no XP on the ground (no crumbs, no gems): the kills fill the bar',()=>{

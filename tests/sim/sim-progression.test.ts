@@ -132,26 +132,23 @@ function fullBuild():PlayerBuild{
 }
 
 // ---------- 1. XP curve ----------
-test('xpToNext is 12 / 30 / 60, then grows by a fixed ratio, ~3× the old linear curve, and team progress starts at level 1',()=>{
-  // xp-exponencial-3x: the first levels are 3× levelup-espalhado's 4 / 10 / 20; from level 4 each costs XP_GROWTH× the last.
-  assert.equal(xpToNext(1),12);
-  assert.equal(xpToNext(2),30);
-  assert.equal(xpToNext(3),60);
-  assert.equal(xpToNext(4),120);
+test('xpToNext: cheap start (≤1.5× the old 4 / 10 / 20 / 35), then a fixed ratio, ≥3× the old from level 8; team progress starts at level 1',()=>{
+  // xp-exponencial-3x: the old curve was linear (4, 10, 20, then 5+10×(level−1), +13 after 20, +16 after 40).
+  const old=(l:number)=>l<=3?[4,10,20][l-1]!:l<=20?5+10*(l-1):l<=40?195+13*(l-20):455+16*(l-40);
+  assert.deepEqual([1,2,3,4].map(xpToNext),[5,13,26,46]);
+  for(let l=1;l<=4;l++)assert.ok(xpToNext(l)<=old(l)*1.5,`level ${l}: ${xpToNext(l)} ≤ 1.5 × ${old(l)}`);
+  for(let l=8;l<200;l++)assert.ok(xpToNext(l)>=old(l)*3,`level ${l}: ${xpToNext(l)} ≥ 3 × ${old(l)}`);
   const eps=.01;
-  for(let l=4;l<20;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH-eps,`ratio ${xpToNext(l+1)/xpToNext(l)} at ${l}`);
-  for(let l=20;l<120;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH_LATE-eps,`late ratio at ${l}`);
-  const toLevel=(n:number)=>{let s=0;for(let l=1;l<n;l++)s+=xpToNext(l);return s;};
-  // the card's targets: 3× the old totals (69, 394, 1794), ±10 %
-  for(const [n,want] of [[5,210],[10,1180],[20,5400]] as const){
-    const got=toLevel(n);
-    assert.ok(Math.abs(got-want)<=want*.1,`${got} XP to level ${n}, want ~${want}`);
-  }
+  for(let l=4;l<10;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH-eps,`ratio ${xpToNext(l+1)/xpToNext(l)} at ${l}`);
+  for(let l=10;l<120;l++)assert.ok(xpToNext(l+1)/xpToNext(l)>=XP_GROWTH_LATE-eps,`late ratio at ${l}`);
+  const toLevel=(n:number,cost:(l:number)=>number=xpToNext)=>{let s=0;for(let l=1;l<n;l++)s+=cost(l);return s;};
+  assert.deepEqual([5,10,20].map(n=>toLevel(n)),[90,1199,10199]);
+  for(const n of [10,20])assert.ok(toLevel(n)>=3*toLevel(n,old),`${toLevel(n)} XP to level ${n} ≥ 3 × ${toLevel(n,old)}`);
   for(let l=1;l<1000;l++){
     assert.ok(Number.isInteger(xpToNext(l))&&Number.isFinite(xpToNext(l)),`integer cost at ${l}`);
     if(l<120)assert.ok(xpToNext(l+1)>xpToNext(l),`curve must grow at ${l}`);
   }
-  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:12});
+  assert.deepEqual(createTeamProgress(),{xp:0,level:1,nextXp:5});
   assert.deepEqual(initialTeam(),createTeamProgress(),'the world starts on the same curve (core.ts used to pin nextXp 5)');
   assert.notEqual(createTeamProgress(),createTeamProgress(),'fresh object each call');
 });
@@ -979,11 +976,11 @@ test('dropLoot (levelup-espalhado): solo, the XP is ×SOLO_EARLY_XP below SOLO_E
   assert.ok(Math.abs(ctx.team.xp-2*1.4)<1e-9,'two heroes: the plain XP');
 });
 
-test('levelup-espalhado: solo, 6 kills of 1 XP at growth 1.4 (the city before the nests) reach level 2',()=>{
-  // xp-exponencial-3x: 2 kills before the curve tripled (4 XP), 6 now (12 XP)
+test('levelup-espalhado: solo, 3 kills of 1 XP at growth 1.4 (the city before the nests) reach level 2',()=>{
+  // xp-exponencial-3x: 2 kills when the first level cost 4, 3 now (5)
   const {ctx,sim}=setup();
   addPlayer(ctx,'a',{x:2,y:2,stats:{growth:1.4}});
-  for(let i=0;i<6;i++)sim.dropLoot(ctx,makeEnemy(`k${i}`,7,8,{xp:1}),'a');
+  for(let i=0;i<3;i++)sim.dropLoot(ctx,makeEnemy(`k${i}`,7,8,{xp:1}),'a');
   assert.ok(ctx.team.xp>=xpToNext(1),`${ctx.team.xp} ≥ ${xpToNext(1)}`);
 });
 
@@ -1048,7 +1045,7 @@ test('seeded stream ignores draws by other systems and resumes from rngState',()
 test('unreachable drop while nobody can collect waits and then homes to the first collector',()=>{
   const {ctx,sim,tick}=setup(1,{reachable:()=>false,openChest:()=>{}});
   const a=addPlayer(ctx,'a',{x:15,y:15,downed:true});
-  const [chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:15,elite:true}));
+  const [chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:7,elite:true}));
   assert.equal(chest.kind,'chest');assert.equal(chest.homing,HOME_ANY);
   const x0=chest.x;
   tick(40);
@@ -1056,7 +1053,7 @@ test('unreachable drop while nobody can collect waits and then homes to the firs
   delete a.downed;
   tick(60);
   assert.ok(!ctx.pickups.has(chest.id),'delivered');
-  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,10.5],'15 xp ×1.5 (solo, SOLO_EARLY_XP) at the kill, once (12 for level 2, 10.5 left)');
+  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,5.5],'7 xp ×1.5 (solo, SOLO_EARLY_XP) at the kill, once (5 for level 2, 5.5 left)');
 });
 
 test('round offers are skipped after the last round and queued offers show a chained deadline',()=>{

@@ -35,20 +35,21 @@ const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBo
 const ctxRunStartTick=(ctx:SimContext)=>(ctx as SimContext&{runStartTick?:number}).runStartTick;
 
 /**
- * XP needed to go from `level` to `level + 1`: 12, 30, 60, then 120×1.13^(level−4) until 20 and ×1.10 per level after.
- * xp-exponencial-3x (31/10, "muito rápido subir de level, era para ser exponencial"): every level costs ~3× the old
- * linear curve (4, 10, 20, then 5+10×(level−1), +13, +16) and the cost now grows in proportion. Totals: 222 XP to
- * level 5, 1101 to 10, 5702 to 20 (were 69, 394, 1794). levelup-espalhado's cheap levels 2 and 3 keep their shape.
+ * XP needed to go from `level` to `level + 1`: 5, 13, 26, 46, then ×1.58 per level until 10 and ×1.05 after.
+ * xp-exponencial-3x (31/10, "muito rápido subir de level, era para ser exponencial"): cheap start, dear end. Levels 1-4
+ * cost ~1.3× the old linear curve (4, 10, 20, then 5+10×(level−1), +13, +16): at 1.5× the city room of three bots lost
+ * its wall in round 3. From level 8 each costs ≥3× the old. Totals: 90 XP to level 5, 1199 to 10, 10199 to 20 (were 69,
+ * 394, 1794).
  * The exponent stops at XP_CURVE_CAP so the cost stays a finite integer however far a run goes.
  */
-const FIRST_LEVELS=[12,30,60];
-export const XP_GROWTH=1.13,XP_GROWTH_LATE=1.1;
-const XP_LEVEL4=120,XP_CURVE_CAP=200;
+const FIRST_LEVELS=[5,13,26,46];
+export const XP_GROWTH=1.58,XP_GROWTH_LATE=1.05;
+const XP_STEEP_UNTIL=10,XP_CURVE_CAP=200;
 export function xpToNext(level:number){
-  const l=Math.min(XP_CURVE_CAP,Math.max(1,Math.floor(level)));
-  if(l<=FIRST_LEVELS.length)return FIRST_LEVELS[l-1]!;
-  if(l<=20)return Math.round(XP_LEVEL4*XP_GROWTH**(l-4));
-  return Math.round(XP_LEVEL4*XP_GROWTH**16*XP_GROWTH_LATE**(l-20));
+  const l=Math.min(XP_CURVE_CAP,Math.max(1,Math.floor(level))),n=FIRST_LEVELS.length,base=FIRST_LEVELS[n-1]!;
+  if(l<=n)return FIRST_LEVELS[l-1]!;
+  if(l<=XP_STEEP_UNTIL)return Math.round(base*XP_GROWTH**(l-n));
+  return Math.round(base*XP_GROWTH**(XP_STEEP_UNTIL-n)*XP_GROWTH_LATE**(l-XP_STEEP_UNTIL));
 }
 /**
  * D-051 mode 'ninhos' (ritmo-morto-e-viaduto): the first level costs FIRST_LEVEL_XP[heroes − 1] instead of xpToNext(1),
@@ -69,9 +70,9 @@ export const HOMING_SPEED=12;
  * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, more than the first level) in the endless
  * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
  * one, so the first level (and its chip) still lands in round 1. Not at the wave start: there it would open the
- * level-up pause (D-050) before anyone moved. xp-exponencial-3x: 18, ×3 with the curve (the first level costs 12).
+ * level-up pause (D-050) before anyone moved.
  */
-export const ROUND1_XP=18;
+export const ROUND1_XP=6;
 /**
  * levelup-espalhado: a solo run's XP ×1.5 below SOLO_EARLY_LEVEL. Alone in the city the bichos come one at a time
  * before the nests open (2-3 kills in 200 s), so the first card only came with the first group; now it comes before.

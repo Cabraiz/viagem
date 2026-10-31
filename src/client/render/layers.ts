@@ -34,6 +34,7 @@ import {castContact,castSheetShadow,castSilhouette,contactImage,silhouetteImage}
 import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
+import {OwnShots,adoptFade,type Ghost} from './own-shots.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
 import {CedulaCatch,catchFlight} from './cedula-catch.ts';
@@ -185,7 +186,13 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   /** A hero's thrown weapon (render/shot-flight.ts): flies on an arc from `born` while it moves, then lands. */
   thrown:ThrownLook|undefined;
   /** The viaduct (ProjectileView.andar): 1 flying over a deck. */
-  floor?:1}
+  floor?:1;
+  /** tiro-rapido-e-local (render/own-shots.ts): the local hero's shot drawn on the press, until the room's copy takes it. */
+  ghost?:Ghost;
+  /** The room's copy that took a ghost: drawn this far (u) off its own spot from `adoptAt`, the gap fading (adoptFade). */
+  ox?:number;oy?:number;adoptAt?:number;
+  /** The room's late copy of a shot whose ghost already flew its whole flight: not drawn again. */
+  mute?:boolean}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -339,6 +346,8 @@ export class HordeRenderer{
   private enemies:KeyedPool<EnemyActor>;
   private pickups:KeyedPool<PickupActor>;
   private projectiles:KeyedPool<ProjectileActor>;
+  /** tiro-rapido-e-local: the local hero's shots drawn before the room's copy, and the friendly radius last seen per source. */
+  private own=new OwnShots();private ownGone:string[]=[];private shotRadius=new Map<string,number>();
   private telegraphs:KeyedPool<TelegraphState>;
   private numbers:Ring<NumberFx>;
   private pops:Ring<PopFx>;
@@ -481,6 +490,7 @@ export class HordeRenderer{
     this.catcher.push(this.now,view.pickups,this.selfAt);
     this.projectiles.begin();
     for(let i=0;i<view.projectiles.length;i++)this.syncProjectile(view.projectiles[i]);
+    this.keepGhosts();
     this.projectiles.end();
     this.telegraphs.begin();
     for(let i=0;i<view.telegraphs.length;i++)this.syncTelegraph(view.telegraphs[i]);
@@ -517,6 +527,7 @@ export class HordeRenderer{
     this.enemies.forEach(this.drawEnemy);
     for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
+    this.dropGhosts();
     this.projectiles.forEach(this.drawProjectile);
     this.drawGemGlow();
     this.glow.end();
@@ -547,7 +558,21 @@ export class HordeRenderer{
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){if(enemyId!==this.targetId)this.capDirty=true;this.targetId=enemyId;}
   /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
-  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number,flight?:readonly [number,number]){
+    this.arsenal.ownShot(weapon,x,y,dx,dy);
+    // tiro-rapido-e-local: its projectile too, flying at once (render/own-shots.ts); the room's copy takes its place.
+    const g=this.own.spawn(this.now,weapon,x,y,dx,dy,flight);
+    if(!g)return;
+    this.syncProjectile({id:g.id,source:weapon,x,y,vx:g.vx,vy:g.vy,radius:this.shotRadius.get(weapon)??.25,hostile:false});
+    const a=this.projectiles.get(g.id);if(a)a.ghost=g;
+  }
+  /** The ghosts stay in the pool through a view (they are not in it). */
+  private keepGhosts(){const g=this.own.ghosts;for(let i=0;i<g.length;i++)if(!g[i].spent)this.projectiles.use(g[i].id);}
+  /** Ghosts whose flight ended or that the room never fired (refused): gone. */
+  private dropGhosts(){
+    this.ownGone.length=0;this.own.expire(this.now,this.ownGone);
+    for(let i=0;i<this.ownGone.length;i++)this.projectiles.release(this.ownGone[i]);
+  }
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
@@ -602,7 +627,7 @@ export class HordeRenderer{
   }
 
   destroy(){
-    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();this.catcher.reset();
+    this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.own.clear();this.telegraphs.clear();this.catcher.reset();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
     this.art.destroy();this.arsenal.destroy();this.glow.destroy();
     for(const label of this.names.values())label.destroy();this.names.clear();
@@ -679,10 +704,18 @@ export class HordeRenderer{
       a.frames=own?projectileFrames(this.scene.textures,art!):1;a.fps=own?art!.fps:8;a.frame=0;
     }
     if(used.fresh){
-      a.born=this.now;
+      a.born=this.now;a.ghost=undefined;a.ox=undefined;a.oy=undefined;a.adoptAt=undefined;a.mute=undefined;
+      // tiro-rapido-e-local: the room's copy of a shot the phone already flies takes over from the ghost, where it is drawn.
+      const g=!view.hostile&&!view.id.startsWith('eu:')?this.own.adopt(view.source,view.x,view.y,view.vx,view.vy,this.now):undefined;
+      if(g?.spent)a.mute=true;
+      else if(g){
+        const p=this.own.at(g,this.now);a.ox=p.x-view.x;a.oy=p.y-view.y;a.adoptAt=this.now;a.born=g.born;
+        this.projectiles.release(g.id);
+      }
       // Who threw a hostile shot plays its throw (the agiota's boleto): nearest enemy of that kind, art v2 only.
       if(view.hostile&&enemyArtActive()){const cue=projectileAction(view.source,true,view.x,view.y,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     }
+    if(!view.hostile&&!view.id.startsWith('eu:'))this.shotRadius.set(view.source,view.radius);
     a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);a.floor=view.andar;
     this.aim(a);
   }
@@ -1220,7 +1253,11 @@ export class HordeRenderer{
   private drawProjectile=(a:ProjectileActor,id:string)=>{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
-    this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
+    if(a.ghost)this.own.at(a.ghost,this.now,this.at);
+    else{
+      this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
+      if(a.adoptAt!==undefined){const k=adoptFade(this.now-a.adoptAt);this.at.x+=a.ox!*k;this.at.y+=a.oy!*k;if(k<.01)a.adoptAt=undefined;}
+    }
     const q=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q),depth=this.options.projector.depthOn(this.at.x,this.at.y,a.floor),qx=q.x,qy=q.y;
     // A thrown weapon (render/shot-flight.ts) rises on an arc while it flies (its shadow stays on the ground); landed, the
     // rocket is gone in its burst and the brick and the firecrackers lie under theirs.
@@ -1235,7 +1272,8 @@ export class HordeRenderer{
         angle=Math.atan2(ahead.y-qy-throwLiftSlope(age,t.arc)*this.body*1000/THROW_MS,ahead.x-qx)-(t.tilt??0);
       }
     }
-    a.image.setVisible(!t||flying||t.landed);
+    a.image.setVisible(!a.mute&&(!t||flying||t.landed));
+    if(a.mute){a.shadow.setVisible(false);return;}
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
     a.image.setPosition(qx,qy-lift).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(angle);
     // In flight the shadow is the thrown object's, not its burst's.

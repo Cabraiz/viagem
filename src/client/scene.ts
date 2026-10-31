@@ -82,7 +82,7 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
-import {heldWeapon,heldCooldownMs} from './hud/weapon-reach.ts';
+import {heldWeapon,heldCooldownMs,heldFlight} from './hud/weapon-reach.ts';
 import {weaponSound} from './audio/events.ts';
 import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
@@ -938,17 +938,19 @@ export class IslandScene extends Phaser.Scene {
    * flash and its sound show now, aimed like the room aims: the mouse or the aim stick, the chosen target, the auto
    * aim's pick, else the way the hero last walked. The room's copy of it is skipped (net/attack-predict.ts).
    */
-  predictAttack(){
+  predictAttack(repeat=false){
     const net=this.hooks.net;
     if(!net||!this.horde||!this.hooks.manual?.()||this.paused||net.run?.phase!=='combat'||net.run.pause||net.run.cena||net.handsBusy||this.isOut())return;
     const me=net.feed.players.get(net.id),self=net.players.get(net.id);
     if(!me||!self?.hp||me.downed||me.eliminated)return;
     const held=heldWeapon(me),weapon=held?.id;
-    if(!weapon||!net.attackPredict.press(performance.now(),weapon,heldCooldownMs(held)))return;
+    // A held button's refire (tiro-rapido-e-local) only with a known cooldown: else every frame would be one.
+    const cooldown=heldCooldownMs(held);
+    if(!weapon||repeat&&cooldown<=0||!net.attackPredict.press(performance.now(),weapon,cooldown))return;
     const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
     const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
     const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
-    this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y);
+    this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y,heldFlight(held));
     const sound=weaponSound(weapon),audio=getAudio();
     if(sound&&audio.unlocked)audio.play(sound);
     // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).

@@ -737,6 +737,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           const busy=manual&&net.handsBusy&&!skill?.towing,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
+          // tiro-rapido-e-local: a held button refires on its own; each refire the room would take is drawn at once too.
+          if(attackBtn?.press.held&&sceneReady)controller?.scene.predictAttack(true);
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;

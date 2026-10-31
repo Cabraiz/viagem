@@ -23,6 +23,9 @@ import {cityUnoStart} from '../../src/sim/city/uno-start.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {cityLoot,AROUND_START} from '../../src/sim/stonewards/loot.ts';
 import {FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER} from '../../src/sim/crates.ts';
+import {MAP_CRATES} from '../../src/sim/crates-abate.ts';
+// itens-so-de-monstro: with the map crates off a hero's set is his near crate only.
+const PER_HERO=MAP_CRATES?START_CRATES_PER_PLAYER:1;
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const cityText=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -107,7 +110,7 @@ test('the start crates sit around the spawn: in the frames from the first one, o
   for(const seed of [1,2,3]){
     const m=match(seed,1);m.step();
     const near=m.chests().filter(k=>Math.hypot(k.x-start.x,k.y-start.y)<=AROUND_START[1]);
-    assert.ok(near.length>=START_CRATES_PER_PLAYER,`seed ${seed}: ${near.length} crates around the spawn`);
+    assert.ok(near.length>=PER_HERO,`seed ${seed}: ${near.length} crates around the spawn`);
   }
   // The room's frames carry them (the phone got none: every crate was past INTEREST_RADIUS from the spawn).
   let n=0;
@@ -121,10 +124,10 @@ test('the start crates sit around the spawn: in the frames from the first one, o
   for(let i=0;i<40;i++){t+=50;if(i%20===0)room.receive(a,JSON.stringify({t:'ack',seq:0}),t);room.advance(t);}
   const dec=new FrameDecoder();let most=0;
   for(const f of frames){const r=dec.decode(f);if(r.ok)most=Math.max(most,r.view.pickups.filter(k=>k.kind==='chest').length);}
-  assert.ok(most>=START_CRATES_PER_PLAYER,`the frames carry ${most} crates (interest radius ${INTEREST_RADIUS} u)`);
+  assert.ok(most>=PER_HERO,`the frames carry ${most} crates (interest radius ${INTEREST_RADIUS} u)`);
 });
 
-test(`a hero who walks the first minute passes at least ${FIRST_MINUTE_CRATES} crates, whichever way he goes`,()=>{
+test(`a hero who walks the first minute passes at least ${FIRST_MINUTE_CRATES} crates, whichever way he goes`,{skip:!MAP_CRATES&&'itens-so-de-monstro: the map crates are off (crates-abate.ts MAP_CRATES), this is the legacy'},()=>{
   for(const [name,pattern] of Object.entries(PATTERNS))for(const seed of [1,2,3,4]){
     const [passed]=walk(seed,[pattern()]);
     assert.ok(passed.size>=FIRST_MINUTE_CRATES,`${name}, seed ${seed}: ${passed.size} crates`);
@@ -133,7 +136,7 @@ test(`a hero who walks the first minute passes at least ${FIRST_MINUTE_CRATES} c
 
 // inicio-no-uno-caixas-120: in 120 s the wreck walker is back circling the plaza beside the plaza walker (one view, so
 // they share the trail crates): the third one wanders off instead.
-test('a team of three walking apart: each one passes his own',()=>{
+test('a team of three walking apart: each one passes his own',{skip:!MAP_CRATES&&'itens-so-de-monstro: the map crates are off (crates-abate.ts MAP_CRATES), this is the legacy'},()=>{
   for(const seed of [5,6]){
     const passed=walk(seed,[PATTERNS.praca(),PATTERNS.vaga(),PATTERNS.vaga()]);
     passed.forEach((set,i)=>assert.ok(set.size>=FIRST_MINUTE_CRATES,`seed ${seed}, hero ${i}: ${set.size}`));

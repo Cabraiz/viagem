@@ -17,6 +17,7 @@ import {ticks} from '../../src/contract/index.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {VISIBLE_FLOOR} from '../../src/sim/crates.ts';
+import {MAP_CRATES} from '../../src/sim/crates-abate.ts';
 import {BOT_LEAVES_CRATE,forAPerson,planLoot} from '../../src/sim/bot-loot.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -25,7 +26,7 @@ if(!loaded.ok)throw new Error(loaded.error);
 const field=cityAsField(loaded.terrain);
 type Chest={kind:string;id:string;x:number;y:number;value:number;hiddenFor?:string[]};
 
-test(`a person who opens crate after crate still sees at least ${VISIBLE_FLOOR} on the map`,()=>{
+test(`a person who opens crate after crate still sees at least ${VISIBLE_FLOOR} on the map`,{skip:!MAP_CRATES&&'itens-so-de-monstro: the map crates are off (crates-abate.ts MAP_CRATES), this is the legacy'},()=>{
   for(const seed of [1,2]){
     const s=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
     s.add('p0','P0','cidadao-comum');

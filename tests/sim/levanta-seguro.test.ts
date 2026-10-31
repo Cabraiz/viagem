@@ -173,7 +173,8 @@ test('item 5: every crate of the match (start, near, placed, trail, floor) sits 
       m.step();
       for(const c of m.chests())if(!seen.has(c.id)){seen.add(c.id);assert.ok(standsBy(f,c),`seed ${seed}: crate ${c.id} at ${c.x.toFixed(1)},${c.y.toFixed(1)} out of reach`);}
     }
-    assert.ok(seen.size>=10,`seed ${seed}: ${seen.size} crates seen`);
+    // itens-so-de-monstro (crates-abate.ts MAP_CRATES off): the map lays out only the 3 heroes' near crates.
+    assert.ok(seen.size>=3,`seed ${seed}: ${seen.size} crates seen`);
   }
   assert.ok(RADIUS<OPEN_REACH);
 });

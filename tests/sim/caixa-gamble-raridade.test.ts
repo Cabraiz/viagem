@@ -54,7 +54,7 @@ test('dourada escondida: ~GOLD_HIDDEN_CHANCE of the verde/azul/roxa weapon crate
   for(const rarity of GOLD_HIDDEN_FROM){
     let gold=0;
     for(let s=0;s<N;s++){
-      const ctx=makeCtx(s),crates=createCrates({seed:s*7+rarity,points:[]}),p=addPlayer(ctx,'a',0,0);
+      const ctx=makeCtx(s),crates=createCrates({mapCrates:true,seed:s*7+rarity,points:[]}),p=addPlayer(ctx,'a',0,0);
       const c=crate(ctx,crates,{x:0,y:0},rarity,'pistola');
       run(ctx,crates,1);
       assert.equal(c.value,rarity,'the crate shows its own colour while closed');
@@ -73,7 +73,7 @@ test('dourada escondida: ~GOLD_HIDDEN_CHANCE of the verde/azul/roxa weapon crate
 
 test('dourada escondida: kits never turn, a lendária gives its own; same seed, same surprise',()=>{
   for(let s=0;s<100;s++){
-    const ctx=makeCtx(s),crates=createCrates({seed:s,points:[],goldChance:1}),p=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(s),crates=createCrates({mapCrates:true,seed:s,points:[],goldChance:1}),p=addPlayer(ctx,'a',0,0);
     crate(ctx,crates,{x:0,y:0},3,kitId(KIT_POOL[3][0]));
     run(ctx,crates,ticks(3.2));
     assert.equal(opened(ctx)[0].value,3,'a kit crate gives its colour');
@@ -83,7 +83,7 @@ test('dourada escondida: kits never turn, a lendária gives its own; same seed, 
     assert.equal(opened(ctx)[1].value,5,'a lendária stays lendária');
   }
   const surprise=(seed:number)=>{
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:[],hideAfterTaken:[]}),p=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points:[],hideAfterTaken:[]}),p=addPlayer(ctx,'a',0,0);
     for(let i=0;i<40;i++){p.build.weapons=[{id:'faca',level:1}];crate(ctx,crates,{x:0,y:0},2,'pistola');run(ctx,crates,ticks(2));}
     return opened(ctx).map(e=>e.value).join();
   };
@@ -94,7 +94,7 @@ test('dourada escondida: kits never turn, a lendária gives its own; same seed, 
 
 test('per player: who opened a verde weapon crate no longer sees nor opens verde weapon crates; the others do; kits stay',()=>{
   assert.deepEqual(HIDE_AFTER_TAKEN,[1,2]);
-  const ctx=makeCtx(3),crates=createCrates({seed:3,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(3),crates=createCrates({mapCrates:true,seed:3,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0);
   crate(ctx,crates,{x:0,y:0},1,'pistola');
   run(ctx,crates,ticks(1.2));
   assert.equal(opened(ctx).length,1);
@@ -117,26 +117,26 @@ test('per player: who opened a verde weapon crate no longer sees nor opens verde
   assert.equal(opened(ctx).at(-1)!.player,'b');
   assert.ok(b.build.weapons.some(w=>w.id==='sacole'));
   // A JSON checkpoint keeps who took what.
-  const resumed=createCrates({seed:3,points:[],state:JSON.parse(JSON.stringify(crates.state))});
+  const resumed=createCrates({mapCrates:true,seed:3,points:[],state:JSON.parse(JSON.stringify(crates.state))});
   assert.deepEqual(resumed.state.took,{a:[1],b:[1]});
 });
 
 test('per player: the azul hides the same way after an azul weapon; roxa, dourada and lendária never; a kit does not count',()=>{
-  const ctx=makeCtx(6),crates=createCrates({seed:6,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(6),crates=createCrates({mapCrates:true,seed:6,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0);
   crate(ctx,crates,{x:0,y:0},2,'pistola');
   run(ctx,crates,ticks(2));
   assert.deepEqual(crates.state.took,{a:[2]});
   const others=([1,2,3,4,5] as Rarity[]).map(r=>crate(ctx,crates,{x:100*r,y:0},r,'pistola'));
   run(ctx,crates,1);
   assert.deepEqual(others.map(c=>c.hiddenFor?.join()??''),['','a','','',''],'only the azul hides (he took no verde)');
-  const k=makeCtx(4),kc=createCrates({seed:4,points:[]});addPlayer(k,'k',0,0);
+  const k=makeCtx(4),kc=createCrates({mapCrates:true,seed:4,points:[]});addPlayer(k,'k',0,0);
   crate(k,kc,{x:0,y:0},1,KIT1);run(k,kc,ticks(1.2));
   assert.equal(opened(k).length,1);
   assert.equal(kc.state.took,undefined,'a verde kit does not hide the verdes');
 });
 
 test('a verde crate that turned dourada still counts as verde taken (the colour it showed)',()=>{
-  const ctx=makeCtx(5),crates=createCrates({seed:5,points:[],goldChance:1}),a=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(5),crates=createCrates({mapCrates:true,seed:5,points:[],goldChance:1}),a=addPlayer(ctx,'a',0,0);
   crate(ctx,crates,{x:0,y:0},1,'pistola');
   run(ctx,crates,ticks(1.2));
   assert.equal(a.build.weapons.find(w=>w.id==='pistola')?.level,GOLD_RARITY);
@@ -146,7 +146,7 @@ test('a verde crate that turned dourada still counts as verde taken (the colour 
 test('trail crates: a hero who took verde gets them azul; verde and azul, roxa',()=>{
   const street=(at:{x:number;y:number},h:{x:number;y:number},ahead:number)=>{const p={x:at.x+h.x*ahead,y:at.y+h.y*ahead};return Math.abs(p.y)<3?p:undefined;};
   for(const [took,want] of [[[1],2],[[1,2],3]] as const){
-    const ctx=makeCtx(5),crates=createCrates({seed:5,points:[],trailSpot:street}),a=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(5),crates=createCrates({mapCrates:true,seed:5,points:[],trailSpot:street}),a=addPlayer(ctx,'a',0,0);
     crates.state.took={a:[...took]};
     for(let i=0;i<ticks(20);i++){a.x+=.2;crates.step(ctx);ctx.tick++;}
     const trail=Object.values(crates.state.crates).filter(r=>r.start);

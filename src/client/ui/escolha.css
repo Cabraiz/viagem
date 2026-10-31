@@ -16,7 +16,9 @@
 #confirmation.escolha-arte .chosen-card{margin-top:14px}
 /* Herói do topo no mesmo canto, bem maior, saindo para fora do popup por cima da moldura (escala do gato da ref. 6). */
 #confirmation.escolha-arte{overflow:visible}
-#confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,24dvh,190px);height:clamp(110px,24dvh,190px);margin:calc(-.5 * clamp(110px,24dvh,190px)) 0 -6px -8px;position:relative;z-index:1}
+/* escolha-subtitulo-3-linhas: also capped by the width (40vw), or on a tall phone it ate the text beside it (54 px at
+   360x800, the role's line in 5 lines and the name cut mid-word). */
+#confirmation.escolha-arte .chosen-card .class-art{--arte:clamp(110px,min(24dvh,40vw),190px);width:var(--arte);height:var(--arte);margin:calc(-.5 * var(--arte)) 0 -6px -8px;position:relative;z-index:1}
 /* Chip da classe como na ref. 7: pílula roxa viva, texto claro, numa linha só; a descrição vai embaixo. */
 #confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:12px;white-space:nowrap}
 #confirmation.escolha-arte .chosen-role .suit{fill:currentColor}

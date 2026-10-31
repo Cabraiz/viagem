@@ -11,14 +11,18 @@
   .estadio .estadio-palco, .estadio .menu-config, .estadio .menu-tela-cheia, .estadio .estadio-caixa-titulo, .estadio .estadio-fileira { display: none; }
 
   .estadio .estadio-escolha {
-    --u: calc(min(100vw, 51.873dvh) / 734); /* 734 / 1415 */
+    /* 734 / 1415, the height less the privacy/about row under the card (rodape-sob-o-bora): its 22 px links, the
+       safe area under them and 16 px for the card's px floors (borders, minimum fonts: 14 px over at 320x568). */
+    --rodape: calc(38px + max(8px, env(safe-area-inset-bottom)));
+    --u: calc(min(100vw, (100dvh - var(--rodape)) * .51873) / 734);
     inset: 0; width: auto; height: 100%; gap: 0; padding: 0; align-items: center; justify-content: center;
     color: var(--insta-texto);
   }
   .estadio .estadio-escolha > * { flex: none; width: calc(var(--u) * 734); max-width: none; }
 
-  /* The privacy and about links (estadio.css) on the light profile: dark text, centred in the air under the card. */
-  .estadio .menu-rodape { left: 50%; transform: translateX(-50%); }
+  /* The privacy and about links (estadio.css) on the light profile: dark text, centred under BORA! (its 39 card px of
+     margin are the air between them), the safe area under them. */
+  .estadio .estadio-escolha > .menu-rodape { justify-content: center; margin-top: 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); box-sizing: content-box; height: 22px; }
   .estadio .menu-rodape a { color: var(--insta-texto); text-shadow: none; opacity: .6; }
 
   .insta-topo { display: block; }

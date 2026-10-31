@@ -22,15 +22,9 @@
   .estadio .menu-rodape a { color: var(--insta-texto); text-shadow: none; opacity: .6; }
 
   .insta-topo { display: block; }
-  .insta-grade-area { display: block; margin-top: calc(var(--u) * 14); }
-  /* What the game is (menu-diz-o-jogo-e-convite #2): two grey lines under the chips, the tabs and grid give their room. */
+  .insta-grade-area { display: block; margin-top: calc(var(--u) * 28); }
   .convite-faixa { order: -3; }
   .insta-topo { order: -2; }
-  .menu-oque {
-    order: -1; display: flex; align-items: center; justify-content: center; height: calc(var(--u) * 55); margin-top: calc(var(--u) * 14);
-    padding: 0 calc(var(--u) * 40); max-width: none; font: 400 max(12px, calc(var(--u) * 23))/1.2 var(--f-sistema); color: var(--insta-cinza);
-    text-align: center; text-shadow: none;
-  }
   .estadio-escolha[data-etapa="nome"] .insta-grade-area { display: none; }
 
   /* Top bar (17..135): the logo 118 tall at x 52; the bell 36x41 at x 573, ≡ 43 wide at x 650, both from y 46. */
@@ -145,7 +139,7 @@
   .insta-aba.muda { color: var(--insta-cinza); opacity: .55; }
   .insta-aba.ativa { box-shadow: inset 0 calc(var(--u) * -8) 0 var(--insta-roxo); margin: 0 calc(var(--u) * 14); }
   /* The grid (967..1231): three photos 231x265 with 8 between, x 17..715; exactly three, no second row. */
-  .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 192); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
+  .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 247); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
   .estadio .insta-post-botao { display: block; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: var(--r-ficha); background: none; box-shadow: none; cursor: zoom-in; }
   .insta-post-botao:active .insta-post { transform: scale(.97); }
   .insta-post { display: block; width: 100%; height: 100%; border-radius: var(--r-ficha); object-fit: cover; }
@@ -159,7 +153,7 @@
   .insta-privada span { font: 400 max(12px, calc(var(--u) * 24))/1.2 var(--f-sistema); color: var(--insta-cinza); }
 
   /* Step 2: the name row takes the tabs and the grid's place (880..1234; the stadium's margin-top:auto does not apply). */
-  .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 281); margin-top: calc(var(--u) * 14); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
+  .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 336); margin-top: calc(var(--u) * 28); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
   .estadio .estadio-nome[hidden] { display: none; }
   .estadio .estadio-nome .estadio-escolhido { display: none; }
   .estadio .estadio-nome .round-button { width: calc(var(--u) * 84); height: calc(var(--u) * 84); border-color: var(--insta-fundo); background: var(--insta-texto); color: var(--insta-fundo); font-size: max(12px, calc(var(--u) * 52)); }
@@ -172,7 +166,7 @@
   /* Keyboard up on the name (estadio.css data-teclado): the card keeps its size (--u from the height before the keyboard,
      for a browser that shrinks the layout) and only the profile, the field and BORA! stay, the field right above BORA!. */
   .estadio .estadio-escolha[data-teclado] { --u: calc(min(100vw, var(--tec-cheia, 100dvh) * .51873) / 734); }
-  .estadio .estadio-escolha[data-teclado] :is(.insta-barra, .insta-stories, .insta-trocar, .menu-oque, .convite-faixa) { display: none; }
+  .estadio .estadio-escolha[data-teclado] :is(.insta-barra, .insta-stories, .insta-trocar, .convite-faixa) { display: none; }
   .estadio .estadio-escolha:has(.insta-topo)[data-teclado] > .estadio-nome { height: auto; margin-top: calc(var(--u) * 20); padding-block: calc(var(--u) * 12); }
 
   /* SELECIONAR (1251..1373, x 22..708): the wide purple button with a crown at each end, white condensed letters. */

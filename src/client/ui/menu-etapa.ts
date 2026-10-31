@@ -13,10 +13,6 @@ export const CONFIRM_TEXT:Readonly<Record<MenuEtapa,string>>=Object.freeze({esco
 export const INVITE_TEXT='ENTRAR';
 export const confirmText=(etapa:MenuEtapa,convite=false)=>convite?INVITE_TEXT:CONFIRM_TEXT[etapa];
 
-/** What the game is, in one line under the hero's name (menu-diz-o-jogo-e-convite #2): the first visit knows what it
- *  is choosing for. "até 5 amigos" is a room's MAX_PLAYERS less the player (tests/client/menu-diz-o-jogo.test.ts). */
-export const MENU_OQUE='Protege o Uno dos bichos da cidade, rodada a rodada. Sozinho ou com até 5 amigos.';
-
 // HTMLElement.hidden is boolean | 'until-found'; this module only writes booleans.
 type Hideable={hidden:boolean|string};
 export interface EtapaParts {

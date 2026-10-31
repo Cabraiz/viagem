@@ -15,7 +15,7 @@ import {FOLE,SANFONA,SANFONA_STATE,SANFONEIRO_ID,isPlaying} from '../../src/sim/
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
-import {HELD_ROSTER,ROSTER,ROSTER_IDS} from '../../src/rules/index.ts';
+import {ENEMY_DAMAGE,HELD_ROSTER,ROSTER,ROSTER_IDS} from '../../src/rules/index.ts';
 import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
@@ -149,7 +149,7 @@ test('pancada do fole: warned circle, moderate damage, a shove back, and a coold
     }
     if(fired>0&&world.tick===fired+1&&made.length===1){
       assert.ok(p.hp<hpBefore,'the fole hurts');
-      assert.ok(hpBefore-p.hp<=FOLE.damage*2,`moderate: ${hpBefore-p.hp}`);
+      assert.ok(hpBefore-p.hp<=FOLE.damage*2*ENEMY_DAMAGE(world.round.index),`moderate: ${hpBefore-p.hp}`);// ×ENEMY_DAMAGE in damagePlayer
       shoved=p.x-e.x>before+.5;
     }
     p.x=Math.min(p.x,e.x+1.2);p.y=e.y; // the hero keeps pressing on him

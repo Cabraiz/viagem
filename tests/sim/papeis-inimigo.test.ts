@@ -25,6 +25,7 @@ import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
+import {ENEMY_HP} from '../../src/rules/index.ts';
 import {CIDADE_MODIFIERS,LEGACY_KINDS,enemyFeel,MAX_ROUND_ENEMIES,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,THREAT,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
   roundRoster,type RegularKind} from '../../src/rules/index.ts';
 import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src/sim/city/balance.ts';
@@ -186,7 +187,7 @@ test('invocador: no call at the minion cap, nobody comes when he dies mid-call, 
   addPlayer(C.world,'p',at(5));createEnemy(C.world,ofRole('invocador'),O);
   C.step(ticks(1)+SUMMON.warn+2);
   assert.ok(asked.length>=SUMMON.count[0]&&asked.every(k=>k==='bebado'),asked.join());
-  for(const m of [...C.world.enemies.values()].filter(e=>e.memory?.[MINION_FLAG]===1))assert.equal(m.maxHp,Math.max(1,Math.round(ENEMIES.bebado.hp*.1)));
+  for(const m of [...C.world.enemies.values()].filter(e=>e.memory?.[MINION_FLAG]===1))assert.equal(m.maxHp,Math.max(1,Math.round(ENEMIES.bebado.hp*.1*ENEMY_HP(C.world.round.index))));
 });
 
 // ---------- mini-chefe ----------
@@ -322,7 +323,7 @@ test('a full assembled run with the rotation (6 room bots, endless world) gets t
   const ids=new Set([...rotationIds(sim.run.director.state.rotation!),'chefe','agiota','tio-pave','bebado']);
   for(const k of seen)assert.ok(ids.has(k),`${k} outside the rotation (or the boss's minions)`);
   assert.ok(rotation===undefined||isRotation(rotation));
-  assert.ok(seen.size>=8,`${seen.size} kinds met`);
+  assert.ok(seen.size>=8,`${seen.size} kinds met (${sim.outcome} in round ${sim.world.round.index})`);
 });
 
 // ---------- review fixes ----------

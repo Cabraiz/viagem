@@ -29,7 +29,7 @@ import {createStonewardsState,createStonewardsSystem,structureTargets,type Stone
 import {BARRICADE_MAX_HP,BARRICADE_MAX_R,BARRICADE_MIN_R,barricadeCells,sealRadii} from '../../src/sim/stonewards/barricades.ts';
 import {REPAIR_FRACTION} from '../../src/sim/stonewards/forge.ts';
 import {SIEGE_FLAG,WALL_RADIUS} from '../../src/sim/stonewards/wall.ts';
-import {CAMP_RADIUS,CITY_DISTANCE_SCALE,RECIPES} from '../../src/rules/index.ts';
+import {CAMP_RADIUS,CITY_DISTANCE_SCALE,ENEMY_DAMAGE,RECIPES} from '../../src/rules/index.ts';
 
 // ---------- The real city ----------
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -258,7 +258,7 @@ test('D-017 on a barricade: one hit = one damage, one hit per contact cooldown, 
   }
   const structure=events.filter(e=>e.type==='structure');
   assert.equal(structure.length,hits.length,'one structure event per hit: no second damage path');
-  for(const b of [n,l])assert.equal(b.hp,BARRICADE_MAX_HP-hits.filter(h=>h.id===b.id).reduce((s,h)=>s+h.amount,0));
+  for(const b of [n,l])assert.equal(b.hp,BARRICADE_MAX_HP-hits.filter(h=>h.id===b.id).reduce((s,h)=>s+h.amount*ENEMY_DAMAGE(world.round.index),0));// ×3 inside sys.hit
   assert.equal(sys.state.wall.hp,sys.state.wall.maxHp,'nobody reached the wall');
 });
 
@@ -286,7 +286,7 @@ test('bêbado and anão steered up a sealed avenue both bash its barricade; a re
   assert.ok(!hits.some(h=>h.enemy===retreat.id),'retreating bodies never hit (D-010)');
   assert.equal(l.hp,BARRICADE_MAX_HP);
   assert.ok(!hits.some(h=>h.enemy===boss.id),'the boss is not the enemy-ai\'s');
-  assert.ok(n.hp<BARRICADE_MAX_HP&&!n.down);
+  assert.ok(n.hp<BARRICADE_MAX_HP,'barricade N took the damage');// with ×3 (round 3) 30 s of two bodies may bring it down
 });
 
 // ---------- Restore, isolation, defeat ----------

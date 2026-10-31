@@ -280,7 +280,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   /** A body as an EnemyState, out of any world (no counter, no map, no clock: spawnTick and readyTick 0, the waking sets
    * readyTick): the same object every load of the same seed, whatever the tick of the checkpoint. */
   function body(b:SleepBody):EnemyState{
-    const shell={tick:0,enemies:new Map<string,EnemyState>(),nextId:()=>b.id} as unknown as SimContext;
+    const shell={tick:0,round:{index:0},enemies:new Map<string,EnemyState>(),nextId:()=>b.id} as unknown as SimContext;// inimigos-3x-fortes: born with the map = round 1's ENEMY_HP
     const e=createEnemy(shell,b.kind,b.home,options.hpScale??1);
     if(options.speedMap)e.speed=options.speedMap(e.speed);
     return e;

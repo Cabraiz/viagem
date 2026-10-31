@@ -14,7 +14,7 @@
  * The fields are read by shape (c/r/rot on the structures, car.rope) so this works before and after the contract lands.
  */
 import {CAR_RADIUS,CAR_ROPE,CAR_ROPE_REST,type FreeBuildRefusal} from '../../contract/index.ts';
-import {DEFENSES,FREE_PIECE_DEFS,type DefenseId} from '../../rules/index.ts';
+import {CAR_BUILD_GAP,DEFENSES,FREE_PIECE_DEFS,UNO_BUILD_CELLS,type DefenseId} from '../../rules/index.ts';
 
 /** How close to a living nest nothing is built (proposal §2; the room refuses with 'ninho'). */
 export const NEST_BUILD_KEEP_OUT=6;
@@ -57,10 +57,15 @@ export function structureRect(s:FortStructure,cell:number):CellRect|undefined{
   return cellRect(at.c,at.r,w,h,cell);
 }
 
-export interface GhostContext {cell:number;car?:{x:number;y:number};structures:readonly FortStructure[]}
+/**
+ * `piece`: the room's own gap off the car (sim/towers/system.ts buildFree: CAR_BUILD_GAP, a barricada UNO_BUILD_CELLS
+ * cells), so a kit never walks the hero to a spot the room refuses (construir-andando-ate-a-obra). Without it: the body.
+ */
+export interface GhostContext {cell:number;car?:{x:number;y:number};structures:readonly FortStructure[];piece?:string}
 /** What the client already knows refuses the piece at this rectangle (the room decides; see the header). */
 export function ghostRefusal(rect:CellRect,ctx:GhostContext):FreeBuildRefusal|undefined{
-  if(ctx.car&&distToRect(ctx.car.x,ctx.car.y,rect)<CAR_RADIUS)return 'carro';
+  const carGap=ctx.piece===undefined?0:ctx.piece==='barricada'?UNO_BUILD_CELLS*ctx.cell:CAR_BUILD_GAP;
+  if(ctx.car&&distToRect(ctx.car.x,ctx.car.y,rect)<CAR_RADIUS+carGap)return 'carro';
   for(const s of ctx.structures){
     if(s.kind==='ninho'&&s.hp>0&&distToRect(s.x,s.y,rect)<NEST_BUILD_KEEP_OUT)return 'ninho';
     const other=structureRect(s,ctx.cell);

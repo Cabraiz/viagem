@@ -46,7 +46,7 @@ import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWo
 import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState,towFace} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
-import {KIT_TAP_HINT,KitArt,KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
+import {BuildWalk,KIT_TAP_HINT,KitArt,KitPlace,WALK_WORDS,kitGround,kitRefusalText,standGround} from './hud/kit-place/model.ts';
 import {KitGesture} from './hud/kit-place/gesture.ts';
 import {WorkLatch,workShop,workingIn} from './hud/bicos.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
@@ -142,7 +142,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
    * on the map puts the ghost there, the drag turns it and letting go builds (kitGesture → placeNow); the kit again, a
    * weapon or Esc lets it go. The attack button stays Atacar.
    */
-  const kitPlace=new KitPlace(),kitArt=new KitArt();let placeNow:()=>void=()=>undefined,refreshKitGhost:()=>void=()=>undefined,kitShown=false,kitGesture:KitGesture|undefined;
+  const kitPlace=new KitPlace(),kitArt=new KitArt(),buildWalk=new BuildWalk();let placeNow:()=>void=()=>undefined,refreshKitGhost:()=>void=()=>undefined,kitShown=false,kitGesture:KitGesture|undefined;
   /** torre-limite-rebocar-sem-arma: the action button on the Uno's rope ("Rebocar"/"Soltar", skill.towing) sends {t:'puxar'}. */
   let towTap:()=>void=()=>undefined;
   /** Bicos (hud/bicos.ts): in an open shop's ring the attack button is Trabalhar; a tap clocks in, moving clocks out. */
@@ -250,19 +250,19 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
         onAimEnd:()=>fortBuild.endDrag(),
         canvas:()=>controller?.game.canvas});
-      // barricada-tocar-no-mapa: the press let go on the map: the ghost's cell to the room; a red ghost says why instead.
-      placeNow=()=>{
-        if(!kitPlace.active||!kitShown)return;
-        // The colour of the ghost the finger saw, recomputed for its last place (the drag may have turned it).
+      placeNow=()=>{ // barricada-tocar-no-mapa: the press let go on the map: the ghost's cell to the room; a red ghost says why instead
+        if(!kitPlace.active||!kitShown)return; // the colour of the ghost the finger saw, for its last place (the drag may have turned it)
         if(kitPlace.blocked){obraSay(kitRefusalText(kitPlace.blocked));return;}
-        const r=kitPlace.confirm(net);if(r!=='none')send(r);
+        const order=kitPlace.order(cell()),go=order&&controller?buildWalk.begin(order,net.predicted,controller.scene,standGround(net.terrain)):'now'; // construir-andando-ate-a-obra: from afar the hero walks there first (hud/kit-place/walk.ts), the order goes on arrival
+        if(go==='blocked')obraSay(WALK_WORDS.blocked);else if(go==='now'){const r=kitPlace.confirm(net);if(r!=='none')send(r);}
       };
       refreshKitGhost=()=>{
         const scene=controller?.scene,view=hud?.view;
         if(!scene||!kitPlace.active)return;
-        const car=view&&objectiveOf(view)?.car;
-        scene.setBuildGhost(kitPlace.ghost({cell:cell(),...(car?{car}:{}),structures:view?.structures??[],ground:kitGround(net.terrain),
-          bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]},net.predicted),[]);
+        const got=buildWalk.tick(net.predicted,scene),car=view&&objectiveOf(view)?.car;
+        if(got==='cancelled')obraSay(WALK_WORDS.cancelled);else if(got){kitPlace.aim(got);const r=kitPlace.confirm(net);if(r!=='none')send(r);} // the walk's ghost stays where it was let go; a new press shows its own
+        scene.setBuildGhost(buildWalk.order&&!kitPlace.pressing?buildWalk.order.ghost:kitPlace.ghost({cell:cell(),...(car?{car}:{}),structures:view?.structures??[],ground:kitGround(net.terrain),
+          bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]}),[]);
       };
       kitGesture=new KitGesture({active:()=>kitPlace.active&&kitShown,canvas:()=>controller?.game.canvas,
         onPress:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p){pause(false);kitPlace.press(p,cell());refreshKitGhost();}},
@@ -818,7 +818,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 const shown=kitShown=!run.pause&&!hud.el.hidden&&!hud.offerShown;
                 if(run.phase!=='combat')kitPlace.reset();
                 else if(!available)kitPlace.cancel();
-                kitPlace.sync(me?.weapons);kitArt.sync(scene,me?.weapons); // a tower kit in the backpack fetches its sheets
+                kitPlace.sync(me?.weapons);kitArt.sync(scene,me?.weapons);if(!kitPlace.active)buildWalk.cancel(); // a tower kit in the backpack fetches its sheets
                 // The ghost stands where the map was pressed (or the mouse hovers): its colour follows the room each frame.
                 if(kitPlace.active&&shown)refreshKitGhost();
                 else if(!fortBuild.open)scene.setBuildGhost(null);

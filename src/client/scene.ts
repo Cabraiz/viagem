@@ -27,7 +27,7 @@ import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normali
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
-import {buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
+import {PieceObras,buildFacing,isObraPhase,type ObraSpot} from './sprites/build-facing.ts';
 import {workFacing} from './sprites/work-facing.ts';
 import {hasWork16,hasDowned16} from './sprites/movement128.ts';
 import {CityOutlines} from './render/city-outline.ts';
@@ -185,8 +185,7 @@ export class IslandScene extends Phaser.Scene {
   private correction=new SelfCorrection();
   /** Out or watching (UX onda 4): the teammate the camera follows, and where it last was. */
   private watchId?:string;
-  private watchPinned=false;
-  private watchPoint?:Point;
+  private watchPinned=false;private watchPoint?:Point;
   /** The teammates the spectator may watch (last frame's), for the ‹ › of hud/spectator.ts. */
   private watchList:Watchable[]=[];
   /**
@@ -304,7 +303,7 @@ export class IslandScene extends Phaser.Scene {
   private fortify?:FortifyRenderer;
   private readonly towerFeed=new TowerFeed();
   /** The defenses going up now (card animacao-construir-6): a hero standing by one plays its build16, facing it. */
-  private obras:ObraSpot[]=[];
+  private obras:ObraSpot[]=[];private readonly pieceObras=new PieceObras();
   /** The live enemies the weapons aim at (parallel arrays, grown as needed) and the world's build plan (cell, rail). */
   private towerAim={n:0,xs:new Float32Array(64),ys:new Float32Array(64),air:new Uint8Array(64)};
   private buildPlan?:ReturnType<typeof buildPlanFor>;
@@ -957,6 +956,7 @@ export class IslandScene extends Phaser.Scene {
     this.zoomWant=next;this.hooks.zoomChanged?.(next);
   }
   get zoomFactor(){return this.zoomWant;}
+  /** A walk (tap, goTo) is under way: the stick or the keys drop it (hud/kit-place/walk.ts). */ get walking(){return this.route.length>0;}
   /** A pinch began over a tap: the walk the first finger started is dropped (the map was only being zoomed). */
   private cancelWalk(){
     this.route=[];this.destination?.clear();this.hold.release();this.markerUntil=undefined;
@@ -1378,9 +1378,9 @@ export class IslandScene extends Phaser.Scene {
   private readonly shopWorkers=new Set<string>();
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
+    const plan=this.buildPlan??=buildPlanFor(this.field);this.obras=this.pieceObras.spots(view.structures,plan.cell,time); // walls going up are obras too
     if(!this.towers&&!hasTowers(view.structures))return; // no defense yet: nothing built, nothing walked
     const towers=this.towers??this.makeTowers();
-    const plan=this.buildPlan??=buildPlanFor(this.field);
     const enemies=view.enemies;let a=this.towerAim;
     if(a.xs.length<enemies.length){const n=Math.max(enemies.length,a.xs.length*2);a=this.towerAim={n:0,xs:new Float32Array(n),ys:new Float32Array(n),air:new Uint8Array(n)};}
     let n=0;
@@ -1390,7 +1390,7 @@ export class IslandScene extends Phaser.Scene {
     }
     a.n=n;towers.setEnemies(n,a.xs,a.ys,a.air);
     const views=this.towerFeed.views(view.structures,view.tick,plan.cell,{railAxis:plan.rail?.axis,enemies:a});
-    this.obras=views.filter(v=>isObraPhase(v.phase));
+    for(const v of views)if(isObraPhase(v.phase))this.obras.push(v);
     towers.push(view.tick,views,time);
   }
   /**

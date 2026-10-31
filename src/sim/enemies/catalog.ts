@@ -3,9 +3,9 @@
  * Stats are base values; createEnemy applies the elite modifier and the director's hp scale.
  */
 import type {Point} from '../../maps/index.ts';
-import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
-import {ticks} from '../../contract/index.ts';
+import {ticks,type EnemyState} from '../../contract/index.ts';
+import {OWN_BEHAVIOR} from './own-behavior.ts';
 import {CLASH_XP,LEGACY_ROLE,PROJECTILE_SPEED_MULT,ROLE_PROFILES,ROUNDS,roleBaseHp,entryLines,enemyFeel,isLegacyKind,isRosterId,rosterEntry,type EnemyRole,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
@@ -396,7 +396,7 @@ function rosterDef(kind:string):EnemyDef|undefined{
   const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base],feel=enemyFeel(kind)??{speed:1,hp:1,radius:1,sway:1};
   const tune=Object.hasOwn(LIBERADO_TUNE,kind)?LIBERADO_TUNE[kind]!:{hp:1,damage:1},hpMult=feel.hp*tune.hp;
   const def:EnemyDef=Object.freeze({
-    id:entry.id,name:entry.name,behavior:role.behavior,
+    id:entry.id,name:entry.name,behavior:OWN_BEHAVIOR[kind]??role.behavior,
     hp:hpMult===1?roleHp(entry.role,base.hp):Math.round(roleHp(entry.role,base.hp)*hpMult),speed:base.speed*role.speed*feel.speed,damage:Math.max(1,Math.round(base.damage*role.damage*tune.damage)),
     radius:base.radius*role.radius*entry.cell/role.cell*feel.radius,xp:Math.max(1,Math.round(base.xp*role.xp)),
     contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,

@@ -11,6 +11,7 @@ import {cenaTitle} from '../../src/client/hud/chefao-cena.ts';
 import {bossInfo,BOSS_NAME} from '../../src/client/hud/model.ts';
 import {soundForEvent} from '../../src/client/audio/events.ts';
 import {CENA,WAVE_BOSSES,WAVE_BOSS} from '../../src/rules/index.ts';
+const HD_BOSSES=WAVE_BOSSES.filter(b=>b.size===undefined);
 import type {RunCena,RunView} from '../../src/contract/index.ts';
 import {waveBossTuning} from '../../src/sim/ninhos/chefao.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
@@ -110,10 +111,11 @@ test('his art in HD (AI copy of idle/walk/slam, the rest at the approved cell; t
   const {HD_ENEMIES,parseArtIndex,setArtIndex}=await import('../../src/client/art/manifest.ts');
   const {enemyPieceLoads,artShadowLength}=await import('../../src/client/art/horde-art.ts');
   const {readFileSync}=await import('node:fs');
-  assert.deepEqual([...HD_ENEMIES].sort(),[...WAVE_BOSSES.map(b=>b.id)].sort());
+  // The 4 legacy chefões; the saci (SACI_BOSS.size, card saci-chefe-2x) keeps his own sheet and shadow.
+  assert.deepEqual([...HD_ENEMIES].sort(),[...HD_BOSSES.map(b=>b.id)].sort());
   setArtIndex(parseArtIndex(JSON.parse(readFileSync('public/art/manifest.json','utf8'))));
   try{
-    for(const b of WAVE_BOSSES){
+    for(const b of HD_BOSSES){
       const loads=enemyPieceLoads(b.id);
       assert.ok(loads.length,b.id);
       for(const l of loads){
@@ -126,5 +128,6 @@ test('his art in HD (AI copy of idle/walk/slam, the rest at the approved cell; t
     // Everyone else: still the lite copies, the shadow as long as the figure.
     assert.ok(enemyPieceLoads('bebado').every(l=>l.url.includes('/lite/')));
     assert.equal(artShadowLength('bebado'),1);
+    assert.equal(artShadowLength('aberracao-saci'),1);
   }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
 });

@@ -46,8 +46,9 @@ const LEGACY=[
  * P0 (copy file `held`: 4 barks, 3 death lines, a pop and the gag). [id, name, role, cell, accent]
  */
 const HELD=[
-  // NEW-20261029-ORQ-sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): cell 128, ~1.2× the hero until the user decides.
-  ['sanfoneiro','Sanfoneiro Arrasta-Pé','brutamontes',128,0xc68e3a],
+  // NEW-20261029-ORQ-sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): cell 128. Card saci-chefe-2x (the user,
+  // 30/10: "ele é um inimigo comum"): a corredor, not an elite.
+  ['sanfoneiro','Sanfoneiro Arrasta-Pé','corredor',128,0xc68e3a],
 ];
 /** Entries that fly although their role (enxame) does not: aerial swarms. */
 const FLYING={'pernilongo-vampiro':'a mosquito swarm','bot-de-curtida':'"a tiny hovering thumbs-up creature"'};

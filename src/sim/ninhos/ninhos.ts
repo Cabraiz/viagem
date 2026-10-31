@@ -126,8 +126,8 @@ export const ROLE_WEIGHT:Readonly<Partial<Record<EnemyRole,number>>>=Object.free
 /**
  * The wave's elite (NEW-20261029-ORQ-saci-nasce-nos-ninhos, E5's bench 29/10: the horde of the liberated cast was 100 %
  * mendigo, the saci never came, ROLE_WEIGHT has no mini-chefe and it is ELITE_ONLY): the run's round-5 elite when it is an
- * ELITE_ONLY entry (rules/enemy-rotation.ts: the saci in every liberated run, one rotation in ELITE_EVERY otherwise),
- * born in a live nest's yard (the nests in turn; none standing: with the outside group), at the elite's numbers (the
+ * ELITE_ONLY entry (rules/enemy-rotation.ts: one rotation in ELITE_EVERY; none today, the saci is the chefão), born in a live
+ * nest's yard (the nests in turn; none standing: with the outside group), at the elite's numbers (the
  * director's: ELITE_HP × the row's hp × playerScale.solo, ELITE_SIZE, the elite flag: its extras and its chest), tuned
  * like every wave body. The one place of its numbers:
  *  - from: the first wave (1-based) with one: none in wave 1;

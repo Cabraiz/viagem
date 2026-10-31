@@ -1,7 +1,7 @@
 /**
  * The chefão at the end of the 1st wave (card NEW-20261023-ORQ-boss-fim-onda-1; rules/chefao-onda.ts says who, when and
  * the scene's clock). Mode 'ninhos' only (assemble.ts). One per run:
- *  - who: pickWaveBoss(seed), or options.who (labs, tests);
+ *  - who: pickWaveBoss(seed) (the saci), or options.who (labs, tests); his size (WaveBoss.size) sizes his body;
  *  - when: the first step where wave WAVE_BOSS.waveIndex has left and its map share dripped out (NestsState.sent past it,
  *    no drip running): the moment its last body leaves;
  *  - where: along that wave's way in (its entrance's route to the car), WAVE_BOSS.fromCar from the car, then outward
@@ -158,7 +158,7 @@ export function createChefao(options:ChefaoOptions,restore?:ChefaoState):ChefaoS
   const {seed:_seed,who:_who,nests,entrances,car,tuning:base,...bossOptions}=options;
   const state:ChefaoState=restore?structuredClone(restore):{who:who.id,boss:{defeated:false,lastX:0,lastY:0,minions:[],pending:[]}};
   state.who=who.id;
-  const boss=createBoss({...bossOptions,kind:who.id,lines:waveBossLines(who),tuning:waveBossTuning({...BOSS_TUNING,...base})});
+  const boss=createBoss({...bossOptions,kind:who.id,lines:waveBossLines(who),tuning:waveBossTuning({...BOSS_TUNING,...base},who.size)});
   boss.restore(state.boss);
   // The controller's state object is the one the checkpoint stores.
   state.boss=boss.state;

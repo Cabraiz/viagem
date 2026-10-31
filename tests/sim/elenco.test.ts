@@ -22,6 +22,9 @@ import {MAX_PROJECTILES,MAX_TELEGRAPHS} from '../../src/rules/budget.ts';
 import {walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+import {ENEMY_DAMAGE} from '../../src/rules/index.ts';
+/** inimigos-3x-fortes: an enemy's hit on a hero is × the round's ENEMY_DAMAGE (before armor). */
+const D=(w:{round:{index:number}})=>ENEMY_DAMAGE(w.round.index);
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
 setRosterOnlyWithArt(false);
 
@@ -88,7 +91,7 @@ test('bêbado burps a cone at a player in front, ≥ 0.8 s ahead, with a cooldow
   }
   for(let i=1;i<burps.length;i++)assert.ok(burps[i].tick-burps[i-1].tick>=BURP.cooldown,'cooldown between burps');
   const hits=damageFrom(A.events,p.id,e.id);
-  assert.ok(hits.length>=burps.length-1&&hits.every(a=>a===BURP.damage),`burp hits ${hits.join(',')}`);
+  assert.ok(hits.length>=burps.length-1&&hits.every(a=>a===BURP.damage*D(A.world)),`burp hits ${hits.join(',')}`);
 });
 
 test('bêbado never burps at a player behind him, out of range, or in round 1',()=>{
@@ -140,7 +143,7 @@ test('anão lobs a molotov at the player (≥ 0.8 s), the fire pulses MOLOTOV.pu
     assert.ok(chain[i].t.fireTick-chain[i-1].t.fireTick>=MIN_TELEGRAPH_TICKS,'pulses spaced ≥ 0.8 s');
     assert.ok(chain[i].t.fireTick-chain[i].tick>=MIN_TELEGRAPH_TICKS,'each pulse warned ≥ 0.8 s');
   }
-  assert.deepEqual(damageFrom(A.events,p.id,owner),[MOLOTOV.damage,...Array(MOLOTOV.pulses).fill(MOLOTOV.pulseDamage)]);
+  assert.deepEqual(damageFrom(A.events,p.id,owner),[MOLOTOV.damage*D(A.world),...Array(MOLOTOV.pulses).fill(MOLOTOV.pulseDamage*D(A.world))]);
   assert.ok(![...A.world.telegraphs.values()].some(t=>t.owner===owner),'fire is out');
 });
 
@@ -195,7 +198,7 @@ test('molotov caps: per anão, global, and the enemies telegraph budget; a crowd
 test('anão explodes on death: telegraphed, hurts players once, hits neighbors once, chains, never double-kills',()=>{
   const A=arena(8);const p=addPlayer(A.world,'p',at(1));
   const a=createEnemy(A.world,'anao-molotov',O);
-  const weak=createEnemy(A.world,'bebado',at(-1));            // 20 hp ≤ deathEnemyDamage: dies
+  const weak=createEnemy(A.world,'bebado',at(-1));weak.hp=20; // 20 hp ≤ deathEnemyDamage: dies (pinned: ENEMY_HP grows it)
   const killedFirst=createEnemy(A.world,'bebado',at(0,-1));   // dies to the player before the blast lands
   const second=createEnemy(A.world,'anao-molotov',at(0,1.5));second.hp=10; // dies, explodes in turn
   const tough=createEnemy(A.world,'tio-pave',at(-1.5,-.8));    // in the first blast only: survives with less hp
@@ -208,7 +211,7 @@ test('anão explodes on death: telegraphed, hurts players once, hits neighbors o
   assert.ok(blast.t.fireTick-blast.tick>=MIN_TELEGRAPH_TICKS,'warned ≥ 0.8 s');
   A.world.damageEnemy(killedFirst.id,999,'p');A.flush();
   A.step(MOLOTOV.deathDelay+MIN_TELEGRAPH_TICKS+10,healAll(A.world));
-  assert.deepEqual(damageFrom(A.events,p.id,`env:explosion:${a.id}`),[MOLOTOV.deathDamage],'one hit on the player');
+  assert.deepEqual(damageFrom(A.events,p.id,`env:explosion:${a.id}`),[MOLOTOV.deathDamage*D(A.world)],'one hit on the player');
   assert.ok(!A.world.enemies.has(weak.id)&&!A.world.enemies.has(second.id),'neighbors in the blast died');
   assert.equal(tough.hp,toughHp-MOLOTOV.deathEnemyDamage,'one blast hit on the tio');assert.equal(far.hp,farHp,'far one untouched');
   assert.ok(A.made.some(m=>m.t.owner===`env:explosion:${second.id}`),'the second anão exploded too');
@@ -234,7 +237,7 @@ test('pombos drop poop telegraphs under themselves near a player, with a per-bir
     const after=where[tick];assert.ok(Math.hypot(after.x-t.x,after.y-t.y)<.5,'dropped where the bird was');
   }
   for(let i=1;i<poops.length;i++)assert.ok(poops[i].tick-poops[i-1].tick>=POOP.cooldown);
-  assert.ok(damageFrom(A.events,p.id,owner).every(a=>a===POOP.damage));
+  assert.ok(damageFrom(A.events,p.id,owner).every(a=>a===POOP.damage*D(A.world)));
   // A flock: never more than POOP.maxGlobal poops pending.
   const F=arena(10);addPlayer(F.world,'p',O);
   for(let i=0;i<24;i++)createEnemy(F.world,'pombos',at(Math.cos(i)*1.5,Math.sin(i)*1.5));
@@ -253,13 +256,13 @@ test('agiota boleto marks the player devendo: one say per mark, ×DEVENDO.mult b
   ag.memory!.actReady=1e9;
   const marked=p as SimPlayer&DevendoPlayer;
   assert.equal(marked.devendoUntil,hitTick+DEVENDO.ticks);
-  assert.equal(damageFrom(A.events,p.id,ag.id)[0],AGIOTA_SHOT.damage-2,'the marking hit itself is not multiplied');
+  assert.equal(damageFrom(A.events,p.id,ag.id)[0],AGIOTA_SHOT.damage*D(A.world)-2,'the marking hit itself is not multiplied');
   A.step(DEVENDO.ticks-10,healAll(A.world));
   const says=A.events.filter((e):e is Extract<SimEvent,{type:'say'}>&{tick:number}=>e.type==='say');
   assert.equal(says.length,1,'one line per mark');
   assert.equal(says[0].source,p.id);assert.equal(says[0].key,DEVENDO.key);assert.ok(DEVENDO_LINES.includes(says[0].line));
-  // While marked: 8 × DEVENDO.mult − 2 armor.
-  A.world.damagePlayer(p.id,8,'test');assert.equal(p.hp,100-(8*DEVENDO.mult-2));
+  // While marked: 8 × ENEMY_DAMAGE × DEVENDO.mult − 2 armor.
+  A.world.damagePlayer(p.id,8,'test');assert.ok(Math.abs(p.hp-(100-(8*D(A.world)*DEVENDO.mult-2)))<1e-9,`marked hit: ${p.hp}`);
   // Hit again while marked: the mark is refreshed, no second line.
   p.hp=100;
   A.world.projectiles.set('pj',{id:'pj',owner:ag.id,source:AGIOTA_SHOT.source,x:p.x-1,y:p.y,vx:AGIOTA_SHOT.speed,vy:0,radius:AGIOTA_SHOT.radius,
@@ -270,7 +273,7 @@ test('agiota boleto marks the player devendo: one say per mark, ×DEVENDO.mult b
   assert.equal(A.events.filter(e=>e.type==='say').length,1,'still one line');
   // Expired: plain damage again.
   assert.ok(A.world.tick>=marked.devendoUntil!);
-  A.world.damagePlayer(p.id,8,'test');assert.equal(p.hp,100-(8-2));
+  A.world.damagePlayer(p.id,8,'test');assert.equal(p.hp,100-(8*D(A.world)-2));
 });
 
 test('a boleto blocked by invulnerability does not mark',()=>{
@@ -346,7 +349,7 @@ test('B1: a rematch clears the devendo mark: no stale ×mult and no stale line',
   sim.resetRun();
   assert.equal(p.devendoUntil,undefined,'mark gone');assert.equal(p.devendoSay,undefined,'pending line gone');
   const hp=p.hp;p.invulnerableUntil=0;sim.world.damagePlayer('a',10,'x');
-  assert.equal(hp-p.hp,Math.max(0,10-p.stats.armor),'plain damage right after the rematch');
+  assert.equal(hp-p.hp,Math.max(0,10*D(sim.world)-p.stats.armor),'plain damage right after the rematch');
   const events:SimEvent[]=[];
   for(let i=0;i<DEVENDO.ticks+BARK_GAP;i++)events.push(...sim.step());
   assert.deepEqual(devendoSays(events),[],'no stale devendo line');
@@ -374,14 +377,14 @@ test('B2: the last anão of a round explodes into the intermission without hurti
     assert.ok([...w.telegraphs.values()].some(t=>t.owner===owner),'his explosion is telegraphed');
     const events:SimEvent[]=[];const phases=new Set<string>();
     for(let i=0;i<MOLOTOV.deathDelay+20;i++){events.push(...sim.step());phases.add(w.round.phase);p.hp=p.stats.maxHp;}
-    return {phases,armor:p.stats.armor,hits:damageFrom(events,'a',owner),left:[...w.telegraphs.values()].filter(t=>t.owner.startsWith('env:'))};
+    return {phases,armor:p.stats.armor,x:D(w),hits:damageFrom(events,'a',owner),left:[...w.telegraphs.values()].filter(t=>t.owner.startsWith('env:'))};
   };
   const last=setup(false);
   assert.ok(last.phases.has('prepare'),'the round ended');
   assert.deepEqual(last.hits,[],'no blast in the intermission');assert.deepEqual(last.left,[],'hazards dropped');
   const wave=setup(true);
   assert.deepEqual([...wave.phases],['wave'],'control: still the wave');
-  assert.deepEqual(wave.hits,[MOLOTOV.deathDamage-wave.armor],'control: during the wave the blast hurts (after armor)');
+  assert.deepEqual(wave.hits,[MOLOTOV.deathDamage*wave.x-wave.armor],'control: during the wave the blast hurts (after armor)');
 });
 
 test('B2: pending molotov, fire and poop are dropped outside the wave and land during it',()=>{

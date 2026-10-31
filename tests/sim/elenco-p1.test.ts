@@ -31,6 +31,9 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {SOLO_EARLY_LEVEL,SOLO_EARLY_XP,xpToNext} from '../../src/sim/progression.ts';
 import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
+import {ENEMY_DAMAGE} from '../../src/rules/index.ts';
+/** inimigos-3x-fortes: an enemy's hit on a hero is × the round's ENEMY_DAMAGE (before armor). */
+const D=(w:{round:{index:number}})=>ENEMY_DAMAGE(w.round.index);
 
 const TERRAIN=new TerrainField(DEFAULT_SEED,{world:'infinito'});
 function openSpot(r:number):Point{
@@ -127,8 +130,8 @@ test('palestra: a coached ally hits ×PALESTRA.damageMult once (two coaches do n
   const r=addPlayer(A.world,'r',{x:plain.x-(plain.radius+RADIUS),y:plain.y});
   delete buffed.frozenUntil;delete plain.frozenUntil;
   A.step(2,()=>{for(const pl of [q,r])pl.hp=100;});
-  assert.deepEqual(damageTo(A.events,q.id,buffed.id),[ENEMIES.bebado.damage*PALESTRA.damageMult],'×1.3 once, not ×1.69');
-  assert.deepEqual(damageTo(A.events,r.id,plain.id),[ENEMIES.bebado.damage],'uncoached: plain damage');
+  assert.deepEqual(damageTo(A.events,q.id,buffed.id),[ENEMIES.bebado.damage*D(A.world)*PALESTRA.damageMult],'×1.3 once, not ×1.69');
+  assert.deepEqual(damageTo(A.events,r.id,plain.id),[ENEMIES.bebado.damage*D(A.world)],'uncoached: plain damage');
   // No melee: a player hugging a coach takes nothing from him.
   const B=arena(3,1);
   const hug=addPlayer(B.world,'h',at(.3+RADIUS));
@@ -226,7 +229,7 @@ test('motoboy: the run ends in a warned marmita blast (env:marmita), he dies onc
   const M=aim({},5);
   // The hero stays in the line: contact at the cap → hitDamage, then the crash.
   M.step(MOTOBOY.aim+MOTOBOY.charge+2);
-  assert.deepEqual(damageTo(M.events,'p',M.e.id),[MOTOBOY.hitDamage],'one charge hit');
+  assert.deepEqual(damageTo(M.events,'p',M.e.id),[MOTOBOY.hitDamage*D(M.world)],'one charge hit');
   const kills=M.events.filter(e=>e.type==='kill'&&e.enemy===M.e.id);
   assert.equal(kills.length,1,'dies once');
   assert.ok(kills[0].type==='kill'&&kills[0].by===undefined,'no player credit');
@@ -239,7 +242,7 @@ test('motoboy: the run ends in a warned marmita blast (env:marmita), he dies onc
   // Standing in the blast: hit once when it lands (after the dead motoboy, the env owner still fires).
   M.p.hp=100;M.p.x=blast.t.x;M.p.y=blast.t.y;
   M.step(MOTOBOY.blastDelay+2);
-  assert.deepEqual(damageTo(M.events,'p',blast.t.owner),[MOTOBOY.blastDamage],'blast hits once');
+  assert.deepEqual(damageTo(M.events,'p',blast.t.owner),[MOTOBOY.blastDamage*D(M.world)],'blast hits once');
   assert.equal(M.events.filter(e=>e.type==='kill'&&e.enemy===M.e.id).length,1,'still one kill');
   // A full run of the same: he crashes at the end of the line when nobody is in it.
   const N=aim({},5);N.p.y+=3;
@@ -344,7 +347,7 @@ test('influencer: a friendly linear shot that hits his pose comes back hostile (
   assert.equal(s.owner,I.e.id,'owned by him');
   assert.ok(s.vx>0,'velocity reversed (back to the shooter)');
   assert.equal(s.pierce,0);
-  assert.deepEqual(damageTo(I.events,'p',I.e.id),[10*REFLECT.mult],'the shooter eats his own shot ×0.6');
+  assert.deepEqual(damageTo(I.events,'p',I.e.id),[10*REFLECT.mult*D(I.world)],'the shooter eats his own shot ×0.6');
   // His line asks for the limiter afterwards (the pose line came first).
   assert.ok(I.events.filter(e=>e.type==='bark'&&e.enemy===I.e.id).length>=1);
 });
@@ -387,7 +390,7 @@ test('a coached influencer reflects ×REFLECT.mult × PALESTRA.damageMult (M1)',
   assert.ok(s.hostile,'reflected');
   const got=damageTo(I.events,'p',I.e.id);
   assert.equal(got.length,1);
-  assert.ok(near(got[0],10*REFLECT.mult*PALESTRA.damageMult,1e-9),`reflected ${got[0]}`);
+  assert.ok(near(got[0],10*REFLECT.mult*PALESTRA.damageMult*D(I.world),1e-9),`reflected ${got[0]}`);
 });
 
 test('a retreating influencer never reflects: isReflecting is false and enemy-ai drops his pose (B1)',()=>{
@@ -527,7 +530,7 @@ test('a coached motoboy hits ×PALESTRA.damageMult with his charge and his marmi
   M.step(MOTOBOY.aim+MOTOBOY.charge+2);
   const hit=damageTo(M.events,'p',M.e.id);
   assert.equal(hit.length,1);
-  assert.ok(near(hit[0],MOTOBOY.hitDamage*PALESTRA.damageMult),`charge hit ${hit[0]}`);
+  assert.ok(near(hit[0],MOTOBOY.hitDamage*PALESTRA.damageMult*D(M.world)),`charge hit ${hit[0]}`);
   const blast=M.made.find(m=>m.t.owner===`env:marmita:${M.e.id}`);
   assert.ok(blast,'the bag explodes');
   assert.ok(near(blast.t.damage,MOTOBOY.blastDamage*PALESTRA.damageMult),`blast ${blast.t.damage}`);

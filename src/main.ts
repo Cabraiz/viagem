@@ -85,7 +85,6 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <button type="button" class="menu-tela-cheia" hidden></button>
-  <nav class="menu-rodape" aria-label="O site"><a class="menu-privacidade" href="/privacidade/">Privacidade</a><a class="menu-sobre" href="/sobre/">Sobre</a></nav>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <p class="convite-faixa" role="status" hidden></p>
     <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
@@ -103,6 +102,7 @@ app.innerHTML = `
       <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" enterkeyhint="go" />
     </div>
     <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-cadeado" hidden>${icon('cadeado',{size:48})}</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
+    <nav class="menu-rodape" aria-label="O site"><a class="menu-privacidade" href="/privacidade/">Privacidade</a><a class="menu-sobre" href="/sobre/">Sobre</a></nav>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title" tabindex="-1"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button"><span class="escolha-rotulo">Jogar sozinho</span></button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
@@ -481,11 +481,11 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   // auditoria-ui-menus 5: the match's code, the city and the hero's first art come down while the popup is read.
   if(!island)void import('./client/lobby.ts').then(m=>m.warmSolo(selected.id)).catch(()=>undefined);
 });
-/** The popup's card: the chosen hero, his name, the class with its suit (confirmacao-70h) and what the role does (#9). */
+/** The popup's card: the hero, the player's name, the class with its suit and what the role does (not the long name). */
 function showChosen() {
   text('chosen-name',nickname.trim());setArt('chosen-art',selected);
   const line=ROLE_LINE[selected.role];
-  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role" title="${line}">${suit(selected.role)}${selected.role}</span> ${selected.name}<small class="chosen-role-linha">${line}</small>`;
+  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role" title="${line}">${suit(selected.role)}${selected.role}</span><small class="chosen-role-linha">${line}</small>`;
   mostrarEscolha(dialog,selected.id,menuArt,matchMedia(DEITADO).matches);
 }
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());

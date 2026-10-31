@@ -52,11 +52,9 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio .menu-tela-cheia:active { transform: translateY(2px); }
 
 /* The privacy policy (anuncios-h5-games, AdSense) and the about page (site-textos-404-sobre): quiet links in the
-   bottom-left corner, under the choice column (centred) and away from the hero's feet. */
-.estadio .menu-rodape {
-  position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
-  display: flex; gap: 12px;
-}
+   column's flow, right under BORA! (rodape-sob-o-bora, the user, 31/10: "deve ficar embaixo do botão"), never over it.
+   6 px more than the column's gap, so their 44 px hit area (style.css) stays off the button. */
+.estadio .menu-rodape { flex: none; display: flex; gap: 12px; margin-top: 6px; }
 .estadio .menu-rodape a {
   padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
   text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);

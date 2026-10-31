@@ -21,8 +21,8 @@ export function suit(role:string,options:{label?:boolean}={}):string{
 /** What each role does, in a few words (menu-diz-o-jogo-e-convite #9): the chosen hero's badge says it, as its title
  *  and in a line under it. */
 export const ROLE_LINE:Readonly<Record<SuitRole,string>>=Object.freeze({
-  'Linha de frente':'Aguenta pancada e segura a turma.',
-  Dano:'Bate mais forte, aguenta menos.',
+  'Linha de frente':'Aguenta pancada pela turma.',
+  Dano:'Bate forte, aguenta pouco.',
   Suporte:'Cura e ajuda a turma.',
   Controle:'Segura e atrapalha os bichos.',
 });

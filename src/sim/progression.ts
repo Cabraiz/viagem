@@ -34,19 +34,8 @@ import type {ClassBonus} from '../rules/index.ts';
 const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBonus}).classBonus;
 const ctxRunStartTick=(ctx:SimContext)=>(ctx as SimContext&{runStartTick?:number}).runStartTick;
 
-/**
- * XP needed to go from `level` to `level + 1`: 4, 10, 20, then 5+10×(level−1) until 20, +13 until 40, +16 after.
- * levelup-espalhado: levels 2 and 3 cheaper (were 5 and 15, 20 to level 3 in all) so they come in the trickle before
- * the nests' first groups instead of inside their burst; everything above is the old curve, 11 XP sooner.
- */
-const FIRST_LEVELS=[4,10,20];
-export function xpToNext(level:number){
-  const l=Math.max(1,Math.floor(level));
-  if(l<=FIRST_LEVELS.length)return FIRST_LEVELS[l-1]!;
-  if(l<=20)return 5+10*(l-1);
-  if(l<=40)return 195+13*(l-20);
-  return 455+16*(l-40);
-}
+export {XP_GROWTH,XP_GROWTH_LATE,xpToNext} from './xp-curve.ts';
+import {xpToNext} from './xp-curve.ts';
 /**
  * D-051 mode 'ninhos' (ritmo-morto-e-viaduto): the first level costs FIRST_LEVEL_XP[heroes − 1] instead of xpToNext(1),
  * heroes = the match's heroes (people and bots, not spectators) at its first step, fixed for the run (a fall never

@@ -11,7 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
-import {ELITE_EVERY,ELITE_ONLY,ENEMY_ART_IDS,MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
+import {ELITE_ONLY,MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
   drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
 import {setRosterOnlyLiberados} from '../../src/rules/enemy-rotation.ts';
 // The hidden roster (D-040 mechanics); the liberated rotation (só 3 inimigos) is tests/rules/inimigos-liberados.test.ts.
@@ -38,7 +38,7 @@ test('size 12-18 (both ends drawn), slots within their ranges, entries of their 
   assert.equal(ROTATION_SLOTS.reduce((n,s)=>n+s.min,0)+2,12);assert.equal(ROTATION_SLOTS.reduce((n,s)=>n+s.max,0)+2,18);
 });
 
-test('P0 first: every role has enough P0 entries for its slots, so a rotation is all P0 (but its elite-only aberração); the cast varies across runs',()=>{
+test('P0 first: every role has enough P0 entries for its slots, so a rotation is all P0; the cast varies across runs',()=>{
   for(const s of ROTATION_SLOTS)assert.ok(ROSTER.filter(e=>e.role===s.role&&e.priority==='P0').length>=s.max,`${s.role}: P0 ≥ ${s.max}`);
   const seen=new Set<string>();
   for(const r of rotations)for(const id of rotationIds(r)){if(ELITE_ONLY.includes(id))continue;assert.equal(rosterEntry(id)!.priority,'P0',id);seen.add(id);}
@@ -46,20 +46,9 @@ test('P0 first: every role has enough P0 entries for its slots, so a rotation is
   assert.ok(seen.size>=p0-2,`300 runs used ${seen.size} of the ${p0} P0 entries`);
 });
 
-test('the elite-only aberração (saci): only ever the round-5 elite (mini[0]), in about 1 run of ELITE_EVERY, never without its art',()=>{
-  const runs=rotations.filter(r=>ELITE_ONLY.includes(r.mini[0]!));
-  for(const r of rotations){
-    for(const ids of Object.values(r.roles))for(const id of ids!)assert.ok(!ELITE_ONLY.includes(id),`${id} in a role slot`);
-    assert.ok(!ELITE_ONLY.includes(r.mini[1]!),'never the round-8 solo');
-  }
-  const share=runs.length/rotations.length;
-  assert.ok(share>0.5/ELITE_EVERY&&share<1.5/ELITE_EVERY,`${runs.length} of ${rotations.length} runs`);
-  for(const r of runs)assert.equal(roundRoster(r,5).elite,ELITE_ONLY[0]);
-  // Deterministic and checkpoint-safe: a stored rotation with the saci elite is valid, the saci as the solo is not.
-  const r=runs[0]!;assert.ok(isRotation(JSON.parse(JSON.stringify(r))));
-  assert.ok(!isRotation({...r,mini:[r.mini[1]!,r.mini[0]!]}),'the saci as mini[1] is refused');
-  // Art-only draw without the saci's art: never drawn.
-  for(const s of SEEDS.slice(0,60))assert.ok(!ELITE_ONLY.includes(drawRotation(new Rng(s),{onlyWithArt:true,artIds:ENEMY_ART_IDS.filter(id=>!ELITE_ONLY.includes(id))}).mini[0]!));
+test('no elite-only entry: the saci is the chefão (card saci-chefe-2x, role chefe), never in a rotation slot nor a mini',()=>{
+  assert.deepEqual([...ELITE_ONLY],[]);assert.equal(roleOf('aberracao-saci'),'chefe');
+  for(const r of rotations)assert.ok(!rotationIds(r).includes('aberracao-saci'));
 });
 
 test('band rules: early corredores + enxames + one palhaço; mid adds arremessador/atirador/suporte(/voador); late the rest; minis in 5 and 8',()=>{

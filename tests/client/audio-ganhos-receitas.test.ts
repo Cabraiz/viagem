@@ -10,13 +10,14 @@ import {SFX,sfxNames} from '../../src/client/audio/sfx.ts';
 import {SOUND_IDS,recipeLength,type SoundId,type SoundRecipe,type Tone} from '../../src/client/audio/types.ts';
 
 /**
- * The files' RMS in dBFS (auditoria-sons-30-10-niveis.tsv: the whole file measured, 30/10). A new or reimported file
- * must add its line here; the footstep's takes are left out (alignTake brings each to ALIGN_LEVEL_DB).
+ * The files' RMS in dBFS (auditoria-sons-30-10-niveis.tsv: the whole file measured, 30/10), keyed by file name: a sound
+ * with takes has one line per take (`bicho-acerto-1`...). A new or reimported file must add its line here; the
+ * footstep's takes are left out (alignTake brings each to ALIGN_LEVEL_DB).
  */
-const RMS:Readonly<Partial<Record<SoundId,number>>>={
-  audio:-15.9,'bau-comum':-20.8,'bau-epico':-24.8,'bau-lendario':-24.3,'bau-raro':-16.8,'bicho-acerto':-14.4,
-  'bicho-morte':-15.8,boing:-17.3,boleto:-27.2,buzina:-17.3,'caca-niquel':-18.8,cafe:-18.2,carimbo:-14.5,
-  'chefe-acerto':-15.8,'chefe-morte':-19.8,'chefe-passo':-22.2,chefe:-18.2,chinelo:-13.7,coxinha:-15.6,'dano-heroi':-14.5,
+const RMS:Readonly<Record<string,number>>={
+  audio:-15.9,'bau-comum':-20.8,'bau-epico':-24.8,'bau-lendario':-24.3,'bau-raro':-16.8,'bicho-acerto-1':-14.4,
+  'bicho-morte-1':-15.8,boing:-17.3,boleto:-27.2,buzina:-17.3,'caca-niquel':-18.8,cafe:-18.2,carimbo:-14.5,
+  'chefe-acerto':-15.8,'chefe-morte-1':-19.8,'chefe-passo':-22.2,chefe:-18.2,chinelo:-13.7,coxinha:-15.6,'dano-heroi':-14.5,
   empurrar:-17.3,escopeta:-18.0,faca:-15.6,gema:-11.7,golpe:-11.6,'guarda-chuva':-23.7,ima:-12.5,levantar:-16.8,
   macarico:-17.3,nivel:-18.8,'p12-aura':-17.3,'p12-bumerangue':-16.8,'p12-lancado':-16.8,'p12-leque':-18.2,
   'p12-mina':-23.0,'p12-nuvem':-17.1,'p12-orbita':-16.7,'p12-ricochete':-17.1,'p12-teleguiado':-15.7,'p12-tiro':-19.0,
@@ -26,11 +27,16 @@ const RMS:Readonly<Partial<Record<SoundId,number>>>={
   'torre-holofote':-25.7,'torre-metralhadora':-19.9,'torre-morteiro':-18.7,'torre-obus':-20.1,'torre-pistola':-18.5,
   'torre-radar':-15.9,'torre-rojao':-21.3,'torre-rotativa':-20.1,'torre-sniper':-18.4,'ui-abrir':-19.0,'ui-botao':-21.9,
   'ui-carta':-14.8,'ui-erro':-15.1,'ui-fechar':-19.8,upgrade:-17.6,
+  // TangoFlux 30/10 (NEW-20261029-ORQ-sons-novos-tangoflux): the new takes and the five new sounds.
+  'bicho-acerto-2':-16.2,'bicho-acerto-3':-15.6,'bicho-morte-2':-19.8,'bicho-morte-3':-22.3,'chefe-morte-2':-22.4,
+  'chefe-morte-3':-20.2,'ultimo-bicho':-16.8,apagao:-17.3,'caixa-registradora':-17.8,'peca-cai':-17.4,'ninho-acordou':-15.9,
 };
 /** `ima` never plays (the magnet falls back to `gema`, events.ts) and stays as hidden legacy: its level waits for its cue. */
 const UNHEARD=new Set<SoundId>(['ima']);
 const LIMIT_DB=6;
 const db=(gain:number)=>20*Math.log10(gain);
+/** The sound a file belongs to: its own name, or the name without the take's `-N`. */
+const soundOf=(file:string)=>(file in SFX?file:file.replace(/-\d+$/,'')) as SoundId;
 
 test('the audit\'s gains: the quiet tower, weapon and mine up, the gem, the stamp and the card down',()=>{
   const want:Partial<Record<SoundId,number>>={boleto:1,'torre-holofote':.9,'torre-rojao':.55,'p12-mina':.65,gema:.25,carimbo:.35,'ui-carta':.4};
@@ -41,9 +47,9 @@ test('the audit\'s gains: the quiet tower, weapon and mine up, the gem, the stam
 });
 
 test('the level map: every file heard sits within ±6 dB of the median effective level',()=>{
-  const heard=(Object.keys(RMS) as SoundId[]).filter(id=>!UNHEARD.has(id));
-  for(const id of heard)assert.ok(SFX[id]&&SFX[id].takes===1&&!SFX[id].align,`${id}: one take, not aligned`);
-  const level=new Map(heard.map(id=>[id,RMS[id]!+db(SFX[id].gain)]));
+  const heard=Object.keys(RMS).filter(file=>!UNHEARD.has(soundOf(file)));
+  for(const file of heard)assert.ok(SFX[soundOf(file)]&&!SFX[soundOf(file)].align,`${file}: a sound, not aligned`);
+  const level=new Map(heard.map(file=>[file,RMS[file]+db(SFX[soundOf(file)].gain)]));
   const sorted=[...level.values()].sort((a,b)=>a-b),mid=sorted.length/2;
   const median=sorted.length%2?sorted[Math.floor(mid)]:(sorted[mid-1]+sorted[mid])/2;
   assert.ok(Math.abs(median+25)<1,`median ${median.toFixed(1)} dB`);

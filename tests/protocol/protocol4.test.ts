@@ -1909,7 +1909,7 @@ test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 i
 
 test('só 3 inimigos: the mendigo horde holds the wide-map budget (the mendigo is one dictionary byte, the saci inline)',t=>{
   assert.equal(DICT.indexOf(INIMIGO_PADRAO),253,'the last one-byte index');
-  const ids=INIMIGOS_LIBERADOS.filter(id=>ROSTER.some(e=>e.id===id&&e.role!=='mini-chefe'));
+  const ids=INIMIGOS_LIBERADOS.filter(id=>ROSTER.some(e=>e.id===id&&e.role!=='mini-chefe'&&e.role!=='chefe'));
   assert.deepEqual(ids,[INIMIGO_PADRAO],'the bodies of every round are mendigos');
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const [together,apart]=[

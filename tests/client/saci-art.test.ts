@@ -65,10 +65,11 @@ test('the saci is its own elite: no elite layer needed, the idle walks, the shad
   assert.equal(ownElite({kind:'animations',files:{}}),false);
 });
 
-test('the saci stands 1.4× the hero on screen, not a mini-chefe\'s 2×, and no elite scale on top',()=>{
+// Card saci-chefe-2x (the user, 30/10: "O saci é o boss do jogo então ponha o saci 2x"): 2.8 heroes, twice his 1.4.
+test('the saci, the chefão, stands 2.8× the hero on screen (2× his old 1.4), and no elite scale on top',()=>{
   // On screen: the enemy's ENEMY_DRAW_SCALE over the hero's HERO_DRAW_SCALE (else 1.4 × 1.15 / 0.8 ≈ 2×).
   const onScreen=(art:number)=>art*ENEMY_DRAW_SCALE/(HERO_FIGURE_PX*HERO_DRAW_SCALE);
-  assert.ok(Math.abs(onScreen(artTargetHeight('aberracao-saci'))-1.4)<1e-9);
+  assert.ok(Math.abs(onScreen(artTargetHeight('aberracao-saci'))-2.8)<1e-9);
   assert.equal(artTargetHeight('aberracao-saci'),HERO_FIGURE_PX*ART_HEIGHT['aberracao-saci']);
   assert.equal(drawnScale('aberracao-saci',140,false),artTargetHeight('aberracao-saci')/140);
 });
@@ -76,10 +77,12 @@ test('the saci stands 1.4× the hero on screen, not a mini-chefe\'s 2×, and no 
 test('the saci\'s copies: sized for his own height (no elite × 1.35), the shadow in half the cell',()=>{
   const body=SACI.files.idle,shadow=SACI.files['shadow/idle'];
   for(const f of ['liteCell','pcCell']){
-    assert.ok(body[f][1]<body.cell[1],`${f} smaller than the source`);
+    // At 2.8 heroes the PC copy needs the whole 256 px source; the phone copy stays smaller.
+    assert.ok(f==='pcCell'?body[f][1]<=body.cell[1]:body[f][1]<body.cell[1],`${f} within the source`);
     assert.equal(shadow[f][1],Math.ceil(body[f][1]/2),`${f}: the shadow at half the body's`);
   }
-  // Phone GPU memory of both sheets (RGBA): 15 × 8 cells each.
+  // Phone GPU memory of both sheets (RGBA): 15 × 8 cells each. ~19 MB at 2.8 heroes, one chefão on screen (a legacy
+  // chefão's idle alone is ~18 MB).
   const mb=(c:number[])=>15*c[0]*8*c[1]*4/2**20;
-  assert.ok(mb(body.liteCell)+mb(shadow.liteCell)<12,`${(mb(body.liteCell)+mb(shadow.liteCell)).toFixed(1)} MB`);
+  assert.ok(mb(body.liteCell)+mb(shadow.liteCell)<20,`${(mb(body.liteCell)+mb(shadow.liteCell)).toFixed(1)} MB`);
 });

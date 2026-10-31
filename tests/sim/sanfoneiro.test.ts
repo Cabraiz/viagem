@@ -60,12 +60,12 @@ test('the numbers: 220 px of drag, slower than a hero, 1 s warning, 2 s play, 6â
   assert.ok(FOLE.trigger<SANFONA.trigger);
 });
 
-test('kept out of the wave draw: held roster only, enemyDef still knows him (a brutamontes, ~1.2Ã— the hero)',()=>{
+test('kept out of the wave draw: held roster only, enemyDef still knows him (a common enemy: a corredor with his own moves)',()=>{
   assert.ok(!ROSTER.some(e=>e.id===SANFONEIRO_ID));
   assert.ok(!(ROSTER_IDS as readonly string[]).includes(SANFONEIRO_ID));
   const held=HELD_ROSTER.find(e=>e.id===SANFONEIRO_ID);
-  assert.ok(held,'in HELD_ROSTER');assert.equal(held.role,'brutamontes');
-  assert.ok(enemyDef(SANFONEIRO_ID).hp>0);
+  assert.ok(held,'in HELD_ROSTER');assert.equal(held.role,'corredor');
+  assert.ok(enemyDef(SANFONEIRO_ID).hp>0);assert.equal(enemyDef(SANFONEIRO_ID).behavior,'brute');
 });
 
 test('tocar: warns 1 s standing still, then drags the hero inside the radius toward him; the one outside stays put',()=>{

@@ -8,13 +8,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CHEFAO_LEAD_S,CHEFAO_NO_MINERVA_S,CHEFAO_RELEASE_MS,ChefaoArtPlan,chefaoDeferred} from '../../src/client/art/chefao-art.ts';
 import {HD_ENEMIES} from '../../src/client/art/manifest.ts';
-import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
+import {SCALED_WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 
 const ELENCO=['pombo-da-praca','o-grande-credor','motoboy','mapinguari-do-shopping'];
 const base={elenco:ELENCO,combat:true,tick:0};
 
-test('every wave chefão waits; a common enemy does not',()=>{
-  for(const id of WAVE_BOSS_IDS)assert.ok(chefaoDeferred(id),id);
+test('every HD wave chefão waits; a common enemy and the saci (his 256 px sheet rides the elenco) do not',()=>{
+  for(const id of SCALED_WAVE_BOSS_IDS)assert.ok(chefaoDeferred(id),id);
+  assert.equal(chefaoDeferred('aberracao-saci'),false);
   for(const id of HD_ENEMIES)assert.ok(chefaoDeferred(id),id);
   assert.equal(chefaoDeferred('motoboy'),false);
   assert.equal(ChefaoArtPlan.waveChefao(ELENCO),'mapinguari-do-shopping');

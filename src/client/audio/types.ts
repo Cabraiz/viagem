@@ -30,6 +30,7 @@ export const FILE_SOUND_IDS=[
   'bicho-acerto','bicho-morte','chefe-acerto','chefe-morte','chefe-passo',
   'bau-comum','bau-raro','bau-epico','bau-lendario','caca-niquel',
   'coxinha','ima',
+  'ultimo-bicho','apagao','caixa-registradora','peca-cai','ninho-acordou',
 ] as const;
 export type ProceduralId=typeof SOUND_IDS[number];
 export type SoundId=ProceduralId|typeof FILE_SOUND_IDS[number];

@@ -25,7 +25,7 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems,type RunSystemsState} from '../../src/sim/assemble.ts';
 import {bossMaxHp} from '../../src/sim/boss.ts';
 import {holdChaveiroClock,holdWaveClock,waveBossSpot,waveBossTuning,type ChaveiroClock,type WaveClock} from '../../src/sim/ninhos/chefao.ts';
-import {WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss} from '../../src/rules/index.ts';
+import {SACI_BOSS,WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -57,10 +57,10 @@ function waveOneLeft(sys:RunSystems,world:SimWorld,dripping=false){
 }
 const bossesOf=(world:SimWorld)=>[...world.enemies.values()].filter(e=>e.boss);
 
-test('who: the seed draws one of the four, the same each time; all four come up; the option forces one',()=>{
-  assert.deepEqual([...WAVE_BOSS_IDS].sort(),['boitata-de-sacolinha','dj-do-fim-do-mundo','mapinguari-do-shopping','o-grande-credor']);
-  for(let s=0;s<20;s++)assert.equal(pickWaveBoss(s).id,pickWaveBoss(s).id);
-  assert.equal(new Set(Array.from({length:64},(_,s)=>pickWaveBoss(s).id)).size,4);
+test('who: the saci every run (card saci-chefe-2x, the user 30/10: "O saci é o boss do jogo"); the four legacy chefões stay for the option',()=>{
+  assert.deepEqual([...WAVE_BOSS_IDS].sort(),['aberracao-saci','boitata-de-sacolinha','dj-do-fim-do-mundo','mapinguari-do-shopping','o-grande-credor']);
+  for(let s=0;s<64;s++)assert.equal(pickWaveBoss(s).id,'aberracao-saci');
+  assert.equal(SACI_BOSS.size,2,'2× the elite saci body (boss radius at size 2)');
   const {sys}=run({chefao:'boitata-de-sacolinha'});
   assert.equal(sys.chefao!.who.id,'boitata-de-sacolinha');
 });
@@ -213,8 +213,8 @@ test('a lab summon: he comes on the next step even before the wave left, once; a
   assert.equal(bossesOf(world).length,1);
   assert.equal(sys.chefao!.arrival(world.tick)?.enemy,bossesOf(world)[0].id);
   assert.equal(sys.chefao!.summon(),false,'he already came');
-  // His body follows his drawing (WAVE_BOSS.drawScale).
-  assert.equal(bossesOf(world)[0].radius,waveBossTuning().radius);
+  // His body: the saci's size (SACI_BOSS.size, the boss radius × 2: 2× the elite saci's).
+  assert.equal(bossesOf(world)[0].radius,waveBossTuning(undefined,SACI_BOSS.size).radius);
 });
 
 test('alone (the user, 24/10: "pancadas ×0,5 solo"), his telegraphed hits are WAVE_BOSS.soloDamage of the team fight',()=>{

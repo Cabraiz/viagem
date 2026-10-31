@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4522,
+  "sheets": 4552,
   "failing": 0,
   "frames": 0
  },
@@ -9774,13 +9774,13 @@
    "fails": []
   },
   "lite/enemies-pc/saci/idle-sombra.webp": {
-   "sha": "bb8b367c5bf999fc88aa7a8052aa7948d39d4a7b092865ecc5120b2c2e0f3272",
+   "sha": "1e937b1a9ef77016bfe8116215856c7887e55e84c703053c6131c5d71dfdc9ae",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies-pc/saci/idle.webp": {
-   "sha": "1d907c3aadc376bead3d809d1e56dfb8d793d992eed7ebb7d09c93c4437a8255",
-   "ilhas": 0,
+   "sha": "ced7fdb92aa2dd230c6909a06f4e5a388b9cc40cf095891ffc48300f35c9b124",
+   "ilhas": 6,
    "fails": []
   },
   "lite/enemies-pc/sapo-cururu/death.webp": {
@@ -15609,12 +15609,12 @@
    "fails": []
   },
   "lite/enemies/saci/idle-sombra.webp": {
-   "sha": "71491e88eb3a62f3ab387e63841517c7de1e540adc234bf6e41381380a3c27a4",
+   "sha": "64c0530107c752bf005caf8cf73240138557c35a416df3d279c51d33e17e3cc0",
    "ilhas": 0,
    "fails": []
   },
   "lite/enemies/saci/idle.webp": {
-   "sha": "58ec434ef72157945f43b401662a5d23112eb197f2e157ddaf91ab083e0832f7",
+   "sha": "3b4a9912153e986ca4b8716d4777ac463ca3db68065be4d2db4440132e81140c",
    "ilhas": 0,
    "fails": []
   },
@@ -16833,6 +16833,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/aposentado.shoved16-n.d0208bd9e23b.webp": {
+   "sha": "324b66923a4dd5ecbe7fd18f303ecc2e89e68a5c2f0e9f0990cf313a01bbcdd3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.shoved16-nw.d68e56b03ec1.webp": {
+   "sha": "e9b584cb3fe8ba8af61545d309a72a4f5544616ebc3550d1f08c7b135bf19098",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.shoved16-s.ea95dee4ead5.webp": {
+   "sha": "1e25509d05571ecc80129cf890a4b26cfedd31b2b69c05259df17c4e8d7d3371",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.shoved16-se.cd2a925a664b.webp": {
+   "sha": "be8bb0713a7f710a5ede9e613000c3bc9cae4e3e166c0eb0853d46a105a8afe7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/aposentado.shoved16-w.0bea132d3f82.webp": {
+   "sha": "98f016eeb750178795eef2c52e1881cdaa7ac18346cff47cd492a2d54b8ec9ba",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/aposentado.walk16-n.b25e20405860.webp": {
    "sha": "40c37368fc3dc938a57179f083809bbae1a37be9adf64480bdd89cbfdff6802e",
    "ilhas": 0,
@@ -17160,6 +17185,31 @@
   },
   "lite/sprites/clt-cansado.run16-w.81aaae8b5a02.webp": {
    "sha": "470993e4d3c42c6e8925efaeb0a9c1830af8b037ab6e1a6786052480a9e84ce0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.shoved16-n.5b2375e0892b.webp": {
+   "sha": "33702c0987998b9850eead763e0e221e7c3d72264aa8f7c9fefe5247ad351abc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.shoved16-nw.5dbfbb4936c2.webp": {
+   "sha": "9a0b0abd32fb60438702f93b2e4fe4e8cfceda27d53d31d32791e2aac29bf427",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.shoved16-s.bfff487e1e8f.webp": {
+   "sha": "4142abc1593144332d8d12e6906470ea223c82e6df82a3dd0202322719073e86",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.shoved16-se.2df34dae1db1.webp": {
+   "sha": "f96b63a6dadf10d3c4ffafc11f22c3b9bcd71ed9814bd36101971654b25d4d4b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.shoved16-w.03f0ea4a1152.webp": {
+   "sha": "c7da853ef429b3ca5d8a16d3bc91c10a088d28174c18a749a4944ff58f00c753",
    "ilhas": 0,
    "fails": []
   },
@@ -17848,6 +17898,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.shoved16-n.001ba72bb494.webp": {
+   "sha": "55a6c15a4197d3b410082d7740dba35d39b8df624855cb39f988e9acaa0b7747",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.shoved16-nw.6249d5a7981f.webp": {
+   "sha": "491259cc7d1121e24f8e248f37c9fa598e135047c68bafcab6f6097235f1ed89",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.shoved16-s.2d180540fb73.webp": {
+   "sha": "2765043154ea7149fd273d13c1e96fa1ca71e3d9d9335de16e91d5a6a3f4d2ec",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.shoved16-se.0e7d04b422b4.webp": {
+   "sha": "ac0a39fc0d30c4806f5311a7dbd3e1a47e29b8b715e1f7d5cf298d6d23946bc2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.shoved16-w.06de87039cec.webp": {
+   "sha": "61819d1a6368a4b2edef35fb75c7b6ee0af07f67899b8a00e0c6a78253f62a32",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
    "sha": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
    "ilhas": 0,
@@ -18170,6 +18245,31 @@
   },
   "lite/sprites/maromba.run16-w.eb743615b7df.webp": {
    "sha": "e3eb38424917b72e3e9e7cbf456a472c09b63a66628629f9336241d15cc0804b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.shoved16-n.604215f06847.webp": {
+   "sha": "febe532fd9e04257e66340d85b08fd1548255ae3efce37ee8bcce55882fdcdcf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.shoved16-nw.126c839f6d44.webp": {
+   "sha": "57bc935a72fdddfe9ef03ef3afeb49e280ce5847bfe99b2edeeafb28055206ec",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.shoved16-s.82e4a05f2f10.webp": {
+   "sha": "6ff518df27a47d1fed159d99ee192846a0e88a0d7eda8b16522f7f8dd27b5971",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.shoved16-se.3ef8c9b949f2.webp": {
+   "sha": "af7e0baf1f94e4641d195c3e30f2dfd737090e77c164432680bb28cc2ebb5bc7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.shoved16-w.0e86c7bd2b11.webp": {
+   "sha": "77726cc4157db8ffb8e57b0094616f7f141405a0c23638a82822cb566525d02c",
    "ilhas": 0,
    "fails": []
   },
@@ -18983,6 +19083,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/vendedor-praia.shoved16-n.401a94d1d892.webp": {
+   "sha": "97b34195d2fbb546ed8b09f113cca6f2ac913fb5d66e33c401e4da659fc702b5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.shoved16-nw.1132eae5b995.webp": {
+   "sha": "07f44a061592f104b965b4146109bdfd3b478ead25ab0b148a03a4a5dce7c59f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.shoved16-s.c9961fdd41a6.webp": {
+   "sha": "a3670faf100aff91a8dfb114a5cab764d400b488b25f72e5603ffa5915ad7fb7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.shoved16-se.48c555361e39.webp": {
+   "sha": "388e5d093ec8758584d7d9496ac5f238c0957a878c1f4cb654d1c043d9943732",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.shoved16-w.f61d1a74694a.webp": {
+   "sha": "000c743b2d62e240d6226f546c2eacf1e017b34a7d96fc0ce02c0660c633c83a",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
    "sha": "ad244caa80e94b0b6e524a677a0b8d51cc166af8d00e7ab7742e1eb6beaacacd",
    "ilhas": 0,
@@ -19290,6 +19415,31 @@
   },
   "lite/sprites/viciado-em-bet.run16-w.c3c592510524.webp": {
    "sha": "97bf63570ef106a08a4c6f7bae05b960f816a4d41ec86e79a7d3e7408b94fddc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.shoved16-n.b523f5dcec0d.webp": {
+   "sha": "00c125b842010c9829d228522cc169c565df9e692b8106b2c854bc9803363aae",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.shoved16-nw.2665aeb3c712.webp": {
+   "sha": "e74bf5e0cbc4fb6d1b38374e05c0f9dd5ad148477c57a6abade0c43bd4e3b6a2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.shoved16-s.a5ffcef2891f.webp": {
+   "sha": "74971443bf9d5a874ed3e5098df961c0999af2a6862738133e23f9ce798ba579",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.shoved16-se.94291ccc3c98.webp": {
+   "sha": "b71a2e4947604a54f138c75f950e6d8c9b6a854a45738466e63a82edeac4da35",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.shoved16-w.26e8faceed35.webp": {
+   "sha": "8a96f686e1d0045b5065603c1ecaa1d4883852d87899e9c4881f99e9000ebd54",
    "ilhas": 0,
    "fails": []
   },

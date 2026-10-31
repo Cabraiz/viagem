@@ -464,7 +464,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   regularGroups.forEach((members,i)=>groups.push({at:ticks(start+i*step),members,formation}));
   const span=Math.max(1,(regularGroups.length-1)*step);
   def.swarm?.at.forEach((f,i)=>{if(swarmGroups[i]?.length)groups.push({at:ticks(start+f*span),members:swarmGroups[i],formation:'cluster'});});
-  if(def.elite)groups.push({at:ticks(start+def.elite.at*span),members:[roster?.elite??def.elite.kind],elite:true});
+  if(def.elite&&!roster?.noElite)groups.push({at:ticks(start+def.elite.at*span),members:[roster?.elite??def.elite.kind],elite:true});
   if(solo)groups.push({at:ticks(start+MINI_SOLO_AT*span),members:[solo],solo:true});
   if(def.boss)groups.push({at:ticks(def.boss.atSeconds),members:['chefe'],boss:true});
   groups.sort((a,b)=>a.at-b.at);

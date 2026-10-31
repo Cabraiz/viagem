@@ -28,7 +28,7 @@ export const AVISO:Readonly<Record<string,readonly [TelegraphKind,TelegraphView[
 const SLOTS:readonly (readonly [number,number])[]=[[175,25],[0,-215],[-190,-110],[205,-150]];
 
 export type ElencoSlot={id:string;elite:boolean;sx:number;sy:number};
-/** The line-up: one slot per liberated enemy, in INIMIGOS_LIBERADOS order; the elite-only ones (the saci) are elite. */
+/** The line-up: one slot per liberated enemy, in INIMIGOS_LIBERADOS order; the elite-only ones are elite (none since the saci became the chefão). */
 export const elencoAtivo=():ElencoSlot[]=>INIMIGOS_LIBERADOS.map((id,i)=>{
   const [sx,sy]=SLOTS[i%SLOTS.length];
   return {id,elite:ELITE_ONLY.includes(id),sx,sy};

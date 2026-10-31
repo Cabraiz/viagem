@@ -305,7 +305,9 @@ test('manual room: the room bots attack (equipped weapon only, no skill) and an 
   for(const id of bots){
     const p=room.sim.players.get(id)!,own=weapons.get(id);
     assert.ok(own?.size,`${id} attacked`);
-    assert.deepEqual([...own!],[equippedWeapon(p.build)!.id],`${id}: the equipped weapon only, no skill`);
+    // itens-so-de-monstro: a kill may leave a crate the bot opens, so it fires its weapons in hand (each its equipped one then).
+    assert.ok([...own!].every(w=>p.build.weapons.some(x=>x.id===w)),`${id}: its weapons only, no skill: ${[...own!]}`);
+    assert.ok(own!.has(equippedWeapon(p.build)!.id)||own!.has('faca'),`${id}: ${[...own!]}`);
     assert.equal(p.skillTick,0,`${id} never cast`);
   }
   assert.equal(weapons.get(ana),undefined,'Ana never held the attack: her weapon never fired');

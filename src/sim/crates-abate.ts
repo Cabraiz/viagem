@@ -22,10 +22,11 @@ export const MAP_CRATES=false;
 /** What every near crate gives (a verde one): the first weapon of each hero. */
 export const NEAR_WEAPON='pistola';
 /**
- * A common monster's crate (measured on scripts/diag-caixas-abate.ts: a solo bot run of 10 min kills ~KILLS_PER_MIN
- * monsters a minute, so this is about one crate every 5 min) and an elite's, rarer than its old sure chest.
+ * A common monster's crate (measured on scripts/diag-caixas-abate.ts, seeds 1-3: a solo bot kills ~14 monsters a
+ * minute in its first 10 min, so this is about one crate every 5 min; the map's crates gave ~42 in those 10 min) and an
+ * elite's, rarer than its old sure chest.
  */
-export const KILL_CRATE_CHANCE=.004,ELITE_CRATE_CHANCE=.15;
+export const KILL_CRATE_CHANCE=.015,ELITE_CRATE_CHANCE=.15;
 /** A kill crate's colour: verde or azul for a common monster, azul or roxa for an elite. */
 export const KILL_ODDS:readonly (readonly [Rarity,number])[]=[[1,.6],[2,.4]],ELITE_KILL_ODDS:readonly (readonly [Rarity,number])[]=[[2,.6],[3,.4]];
 /** How far a kill crate looks for a spot off a street mouth: rings STEP u apart out to REACH u, ANGLES each. */

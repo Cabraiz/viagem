@@ -137,9 +137,9 @@ test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries 
   assert.equal(weaponNoise('faca'),6);assert.equal(weaponNoise('rojao'),28);
 });
 
-test('city, manual combat: the crates stand on the loot points; standing by one fills the inventory; the view carries the hand',async()=>{
+test('city, manual combat: the solo’s one crate is the near one by the spawn; standing by it fills the inventory; the view carries the hand',async()=>{
   const {readFileSync}=await import('node:fs');const {fileURLToPath}=await import('node:url');const {cityTerrainFrom}=await import('../../src/maps/city/terrain.ts');
-  const {cityLoot}=await import('../../src/sim/stonewards/loot.ts');const {START_CRATES_MIN,crateCap}=await import('../../src/sim/crates.ts');
+  const {NEAR_WEAPON}=await import('../../src/sim/crates-abate.ts');
   const root=(p:string)=>fileURLToPath(new URL(`../../${p}`,import.meta.url));
   const loaded=await cityTerrainFrom(readFileSync(root('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(root('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
   if(!loaded.ok)throw new Error(loaded.error);
@@ -148,13 +148,10 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   const spawn={x:s.players.get('p0')!.x,y:s.players.get('p0')!.y};
   let now=1000;s.step(now+=50);
   const crates=s.view('p0').pickups.filter(k=>k.kind==='chest');
-  assert.equal(crates.length,crateCap(1)+START_CRATES_MIN,'the solo’s crates on the loot points and its start crates around the spawn');
-  assert.ok(crates.every(k=>k.value>=1&&k.value<=3),'round 1: verde..roxa (the stage shift takes one off)');
-  const loot=cityLoot(loaded.terrain)!;
-  // comeca-armado-e-levanta-seguro: one of them is the verde by the hero's spawn (≤ 3 u), the rest around the start.
-  const near=crates.filter(k=>k.value===1&&Math.hypot(k.x-spawn.x,k.y-spawn.y)<=3+1e-9).length;
-  assert.equal(near,1,'a verde crate by the spawn');
-  assert.equal(crates.filter(k=>loot.aroundStart.some(a=>a.x===k.x&&a.y===k.y)&&k.value<=2).length+near,START_CRATES_MIN,'the start crates are verde/azul, around the spawn (caixas-sumiram)');
+  // itens-so-de-monstro (crates-abate.ts MAP_CRATES off): no crate on the loot points nor around the start; only the
+  // verde one by the hero's spawn (≤ 3 u, comeca-armado-e-levanta-seguro), and it shows the NEAR_WEAPON.
+  assert.deepEqual(crates.map(k=>[k.value,k.resource]),[[1,NEAR_WEAPON]],'the solo’s one crate: the near one');
+  assert.ok(Math.hypot(crates[0].x-spawn.x,crates[0].y-spawn.y)<=3+1e-9,'by the spawn');
   const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
   for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
   assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');

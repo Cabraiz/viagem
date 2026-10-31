@@ -511,13 +511,15 @@ export const BOCA_NORDESTE:readonly (readonly [number,number])[]=[[67,88],[67,89
  * uno-atravessa-tralha), the solid ground in each entrance's strip opens (becos-cidade.ts abrirChaoDasBocas, version + 1:
  * bocas-chao-aberto), and the sidewalk objects in the middle of an entrance go (cenario-cidade.ts semDecorNasBocas,
  * version + 1: sem-tralha-nas-entradas), and then all scenery and props on the ground of any entrance (cenario-cidade.ts
- * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor).
+ * chaoLivreNasBocas, version + 1: bocas-sem-muro-pedra-decor). Last, the junk without shine goes (dejetos/esconder.ts
+ * semDejetos, version + 1: esconder-dejetos-sem-brilho).
  */
 export async function compactedAsset():Promise<{text:string;log:Record<string,number|string>}>{
   const {decorate,semDecorNasBocas,chaoLivreNasBocas}=await import('./cenario-cidade.ts');
   const {abrirBecos,alargarParaUno,tirarCercasSoltas,alargarAreaUno,abrirChaoDasBocas,rubbleForUno,openCells}=await import('./becos-cidade.ts');
   const {cityEntradas,faixaCelulas,naBoca}=await import('../src/maps/city/entradas.ts');
   const {CITY_NEST_POOL,nestArte}=await import('../src/maps/nests.ts');
+  const {semDejetos}=await import('./dejetos/esconder.ts');
   const base=await compactText();
   // Again: the opening moves and widens the strips, so the places with life keep off the strips the runs before end
   // with; until no terreno nest a seed may draw is left in a strip (the sidewalk's scenery around it moves with them).
@@ -569,6 +571,9 @@ export async function compactedAsset():Promise<{text:string;log:Record<string,nu
         celulasBocas:Number(log.celulasBocas)+more.cells.length,solidoNasBocas:more.left,decorNasBocas:Number(log.decorNasBocas)+decor,
         decorNoChaoDasBocas:Number(log.decorNoChaoDasBocas)+ground.decor.length,propsNasBocas:Number(log.propsNasBocas)+ground.props.length});
     }
+    // Last, the junk without shine goes: the rubble heaps open, the hidden decor and props go (version + 1: esconder-dejetos-sem-brilho).
+    const dejetos=semDejetos(opened.data);opened.data.version++;
+    Object.assign(log,{dejetosEntulho:dejetos.rubble.length,dejetosCelulas:dejetos.cells,dejetosDecor:dejetos.decor.length,dejetosProps:dejetos.props.length});
     return {text:encodeCityAsset(opened.data),log};
   }
 }

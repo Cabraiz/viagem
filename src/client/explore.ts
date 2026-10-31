@@ -1,3 +1,4 @@
+import {tiroMode} from './hud/tiro-mode.ts';
 import './explore.css';
 import {putData,putHidden,putText} from './hud/dom-put.ts';
 import {firstShown,shownHolds,stickyQuery} from './hud/dom-find.ts';
@@ -324,6 +325,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
       reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
       ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,
+      // tiro-rapido-e-local: the drag aim only with ?tiro=velho; else the shot goes where the hero looks (front cone).
+      drag:tiroMode()==='velho',
       // tiro-delay-1s-predicao: the press shows at once (swing, flash, sound); the room's copy is skipped.
       pressed:()=>{if(sceneReady)controller?.scene.predictAttack();}});
     net.onCast=result=>skill?.answer(result,performance.now());
@@ -738,7 +741,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
           // tiro-rapido-e-local: a held button refires on its own; each refire the room would take is drawn at once too.
-          if(attackBtn?.press.held&&sceneReady)controller?.scene.predictAttack(true);
+          if((attackBtn?.press.held||controller?.scene.autoFiring)&&sceneReady)controller?.scene.predictAttack(true);
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;

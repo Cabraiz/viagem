@@ -35,6 +35,7 @@ import {ENEMY_SILHOUETTE,contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
 import {OwnShots,adoptFade,type Ghost} from './own-shots.ts';
+import {FocusArrows} from './focus-arrows.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {CEDULA_ART,CEDULA_PX,cedulaPose} from './cedula.ts';
 import {CedulaCatch,catchFlight} from './cedula-catch.ts';
@@ -388,10 +389,13 @@ export class HordeRenderer{
   private nowTick=0;
   private lastEventId=-1;
   private targetId?:string;
+  /** The enemy the hero's shot goes to (tiro-rapido-e-local, rules/front-assist.ts): the 4 red arrows around it. */
+  private focusId?:string;
   private snapNext=false;
   private at:Pt={x:0,y:0};
   /** An elite's or a boss's death pauses the drawn clock (impact-rules.ts); push() asks, the next update() starts it. */
   private readonly hitStop=new HitStop();private stopAsk=0;
+  private readonly focus:FocusArrows;
   /** When the local hero last caught a gem (the kill's cédula): its glow (impact-rules.ts gemGlow). */
   private gemAt=-Infinity;
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
@@ -444,6 +448,7 @@ export class HordeRenderer{
       scene.load.spritesheet(CEDULA_ART.key,CEDULA_ART.url,{frameWidth:CEDULA_ART.cell[0],frameHeight:CEDULA_ART.cell[1]});
       if(!scene.load.isLoading())scene.load.start();
     }
+    this.focus=new FocusArrows(scene);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,away:options.away,
       ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
@@ -524,7 +529,9 @@ export class HordeRenderer{
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.alsoView=this.options.alsoView?.();this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.namesSeen.clear();
+    this.focus.begin();
     this.enemies.forEach(this.drawEnemy);
+    this.focus.end();
     for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
     this.dropGhosts();
@@ -557,6 +564,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){if(enemyId!==this.targetId)this.capDirty=true;this.targetId=enemyId;}
+  /** The focus of the hero's shot (scene, every frame), or undefined: no arrows. */
+  setFocus(enemyId?:string){this.focusId=enemyId;}
   /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
   ownShot(weapon:string,x:number,y:number,dx:number,dy:number,flight?:readonly [number,number]){
     this.arsenal.ownShot(weapon,x,y,dx,dy);
@@ -629,7 +638,7 @@ export class HordeRenderer{
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.own.clear();this.telegraphs.clear();this.catcher.reset();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
-    this.art.destroy();this.arsenal.destroy();this.glow.destroy();
+    this.art.destroy();this.arsenal.destroy();this.glow.destroy();this.focus.destroy();
     for(const label of this.names.values())label.destroy();this.names.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
@@ -1024,6 +1033,7 @@ export class HordeRenderer{
     if(a.name)this.drawName(a,q.x,q.y-this.barLift(a));
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
+    if(a.id===this.focusId)this.focus.draw(eyeX,eyeY-art.height*art.originY*k*.5,art.width*k,this.body,depth+1.5,now,this.reduced);
     if(a.look!==LOOK_NONE||a.sugar||a.prime)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size*fit);

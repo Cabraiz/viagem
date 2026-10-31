@@ -1,5 +1,5 @@
 // BUG-20261023-ORQ-tiro-na-direcao-mobile: in the manual combat a person's attack always goes off toward the aim (the
-// mouse, the phone's aim stick) or else the facing, with a ±20° aim assist; the bots keep "no attack at the air".
+// mouse, the phone's aim stick) or else the facing, with a ±35° aim assist (rules/front-assist.ts, tiro-rapido-e-local); the bots keep "no attack at the air".
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
@@ -60,7 +60,7 @@ const deg=(d:number)=>d*Math.PI/180;
 const at=(dist:number,angle:number)=>({x:10+dist*Math.cos(deg(angle)),y:10+dist*Math.sin(deg(angle))});
 const angleOf=(e:{event:SimEvent})=>{const d=aimOf(e);return Math.atan2(d.y,d.x)*180/Math.PI;};
 
-test('assist cone is ±20°',()=>{assert.ok(Math.abs(ASSIST_ANGLE-deg(20))<1e-12);});
+test('assist cone is ±35°',()=>{assert.ok(Math.abs(ASSIST_ANGLE-deg(35))<1e-12);});
 
 test('person, nobody around: the pistol fires straight along the facing and the cooldown runs',()=>{
   const ctx=makeCtx(),held=new Set(['p']),sys=manualSystems(held);
@@ -73,9 +73,9 @@ test('person, nobody around: the pistol fires straight along the facing and the 
   held.clear();run(ctx,sys,5);assert.equal(fires(ctx).length,1,'released: no more');
 });
 
-test('person: an enemy 15° off the facing is shot at; one 40° off is not (straight ahead)',()=>{
+test('person: an enemy 15° or 30° off the facing is shot at; one 50° or 60° off is not (straight ahead)',()=>{
   const reach=manualReach(R('pistola')).reach;
-  for(const [angle,hits] of [[15,true],[-15,true],[40,false],[180,false]] as const){
+  for(const [angle,hits] of [[15,true],[-15,true],[30,true],[-30,true],[50,false],[60,false],[-90,false],[180,false]] as const){
     const ctx=makeCtx(),held=new Set(['p']),sys=manualSystems(held);
     addPlayer(ctx,'p',10,10,[['pistola',1]],{facing:{x:1,y:0}});
     const e=addEnemy(ctx,'e',at(reach*.6,angle).x,at(reach*.6,angle).y);
@@ -88,7 +88,7 @@ test('person: an enemy 15° off the facing is shot at; one 40° off is not (stra
   }
 });
 
-test('person: the assist picks the one nearest the middle of the cone, and only within the weapon\'s reach',()=>{
+test('person: the assist picks the one nearest the front line (the angle weighs more than the distance), and only within the weapon\'s reach',()=>{
   const reach=manualReach(R('pistola')).reach;
   const ctx=makeCtx(),held=new Set(['p']),sys=manualSystems(held);
   addPlayer(ctx,'p',10,10,[['pistola',1]],{facing:{x:1,y:0}});

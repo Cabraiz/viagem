@@ -17,15 +17,15 @@
  *
  * BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack (WeaponOptions.manual.free) always goes off, toward the aim
  * (PlayerInput.aim: the mouse, or the phone's aim stick) or else the facing, even with nobody in reach (the cooldown
- * runs). A light aim assist bends it onto the live enemy in reach nearest the middle of a ±ASSIST_ANGLE cone around that
- * direction; outside the cone it flies straight (never behind nor to the side). The bots and the autopiloted keep the
- * rule above (no attack at the air).
+ * runs). An aim assist bends it onto the live enemy in reach nearest the front line of a ±ASSIST_ANGLE cone around that
+ * direction (rules/front-assist.ts, the client's red arrows pick alike); outside the cone it flies straight (never
+ * behind nor to the side). The bots and the autopiloted keep the rule above (no attack at the air).
  */
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {floorOf} from '../../maps/index.ts';
-import {AURA,HERO_SHOT_SPEED_MULT,THROW_TICKS,attackTargets} from '../../rules/index.ts';
+import {AURA,FRONT_HALF,HERO_SHOT_SPEED_MULT,THROW_TICKS,attackTargets,frontAssist} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
@@ -57,8 +57,8 @@ interface WeaponOptions {
 }
 
 type Dir={x:number;y:number};
-/** Half-angle (rad) of the aim assist's cone of a person's attack: ±20°. */
-export const ASSIST_ANGLE=20*Math.PI/180;
+/** Half-angle (rad) of the aim assist's cone of a person's attack: ±35° (rules/front-assist.ts, tiro-rapido-e-local). */
+export const ASSIST_ANGLE=FRONT_HALF;
 
 /** How far a straight shot gets before it expires, plus its own radius: an enemy farther than this cannot be hit. */
 export const pierceReach=(w:{speed:number;durationTicks:number;area:number})=>w.speed*w.durationTicks/SIM_HZ+w.area;
@@ -169,19 +169,15 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   /**
    * A person's attack (BUG-20261023-ORQ-tiro-na-direcao-mobile): the direction (the aim, or else the facing) and up to
    * `count` live enemies (awake or asleep) within `range` (plus their radius with `pad`) inside the ±ASSIST_ANGLE cone
-   * around it, nearest the cone's middle first (then nearer, then by id). `dir` turns to the first one.
+   * around it, best first by rules/front-assist.ts (the client sends the aim at its focus, so that is who it picks).
+   * `dir` turns to the first one.
    */
   function freeAim(ctx:SimContext,player:SimPlayer,range:number,count:number,pad=false):{dir:Dir;aimed:EnemyState[]}{
     const a=player.aim,alen=a?Math.hypot(a.x,a.y):0;
     const base=a&&alen>1e-9?{x:a.x/alen,y:a.y/alen}:facingOf(player);
     const found:EnemyState[]=[];
     queryHittable(ctx,player.x,player.y,range+(pad?PAD_QUERY:0),found);
-    const ranked=found.flatMap(e=>{
-      const dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
-      if(!isAlive(ctx,e)||d>range+(pad?e.radius:0))return [];
-      const angle=d>1e-9?Math.acos(Math.max(-1,Math.min(1,(dx*base.x+dy*base.y)/d))):0;
-      return angle<=ASSIST_ANGLE?[{e,angle,d}]:[];
-    }).sort((p,q)=>p.angle-q.angle||p.d-q.d||(p.e.id<q.e.id?-1:p.e.id>q.e.id?1:0));
+    const ranked=frontAssist(player,base,range,found.filter(e=>isAlive(ctx,e)),{pad});
     const aimed=ranked.slice(0,count).map(r=>r.e);
     return {dir:aimed[0]?towardOr(player,aimed[0]):base,aimed};
   }

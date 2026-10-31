@@ -14,7 +14,8 @@ import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
 import {FEAR_BEAT_PULL,FearClock,safeSpots,type FearFrame} from './render/fear-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
-import { classes, infinitoPoiName } from '../rules/index.ts';
+import { classes, frontAssist, infinitoPoiName } from '../rules/index.ts';
+import {tiroMode} from './hud/tiro-mode.ts';
 import {GHOST_ALPHA,GHOST_TINT,GhostCam,ghostBounds,ghostSpeed} from './ghost.ts';
 import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
@@ -82,7 +83,7 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
-import {heldWeapon,heldCooldownMs,heldFlight} from './hud/weapon-reach.ts';
+import {heldWeapon,heldCooldownMs,heldFlight,heldReach} from './hud/weapon-reach.ts';
 import {weaponSound} from './audio/events.ts';
 import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
@@ -385,6 +386,13 @@ export class IslandScene extends Phaser.Scene {
   private intent:Point={x:0,y:0};
   /** The last way the hero walked (a predicted shot without any aim goes there). */
   private lastIntent:Point={x:1,y:0};
+  /** tiro-rapido-e-local: how the attack aims (hud/tiro-mode.ts, ?tiro=). */
+  readonly tiro=tiroMode();
+  /**
+   * The enemy the shot goes to (rules/front-assist.ts around the way the hero looks, sticky) and the aim sent while
+   * attacking: at it, or straight ahead (the mouse on the PC, else the last walk). Not in 'velho'.
+   */
+  private focusId?:string;private focusAim?:Point;private readonly focusPool:{id:string;x:number;y:number}[]=[];
   /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
   private inputAt=-Infinity;
   /** Who cheers now (danca-no-jogo etapa 2): fed by the run's events, read by the dance cues. */
@@ -949,13 +957,37 @@ export class IslandScene extends Phaser.Scene {
     if(!weapon||repeat&&cooldown<=0||!net.attackPredict.press(performance.now(),weapon,cooldown))return;
     const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
     const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
-    const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
+    const fa=this.focusAim??this.lastIntent;
+    const at=this.tiro!=='velho'?{x:hero.x+fa.x,y:hero.y+fa.y}:mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};
     this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y,heldFlight(held));
     const sound=weaponSound(weapon),audio=getAudio();
     if(sound&&audio.unlocked)audio.play(sound);
     // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).
     const tiro=(window as {__tiro?:{local?:number[]}}).__tiro;
     if(tiro?.local)requestAnimationFrame(()=>tiro.local!.push(performance.now()));
+  }
+  /** ?tiro=b: it fires on its own while someone is in the front cone. */
+  get autoFiring(){return this.tiro==='b'&&this.focusId!==undefined&&!this.paused;}
+  /**
+   * Every frame (tiro-rapido-e-local): the focus in the front cone of the way the hero looks, kept unless another is
+   * clearly better (the 4 red arrows show it), and the aim the attack sends. A chosen target (a tap on an enemy) wins.
+   */
+  private updateFocus(mouse:Point|undefined){
+    const net=this.hooks.net,me=net?.feed.players.get(net.id);
+    const reach=net&&me&&this.tiro!=='velho'&&this.hooks.manual?.()&&!this.paused&&net.run?.phase==='combat'&&!me.downed&&!me.eliminated&&!this.isOut()?heldReach(me):undefined;
+    if(!net||!reach){this.focusId=this.focusAim=undefined;this.horde?.setFocus(undefined);return;}
+    const hero=net.predicted,front=mouse?{x:mouse.x-hero.x,y:mouse.y-hero.y}:this.lastIntent;
+    const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
+    let pick:{id:string;x:number;y:number}|undefined=chosen;
+    if(!pick){
+      const pool=this.focusPool;pool.length=0;
+      for(const e of net.feed.enemies.values())if(e.hp>0)pool.push(e);
+      pick=frontAssist(hero,front,reach,pool,this.focusId!==undefined?{current:this.focusId}:{})[0]?.e;
+      pool.length=0;
+    }
+    this.focusId=pick?.id;
+    this.focusAim=pick?{x:pick.x-hero.x,y:pick.y-hero.y}:Math.hypot(front.x,front.y)>1e-6?front:this.lastIntent;
+    this.horde?.setFocus(this.focusId);
   }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
@@ -1268,7 +1300,7 @@ export class IslandScene extends Phaser.Scene {
     this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0,isWeaponItem):true,poke:this.inputAt,...(meId?{cheer:Math.max(this.cheers.of(meId)??-Infinity,this.hooks.danceAt?.(meId)??-Infinity)}:{})});
     // The local swing: the predicted one on the press, the room's only when it was not predicted (net/attack-predict.ts).
     const net=this.hooks.net,swing=net?net.attackPredict.swingTick(self?.attackTick??0,performance.now()):self?.attackTick??0;
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.(),meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,swing,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.tiro==='velho'?this.hooks.aimStick?.():(this.hooks.attackHeld?.()||this.autoFiring)?this.focusAim:undefined,meId&&this.shopWorkers.has(meId)?workFacing(this.view):buildFacing(this.position,this.obras),
       !!meId&&!!net?.feed.players.get(meId)?.downed&&!net.feed.players.get(meId)!.eliminated,meId?net?.feed.players.get(meId):undefined);
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
@@ -1584,6 +1616,7 @@ export class IslandScene extends Phaser.Scene {
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
     const mouse=this.mouseGround();
+    this.updateFocus(mouse);
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
       if(!out&&Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
@@ -1594,10 +1627,12 @@ export class IslandScene extends Phaser.Scene {
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       if(Math.hypot(this.intent.x,this.intent.y)>1e-6)this.lastIntent=this.intent;
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       // Bicos: Trabalhar rides the step too (moving lets it go: hud/bicos.ts WorkLatch).
       const work=!frozen&&!out&&!!this.hooks.working?.(direction);
-      net.input(direction,false,this.attackTarget,!work&&!frozen&&!out&&!!this.hooks.attacking?.(),aim,work);this.accumulator-=STEP;
+      const attacking=!work&&!frozen&&!out&&(!!this.hooks.attacking?.()||this.autoFiring);
+      // tiro-rapido-e-local: attacking sends the focus's way (the room's assist then picks the same enemy), else the old aim.
+      const aim=this.tiro!=='velho'&&attacking?this.focusAim:mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
+      net.input(direction,false,this.attackTarget,attacking,aim,work);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.

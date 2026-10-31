@@ -303,7 +303,10 @@ test('a full assembled run with the rotation (6 room bots, endless world) gets t
   // Round 6 (the swarm breather; acceptance run 2026-10-13 lost there with 211 alive): the bodies that appear in its wave
   // are exactly its plan (no invocador minions, no mini-chefe: neither is in the mid band), never more alive than planned.
   const r6={planned:0,spawned:0,peak:0,odd:[] as string[]};
+  // The heroes cannot be hurt (the start grace's invulnerableUntil, every step): this checks the rotation, not the balance,
+  // so the run reaches the late rounds whatever the curve (xp-exponencial-3x: 6 bots lost in round 5 with slower levels).
   for(let i=0;i<24*60*SIM_HZ&&!sim.outcome;i++){
+    for(const p of sim.world.players.values())p.invulnerableUntil=sim.tick+SIM_HZ;
     bots.think(sim);sim.step(i*50);
     const wave6=sim.world.round.index===6&&sim.world.round.phase==='wave',director=sim.run.director.state;
     if(wave6){r6.planned=director.plan?.total??0;r6.spawned=director.spawned;r6.peak=Math.max(r6.peak,sim.world.enemies.size);}

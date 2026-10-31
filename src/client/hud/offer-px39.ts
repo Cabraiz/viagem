@@ -66,11 +66,11 @@ export function offerIcon(itemId:string,icon:string):string{
 
 /**
  * The fan's slot of each card, left to right: the default pick stands in the middle with the gold frame, the others
- * open to the sides (3: l, m, r; 4: l2, l1, r1, r2 with the default at l1; 2: l1, r1; 1: m).
+ * open to the sides, behind it (3: l, m, r; 2: l1, r1; 1: m). Never 4 since oferta-3-cartas (rules/offers.ts).
  */
-export type FanSlot='l2'|'l'|'l1'|'m'|'r1'|'r'|'r2';
-const FAN:Readonly<Record<number,readonly FanSlot[]>>={1:['m'],2:['l1','r1'],3:['l','m','r'],4:['l2','l1','r1','r2']};
-const MIDDLE:Readonly<Record<number,number>>={1:0,2:0,3:1,4:1};
+export type FanSlot='l'|'l1'|'m'|'r1'|'r';
+const FAN:Readonly<Record<number,readonly FanSlot[]>>={1:['m'],2:['l1','r1'],3:['l','m','r']};
+const MIDDLE:Readonly<Record<number,number>>={1:0,2:0,3:1};
 export function fanSlots(count:number,defaultIndex:number):FanSlot[]{
   const slots=FAN[count];
   if(!slots)return Array.from({length:count},()=>'m');

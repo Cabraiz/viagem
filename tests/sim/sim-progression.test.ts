@@ -413,24 +413,29 @@ test('xp just below the threshold does not level; leftover xp carries over',()=>
   assert.deepEqual({...ctx.team},{xp:7,level:2,nextXp:10});
 });
 
-test('high luck yields a fourth choice; luck 1 always three',()=>{
+test('never more than 3 choices, even with high luck (oferta-3-cartas); the old 4th card is still rolled and shuffled, so the rng stream is unchanged',()=>{
+  assert.equal(MAX_CHOICES,3);
+  const build:PlayerBuild={weapons:[{id:'chinelo',level:1}],passives:[]};
+  const rng=new Rng(7);
+  for(let i=0;i<1000;i++){
+    const cs=rollChoices(catalog,build,10,rng);
+    assert.ok(cs.length<=3,`draw ${i}: ${cs.length} choices`);
+    assert.equal(new Set(cs.map(c=>c.itemId)).size,cs.length);
+    for(const c of cs)assert.ok(isEligible(catalog,build,c));
+  }
   for(let seed=1;seed<=20;seed++){
-    const build:PlayerBuild={weapons:[{id:'chinelo',level:1}],passives:[]};
-    const lucky=rollChoices(catalog,build,1e9,new Rng(seed));
-    assert.equal(lucky.length,MAX_CHOICES);
-    const plain=rollChoices(catalog,build,1,new Rng(seed));
-    assert.equal(plain.length,BASE_CHOICES);
-    for(const cs of [lucky,plain]){
-      assert.equal(new Set(cs.map(c=>c.itemId)).size,cs.length);
-      for(const c of cs)assert.ok(isEligible(catalog,build,c));
-    }
+    const lucky=new Rng(seed),plain=new Rng(seed);
+    assert.deepEqual(rollChoices(catalog,build,1e9,lucky),rollChoices(catalog,build,1,plain));
+    // The lucky roll shuffled one more card (one more draw), as the 4-card offer did; then the streams meet again.
+    plain.next();
+    assert.equal(lucky.next(),plain.next());
   }
   const {ctx,tick}=setup();
   addPlayer(ctx,'a',{stats:{luck:1e9}});
   addPlayer(ctx,'b');
   ctx.team.xp=5;
   tick(1);
-  assert.equal(queue(ctx,'a')[0].choices.length,MAX_CHOICES);
+  assert.equal(queue(ctx,'a')[0].choices.length,BASE_CHOICES);
   assert.equal(queue(ctx,'b')[0].choices.length,BASE_CHOICES);
 });
 

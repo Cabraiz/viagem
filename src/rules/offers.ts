@@ -21,7 +21,7 @@ export const isHeldOffer=(offer:{deadlineTick:number})=>offer.deadlineTick>=HELD
 /** Choice offered when the build is full: a coxinha that heals. */
 export const HEAL_CHOICE='heal';
 export const HEAL_AMOUNT=30;
-export const BASE_CHOICES=3,MAX_CHOICES=4;
+export const BASE_CHOICES=3,MAX_CHOICES=3;
 
 const EVO_SUFFIX='-evo';
 /** Base weapon of an evolution (boleto-evo -> boleto); other ids map to themselves. */
@@ -46,11 +46,13 @@ export function isEligible(catalog:ItemCatalog,build:PlayerBuild,choice:OfferCho
 }
 
 /**
- * Up to 3 distinct choices, a 4th with probability 1 - 1/luck; a full build gets the coxinha. `skip`: items never
+ * Up to 3 distinct choices (never a 4th: the user, 31/10, oferta-3-cartas); a full build gets the coxinha. `skip`: items never
  * offered this time (a hero with no weapon yet skips the weapon's cards, rules/passives.ts needsWeapon).
  */
 export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rng:Rng,skip?:(itemId:string)=>boolean):OfferChoice[]{
-  const want=BASE_CHOICES+(rng.chance(1-1/Math.max(1,luck))?1:0);
+  // The old 4th card is still rolled and shuffled, then dropped: the first 3 and the rest of the rng stream (every seeded
+  // match) stay the same. Luck keeps its chest effect (sim/evolutions.ts).
+  const rolled=BASE_CHOICES+(rng.chance(1-1/Math.max(1,luck))?1:0);
   const candidates:OfferChoice[]=[];
   for(const def of catalog.all()){
     if(skip?.(def.id))continue;
@@ -58,12 +60,12 @@ export function rollChoices(catalog:ItemCatalog,build:PlayerBuild,luck:number,rn
     if(level!==undefined)candidates.push({itemId:def.id,level});
   }
   if(!candidates.length)return [{itemId:HEAL_CHOICE,level:1}];
-  const count=Math.min(want,candidates.length);
+  const count=Math.min(rolled,candidates.length);
   for(let i=0;i<count;i++){
     const j=rng.int(i,candidates.length-1);
     [candidates[i],candidates[j]]=[candidates[j],candidates[i]];
   }
-  return candidates.slice(0,count);
+  return candidates.slice(0,Math.min(MAX_CHOICES,count));
 }
 
 /** Visible default: the first upgrade of an owned item, else the first card. */

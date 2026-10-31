@@ -41,7 +41,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUn
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
 import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE,isBicho} from '../../rules/index.ts';import {payFrom,walletOf} from '../wallet.ts';
-import {bichoUpgrade,builtFull,countBuilt,leveled} from './forca.ts';
+import {bichoUpgrade,builtFull,countBuilt,leveled} from './bichos/forca.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
 import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';

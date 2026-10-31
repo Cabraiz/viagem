@@ -15,16 +15,16 @@
  * - State: DefenseState.level only once a tower climbs (absent = força 1) and TowersState.built only once a bicho is
  *   built, so a run without them keeps every hash it had.
  */
-import type {SimContext} from '../context.ts';
-import type {SimPlayer} from '../../contract/index.ts';
-import {ticks} from '../../contract/index.ts';
-import {isStanding} from '../revive.ts';
-import {payFrom} from '../wallet.ts';
-import type {StonewardsState} from '../stonewards/state.ts';
-import {rectDistance,type Rect} from './sites.ts';
-import {DEFENSES,pickChild,type DefenseDef} from './catalog.ts';
-import {BICHO_EVOLVE_PRICE,FORCA_BRANCH,KIT_PLACE_REACH,TOWER_BUILT_LIMIT,TOWER_LEVEL_MAX,isBicho,kitPiece,levelDamage,levelHp,levelPrice} from '../../rules/index.ts';
-import type {DefenseState,TowerResult,TowersState} from './system.ts';
+import type {SimContext} from '../../context.ts';
+import type {SimPlayer} from '../../../contract/index.ts';
+import {ticks} from '../../../contract/index.ts';
+import {isStanding} from '../../revive.ts';
+import {payFrom} from '../../wallet.ts';
+import type {StonewardsState} from '../../stonewards/state.ts';
+import {rectDistance,type Rect} from '../sites.ts';
+import {DEFENSES,pickChild,type DefenseDef} from '../catalog.ts';
+import {BICHO_EVOLVE_PRICE,FORCA_BRANCH,KIT_PLACE_REACH,TOWER_BUILT_LIMIT,TOWER_LEVEL_MAX,isBicho,kitPiece,levelDamage,levelHp,levelPrice} from '../../../rules/index.ts';
+import type {DefenseState,TowerResult,TowersState} from '../system.ts';
 
 /** A defense's numbers at its força: the catalog's own at força 1 (same object, so nothing else moves). */
 export function leveled(d:Pick<DefenseState,'kind'|'level'>):DefenseDef{

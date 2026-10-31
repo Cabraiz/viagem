@@ -71,7 +71,7 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,unitsOf,type Branch,type DefenseId} from './towers/catalog.ts';
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
-import {pickBichoOrder} from './bot-bichos.ts';
+import {pickBichoOrder} from './towers/bichos/bots.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,BICO,CALMA,REVIVE_RADIUS,REVIVE_TICKS,calmAround,towerShown} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
@@ -1449,7 +1449,7 @@ export function towerReserve(v:TowerBrainView):TowerCost{
  * with towers now. Saving holds only the reserve: decide lets the forge spend the Grana above it.
  */
 export function pickTowerOrder(v:TowerBrainView,reach:TowerReach=()=>true):TowerOrder|'save'|undefined{
-  if(!towerShown(ROOT_DEFENSE))return pickBichoOrder(v,reach); // the tree of today: kits only, R$ on the bichos (bot-bichos.ts)
+  if(!towerShown(ROOT_DEFENSE))return pickBichoOrder(v,reach); // the tree of today: kits only, R$ on the bichos (towers/bichos/bots.ts)
   const live=v.defenses.filter(d=>!d.ruined),taken=new Set(live.map(d=>d.site));
   const near=(p:{x?:number;y?:number}|undefined)=>{const q=pointOf(p);return !q||reach(q);};
   const ok=(order:TowerOrder)=>{const q=orderSpot(v,order);return !q||reach(q);};

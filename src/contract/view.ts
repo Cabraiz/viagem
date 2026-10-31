@@ -54,7 +54,7 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
    * Every defense, the root included, and the kinds 'muro' and 'barricada'; x,y stay the footprint's centre.
    */
   c?:number;r?:number;rot?:number;
-  /** torres-3-base-9-evolucoes: a bicho tower's força, absent at 1 (sim towers/forca.ts). */
+  /** torres-3-base-9-evolucoes: a bicho tower's força, absent at 1 (sim towers/bichos/forca.ts). */
   level?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,

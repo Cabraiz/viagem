@@ -267,7 +267,7 @@ const buildCellOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number
  * the HUD's tree sends, trilho-no-snapshot) or the child's DefenseId.
  */
 const BRANCH=/^([ABC]|[ABC][2-6]b?)$/;
-// torres-3-base-9-evolucoes: FORCA_BRANCH asks a bicho tower for one more força (sim towers/forca.ts).
+// torres-3-base-9-evolucoes: FORCA_BRANCH asks a bicho tower for one more força (sim towers/bichos/forca.ts).
 const branchOk=(b:unknown)=>b===undefined||(typeof b==='string'&&(BRANCH.test(b)||isDefenseId(b)||b===FORCA_BRANCH));
 /**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the

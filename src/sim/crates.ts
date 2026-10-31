@@ -234,7 +234,7 @@ export interface CratesOptions {
    * Absent or empty: no start crates.
    */
   startPoints?:readonly StartPoint[];
-  hooks?:CrateHooks;kitsFull?(ctx:SimContext):boolean; // kitsFull: torres-3-base-9, the towers' teto reached (towers/forca.ts): no tower kit shown
+  hooks?:CrateHooks;kitsFull?(ctx:SimContext):boolean; // kitsFull: torres-3-base-9, the towers' teto reached (towers/bichos/forca.ts): no tower kit shown
   /**
    * A trail crate's spot about `ahead` u from `at` along the unit `heading` (the city: open ground for the crate's body
    * that the heroes reach, outside the base); undefined: none there. Absent: no trail crates.

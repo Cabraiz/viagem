@@ -237,9 +237,7 @@ export class TowerFeed {
   count=0;
   views(structures:readonly WireStructure[],tick:number,cell:number,options:{railAxis?:'x'|'y';enemies?:EnemyArrays}={}):TowerView[]{
     const out:TowerView[]=[],seen=this.next;seen.clear();
-    for(const w of structures){
-      // torres-3-base-9-evolucoes: the 12 bichos are drawn with the Guarita until their own art (rules towerArtKind).
-      const kind=towerArtKind(w.kind),s=kind===w.kind?w:{...w,kind};
+    for(const w of structures){const kind=towerArtKind(w.kind),s=kind===w.kind?w:{...w,kind}; // the 12 bichos: the Guarita's art for now
       if(!isTowerKind(s.kind))continue;
       const prev=this.last.get(s.id),phase=s.phase&&PHASES.has(s.phase)?s.phase as TowerPhase:undefined;
       let fire=prev?.fire??0,at=prev?.at??tick,volleys=0;

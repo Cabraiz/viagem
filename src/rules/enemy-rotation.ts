@@ -6,8 +6,9 @@
  *  - rounds 7-9 (late): + kamikazes, refletores, invocadores and the "elites" of the card, the brutamontes;
  *  - two mini-chefes: one replaces round 5's elite, the other comes alone in round 8; round 10 keeps the boss.
  * P0 entries first (only they have their own lines); P1, then P2, only when a role has too few P0 entries.
- * ELITE_ONLY entries (the aberração-saci) are never drawn as a role or a mini-chefe: about one rotation in ELITE_EVERY (by its
- * own ids, no rng draw) one of them takes round 5's elite instead of the first mini-chefe, at the elite's numbers.
+ * ELITE_ONLY entries are never drawn as a role or a mini-chefe: about one rotation in ELITE_EVERY (by its own ids, no rng
+ * draw) one of them takes round 5's elite instead of the first mini-chefe, at the elite's numbers. None today: the
+ * aberração-saci left it for the chefão (rules/chefao-onda.ts SACI_BOSS, card saci-chefe-2x).
  * The rotation is JSON (director state, checkpoints and reconnects keep it) and depends only on the rng it is drawn with.
  *
  * ROSTER_ONLY_WITH_ART (the user's request, arte-do-roster-no-render): only entries with imported art are drawn (the
@@ -21,14 +22,14 @@
  * ROSTER_ONLY_LIBERADOS (NEW-20261029-ORQ-so-3-inimigos, the user 29/10: only the mendigo, the saci and the arrasta-pé):
  * every slot draws only the INIMIGOS_LIBERADOS of its role (rules/inimigos-liberados.ts), over the art filter, so today
  * the corredor slot is the mendigo and every other slot is empty (the rounds are short and their bodies are mendigos,
- * waves.ts); round 5's elite is always the first liberated ELITE_ONLY entry (the saci). The round-8 mini-chefe and the
- * boss stay as drawn (chefões: the user's answer is pending).
+ * waves.ts); round 5's elite is the first liberated ELITE_ONLY entry when there is one (none since the saci became the
+ * chefão, card saci-chefe-2x). The mini-chefes and the boss stay as drawn.
  */
 import type {Rng} from '../contract/index.ts';
 import {ROSTER,type RosterEntry} from './enemy-roster.ts';
 import type {EnemyRole} from './enemy-roles.ts';
 import {ENEMY_ART_IDS} from './enemy-art-ids.ts';
-import {INIMIGOS_LIBERADOS} from './inimigos-liberados.ts';
+import {INIMIGOS_LIBERADOS,SANFONEIRO_TETO} from './inimigos-liberados.ts';
 
 /** Draw only roster entries with imported art (see above). Data flag: false brings back the whole roster. */
 export const ROSTER_ONLY_WITH_ART=true;
@@ -100,6 +101,8 @@ export interface RoundRoster {
   borrowed?:readonly EnemyRole[];
   /** Round 5: the elite's kind. */
   elite?:string;
+  /** Round 5 without an elite (liberated only, its drawn mini-chefe is legacy): not the table's elite either. */
+  noElite?:true;
   /** Round 8: a mini-chefe alone, outside the regular budget. */
   solo?:string;
 }
@@ -107,8 +110,9 @@ export interface RoundRoster {
 /**
  * Elites only (NEW-20261029-ORQ-saci-elite-no-jogo, "de vez em quando"): mini-chefe entries that come only as round 5's
  * elite, never in a role slot nor as round 8's mini. Their numbers are the elite's (director.ts eliteHp, the role's damage).
+ * Empty since card saci-chefe-2x (the user, 30/10: "O saci é o boss do jogo"): the saci is the chefão, no longer an elite.
  */
-export const ELITE_ONLY:readonly string[]=Object.freeze(['aberracao-saci']);
+export const ELITE_ONLY:readonly string[]=Object.freeze([]);
 /** One rotation in ELITE_EVERY gets an ELITE_ONLY entry as its elite. */
 export const ELITE_EVERY=3;
 const eliteOnly=new Set(ELITE_ONLY);
@@ -167,7 +171,16 @@ export function slotPools(options:RotationOptions={}):{slots:SlotPool[];mini?:Re
  * ROSTER_ONLY_WITH_ART) fewer when the art entries run out. Deterministic for the rng state.
  */
 export function drawRotation(rng:Rng,options:RotationOptions={}):Rotation{
-  const {slots,mini}=slotPools(options);
+  const {slots:pools,mini}=slotPools(options);
+  // Liberated only, the sanfoneiro is his role's guest: left out of the draw and added after it, off the rng, so a run
+  // draws what it drew before him (seeded runs keep their rounds); SANFONEIRO_TETO rations him per round.
+  const guest=(options.onlyLiberados??onlyLiberados)&&INIMIGOS_LIBERADOS.includes(SANFONEIRO_TETO.id)?SANFONEIRO_TETO.id:undefined;
+  const home=guest?pools.find(s=>s.only?.has(guest)&&candidates(s.slot.role,new Set([guest])).length):undefined;
+  const slots=pools.map(s=>{
+    if(s!==home)return s;
+    const only=new Set([...s.only!].filter(k=>k!==guest)),max=Math.min(s.slot.max,candidates(s.slot.role,only).length);
+    return {...s,only,min:Math.min(s.slot.min,max),max};
+  });
   const size=rng.int(ROTATION_SIZE.min,ROTATION_SIZE.max);
   const counts=slots.map(s=>s.min);
   let left=size-MINI_COUNT-counts.reduce((a,b)=>a+b,0);
@@ -181,8 +194,10 @@ export function drawRotation(rng:Rng,options:RotationOptions={}):Rotation{
   const rotation={roles,mini:pick(rng,'mini-chefe',MINI_COUNT,mini)};
   const liberadas=ELITE_ONLY.filter(id=>INIMIGOS_LIBERADOS.includes(id));
   if(options.onlyLiberados??onlyLiberados){
-    // Liberated only: the saci is round 5's elite in every run.
+    // Liberated only: a liberated ELITE_ONLY entry is round 5's elite in every run.
     if(liberadas.length&&rotation.mini.length)rotation.mini[0]=liberadas[0];
+    const ids=home&&roles[home.slot.role];
+    if(ids&&ids.length<home.max)ids.push(guest!);
     return rotation;
   }
   // Art only, an elite without art stays out (the rotation draws art entries only).
@@ -224,7 +239,10 @@ export function roundRoster(rotation:Rotation,index:number):RoundRoster{
     roles[r.role]=[ids[0]];borrowed.push(r.role);
   }
   const at=(MINI_ROUNDS as readonly number[]).indexOf(index),mini=at>=0?rotation.mini[at]:undefined;
-  return {roles,...(short?{short:true as const}:{}),...(borrowed.length?{borrowed}:{}),...(mini&&at===0?{elite:mini}:{}),...(mini&&at===1?{solo:mini}:{})};
+  // Liberated only, round 5's elite is a liberated entry or none (since the saci became the chefão, card saci-chefe-2x):
+  // a legacy mini-chefe stays out of it.
+  const elite=mini&&at===0&&(!onlyLiberados||INIMIGOS_LIBERADOS.includes(mini))?mini:undefined;
+  return {roles,...(short?{short:true as const}:{}),...(borrowed.length?{borrowed}:{}),...(elite?{elite}:mini&&at===0?{noElite:true as const}:{}),...(mini&&at===1?{solo:mini}:{})};
 }
 
 /** Every id a rotation can spawn (for the client preload and the tests). */
@@ -240,10 +258,10 @@ export function isRotation(value:unknown,options:RotationOptions={}):value is Ro
   if(!Array.isArray(r.mini)||r.mini.length!==MINI_COUNT||!r.roles||typeof r.roles!=='object'||Array.isArray(r.roles))return false;
   const role=new Map(ROSTER.map(e=>[e.id,e.role]));
   if(!r.mini.every((id,i)=>role.get(id)==='mini-chefe'&&(i===0||!eliteOnly.has(id))))return false;
-  // Liberated only: the role slots and round 5's elite hold liberated entries (an older checkpoint's cast is refused
-  // and the director draws a new one).
+  // Liberated only: the role slots hold liberated entries, and round 5's elite too while a liberated ELITE_ONLY entry
+  // exists (an older checkpoint's cast is refused and the director draws a new one).
   const liberados=options.onlyLiberados??onlyLiberados,lib=new Set(INIMIGOS_LIBERADOS);
-  if(liberados&&!lib.has(r.mini[0]!))return false;
+  if(liberados&&ELITE_ONLY.some(id=>lib.has(id))&&!lib.has(r.mini[0]!))return false;
   if(!Object.keys(r.roles).every(k=>ROTATION_SLOTS.some(s=>s.role===k)))return false;
   // Art only, a slot may be short or empty (its role had no art when the rotation was drawn: a checkpoint keeps its cast
   // after new art arrives, roundRoster marks the round short); never more than ROTATION_SLOTS' max (ART_SLOT_WIDEN's for

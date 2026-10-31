@@ -3,7 +3,7 @@
  *  - tocar: a warned play that drags the heroes inside SANFONA.radius toward him, slower than a hero walks
  *  - not outside the radius, no teleport (one bounded step a tick), walls hold, running against it escapes
  *  - the fole: a warned 'pancada' with a cooldown that shoves the hero back once it lands
- *  - frozen or knocked silly, the sanfona stops; and he stays out of the wave draw (HELD_ROSTER)
+ *  - frozen or knocked silly, the sanfona stops; and he is in the wave draw (ROSTER, card sanfoneiro-brinquedo-no-jogo)
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,12 @@ import {FOLE,SANFONA,SANFONA_STATE,SANFONEIRO_ID,isPlaying} from '../../src/sim/
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
-import {HELD_ROSTER,ROSTER,ROSTER_IDS} from '../../src/rules/index.ts';
+import {HELD_ROSTER,ROSTER,ROSTER_IDS,SANFONEIRO_TETO} from '../../src/rules/index.ts';
+import {Rng} from '../../src/contract/rng.ts';
+import type {RoundState} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
+import {createDirector} from '../../src/sim/director.ts';
+import {SPAWN} from '../../src/maps/world.ts';
 import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
@@ -60,12 +65,12 @@ test('the numbers: 220 px of drag, slower than a hero, 1 s warning, 2 s play, 6â
   assert.ok(FOLE.trigger<SANFONA.trigger);
 });
 
-test('kept out of the wave draw: held roster only, enemyDef still knows him (a brutamontes, ~1.2Ã— the hero)',()=>{
-  assert.ok(!ROSTER.some(e=>e.id===SANFONEIRO_ID));
-  assert.ok(!(ROSTER_IDS as readonly string[]).includes(SANFONEIRO_ID));
-  const held=HELD_ROSTER.find(e=>e.id===SANFONEIRO_ID);
-  assert.ok(held,'in HELD_ROSTER');assert.equal(held.role,'brutamontes');
-  assert.ok(enemyDef(SANFONEIRO_ID).hp>0);
+test('in the wave draw since his toy art (sanfoneiro-brinquedo-no-jogo): ROSTER, not held, a corredor with his own moves',()=>{
+  assert.ok(!HELD_ROSTER.some(e=>e.id===SANFONEIRO_ID));
+  assert.ok((ROSTER_IDS as readonly string[]).includes(SANFONEIRO_ID));
+  const entry=ROSTER.find(e=>e.id===SANFONEIRO_ID);
+  assert.ok(entry,'in ROSTER');assert.equal(entry.role,'corredor');
+  assert.ok(enemyDef(SANFONEIRO_ID).hp>0);assert.equal(enemyDef(SANFONEIRO_ID).behavior,'brute');
 });
 
 test('tocar: warns 1 s standing still, then drags the hero inside the radius toward him; the one outside stays put',()=>{
@@ -180,3 +185,30 @@ for(const [what,silence] of [
     assert.ok(e.memory!.actReady>=world.tick,'the cooldown started');
   });
 }
+
+// ORQ 31/10: at most SANFONEIRO_TETO.alive standing at once; the director spawns the common enemy in his place.
+test('director: never more than SANFONEIRO_TETO.alive sanfoneiros standing, none in round 1',()=>{
+  const round:RoundState={index:0,total:0,phase:'prepare',phaseEndsTick:0,remaining:0};
+  const events:SimEvent[]=[];let ids=0;
+  const ctx={tick:0,runStartTick:0,terrain:new TerrainField(2),rng:new Rng(5),players:new Map<string,SimPlayer>(),enemies:new Map(),pickups:new Map(),
+    projectiles:new Map(),telegraphs:new Map(),team:{xp:0,level:1,nextXp:5},offers:new Map(),round,
+    enemyIndex:{rebuild(){},query:()=>[],nearest:()=>undefined},nextId:(p:string)=>`${p}-${++ids}`,emit(e:SimEvent){events.push(e);},
+    damageEnemy(id:string,amount:number){const e=ctx.enemies.get(id);if(!e)return false;e.hp-=amount;if(e.hp>0)return false;ctx.enemies.delete(id);return true;},
+    damagePlayer(){}} as unknown as SimContext&{tick:number};
+  ctx.players.set('a',{id:'a',classId:'x',hp:100,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},stats:{...BASE_STATS},weaponReady:{},...SPAWN});
+  // Planned in every regular slot (from round 2): the cap is the director's alone.
+  const asked:{round:number;kind:string}[]=[];
+  const d=createDirector({rotation:true,createEnemy(c,kind,p,scale){asked.push({round:c.round.index,kind});return createEnemy(c,kind,p,scale);},
+    spawnBoss(c,p){return createEnemy(c,'chefe',p,1);}});
+  let most=0;
+  for(let i=0;i<ticks(60*8);i++){
+    ctx.tick++;d.step(ctx);
+    let n=0;for(const e of ctx.enemies.values())if(e.kind===SANFONEIRO_ID)n++;most=Math.max(most,n);
+    // Bodies live 20 s: enough overlap for the cap to bite.
+    for(const e of [...ctx.enemies.values()])if(ctx.tick-e.spawnTick>=ticks(20))ctx.damageEnemy(e.id,1e9);
+  }
+  assert.ok(ctx.round.index>=3,`reached round ${ctx.round.index}`);
+  assert.ok(most<=SANFONEIRO_TETO.alive,`${most} standing`);
+  assert.ok(asked.some(a=>a.kind===SANFONEIRO_ID),'he came');
+  assert.ok(!asked.some(a=>a.round===1&&a.kind===SANFONEIRO_ID),'none in round 1');
+});

@@ -729,7 +729,7 @@ test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 
   assert.equal(DICT.indexOf('vigia-do-predio'),71,'protocol 11 (torres-fio) indexes unchanged');assert.equal(DICT[95],'C');
   assert.equal(DICT.indexOf('tiro'),96);
   // The P0 pack entries come in roster order right after 'tiro'; the nine legacy kinds were in the DICT already.
-  const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0').map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
+  const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0'&&e.pack<=4).map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
   assert.equal(ROSTER.filter(e=>!e.legacy&&e.pack<=4).length,164);assert.equal(p0.length,64);
   assert.deepEqual(DICT.slice(97,161),p0);
   // The new strings are unique, in the whole DICT too ('heal' is the one protocol-6 duplicate, never a roster id).
@@ -1049,12 +1049,13 @@ test('protocol 9: every telegraph kind round-trips as one dictionary byte, absen
   assert.equal(a.findIndex((x,i)=>i>at&&x!==b[i]),-1,'only the kind byte differs');
   const patched=(index:number)=>{const f=a.slice();f[at]=index;return new FrameDecoder().decode(f);};
   assert.deepEqual(patched(DICT.indexOf('bebado')),{ok:false,error:'bad telegraph kind'},'a dictionary string that is no kind');
-  assert.deepEqual(patched(DICT.length),{ok:false,error:'unknown dictionary string'},'an index past the dictionary');
+  const past=new Uint8Array([...a.subarray(0,at),254,DICT.length-254+5,...a.subarray(at+1)]);
+  assert.deepEqual(new FrameDecoder().decode(past),{ok:false,error:'unknown dictionary string'},'an index past the dictionary');
   const ok=patched(DICT.indexOf('molotov'));assert.ok(ok.ok);assert.equal(ok.view.telegraphs[0].kind,'molotov');
 });
 
 test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are dictionary bytes appended after protocol 8',()=>{
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
   // Append only: the protocol 8 indexes did not move (the old swarm keeps its slot).
   assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
   for(const s of D036_STRINGS)assert.ok(DICT.indexOf(s)>DICT.indexOf('apagao')&&DICT.lastIndexOf(s)===DICT.indexOf(s),`${s} appended once`);
@@ -1076,7 +1077,7 @@ test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are
 // ---------- Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast in the DICT ----------
 test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
   assert.ok(PROTOCOL_VERSION>=10);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
   // Append only: protocol 8 and 9 indexes did not move; the trio comes right after the last protocol 9 string.
   assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
   assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.indexOf('coach')-1);
@@ -1206,7 +1207,7 @@ function defenses(tick:number):StructureView[]{
 test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; a field that goes away is gone on the phone too',()=>{
   assert.ok(PROTOCOL_VERSION>=11);
   for(const s of ['vigia-do-predio','gustavao','obra-1','pronta','ruina','A','C'])assert.ok(DICT.includes(s),s);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
   const v=busyWorld(new Rng(2),1).view;
   const withDefs={...v,structures:[...v.structures,...defenses(0)]};
   const r=new FrameDecoder().decode(new FrameEncoder().encode(withDefs));assert.ok(r.ok);
@@ -1391,7 +1392,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
   assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them (D-051 the nests, D-052, D-051 the arsenal)');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
 });
 
 test('protocol 15: the objective block round-trips (1/16 u), goes only when it changes, the route only on full frames, and clears',()=>{
@@ -1521,7 +1522,7 @@ test('bancos: the bank strings are dictionary bytes appended after protocol 24 (
   assert.equal(DICT.indexOf('banco-1'),from,'the banks right after the arsenal');
   assert.deepEqual(DICT.slice(from,from+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
 });
 
 test('bancos: the banks block round-trips (1/16 u, the drawer as its wire id), goes only when it changes, the places only on full frames, and clears',()=>{
@@ -1683,7 +1684,7 @@ test('D-052: the wall and the barricade are dictionary bytes appended after the 
   assert.deepEqual(DICT.slice(at,at+nests.length+FREE_PIECES.length),[...nests,...FREE_PIECES],'after the nests (D-051): arrival order');
   assert.equal(DICT[at+nests.length+FREE_PIECES.length],'item','then the arsenal (D-051 armas-caixas)');
   assert.equal(DICT[161],'quadradao','protocol 15 indexes unchanged');
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
 });
 
 test('puxar-uno-corda: the car nose round-trips in 256 steps; east (0) and a turn back to it leave it out',()=>{
@@ -1782,7 +1783,7 @@ test('veículos: a parked vehicle (pickup kind vehicle, its kind in resource), a
   assert.equal(DICT[from-2],'hero','right after the banks');
   assert.deepEqual(DICT.slice(from,from+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
   for(const bad of [{type:'vehicle',player:'uuid-0',kind:'jatinho',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'patinete',what:'voou'}]){
     const forged=new FrameEncoder();forged.pushEvents([bad as SimEvent]);
     assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false,JSON.stringify(bad));
@@ -1812,7 +1813,7 @@ test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventor
   const from=DICT.indexOf('largou')+1;
   assert.deepEqual(DICT.slice(from,from+KIT_IDS.length),[...KIT_IDS],'at the end, every older index unchanged');
   for(const s of KIT_IDS)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
   const w=busyWorld(new Rng(4),10),v=w.view;
   v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'kit:morteiro',level:1},{id:'kit:muro',level:6}],passives:[],hand:0});
   v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit:obuseiro',value:1};
@@ -1907,10 +1908,11 @@ test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 i
   assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.fear,undefined);
 });
 
-test('só 3 inimigos: the mendigo horde holds the wide-map budget (the mendigo is one dictionary byte, the saci inline)',t=>{
+test('só 3 inimigos: the mendigo and sanfoneiro horde holds the wide-map budget (the mendigo one dictionary byte, the sanfoneiro two, the saci inline)',t=>{
   assert.equal(DICT.indexOf(INIMIGO_PADRAO),253,'the last one-byte index');
-  const ids=INIMIGOS_LIBERADOS.filter(id=>ROSTER.some(e=>e.id===id&&e.role!=='mini-chefe'));
-  assert.deepEqual(ids,[INIMIGO_PADRAO],'the bodies of every round are mendigos');
+  assert.equal(DICT.indexOf('sanfoneiro'),254,'the first DICT_EXTENDED index (254, 0)');
+  const ids=INIMIGOS_LIBERADOS.filter(id=>ROSTER.some(e=>e.id===id&&e.role!=='mini-chefe'&&e.role!=='chefe'));
+  assert.deepEqual([...ids].sort(),[INIMIGO_PADRAO,'sanfoneiro'],'the bodies of every round are mendigos and sanfoneiros');
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const [together,apart]=[
     withCast(ids,new Set(),()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
@@ -1918,7 +1920,8 @@ test('só 3 inimigos: the mendigo horde holds the wide-map budget (the mendigo i
   ];
   t.diagnostic(`só 3 inimigos, wide map, mendigo horde: together ${together.bytesPerSecond} B/s, spread ${apart.bytesPerSecond} B/s`);
   // Measured 29/10: inline (0xFF + 1 + 7 bytes per enemy) 34 090 together / 34 640 spread, over the guard; the bêbado's
-  // one byte 31 675 / 32 170. The mendigo at DICT index 253 costs the bêbado's.
+  // one byte 31 675 / 32 170. The mendigo at DICT index 253 costs the bêbado's; the sanfoneiro (card sanfoneiro-brinquedo-no-jogo)
+  // takes 254, one byte more than the mendigo and well under the inline cost.
   assert.ok(together.bytesPerSecond<32_500,`together ${together.bytesPerSecond}`);
   assert.ok(apart.bytesPerSecond<32_500,`spread ${apart.bytesPerSecond}`);
 });

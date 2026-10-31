@@ -18,7 +18,7 @@ import {ticks} from '../contract/index.ts';
 import {clashBodies,LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
 import {roleOf} from './enemy-cast.ts';
 import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
-import {INIMIGOS_LIBERADOS} from './inimigos-liberados.ts';
+import {INIMIGOS_LIBERADOS,SANFONEIRO_TETO} from './inimigos-liberados.ts';
 const ROLE_BAND=new Map(ROTATION_SLOTS.map(s=>[s.role as EnemyRole,s.band]));
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
@@ -337,6 +337,19 @@ function capRoles(pool:string[],swarms:string[][],w:Partial<Record<EnemyRole,num
     for(const g of swarms)for(let i=g.length-1;i>=0&&drop>0;i--)if(is(g[i])&&swap(g,i))g.splice(i,1);
   }
 }
+/**
+ * SANFONEIRO_TETO in a plan: round 1 none, then at most share × the corredores among the regular bodies (pool and swarm
+ * groups); the excess, from the ends, becomes the round's other corredores. A rotation whose only corredor is he (the
+ * hidden roster's draw; the liberated one always has the mendigo) keeps him: dropping him would empty round 1.
+ */
+function capSanfoneiro(index:number,pool:string[],swarms:string[][],roster:RoundRoster,picks:Rng){
+  const {id,fromRound,share}=SANFONEIRO_TETO,lists=[pool,...swarms];
+  const count=lists.reduce((n,l)=>n+l.filter(k=>k===id).length,0);if(!count)return;
+  const corredores=lists.reduce((n,l)=>n+l.filter(k=>roleOf(k)==='corredor').length,0);
+  let excess=count-(index<fromRound?0:Math.floor(share*corredores));
+  const others=(roster.roles.corredor??[]).filter(k=>k!==id);if(!others.length)return;
+  for(const l of lists)for(let i=l.length-1;i>=0&&excess>0;i--)if(l[i]===id){l[i]=picks.pick(others);excess--;}
+}
 /** Salt of the rotation's member picks (planRound), apart from the plan's own stream. */
 const ROTATION_PICK_SALT=0x40d0f1c5;
 /** Round 8's lone mini-chefe: when in the spawn window, and its hp against the elite's (eliteHp x this). */
@@ -451,6 +464,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   if(roles)for(const {kind:role,count} of apportion(left,roles,ROTATION_ROLES))for(let i=0;i<count;i++)pool.push(picks.pick(roster!.roles[role]!));
   else for(const {kind,count} of apportion(left,weights))for(let i=0;i<count;i++)pool.push(kind);
   if(roles&&roster!.short&&options?.roleCap)capRoles(pool,swarmGroups,roles,roster!,options.roleCap,picks);
+  if(roles)capSanfoneiro(index,pool,swarmGroups,roster!,picks);
   for(let i=pool.length-1;i>0;i--){const j=rng.int(0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
   const regularGroups:string[][]=[];
   while(pool.length){
@@ -464,7 +478,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   regularGroups.forEach((members,i)=>groups.push({at:ticks(start+i*step),members,formation}));
   const span=Math.max(1,(regularGroups.length-1)*step);
   def.swarm?.at.forEach((f,i)=>{if(swarmGroups[i]?.length)groups.push({at:ticks(start+f*span),members:swarmGroups[i],formation:'cluster'});});
-  if(def.elite)groups.push({at:ticks(start+def.elite.at*span),members:[roster?.elite??def.elite.kind],elite:true});
+  if(def.elite&&!roster?.noElite)groups.push({at:ticks(start+def.elite.at*span),members:[roster?.elite??def.elite.kind],elite:true});
   if(solo)groups.push({at:ticks(start+MINI_SOLO_AT*span),members:[solo],solo:true});
   if(def.boss)groups.push({at:ticks(def.boss.atSeconds),members:['chefe'],boss:true});
   groups.sort((a,b)=>a.at-b.at);

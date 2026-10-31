@@ -1,4 +1,11 @@
 {
+ "apagao": {
+  "seconds": 1.2,
+  "gainDb": -3,
+  "lufs": -13,
+  "webm": 8410,
+  "m4a": 10987
+ },
  "audio": {
   "seconds": 0.669,
   "gainDb": -1.3,
@@ -34,19 +41,47 @@
   "webm": 7797,
   "m4a": 6880
  },
- "bicho-acerto": {
+ "bicho-acerto-1": {
   "seconds": 0.2,
   "gainDb": 0,
   "lufs": -17.3,
   "webm": 1929,
   "m4a": 2808
  },
- "bicho-morte": {
+ "bicho-acerto-2": {
+  "seconds": 0.2,
+  "gainDb": -4,
+  "lufs": -12,
+  "webm": 2383,
+  "m4a": 2813
+ },
+ "bicho-acerto-3": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -16.5,
+  "webm": 3060,
+  "m4a": 2837
+ },
+ "bicho-morte-1": {
   "seconds": 0.6,
   "gainDb": -2,
   "lufs": -14,
   "webm": 4573,
   "m4a": 6070
+ },
+ "bicho-morte-2": {
+  "seconds": 0.6,
+  "gainDb": -2.2,
+  "lufs": -13.8,
+  "webm": 5901,
+  "m4a": 6179
+ },
+ "bicho-morte-3": {
+  "seconds": 0.6,
+  "gainDb": -0.1,
+  "lufs": -18,
+  "webm": 7887,
+  "m4a": 6134
  },
  "boing": {
   "seconds": 0.6,
@@ -83,6 +118,13 @@
   "webm": 7216,
   "m4a": 7697
  },
+ "caixa-registradora": {
+  "seconds": 0.7,
+  "gainDb": -0.3,
+  "lufs": -15.7,
+  "webm": 8473,
+  "m4a": 7078
+ },
  "carimbo": {
   "seconds": 0.4,
   "gainDb": -1,
@@ -104,12 +146,26 @@
   "webm": 3250,
   "m4a": 4412
  },
- "chefe-morte": {
+ "chefe-morte-1": {
   "seconds": 1.49,
   "gainDb": -5.1,
   "lufs": -10.9,
   "webm": 9298,
   "m4a": 13415
+ },
+ "chefe-morte-2": {
+  "seconds": 1.6,
+  "gainDb": -8.4,
+  "lufs": -7.6,
+  "webm": 10895,
+  "m4a": 14348
+ },
+ "chefe-morte-3": {
+  "seconds": 1.285,
+  "gainDb": -2,
+  "lufs": -14,
+  "webm": 9233,
+  "m4a": 11799
  },
  "chefe-passo": {
   "seconds": 0.311,
@@ -201,6 +257,13 @@
   "lufs": -10.8,
   "webm": 7021,
   "m4a": 9322
+ },
+ "ninho-acordou": {
+  "seconds": 0.716,
+  "gainDb": -1.2,
+  "lufs": -14.8,
+  "webm": 7532,
+  "m4a": 7006
  },
  "nivel": {
   "seconds": 1.4,
@@ -327,6 +390,13 @@
   "lufs": -19.6,
   "webm": 1978,
   "m4a": 2781
+ },
+ "peca-cai": {
+  "seconds": 0.6,
+  "gainDb": -1,
+  "lufs": -15,
+  "webm": 4495,
+  "m4a": 6037
  },
  "pistola": {
   "seconds": 0.5,
@@ -544,6 +614,13 @@
   "lufs": -19.6,
   "webm": 3021,
   "m4a": 4606
+ },
+ "ultimo-bicho": {
+  "seconds": 0.9,
+  "gainDb": -3.2,
+  "lufs": -12.8,
+  "webm": 7092,
+  "m4a": 8515
  },
  "upgrade": {
   "seconds": 0.9,

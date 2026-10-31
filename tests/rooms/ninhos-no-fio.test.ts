@@ -93,5 +93,5 @@ test('the nest strings are dictionary bytes, appended once',()=>{
   const added=['ninho','dormindo','ativo','destruido','P','M','G'],at=DICT.indexOf('ninho');
   assert.deepEqual(DICT.slice(at,at+added.length),added);
   for(const x of added)assert.equal(DICT.indexOf(x),DICT.lastIndexOf(x),`${x} once`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
 });

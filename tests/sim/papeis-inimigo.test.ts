@@ -69,7 +69,8 @@ test('enemyDef: the nine are their catalog defs; every roster id is its role on 
   assert.deepEqual([...ENEMY_KINDS],[...LEGACY_KINDS]);
   for(const e of ROSTER){
     assert.ok(isEnemyKind(e.id),e.id);
-    if(e.legacy)continue;
+    // The own entries (pack 6: the sanfoneiro) have their own def (sim/enemies/sanfoneiro.ts, tests/sim/sanfoneiro.test.ts).
+    if(e.legacy||e.pack===6)continue;
     const def=enemyDef(e.id),r=ROLE_PROFILES[e.role],base=ENEMIES[r.base];
     assert.equal(def,enemyDef(e.id),'built once');
     assert.equal(def.id,e.id);assert.equal(def.name,e.name);assert.equal(def.behavior,r.behavior,e.id);

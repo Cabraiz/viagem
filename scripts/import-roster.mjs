@@ -41,13 +41,15 @@ const LEGACY=[
   ['chefe','Síndico Supremo','chefe',384,0x6b3f7a],
 ];
 /**
- * Held entries (HELD_ROSTER): defined and spawnable by id (sim/enemies/catalog.ts reads them through rules/enemy-cast.ts)
- * but out of the wave draw (rules/enemy-rotation.ts reads ROSTER only) until their art and the user's go land. Pack 0,
- * P0 (copy file `held`: 4 barks, 3 death lines, a pop and the gag). [id, name, role, cell, accent]
+ * Own entries, from no pack, with their own lines (copy file `held`: 4 barks, 3 death lines, a pop and the gag), P0.
+ * Held ones (HELD_ROSTER, pack 0) are defined and spawnable by id (sim/enemies/catalog.ts reads them through
+ * rules/enemy-cast.ts) but out of the wave draw (rules/enemy-rotation.ts reads ROSTER only) until their art and the
+ * user's go land; then `drawn` puts them at the end of ROSTER, pack 6. [id, name, role, cell, accent, drawn]
  */
 const HELD=[
-  // NEW-20261029-ORQ-sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): cell 128, ~1.2× the hero until the user decides.
-  ['sanfoneiro','Sanfoneiro Arrasta-Pé','brutamontes',128,0xc68e3a],
+  // NEW-20261029-ORQ-sanfoneiro-regra-arrastar (sim/enemies/sanfoneiro.ts): cell 128. Card saci-chefe-2x (the user,
+  // 30/10: "ele é um inimigo comum"): a corredor, not an elite. Card sanfoneiro-brinquedo-no-jogo: drawn, his toy art.
+  ['sanfoneiro','Sanfoneiro Arrasta-Pé','corredor',128,0xc68e3a,true],
 ];
 /** Entries that fly although their role (enxame) does not: aerial swarms. */
 const FLYING={'pernilongo-vampiro':'a mosquito swarm','bot-de-curtida':'"a tiny hovering thumbs-up creature"'};
@@ -126,12 +128,14 @@ const entries=[
   }),
   ...extras,
 ];
-const held=HELD.map(([id,name,role,cell,accent])=>{
+const own=HELD.map(([id,name,role,cell,accent,drawn])=>{
   if(seen.has(id))problems.push(`held id ${id} is already in the roster`);
   const t=copy.held?.[id];
   if(!t?.gag||t.barks?.length!==4||t.death?.length!==3||typeof t.pop!=='string')problems.push(`${id}: a held entry needs 4 barks, 3 death lines, a pop and the gag`);
-  return {id,name,role,cell,priority:'P0',pack:0,accent,gag:t?.gag,barks:t?.barks,deathLines:t?.death,pop:t?.pop};
+  return {id,name,role,cell,priority:'P0',pack:drawn?6:0,accent,gag:t?.gag,barks:t?.barks,deathLines:t?.death,pop:t?.pop};
 });
+const held=own.filter(e=>e.pack===0);
+entries.push(...own.filter(e=>e.pack===6));
 for(const id of Object.keys(copy.held??{}))if(!HELD.some(h=>h[0]===id))problems.push(`held copy for unknown id ${id}`);
 if(problems.length){console.error(problems.join('\n'));process.exit(1);}
 
@@ -151,7 +155,7 @@ const out=`/**
  * scripts/roster-text.json. Do not edit by hand: change the copy file (or the packs) and run the script.
  *
  * The cast of D-040: the nine hand-tuned kinds (pack 0, \`legacy\`: their stats and lines live in sim/enemies/catalog.ts
- * and the client), the ${rows.length} pack entries (${rows.filter(r=>r.priority==='P0').length} P0) and the ${extras.length} extra (pack 5, from no pack). Every entry
+ * and the client), the ${rows.length} pack entries (${rows.filter(r=>r.priority==='P0').length} P0) and the ${extras.length} extra (pack 5, from no pack)${own.length>held.length?` and the ${own.length-held.length} drawn own (pack 6)`:''}. Every entry
  * has its role (enemy-roles.ts) and the pt-BR death gag (≤ 60 chars); P0 entries also their own lines: 4 barks and 3
  * death lines (≤ 30 chars) and the death pop (ALL CAPS, ≤ 21 chars). P1/P2 entries use their role's generic lines.
  * \`accent\` is the pack's accent color (fallback tint).
@@ -164,7 +168,7 @@ export interface RosterEntry {
   /** Sprite cell (px) of the art; the role's default unless the pack overrides it. */
   cell:number;
   priority:RosterPriority;
-  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07; 5: extra entries from no pack (the aberrações). */
+  /** 0: the hand-tuned cast; 1..4: design/proximos/04..07; 5: extra entries from no pack (the aberrações); 6: own entries with their own lines, drawn (the sanfoneiro). */
   pack:number;
   /** 0xRRGGBB of the pack's accent. */
   accent:number;

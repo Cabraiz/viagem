@@ -55,12 +55,15 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   'torre-sniper':TOWER,'torre-antimaterial':TOWER,'torre-rojao':spec(120,0,.55),'torre-morteiro':TOWER,'torre-foguete':TOWER,
   'torre-obus':TOWER,'torre-gustavao':spec(300,1,.45),'torre-holofote':spec(600,0,.9),'torre-arame':spec(400,0,.3),
   'torre-antiaerea':TOWER,'torre-radar':spec(900,0,.25),
-  // The hit 70 ms and the kill's plop 80 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados: 300 critters at once).
-  'bicho-acerto':spec(70,0,.3),'bicho-morte':spec(80,1,.4),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85),'chefe-passo':spec(250,1,.5),
+  // The hit 70 ms and the kill's plop 80 ms apart (NEW-20261028-ORQ-sons-da-partida-ligados: 300 critters at once); the
+  // hit, the kill and the boss's death have three takes each (TangoFlux 30/10), so 300 critters do not sound like one.
+  'bicho-acerto':spec(70,0,.3,3),'bicho-morte':spec(80,1,.4,3),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85,3),'chefe-passo':spec(250,1,.5),
   'bau-comum':spec(100,2,.65),'bau-raro':spec(100,2,.7),'bau-epico':spec(100,2,.75),'bau-lendario':spec(100,3,.8),
   // The caça-níquel when my weapon turns dourada (caixa-gamble, hud/caca-niquel.ts): the jackpot over the chest.
   'caca-niquel':spec(500,3,.85),
   coxinha:spec(60,1,.5),ima:spec(300,1,.55),
+  'ultimo-bicho':spec(0,3,.7),apagao:spec(1000,2,.6),'caixa-registradora':spec(250,1,.5),'peca-cai':spec(200,1,.5),
+  'ninho-acordou':spec(2000,1,.5),
 });
 
 /**

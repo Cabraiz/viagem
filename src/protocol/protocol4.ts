@@ -133,6 +133,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * `pushed` on the players and `pushed` on the enemies (the push's direction, for the animation); an older decoder would
  * refuse the masks.
  * 43 given by the integration queue (tools/fila.mjs, lote 20261030-124249) to: NEW-20261030-ORQ-colisao-entre-herois.
+ * Next (the queue numbers it) since the sanfoneiro's toy art (card NEW-20261030-ORQ-sanfoneiro-brinquedo-no-jogo):
+ * 'sanfoneiro', a common enemy of every round from round 2, at DICT index 254 (DICT_EXTENDED, 2 bytes); an older
+ * decoder has no index 254.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=43;
@@ -233,6 +236,9 @@ export const DICT:readonly string[]=[
   // inline (0xFF + 1 + 7 bytes on every enemy) its horde went over D-042's 32 500 B/s, so it takes index 253, the last
   // one-byte index. The other P1/P2 roster ids (the saci elite included: one per run) stay inline.
   'mendigo',
+  // Sanfoneiro (card NEW-20261030-ORQ-sanfoneiro-brinquedo-no-jogo): the other common enemy (rules/inimigos-liberados.ts);
+  // inline (1 + 1 + 10 bytes) his share of the horde went over D-042's budget too, so index 254: 2 bytes via DICT_EXTENDED.
+  'sanfoneiro',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 /**

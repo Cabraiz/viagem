@@ -7,7 +7,7 @@ import type {SimContext} from '../context.ts';
 import {type Point,clearSegment,enemyTerrain,walkable,worldBase} from '../../maps/index.ts';
 import {RING_OUTER,Rng,SIM_HZ,offscreenDistance,ticks} from '../../contract/index.ts';
 import {applyCityBalance,roundKnobs} from '../city/balance.ts';
-import {CIDADE_TUTORIAL,ELITE_SIZE,RETREAT_LINES,ROUND_NAMES,type RoundPlan,type RoundTheme,type SpawnGroup,drawTheme,planRound,roleOf,roundRoster} from '../../rules/index.ts';
+import {CIDADE_TUTORIAL,ELITE_SIZE,RETREAT_LINES,ROUND_NAMES,type RoundPlan,type RoundTheme,type SpawnGroup,drawTheme,planRound,roleOf,roundRoster,tetoVivo} from '../../rules/index.ts';
 import {TUTORIAL_WELCOME,tutorialPlan} from '../city/tutorial.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {PLAZA_HOLD_FLAG} from '../city/grid.ts';
@@ -132,7 +132,9 @@ export function wavesPart(dir:DirectorCtx):WavesPart{
       const p=isCity&&entry.points?.[i]?entry.points[i]:placeInGroup(ctx,center,i);
       // A borrowed entry (art only, decision D) plays at its band's numbers: hp here, damage and cadence via its memory.
       const tune=!entry.elite&&!entry.solo&&plan.borrowed?.roles.includes(roleOf(entry.members[i])!)?plan.borrowed.tune:undefined;
-      const enemy=options.createEnemy(ctx,entry.members[i],p,(entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp)*(tune?.hp??1));
+      // SANFONEIRO_TETO: with the round's cap of sanfoneiros standing, the common enemy comes in his place.
+      const kind=tetoVivo(entry.members[i],ctx.enemies.values(),ctx.round.index);
+      const enemy=options.createEnemy(ctx,kind,p,(entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp)*(tune?.hp??1));
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
       if(entry.andar===1)enemy.andar=1;

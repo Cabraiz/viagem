@@ -29,7 +29,7 @@
  */
 import type {NestPlan,NestSize,Point} from '../../maps/index.ts';
 import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
-import {CLASH_BODIES,ELITE_HP,ELITE_ONLY,ELITE_SIZE,MINI_ROUNDS,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
+import {CLASH_BODIES,ELITE_HP,ELITE_ONLY,ELITE_SIZE,MINI_ROUNDS,ROUNDS,pesosDoPapel,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {assignFoco} from '../enemies/foco.ts';
@@ -126,8 +126,8 @@ export const ROLE_WEIGHT:Readonly<Partial<Record<EnemyRole,number>>>=Object.free
 /**
  * The wave's elite (NEW-20261029-ORQ-saci-nasce-nos-ninhos, E5's bench 29/10: the horde of the liberated cast was 100 %
  * mendigo, the saci never came, ROLE_WEIGHT has no mini-chefe and it is ELITE_ONLY): the run's round-5 elite when it is an
- * ELITE_ONLY entry (rules/enemy-rotation.ts: the saci in every liberated run, one rotation in ELITE_EVERY otherwise),
- * born in a live nest's yard (the nests in turn; none standing: with the outside group), at the elite's numbers (the
+ * ELITE_ONLY entry (rules/enemy-rotation.ts: one rotation in ELITE_EVERY; none today, the saci is the chefão), born in a live
+ * nest's yard (the nests in turn; none standing: with the outside group), at the elite's numbers (the
  * director's: ELITE_HP × the row's hp × playerScale.solo, ELITE_SIZE, the elite flag: its extras and its chest), tuned
  * like every wave body. The one place of its numbers:
  *  - from: the first wave (1-based) with one: none in wave 1;
@@ -312,7 +312,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const weighted:[string,number][]=[];
     if(roster){
       for(const [role,w] of Object.entries(ROLE_WEIGHT) as [EnemyRole,number][]){
-        const ids=roster.roles[role];if(ids?.length)for(const id of ids)weighted.push([id,w/ids.length]);
+        const ids=roster.roles[role];if(ids?.length)weighted.push(...pesosDoPapel(ids,w,round));
       }
     }
     if(!weighted.length)for(const [kind,w] of Object.entries(ROUNDS[round-1].weights))if(w>0)weighted.push([kind,w]);

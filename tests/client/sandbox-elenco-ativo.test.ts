@@ -8,11 +8,11 @@ import {ALIADO_SLOT,AVISO,elencoAtivo,elencoMode,heroiDoJogador} from '../../src
 import {fakePlayers,fakeResult,HUD_SCENARIOS} from '../../src/client/hud/fixtures.ts';
 import {ELITE_ONLY,INIMIGOS_LIBERADOS,PERSONAGEM_PADRAO,PERSONAGENS_LIBERADOS} from '../../src/rules/index.ts';
 
-test('elenco=1: the line-up is INIMIGOS_LIBERADOS, in order, the elite-only ones as elites',()=>{
+test('elenco=1: the line-up is INIMIGOS_LIBERADOS, in order, the elite-only ones as elites (none: the saci is the chefão)',()=>{
   const slots=elencoAtivo();
   assert.deepEqual(slots.map(s=>s.id),[...INIMIGOS_LIBERADOS]);
   for(const s of slots)assert.equal(s.elite,ELITE_ONLY.includes(s.id),s.id);
-  assert.equal(slots.find(s=>s.id==='aberracao-saci')?.elite,true);
+  assert.equal(slots.find(s=>s.id==='aberracao-saci')?.elite,false,'the chefão: his own 2.8-hero drawing, no elite scale');
   // Every slot apart from the others and from the hero and his ally (no two figures on the same feet).
   const spots=[[0,0],[...ALIADO_SLOT],...slots.map(s=>[s.sx,s.sy])];
   assert.equal(new Set(spots.map(p=>p.join())).size,spots.length);

@@ -5,7 +5,7 @@
 import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {MAX_ENEMIES,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
+import {MAX_ENEMIES,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,pesosDoPapel,playerScale,tetoVivo,type EnemyRole,type RoundRoster} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind,type EnemyKind} from './enemies/catalog.ts';
 import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
@@ -240,7 +240,8 @@ export function sleeperKinds(plan:NestPlan,seed:number,roster:(round:number)=>Ro
   const rng=new Rng(seed>>>0).fork('sono-tipos'),kinds:EnemyKind[]=[];
   const draw=(round:number)=>{
     const r=roster(round),weighted:[string,number][]=[];
-    if(r)for(const [role,w] of Object.entries(ROLE_WEIGHT) as [EnemyRole,number][]){const ids=r.roles[role];if(ids?.length)for(const id of ids)if(isEnemyKind(id))weighted.push([id,w/ids.length]);}
+    // SANFONEIRO_TETO: the sleepers stand from round 1, so never the sanfoneiro (pesosDoPapel at round 1).
+    if(r)for(const [role,w] of Object.entries(ROLE_WEIGHT) as [EnemyRole,number][]){const ids=r.roles[role]?.filter(isEnemyKind);if(ids?.length)weighted.push(...pesosDoPapel(ids,w,1));}
     if(!weighted.length)for(const [kind,w] of Object.entries(ROUNDS[round-1].weights))if(w>0&&isEnemyKind(kind))weighted.push([kind,w]);
     let x=rng.next()*weighted.reduce((t,[,w])=>t+w,0);
     for(const [k,w] of weighted)if((x-=w)<0)return k as EnemyKind;
@@ -508,7 +509,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         wake:(ctx,id)=>{sono?.wakeNest(ctx,id,'ninho');},
         players:ctx=>director!.scalePlayers(ctx),
         maxEnemies:MAX_ENEMIES,
-        createEnemy:(ctx,kind,point,scale)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
+        // SANFONEIRO_TETO: past the round's standing cap the nest wave brings the common enemy in his place.
+        createEnemy:(ctx,kind,point,scale)=>{kind=tetoVivo(kind,ctx.enemies.values(),ctx.round.index);return hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined;},
         roster:round=>director!.roster(round),
         // Card monstros-espalhados: the waves walk in from the avenue ends (the moto's entrances, each with its route to
         // the car); the map's share wakes along that route; the map's dead count the kills against the quota.

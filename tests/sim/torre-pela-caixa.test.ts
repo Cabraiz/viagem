@@ -70,7 +70,7 @@ test('rules: rarity = tier, the wall pieces are verde, no Gustavão; every kit i
   assert.equal(kitPiece(kitId('morteiro')),'morteiro');assert.equal(kitPiece('pistola'),undefined);assert.equal(isKitId('kit:gustavao'),false);
   assert.deepEqual(kitItem('muro'),{id:'kit:muro',level:KIT_CHARGES.muro});assert.deepEqual(kitItem('holofote'),{id:'kit:holofote',level:1});
   for(const id of KIT_IDS)assert.ok(DICT.includes(id),`${id} in the DICT`);
-  assert.ok(DICT.length<255,'255 is the inline escape');
+  assert.ok(DICT.length<=382,'past 253 the indexes take the DICT_EXTENDED escape (2 bytes to 381)');
 });
 
 test('crate draw: a kit of the crate\'s tier about KIT_CHANCE of the time, else a weapon (pure: same stream, same prize)', ()=>{

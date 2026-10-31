@@ -53,7 +53,8 @@ test('same role, same numbers: swapping the entry inside a role changes only its
   // Without its feel (rules/enemy-feel.ts) every entry of a role has the role's numbers; the feel's speed × hp ≈ 1.
   const bare=(id:string)=>{const d=enemyDef(id),f=enemyFeel(id)??{hp:1,speed:1};return {hp:d.hp/f.hp,speed:d.speed/f.speed,d};};
   for(const role of Object.keys(ART_SLOT_WIDEN)){
-    const ids=ROSTER.filter(e=>e.role===role&&art.has(e.id)&&!e.legacy).map(e=>e.id);
+    // The own entries (pack 6: the sanfoneiro) carry their own def and moves (sim/enemies/sanfoneiro.ts), not the role's.
+    const ids=ROSTER.filter(e=>e.role===role&&art.has(e.id)&&!e.legacy&&e.pack!==6).map(e=>e.id);
     const first=bare(ids[0]);
     for(const id of ids){
       const b=bare(id);

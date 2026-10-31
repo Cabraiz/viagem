@@ -1,7 +1,7 @@
 /**
- * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 175 (the nine hand-tuned kinds, the 164 pack entries and the
- * extra aberração-saci, NEW-20261029-ORQ-saci-elite-no-jogo, and mendigo, NEW-20261029-ORQ-so-3-inimigos) and
- * the 13 role profiles, as data.
+ * NEW-20261013-ORQ-papeis-de-inimigo (D-040): the roster of 176 (the nine hand-tuned kinds, the 164 pack entries and the
+ * extra aberração-saci, NEW-20261029-ORQ-saci-elite-no-jogo, and mendigo, NEW-20261029-ORQ-so-3-inimigos, plus the
+ * sanfoneiro, pack 6, sanfoneiro-brinquedo-no-jogo) and the 13 role profiles, as data.
  *  - the import is deterministic and complete: the committed file is what scripts/import-roster.mjs writes from the board
  *    packs (when the board is next to the repo) and has every pack row: 164 entries, 41 per pack, ids unique, roles valid
  *  - P0 entries carry their own lines (4 barks, 3 death lines, a pop) and every entry its death gag; P1/P2 only the gag
@@ -29,23 +29,26 @@ test('import: the committed roster is what scripts/import-roster.mjs writes from
   for(let run=0;run<2;run++){
     const r:{status:number|null;stdout:string;stderr:string}=spawnSync(process.execPath,[join(repo,'scripts','import-roster.mjs'),'--check',board],{encoding:'utf8'});
     assert.equal(r.status,0,`run ${run}: ${r.stderr}${r.stdout}`);
-    assert.match(r.stdout,/enemy-roster\.ts is current \(175 entries\)/);
+    assert.match(r.stdout,/enemy-roster\.ts is current \(176 entries\)/);
   }
 });
 
-test('complete: 175 entries (the nine + 164 from 4 packs of 41 + 2 extra), unique ids, valid roles, cells and priorities, 64 P0',()=>{
-  assert.equal(ROSTER.length,175);assert.equal(packs.length,164);
-  assert.deepEqual(extra.map(e=>[e.id,e.role,e.priority]),[['aberracao-saci','mini-chefe','P1'],['mendigo','corredor','P1']],'the extra entries: the saci elite and the mendigo (só 3 inimigos)');
+test('complete: 176 entries (the nine + 164 from 4 packs of 41 + 2 extra + the sanfoneiro), unique ids, valid roles, cells and priorities, 64 P0',()=>{
+  assert.equal(ROSTER.length,176);assert.equal(packs.length,164);
+  assert.deepEqual(extra.map(e=>[e.id,e.role,e.priority]),[['aberracao-saci','chefe','P1'],['mendigo','corredor','P1']],'the extra entries: the saci chefão and the mendigo (só 3 inimigos)');
+  assert.deepEqual(ROSTER.filter(e=>e.pack===6).map(e=>[e.id,e.role,e.priority]),[['sanfoneiro','corredor','P0']],'the drawn own entry: the sanfoneiro, last (card sanfoneiro-brinquedo-no-jogo)');
+  assert.equal(ROSTER.at(-1)!.id,'sanfoneiro');
   assert.deepEqual(ROSTER.slice(0,9).map(e=>e.id),[...LEGACY_KINDS],'the nine come first, as LEGACY_KINDS');
   for(const pack of [1,2,3,4])assert.equal(packs.filter(e=>e.pack===pack).length,41,`pack ${pack}`);
-  assert.equal(new Set(ROSTER_IDS).size,175,'ids unique');
+  assert.equal(new Set(ROSTER_IDS).size,176,'ids unique');
   assert.equal(p0.length,64);
   for(const e of ROSTER){
     assert.match(e.id,/^[a-z0-9]+(-[a-z0-9]+)*$/,e.id);
     assert.ok(isEnemyRole(e.role),`${e.id}: role ${e.role}`);
     assert.ok(['P0','P1','P2'].includes(e.priority),e.id);
     assert.ok(Number.isInteger(e.accent)&&e.accent>=0&&e.accent<=0xffffff,`${e.id}: accent`);
-    assert.equal(e.cell,ROLE_PROFILES[e.role].cell,`${e.id}: the packs keep the role's cell`);
+    // The saci chefão keeps his own 256 px sheet (card saci-chefe-2x), not the chefe role's 384.
+    assert.equal(e.cell,e.id==='aberracao-saci'?256:ROLE_PROFILES[e.role].cell,`${e.id}: the packs keep the role's cell`);
     assert.ok(Object.isFrozen(e),`${e.id} frozen`);
   }
   // Every role has entries; the two roles the rotation leaves out (boss) still have their data.

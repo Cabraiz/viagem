@@ -7,6 +7,7 @@ import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} f
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
+import {ENEMY_DAMAGE} from '../../rules/index.ts';
 import type {StonewardsState,WallState} from './state.ts';
 
 export const WALL_MAX_HP=600;
@@ -67,7 +68,7 @@ export function siegeStep(ctx:SimContext,state:StonewardsState):boolean{
     if(!(Math.hypot(e.x-w.x,e.y-w.y)<=w.radius+e.radius))continue;
     if(ctx.tick<(w.hitReady[id]??0))continue;
     w.hitReady[id]=ctx.tick+SIEGE_HIT_COOLDOWN;
-    if(damageWall(ctx,state,e.damage))return true;
+    if(damageWall(ctx,state,e.damage*ENEMY_DAMAGE))return true;// inimigos-3x-fortes
   }
   return false;
 }

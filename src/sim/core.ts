@@ -8,7 +8,7 @@ import type {Point} from '../maps/index.ts';
 import {floorOf} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
 import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts';
-import {ENEMY_DAMAGE} from '../rules/forca-inimigos.ts';
+import {ENEMY_DAMAGE} from '../rules/index.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem,Sleepers} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';

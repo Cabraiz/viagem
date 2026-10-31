@@ -15,7 +15,7 @@
 import {clearSegment,enemyTerrain,walkable,type Point} from '../maps/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {addTelegraph,cancelTelegraphs,canBeTargeted} from './telegraphs.ts';
-import {MAX_ENEMIES,hasRoom} from '../rules/index.ts';
+import {ENEMY_HP,MAX_ENEMIES,hasRoom} from '../rules/index.ts';
 import {ENEMY_RADIUS_SCALE,createEnemy,type EnemyKind} from './enemies/catalog.ts';
 import {SIM_HZ,ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
@@ -253,7 +253,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const players=[...ctx.players.values()].filter(inRun);
     const hpScale=options.hpScale?.(ctx)??1;
     const hpTuning=hpScale!==1&&hpScale>0&&Number.isFinite(hpScale)?{...tuning,baseHp:tuning.baseHp*hpScale}:tuning;
-    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=bossMaxHp(count,hpTuning);
+    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=Math.round(bossMaxHp(count,hpTuning)*ENEMY_HP);// inimigos-3x-fortes
     if(count<=1&&tuning.soloDamage!==undefined&&tuning.soloDamage!==1)state.solo=true;
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.

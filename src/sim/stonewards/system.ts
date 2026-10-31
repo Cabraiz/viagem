@@ -28,7 +28,7 @@ import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge
 import type {CalmGate} from '../ninhos/calma.ts';
 import {gatherStep,refillNodes,WORK_PER_UNIT,type Gathered} from './resources.ts';
 import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
-import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
+import {ENEMY_DAMAGE,CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {blockingCity,createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
@@ -317,7 +317,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       Object.assign(target,fresh);
       for(const rect of syncBarricades(options.terrain,state))options.onTerrainChanged?.(rect);
     },
-    hit(ctx,structureId,amount){
+    hit(ctx,structureId,amount){amount*=ENEMY_DAMAGE;// inimigos-3x-fortes (rules/forca-inimigos.ts): every structure hit is an enemy's
       if(structureId===state.wall.id)damageWall(ctx,state,amount);
       else if(state.defenses&&isPiece(state,structureId))damagePiece(ctx.terrain,state,structureId,amount,options.onTerrainChanged);
       else if(state.defenses&&!findBarricade(state,structureId))damageDefense(state,structureId,amount);

@@ -115,7 +115,7 @@ export const CIDA_HANDLED_LIMIT=64;
 export const CIDA_STOCK=4,CIDA_REACH=3,SALE_GAP_SECONDS=20,SALE_RADIUS=3;
 /** Moved to rules/stonewards.ts (D-048: the Grana is the team's in every world); kept here for the chaveiro's readers. */
 export {GRANA_PER_KILL} from '../../rules/index.ts';
-import {playerScale} from '../../rules/index.ts';
+import {ENEMY_DAMAGE,playerScale} from '../../rules/index.ts';
 export const BOSS_ETA_SECONDS=60;
 /** The boss appears on the route this fraction of its length back from the car and marches to it. */
 export const BOSS_SPAWN_BACK=.3;
@@ -571,7 +571,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.ended)return;
       countCrew(ctx);
       // The last blow counts only the hits left to the limit (the bill stays BUDGET_BASE + BUDGET_PER_HIT per hit taken).
-      let units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)],car.limit-car.hits);
+      let units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)]*ENEMY_DAMAGE,car.limit-car.hits);// inimigos-3x-fortes
       if(options.rate){
         const at=Math.floor(ctx.tick/ticks(1));
         if(car.rateAt!==at){car.rateAt=at;car.rateUsed=0;}

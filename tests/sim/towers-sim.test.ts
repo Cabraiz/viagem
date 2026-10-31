@@ -23,7 +23,7 @@ import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {prizeBlocks} from '../../src/sim/assemble.ts';
 import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
-import {EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
+import {ENEMY_DAMAGE,EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
 import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DEFENSE,TIER_BUILD_SECONDS,TIER_COST,childrenOf,payUnits,phaseOf,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';
@@ -325,13 +325,13 @@ test('life: obra → pronta → danificada → ruina through the structures syst
   assert.deepEqual(target,{id:b.defense,x:d.x,y:d.y,radius:.88/2},'a non-blocking siege target of its footprint (the root: 1 cell)');
   assert.ok(prizeBlocks(sys.state).some(p=>p.x===d.x&&p.y===d.y));
   at(ctx,d.readyTick);
-  sys.hit(ctx,b.defense,d.maxHp*.5);
+  sys.hit(ctx,b.defense,d.maxHp*.5/ENEMY_DAMAGE(ctx.round.index));// inimigos-3x-fortes: half its hp after the round's ×
   assert.equal(defensePhase(d,ctx.tick),'danificada');
   sys.hit(ctx,b.defense,1e6);
   assert.equal(defensePhase(d,ctx.tick),'ruina');assert.equal(d.hp,0);
   assert.equal(structureTargets(sys.state).some(s=>s.id===b.defense),false,'a ruin is no target');
-  const hp=sys.state.wall.hp;sys.hit(ctx,'muralha',5);assert.equal(sys.state.wall.hp,hp-5,'the wall still takes its hits');
-  sys.hit(ctx,'barricada-N',5);assert.equal(sys.state.barricades!.find(x=>x.id==='barricada-N')!.hp,295,'and the barricades');
+  const hp=sys.state.wall.hp,x=ENEMY_DAMAGE(ctx.round.index);sys.hit(ctx,'muralha',5);assert.equal(sys.state.wall.hp,hp-5*x,'the wall still takes its hits');
+  sys.hit(ctx,'barricada-N',5);assert.equal(sys.state.barricades!.find(x=>x.id==='barricada-N')!.hp,300-5*x,'and the barricades');
 });
 
 // ---------- 5. Combat ----------
@@ -582,7 +582,7 @@ test('repair: +25 % of maxHp per order for R$ 5, capped at maxHp, only standing 
   const max=d().maxHp,step=Math.ceil(max*REPAIR_FRACTION);
   assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'full'},'a whole defense');
   assert.deepEqual(sys.repair(ctx,'a','defesa-99'),{ok:false,reason:'defense'});
-  sys.hit(ctx,v.id,max*.3);
+  sys.hit(ctx,v.id,max*.3/ENEMY_DAMAGE(ctx.round.index));// inimigos-3x-fortes
   const hp=d().hp,g0=grana(),u0=sys.state.balance.units;
   assert.deepEqual(sys.repair(ctx,'a',v.id,'r1'),{ok:true,defense:v.id,kind:'vigias-armados',cost:TOWER_REPAIR_COST});
   assert.equal(d().hp,hp+step,'25 % of maxHp, rounded up');assert.equal(g0-grana(),TOWER_REPAIR_COST,'paid from the wallet of who repairs it');

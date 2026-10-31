@@ -8,7 +8,7 @@ import {DEFAULT_SEED,defaultTerrain,TerrainField} from '../../src/maps/terrain/f
 import {heroSpeed,moveDirection,obstacles,walkable} from '../../src/maps/world.ts';
 import {createStonewardsSystem,HORN_LEAD,HORN_LINES,MAX_PREPARE_TICKS,MAX_STRETCH_PER_RUN,SAY_GAP,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {campNodes,CAMP_PILES} from '../../src/sim/stonewards/resources.ts';
-import {ROUNDS} from '../../src/rules/waves.ts';
+import {ROUNDS} from '../../src/rules/waves.ts';import {ENEMY_DAMAGE} from '../../src/rules/index.ts';
 import {STONEWARDS_INTERMISSION_SECONDS} from '../../src/sim/assemble.ts';
 import {RUN_DURATION_TICKS} from '../../src/sim/run.ts';
 import {ROOM_CLOSING_MARGIN_MS,RUN_START_WINDOW_MS} from '../../multiplayer/room.ts';
@@ -225,8 +225,8 @@ test('chinelo towers shoot the nearest live enemy, respect the cap and expire',(
 test('siege enemies hit the wall on a cooldown; the fall is a defeat exactly once',()=>{
   let defeats=0;
   const ctx=fakeCtx([player('a',12,17)],'wave'),sys=system({wallMaxHp:25,onWallDestroyed:()=>{defeats++;}});
-  const w=sys.state.wall;
-  ctx.enemies.set('s1',enemy('s1',w.x+WALL_RADIUS,w.y,{memory:{[SIEGE_FLAG]:1}}));
+  const w=sys.state.wall,damage=10/ENEMY_DAMAGE(ctx.round.index);// inimigos-3x-fortes: a 10 bite on the wall after the round's ×
+  ctx.enemies.set('s1',enemy('s1',w.x+WALL_RADIUS,w.y,{memory:{[SIEGE_FLAG]:1},damage}));
   ctx.enemies.set('s2',enemy('s2',w.x-WALL_RADIUS,w.y,{memory:{[SIEGE_FLAG]:1},frozenUntil:9999}));
   ctx.enemies.set('n',enemy('n',w.x,w.y+WALL_RADIUS));
   ctx.enemies.set('r',enemy('r',w.x,w.y,{memory:{[SIEGE_FLAG]:1,retreat:1}}));
@@ -235,7 +235,7 @@ test('siege enemies hit the wall on a cooldown; the fall is a defeat exactly onc
   run(ctx,sys,SIEGE_HIT_COOLDOWN-1);
   assert.equal(w.hp,15);
   run(ctx,sys,1);assert.equal(w.hp,5);
-  ctx.enemies.set('s3',enemy('s3',w.x,w.y-WALL_RADIUS,{memory:{[SIEGE_FLAG]:1}}));
+  ctx.enemies.set('s3',enemy('s3',w.x,w.y-WALL_RADIUS,{memory:{[SIEGE_FLAG]:1},damage}));
   run(ctx,sys,1);
   assert.equal(w.hp,0);assert.equal(defeats,1);assert.equal(sys.state.wallDown,true);
   run(ctx,sys,SIEGE_HIT_COOLDOWN*3);
@@ -504,7 +504,7 @@ test('E8 integrated: a siege enemy on the wall deals exactly its damage per cont
     const before=wall.hp;s.step();if(wall.hp<before)hits.push(before-wall.hp);
   }
   assert.ok(hits.length>=6,`hits ${hits.length}`);
-  assert.ok(hits.every(h=>h===siege.damage),`each hit is one bêbado bite: ${hits.join(',')}`);
+  assert.ok(hits.every(h=>h===siege.damage*ENEMY_DAMAGE(w.round.index)),`each hit is one bêbado bite: ${hits.join(',')}`);
   assert.ok(hits.length<=Math.ceil((def.contactCooldown*6+10)/def.contactCooldown),'one hit per contact cooldown, never two paths');
   assert.ok(Math.hypot(plain.x-wall.x,plain.y-wall.y)>WALL_RADIUS+plain.radius+.5,'the plain bêbado left the wall for the player');
 });

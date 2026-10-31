@@ -27,7 +27,7 @@ import {cityTerrainFrom,type CityTerrain} from '../../src/maps/city/terrain.ts';
 import {buildPlanFor,type CellRect} from '../../src/maps/index.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
+import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,ENEMY_DAMAGE,pieceCells} from '../../src/rules/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {RADIUS} from '../../src/maps/world.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';
@@ -247,7 +247,7 @@ test('muro: a blocker to the enemies from its first tick, a blocking siege targe
   assert.equal(target.blocking,true);
   // The structures system's single damage path (D-017).
   g.sys.hit(g.ctx,m1.id,100);
-  assert.equal(g.sys.state.defenses!.pieces![0].hp,FREE_PIECE_DEFS.muro.hp-100);
+  assert.equal(g.sys.state.defenses!.pieces![0].hp,FREE_PIECE_DEFS.muro.hp-100*ENEMY_DAMAGE(g.ctx.round.index));// inimigos-3x-fortes
   const changes=g.changed.length;
   g.sys.hit(g.ctx,m1.id,1000);
   assert.equal(g.sys.state.defenses!.pieces!.some(p=>p.id===m1.id),false,'fallen: gone');

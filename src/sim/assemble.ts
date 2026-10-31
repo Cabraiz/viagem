@@ -19,7 +19,7 @@ import {createFearSystem} from './fear.ts';
 import {BARRICADA_OFF,UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {VISIBLE_FLOOR,createCrates,killDrop,type Crates,type CratesState} from './crates.ts';
-import {cityLoot} from './stonewards/loot.ts';import {kitsFull} from './towers/forca.ts';
+import {cityLoot} from './stonewards/loot.ts';import {kitsFull} from './towers/bichos/forca.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';

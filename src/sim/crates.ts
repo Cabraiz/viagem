@@ -75,7 +75,8 @@ import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory,isWeaponItem,itemKey,ownedKeys,owns} from './inventory.ts';
 import {addGrana} from './wallet.ts';
 import {ITEM_MIN_GAP,crateInMouth,crateSpot,gapFree,roomy} from './crates-gap.ts';
-export {crateInMouth};
+import {MAP_CRATES,NEAR_WEAPON,killDrop} from './crates-abate.ts';
+export {crateInMouth,killDrop};
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
@@ -148,10 +149,8 @@ export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=10;
 export const GOLD_HIDDEN_CHANCE=.05,GOLD_HIDDEN_FROM:readonly Rarity[]=[1,2,3],GOLD_RARITY:Rarity=4;
 /** Colours of weapon crates a player stops seeing after opening one that showed that colour (the user 24/10: verde and azul). */
 export const HIDE_AFTER_TAKEN:readonly Rarity[]=[1,2];
-/** The floor (see the header): crates each player sees on the map at least, checked this often (s), up to this many alive. */
-export const VISIBLE_FLOOR=16,VISIBLE_FLOOR_S=1,FLOOR_LIVE_MAX=60;
-/** The exploration intervals' trail: one crate passed every this many seconds of the interval (the ORQ, 25/10). */
-export const EXPLORE_PACE_S=20;
+/** The floor (see the header): crates each player sees at least, checked every VISIBLE_FLOOR_S, up to FLOOR_LIVE_MAX alive; the exploration trail: one crate passed every EXPLORE_PACE_S (the ORQ, 25/10). */
+export const VISIBLE_FLOOR=16,VISIBLE_FLOOR_S=1,FLOOR_LIVE_MAX=60,EXPLORE_PACE_S=20;
 /** Pickup id prefix of the crates this module places or drops (not CRATE_PREFIX 'caixa-': those are the gather nodes). */
 export const CRATE_ID_PREFIX='bau';
 /**
@@ -248,6 +247,8 @@ export interface CratesOptions {
   /** The gamble's knobs (tests): GOLD_HIDDEN_CHANCE and HIDE_AFTER_TAKEN by default. */
   goldChance?:number;
   hideAfterTaken?:readonly Rarity[];
+  /** itens-so-de-monstro: the map's own sources (placed, start, trail, floor, respawn); crates-abate.ts MAP_CRATES (off) by default, the legacy's tests turn them on. Off: only the near crates (NEAR_WEAPON) and the kill drops. */
+  mapCrates?:boolean;
 }
 export interface Crates {
   readonly state:CratesState;
@@ -479,7 +480,7 @@ export function foraDasBocas<T extends Point>(city:CityTerrain,points:readonly T
 }
 
 export function createCrates(options:CratesOptions):Crates{
-  const {seed,hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN}=options;
+  const {seed,hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN,mapCrates=MAP_CRATES}=options;
   const state=options.state??createCratesState(seed);
   // The city's spots off the street mouths (foraDasBocas), moved once the terrain is known (the first step).
   let points=options.points,startPoints=options.startPoints??[],offMouths=false;
@@ -518,7 +519,7 @@ export function createCrates(options:CratesOptions):Crates{
    * than what anybody holds.
    */
   function stock(ctx:SimContext,pickup:PickupState,record:CrateRecord,avoid=state.lastItem){
-    const item=prizeKey(drawPrize(new Rng(seed).fork(`premio:${pickup.id}`),record.rarity,!!record.start,avoid,heldKeys(ctx)));
+    const item=record.start&&!mapCrates?NEAR_WEAPON:prizeKey(drawPrize(new Rng(seed).fork(`premio:${pickup.id}`),record.rarity,!!record.start,avoid,heldKeys(ctx)));
     record.item=item;pickup.resource=item;state.lastItem=item;
   }
   /** A live crate showing an item somebody now holds shows another one (its own stream), when one is free. */
@@ -526,7 +527,7 @@ export function createCrates(options:CratesOptions):Crates{
     let held:Set<string>|undefined;
     for(const id in state.crates){
       const record=state.crates[id],pickup=ctx.pickups.get(id);
-      if(!pickup||record.item===undefined)continue;
+      if(!pickup||record.item===undefined||record.start&&!mapCrates)continue;
       held??=heldKeys(ctx);
       if(!held.size)return;
       if(!held.has(itemKey(record.item)))continue;
@@ -558,7 +559,7 @@ export function createCrates(options:CratesOptions):Crates{
     state.placed=true;state.startTick=ctx.tick;
     let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
     const cap=state.cap=crateCap(players);
-    const free=points.map((_,i)=>i).filter(i=>pointReachable(ctx,i)),live:Point[]=[];
+    const free=mapCrates?points.map((_,i)=>i).filter(i=>pointReachable(ctx,i)):[],live:Point[]=[];
     for(let n=0;n<cap&&free.length;n++){
       const point=spreadPick(rng,points,roomy(ctx.pickups,free,i=>points[i]),live);
       free.splice(free.indexOf(point),1);live.push(points[point]);
@@ -569,7 +570,7 @@ export function createCrates(options:CratesOptions):Crates{
     // Start crates: the k-th of each player's set in the k-th walk band (startBands), the first one random, each next
     // the candidate of its band farthest from those taken (ties: list order; an empty band takes from every point).
     // (the near crates count to each player's set).
-    const starts=startPoints.filter(p=>reachable(ctx,p));
+    const starts=mapCrates?startPoints.filter(p=>reachable(ctx,p)):[];
     const want=Math.min(starts.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players))-near);
     const bands=startBands(starts),taken:StartPoint[]=[];
     while(taken.length<want){
@@ -634,7 +635,7 @@ export function createCrates(options:CratesOptions):Crates{
 
   /** The first minute: who passed which crate, and a trail crate ahead of a hero behind the pace. */
   function trailStep(ctx:SimContext,rng:Rng){
-    if(state.startTick===undefined)return;
+    if(state.startTick===undefined||!mapCrates)return;
     const first=ctx.tick-state.startTick<ticks(FIRST_MINUTE_S),explore=!first&&ctx.round.phase==='prepare';
     if(!explore&&state.exploreTick!==undefined){delete state.exploreTick;delete state.trail;}
     if(!first&&!explore){if(state.trail)delete state.trail;return;}
@@ -670,7 +671,7 @@ export function createCrates(options:CratesOptions):Crates{
   /** The floor (see the header): one more crate for each player who sees fewer than VISIBLE_FLOOR. */
   function floorStep(ctx:SimContext,rng:Rng){
     const floor=options.visibleFloor??0;
-    if(!floor||state.startTick===undefined||(ctx.tick-state.startTick)%ticks(VISIBLE_FLOOR_S)!==0)return;
+    if(!mapCrates||!floor||state.startTick===undefined||(ctx.tick-state.startTick)%ticks(VISIBLE_FLOOR_S)!==0)return;
     const players=[...ctx.players.values()].filter(onMap);
     for(const p of players)for(;;){
       let live=0,seen=0;
@@ -701,7 +702,7 @@ export function createCrates(options:CratesOptions):Crates{
 
   /** Due respawns, oldest first: a free point far enough from every player, spread (spreadPick), else wait for a later tick. */
   function respawn(ctx:SimContext,rng:Rng){
-    while(state.respawns.length&&state.respawns[0]<=ctx.tick){
+    while(mapCrates&&state.respawns.length&&state.respawns[0]<=ctx.tick){
       if(placedCount()>=(state.cap??MAX_CRATES)){state.respawns.shift();continue;}
       const used=usedPoints(),players=[...ctx.players.values()].filter(onMap);
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&pointReachable(ctx,i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));

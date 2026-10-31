@@ -54,7 +54,7 @@ const CAP=crateCap(0);
 test('initial placement: crateCap on distinct points spread over the line (every third has some), base rarity by distance third, shifted by stage',()=>{
   const seen=new Set<string>();
   for(let seed=1;seed<=40;seed++){
-    const points=line(30),ctx=makeCtx(seed),crates=createCrates({seed,points});
+    const points=line(30),ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points});
     ctx.round.index=4;// stage 1: no shift, the base shows
     crates.step(ctx);
     const placed=chests(ctx);
@@ -72,9 +72,9 @@ test('initial placement: crateCap on distinct points spread over the line (every
   }
   assert.deepEqual([...seen].sort(),['0:1','0:2','1:2','1:3','2:3','2:4'],'every tier rolls both of its rarities');
   // Fewer points than the cap: all of them; none: nothing, and a later step places nothing either.
-  const few=makeCtx(),fewCrates=createCrates({seed:3,points:line(CAP-1)});
+  const few=makeCtx(),fewCrates=createCrates({mapCrates:true,seed:3,points:line(CAP-1)});
   fewCrates.step(few);assert.equal(chests(few).length,CAP-1);
-  const none=makeCtx(),noCrates=createCrates({seed:3,points:[]});
+  const none=makeCtx(),noCrates=createCrates({mapCrates:true,seed:3,points:[]});
   run(none,noCrates,5);assert.equal(chests(none).length,0);
   const dropped=noCrates.dropCrate(none,{x:1,y:2},4);
   assert.equal(dropped.kind,'chest');assert.equal(dropped.value,4);
@@ -83,7 +83,7 @@ test('initial placement: crateCap on distinct points spread over the line (every
 
 /** Standing ticks until a crate of this rarity opens (the first step only records where the player stands). */
 function openTime(rarity:Rarity){
-  const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+  const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]});
   addPlayer(ctx,'a',0,0);
   crates.dropCrate(ctx,{x:.5,y:0},rarity);
   let steps=0;
@@ -97,7 +97,7 @@ test('opening takes OPEN_SECONDS by rarity of standing still',()=>{
 
 test('moving or taking damage starts the opening over; out of reach never opens',()=>{
   for(const disturb of ['move','hurt'] as const){
-    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]}),p=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]}),p=addPlayer(ctx,'a',0,0);
     const crate=crates.dropCrate(ctx,{x:.5,y:0},1);
     run(ctx,crates,1+ticks(.8));
     assert.equal(crates.opening('a')?.crate,crate.id);
@@ -111,12 +111,12 @@ test('moving or taking damage starts the opening over; out of reach never opens'
     assert.equal(opened(ctx).length,1);
     assert.equal(ctx.pickups.has(crate.id),false);
   }
-  const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+  const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]});
   addPlayer(ctx,'a',0,0);crates.dropCrate(ctx,{x:OPEN_REACH+.01,y:0},1);
   run(ctx,crates,100);
   assert.equal(opened(ctx).length,0);
   // Healing is not damage: the opening goes on.
-  const healCtx=makeCtx(),healCrates=createCrates({seed:1,points:[]}),h=addPlayer(healCtx,'a',0,0,{hp:50});
+  const healCtx=makeCtx(),healCrates=createCrates({mapCrates:true,seed:1,points:[]}),h=addPlayer(healCtx,'a',0,0,{hp:50});
   healCrates.dropCrate(healCtx,{x:0,y:0},1);
   run(healCtx,healCrates,10);h.hp=60;run(healCtx,healCrates,ticks(1)-9);
   assert.equal(opened(healCtx).length,1);
@@ -128,14 +128,14 @@ test('coleta-3x: the crate is 3× its old size and opens when a hero touches its
   assert.equal(OPEN_REACH,CRATE_BODY_RADIUS+CRATE_OPEN_MARGIN,'the reach follows the edge');
   assert.equal(OPEN_REACH,2,'the old margin (1 - .5) past the new edge');
   for(const [d,opens] of [[1.9,true],[2.1,false]] as const){
-    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+    const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]});
     addPlayer(ctx,'a',0,0);crates.dropCrate(ctx,{x:d,y:0},1);
     run(ctx,crates,ticks(1)+2);
     assert.equal(opened(ctx).length,opens?1:0,`at ${d} u`);
   }
   // Two heroes at one crate since the same tick: the nearer one gets it, whatever the player order.
   for(const order of [['far','near'],['near','far']]){
-    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+    const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]});
     for(const id of order)addPlayer(ctx,id,id==='near'?.4:-1.6,0);
     crates.dropCrate(ctx,{x:0,y:0},1);
     run(ctx,crates,ticks(1)+2);
@@ -146,7 +146,7 @@ test('coleta-3x: the crate is 3× its old size and opens when a hero touches its
 test('the nearest crate, one at a time; roxa and up make noise once at the start',()=>{
   const noise:{at:{x:number;y:number};radius:number;source:string}[]=[];
   const hooks:CrateHooks={onNoise:(_ctx,at,radius,source)=>noise.push({at,radius,source})};
-  const ctx=makeCtx(),crates=createCrates({seed:1,points:[],hooks});
+  const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[],hooks});
   addPlayer(ctx,'a',0,0);
   // itens-sem-nascer-colados: two crates stand ITEM_MIN_GAP apart, so both are never in reach; the far one waits for him.
   const far=crates.dropCrate(ctx,{x:ITEM_MIN_GAP+.5,y:0},2),near=crates.dropCrate(ctx,{x:0,y:.3},3);
@@ -169,7 +169,7 @@ test('a downed, eliminated, spectator or inventory-less player cannot open',()=>
     {build:{weapons:[{id:'chinelo',level:1}],passives:[]}},{hp:0},
   ];
   for(const extra of cases){
-    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+    const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:1,points:[]});
     addPlayer(ctx,'a',0,0,extra);crates.dropCrate(ctx,{x:0,y:0},1);
     run(ctx,crates,200);
     assert.equal(opened(ctx).length,0,JSON.stringify(extra));
@@ -185,7 +185,7 @@ test('start crates (caixas-sumiram): START_CRATES_PER_PLAYER a player (1..6), on
   assert.ok(bands.every((b,k)=>b.length&&b.every(p=>p.walk>=6+k*42/START_CRATES_PER_PLAYER-1e-9&&p.walk<=6+(k+1)*42/START_CRATES_PER_PLAYER+1e-9)),'equal walk bands, nearest first');
   assert.equal(START_CRATES_MIN,START_CRATES_PER_PLAYER);assert.equal(START_CRATES_MAX,START_CRATES_PER_PLAYER*START_PLAYERS_MAX);
   for(const [players,want] of [[0,START_CRATES_MIN],[1,START_CRATES_MIN],[4,4*START_CRATES_PER_PLAYER],[8,START_CRATES_MAX]] as const){
-    const ctx=makeCtx(3),crates=createCrates({seed:3,points:line(30).map(p=>({...p,x:p.x+100})),startPoints:spots});
+    const ctx=makeCtx(3),crates=createCrates({mapCrates:true,seed:3,points:line(30).map(p=>({...p,x:p.x+100})),startPoints:spots});
     for(let i=0;i<players;i++)addPlayer(ctx,`p${i}`,0,0);
     crates.step(ctx);
     const all=chests(ctx).filter(c=>crates.state.crates[c.id].start);
@@ -206,7 +206,7 @@ test('start crates (caixas-sumiram): START_CRATES_PER_PLAYER a player (1..6), on
     const gap=Math.min(...start.flatMap((a,i)=>start.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.y-b.y))));
     assert.ok(gap>=4,`not piled up (closest pair ${gap.toFixed(1)} u)`);
   }
-  const none=makeCtx(),noStart=createCrates({seed:3,points:[]});
+  const none=makeCtx(),noStart=createCrates({mapCrates:true,seed:3,points:[]});
   addPlayer(none,'p',0,0);noStart.step(none);assert.equal(chests(none).length,0,'no start points: none');
 });
 
@@ -214,7 +214,7 @@ test('start crates (caixas-sumiram): START_CRATES_PER_PLAYER a player (1..6), on
 const street=(at:{x:number;y:number},h:{x:number;y:number},ahead:number)=>{const p={x:at.x+h.x*ahead,y:at.y+h.y*ahead};return Math.abs(p.y)<3?p:undefined;};
 
 test('trail crates (caixas-sumiram): a hero who walks the first minute passes FIRST_MINUTE_CRATES, each hero his own, ahead and out of view',()=>{
-  const ctx=makeCtx(5),crates=createCrates({seed:5,points:[],trailSpot:street}),a=addPlayer(ctx,'a',0,0),b=addPlayer(ctx,'b',0,1);
+  const ctx=makeCtx(5),crates=createCrates({mapCrates:true,seed:5,points:[],trailSpot:street}),a=addPlayer(ctx,'a',0,0),b=addPlayer(ctx,'b',0,1);
   const passed={a:new Set<string>(),b:new Set<string>()},born:{id:string;at:number;hero:{x:number;y:number}}[]=[];
   const before=new Set<string>();
   for(let t=0;t<ticks(FIRST_MINUTE_S);t++){
@@ -237,9 +237,9 @@ test('trail crates (caixas-sumiram): a hero who walks the first minute passes FI
   for(let t=0;t<ticks(20);t++){a.x+=4/20;crates.step(ctx);ctx.tick++;}
   assert.equal(chests(ctx).length,n);assert.equal(crates.state.trail,undefined);
   // A hero standing still gets none; without trailSpot nobody does.
-  const still=makeCtx(5),sc=createCrates({seed:5,points:[],trailSpot:street});addPlayer(still,'s',0,0);run(still,sc,ticks(30));
+  const still=makeCtx(5),sc=createCrates({mapCrates:true,seed:5,points:[],trailSpot:street});addPlayer(still,'s',0,0);run(still,sc,ticks(30));
   assert.equal(chests(still).length,0);
-  const off=makeCtx(5),oc=createCrates({seed:5,points:[]}),w=addPlayer(off,'w',0,0);run(off,oc,ticks(30),()=>{w.x+=.2;});
+  const off=makeCtx(5),oc=createCrates({mapCrates:true,seed:5,points:[]}),w=addPlayer(off,'w',0,0);run(off,oc,ticks(30),()=>{w.x+=.2;});
   assert.equal(chests(off).length,0);
 });
 
@@ -254,7 +254,7 @@ test('starter prizes (caixas-sumiram): every weapon and verde kit shows up; in 1
   const tally=new Map<string,number>();let total=0;
   for(let m=1;m<=100;m++){
     // hideAfterTaken [] / goldChance 0: the caixa-gamble is tested on its own (caixa-gamble-raridade.test.ts).
-    const ctx=makeCtx(m),crates=createCrates({seed:1000+m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(m),crates=createCrates({mapCrates:true,seed:1000+m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);
     const keys:string[]=[];
     for(let i=0;i<4;i++){
       const crate=crates.dropCrate(ctx,{x:0,y:0},(i%2+1) as Rarity);crates.state.crates[crate.id].start=true;
@@ -274,7 +274,7 @@ test('starter prizes (caixas-sumiram): every weapon and verde kit shows up; in 1
 
 test('the same prize never twice in a row for a hero, in any crate (rollCrate redraws on the same stream)',()=>{
   for(let m=1;m<=30;m++){
-    const ctx=makeCtx(m),crates=createCrates({seed:m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);let last='';
+    const ctx=makeCtx(m),crates=createCrates({mapCrates:true,seed:m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);let last='';
     for(let i=0;i<6;i++){
       crates.dropCrate(ctx,{x:0,y:0},1);p.build.weapons=[{id:'faca',level:1}];
       run(ctx,crates,1+ticks(2));
@@ -286,7 +286,7 @@ test('the same prize never twice in a row for a hero, in any crate (rollCrate re
 test('caixa-icone-torre-arma: a crate shows its prize from the start (resource), opening gives that item, never the same as the last one shown',()=>{
   const kinds=new Set<string>();
   for(let seed=1;seed<=30;seed++){
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
+    const ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
     addPlayer(ctx,'a',-500,-500);
     crates.step(ctx);
     let prev:string|undefined;
@@ -308,12 +308,12 @@ test('caixa-icone-torre-arma: a crate shows its prize from the start (resource),
   }
   assert.deepEqual([...kinds].sort(),['arma','kit']);
   // Same seed, same items (its own stream: the rest of the step does not shift it).
-  const items=(seed:number)=>{const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30)});crates.step(ctx);return chests(ctx).map(c=>c.resource);};
+  const items=(seed:number)=>{const ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points:line(30)});crates.step(ctx);return chests(ctx).map(c=>c.resource);};
   assert.deepEqual(items(7),items(7));
 });
 
 test('caixa-icone-torre-arma: a crate from an older checkpoint (no item) still rolls its prize when opened',()=>{
-  const ctx=makeCtx(2),crates=createCrates({seed:2,points:[]}),p=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(2),crates=createCrates({mapCrates:true,seed:2,points:[]}),p=addPlayer(ctx,'a',0,0);
   const c=crates.dropCrate(ctx,{x:0,y:0},2);
   delete crates.state.crates[c.id].item;delete c.resource;
   run(ctx,crates,1+ticks(2));
@@ -325,7 +325,7 @@ test('caixa-icone-torre-arma: a crate from an older checkpoint (no item) still r
 test('torre-limite-rebocar-sem-arma: an empty-handed hero opening a kit crate gets a weapon of its rarity (a start crate: a starter weapon); armed, the kit as shown',()=>{
   let unarmed=0,armed=0;
   for(let seed=1;seed<=60&&(unarmed<4||armed<4);seed++){
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
+    const ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
     addPlayer(ctx,'far',-500,-500);crates.step(ctx);
     const c=chests(ctx).find(k=>isKitId(k.resource));
     if(!c)continue;
@@ -348,7 +348,7 @@ test('the placed crates scale with the players: 12 + 4 a player, up to MAX_CRATE
   // The user 23/10 ("bem mais caixas pelo mapa"): a solo 16 (was 4), six 36 (was 16).
   assert.deepEqual([0,1,2,3,6,8].map(crateCap),[16,16,20,24,36,40]);
   assert.equal(MAX_CRATES,40);
-  const ctx=makeCtx(4),crates=createCrates({seed:4,points:line(40)});
+  const ctx=makeCtx(4),crates=createCrates({mapCrates:true,seed:4,points:line(40)});
   for(let i=0;i<6;i++)addPlayer(ctx,`p${i}`,-50,0);
   crates.step(ctx);
   assert.equal(chests(ctx).length,36);assert.equal(crates.state.cap,36);
@@ -356,7 +356,7 @@ test('the placed crates scale with the players: 12 + 4 a player, up to MAX_CRATE
 
 test('the rarity grows along the match: rounds 1-3 shift -1, the last rounds +2, an unopened crate follows',()=>{
   assert.deepEqual([0,1,2,3,4,5,6,7,8,9,10].map(index=>stageShift({index,total:10})),[-1,-1,-1,-1,0,0,1,1,1,2,2]);
-  const ctx=makeCtx(2),crates=createCrates({seed:2,points:line(30)});
+  const ctx=makeCtx(2),crates=createCrates({mapCrates:true,seed:2,points:line(30)});
   ctx.round.index=1;crates.step(ctx);
   const near=chests(ctx).filter(c=>c.x<100),far=chests(ctx).filter(c=>c.x>=200);
   assert.ok(near.length&&near.every(c=>c.value===1),'rounds 1-3: the near crates are verde');
@@ -419,7 +419,7 @@ test('bau-so-arma-ou-torre: 10 mil sorteios of every rarity and of the starter g
 
 test('prizes land in the inventory, the overflow on the ground; no Grana, fichas nor team XP',()=>{
   // Lendária: one weapon (or a kit), no team XP.
-  const ctx=makeCtx(),crates=createCrates({seed:7,points:[]}),p=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:7,points:[]}),p=addPlayer(ctx,'a',0,0);
   crates.dropCrate(ctx,{x:0,y:0},5);
   run(ctx,crates,1+ticks(3));
   assert.equal(p.build.weapons.length,2);
@@ -427,7 +427,7 @@ test('prizes land in the inventory, the overflow on the ground; no Grana, fichas
   assert.equal(p.build.weapons[1].level,5);
   assert.equal(ctx.team.xp,0);
   // A full inventory: the legendary falls beside the crate as an 'item'.
-  const full=makeCtx(),fullCrates=createCrates({seed:7,points:[]}),q=addPlayer(full,'a',0,0);
+  const full=makeCtx(),fullCrates=createCrates({mapCrates:true,seed:7,points:[]}),q=addPlayer(full,'a',0,0);
   q.build.weapons=Array.from({length:INVENTORY_SLOTS},():OwnedItem=>({id:'faca',level:1}));
   fullCrates.dropCrate(full,{x:.4,y:.2},5);
   run(full,fullCrates,1+ticks(3));
@@ -438,7 +438,7 @@ test('prizes land in the inventory, the overflow on the ground; no Grana, fichas
   assert.deepEqual([ground[0].x,ground[0].y],[.4,.2]);
   // Many crates of every rarity: the opener's Grana and the team's XP never move.
   for(let seed=1;seed<=20;seed++){
-    const c=makeCtx(),cr=createCrates({seed,points:[]}),b=addPlayer(c,'b',0,0),xp=c.team.xp;
+    const c=makeCtx(),cr=createCrates({mapCrates:true,seed,points:[]}),b=addPlayer(c,'b',0,0),xp=c.team.xp;
     for(let i=0;i<5;i++){cr.dropCrate(c,{x:0,y:0},(i+1) as Rarity);}
     run(c,cr,ticks(20));
     assert.equal(b.grana??0,0);assert.equal(c.team.xp,xp);
@@ -446,7 +446,7 @@ test('prizes land in the inventory, the overflow on the ground; no Grana, fichas
 });
 
 test('an opened placed crate respawns 180 s later on a free point away from every player',()=>{
-  const points=line(CAP+1),ctx=makeCtx(),crates=createCrates({seed:5,points});
+  const points=line(CAP+1),ctx=makeCtx(),crates=createCrates({mapCrates:true,seed:5,points});
   crates.step(ctx);ctx.tick++;
   const used=new Set(Object.values(crates.state.crates).map(r=>r.point));
   const free=points.findIndex((_,i)=>!used.has(i));
@@ -471,7 +471,7 @@ test('an opened placed crate respawns 180 s later on a free point away from ever
   assert.equal(crates.state.respawns.length,0);
   assert.ok(Math.hypot(a.x-back.x,a.y-back.y)>=RESPAWN_MIN_DIST);
   // Exact timing: not a tick early (fresh run, nobody around).
-  const c2=makeCtx(),cr2=createCrates({seed:5,points});
+  const c2=makeCtx(),cr2=createCrates({mapCrates:true,seed:5,points});
   cr2.step(c2);c2.tick++;
   const [t2]=chests(c2);const p2=addPlayer(c2,'a',t2.x,t2.y);
   run(c2,cr2,1+ticks(OPEN_SECONDS[t2.value-1]));
@@ -486,7 +486,7 @@ test('an opened placed crate respawns 180 s later on a free point away from ever
 test('elite and boss chests become dropped crates; dropped crates skip the cap and never respawn',()=>{
   const rarities=new Set<number>();
   for(let seed=1;seed<=40;seed++){
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(CAP)});
+    const ctx=makeCtx(seed),crates=createCrates({mapCrates:true,seed,points:line(CAP)});
     crates.step(ctx);ctx.tick++;
     // progression.ts dropLoot: ctx.nextId('chest'); boss.ts finish: ctx.nextId('pickup'). Both value 1.
     const elite:PickupState={id:ctx.nextId('chest'),kind:'chest',value:1,x:500,y:500,spawnTick:ctx.tick};
@@ -532,7 +532,7 @@ test('deterministic, and a JSON checkpoint resumes exactly like an uninterrupted
   });
   // The first minute too: start spots and trail crates (caixas-sumiram).
   const startPoints=Array.from({length:30},(_,i)=>({x:i*1.5,y:-6,walk:6+i})),trailSpot=street;
-  const fresh=()=>{const log:string[]=[],ctx=makeCtx(9),crates=createCrates({seed:42,points,startPoints,trailSpot,hooks:hooks(log)});return {log,ctx,crates};};
+  const fresh=()=>{const log:string[]=[],ctx=makeCtx(9),crates=createCrates({mapCrates:true,seed:42,points,startPoints,trailSpot,hooks:hooks(log)});return {log,ctx,crates};};
   const a=fresh();run(a.ctx,a.crates,total,script(a.crates));
   const again=fresh();run(again.ctx,again.crates,total,script(again.crates));
   assert.equal(digest(again.ctx,again.crates.state,again.log),digest(a.ctx,a.crates.state,a.log),'same seed, same run');
@@ -540,11 +540,11 @@ test('deterministic, and a JSON checkpoint resumes exactly like an uninterrupted
   assert.ok(a.log.some(l=>l.startsWith('n')),'some noise');
   assert.ok(opened(a.ctx).some(e=>e.pickup.startsWith(`${CRATE_ID_PREFIX}-`)&&Number(e.pickup.split('-')[1])>CAP),'respawned crates came back and were opened');
   const b=fresh();run(b.ctx,b.crates,half,script(b.crates));
-  const resumed=createCrates({seed:42,points,startPoints,trailSpot,hooks:hooks(b.log),state:JSON.parse(JSON.stringify(b.crates.state)) as CratesState});
+  const resumed=createCrates({mapCrates:true,seed:42,points,startPoints,trailSpot,hooks:hooks(b.log),state:JSON.parse(JSON.stringify(b.crates.state)) as CratesState});
   run(b.ctx,resumed,total-half,script(resumed));
   assert.equal(digest(b.ctx,resumed.state,b.log),digest(a.ctx,a.crates.state,a.log),'checkpoint resume');
   // Another seed places differently.
-  const other=makeCtx(9),otherCrates=createCrates({seed:43,points});otherCrates.step(other);
-  const first=makeCtx(9),firstCrates=createCrates({seed:42,points});firstCrates.step(first);
+  const other=makeCtx(9),otherCrates=createCrates({mapCrates:true,seed:43,points});otherCrates.step(other);
+  const first=makeCtx(9),firstCrates=createCrates({mapCrates:true,seed:42,points});firstCrates.step(first);
   assert.notDeepEqual(chests(other).map(c=>[c.x,c.y,c.value]),chests(first).map(c=>[c.x,c.y,c.value]));
 });

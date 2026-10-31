@@ -18,7 +18,7 @@ import {SOLO_SECOND_CHANCES,createReviveSystem,downPlayer,type ReviveSystem} fro
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
-import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
+import {VISIBLE_FLOOR,createCrates,killDrop,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,isWeaponItem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
@@ -607,7 +607,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx,credit)=>{
-    progression.dropLoot(ctx,enemy,by);
+    killDrop(ctx,world.seed,enemy,progression.dropLoot(ctx,enemy,by),crates&&((c,at,rarity)=>{crates.dropCrate(c,at,rarity);}));// itens-so-de-monstro
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);

@@ -67,7 +67,7 @@ test(`${SEEDS} seeds × ${HEROES} heroes × ${ROUNDS} rounds on the real city: n
   let worst=Infinity,drops=0,items=0,born=0,opened=0;
   for(let seed=1;seed<=SEEDS;seed++){
     const ctx=makeCtx(seed),rng=new Rng(seed*31+7);
-    const crates=createCrates({seed,visibleFloor:VISIBLE_FLOOR,points:loot.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds})),
+    const crates=createCrates({mapCrates:true,seed,visibleFloor:VISIBLE_FLOOR,points:loot.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds})),
       startPoints:loot.aroundUno,trailSpot:(at,heading,ahead,r)=>loot.spotAhead(at,heading,ahead,r)});
     // The team spawns in a block beside the Uno (sim/city/uno-start.ts).
     for(let i=0;i<HEROES;i++){const p=hero(`p${i}`,uno.x+(i%3)*.7,uno.y+Math.floor(i/3)*.7);ctx.players.set(p.id,p);}

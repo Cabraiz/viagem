@@ -58,7 +58,7 @@ test('the same item: any rarity, a legendary as its weapon, a kit as its piece; 
 
 test('with a tampa verde, 1000 crates of every colour never show nor give a tampa',()=>{
   for(let s=0;s<1000;s++){
-    const ctx=makeCtx(s),crates=createCrates({seed:s,points:[],goldChance:0,hideAfterTaken:[]}),p=addPlayer(ctx,'a',0,0);
+    const ctx=makeCtx(s),crates=createCrates({mapCrates:true,seed:s,points:[],goldChance:0,hideAfterTaken:[]}),p=addPlayer(ctx,'a',0,0);
     const c=crates.dropCrate(ctx,{x:0,y:0},(s%5+1) as Rarity);
     assert.notEqual(c.resource,TAMPA,`seed ${s}: the crate shows ${c.resource}`);
     run(ctx,crates,ticks(3.2));
@@ -70,7 +70,7 @@ test('with a tampa verde, 1000 crates of every colour never show nor give a tamp
 test('the first minute crates and the trail ones skip what the hero holds too',()=>{
   const street=(at:{x:number;y:number},h:{x:number;y:number},ahead:number)=>{const p={x:at.x+h.x*ahead,y:at.y+h.y*ahead};return Math.abs(p.y)<3?p:undefined;};
   for(let s=0;s<40;s++){
-    const ctx=makeCtx(s),crates=createCrates({seed:s,points:[],trailSpot:street});
+    const ctx=makeCtx(s),crates=createCrates({mapCrates:true,seed:s,points:[],trailSpot:street});
     const a=addPlayer(ctx,'a',0,0,[{id:'pistola',level:1},{id:'escopeta',level:2},{id:kitId(KIT_POOL[1][0]),level:1}]);
     for(let i=0;i<ticks(30);i++){a.x+=.2;crates.step(ctx);ctx.tick++;}
     const shown=Object.keys(crates.state.crates).map(id=>ctx.pickups.get(id)!.resource!);
@@ -80,7 +80,7 @@ test('the first minute crates and the trail ones skip what the hero holds too',(
 });
 
 test('a crate showing an item somebody just got shows another one, and stays for everyone',()=>{
-  const ctx=makeCtx(2),crates=createCrates({seed:2,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0,[{id:'faca',level:1}]);
+  const ctx=makeCtx(2),crates=createCrates({mapCrates:true,seed:2,points:[],goldChance:0}),a=addPlayer(ctx,'a',0,0,[{id:'faca',level:1}]);
   addPlayer(ctx,'b',300,0,[{id:'faca',level:1}]);
   const verde=crate(ctx,crates,{x:0,y:0},1,TAMPA),azul=crate(ctx,crates,{x:100,y:0},2,TAMPA);
   run(ctx,crates,1);
@@ -107,7 +107,7 @@ test('every item held: the crate keeps one and hides from who holds it; drawPriz
   const start=new Set(prizePools(1,true)[0].map(itemKey));
   for(let s=0;s<50;s++)assert.ok(!start.has(itemKey(prizeKey(drawPrize(new Rng(s),1,true,undefined,start)))));
   // Hidden to its holder (the same hiddenFor): he neither opens it nor his bot goes for it.
-  const ctx=makeCtx(1),crates=createCrates({seed:1,points:[],goldChance:0,hideAfterTaken:[]}),a=addPlayer(ctx,'a',0,0);
+  const ctx=makeCtx(1),crates=createCrates({mapCrates:true,seed:1,points:[],goldChance:0,hideAfterTaken:[]}),a=addPlayer(ctx,'a',0,0);
   const c=crate(ctx,crates,{x:0,y:0},1,TAMPA);
   // Everything else held by b: no free item to show instead.
   const b=addPlayer(ctx,'b',900,0,[]);
